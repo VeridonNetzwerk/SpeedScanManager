@@ -579,11 +579,18 @@ internal class TrayApplicationContext : ApplicationContext
     {
         Application.Idle -= OnFirstIdle;
         InitializeTwain();
-        // Don't query TWAIN at startup — source.Open() on a disconnected scanner
-        // triggers the driver's native "Kommunikation fehlgeschlagen" dialog (DS42019).
-        // Default to Disconnected; the user knows from the tray icon.
-        // When the user tries to scan, StartScan will detect the scanner.
-        _scannerStatus = ScannerStatus.Disconnected;
+        // Query scanner state once after TWAIN init to detect connected scanners.
+        // If the scanner is disconnected, source.Open() may show a driver dialog,
+        // but that's acceptable — the user needs to know the real status.
+        if (_twainInitialized)
+        {
+            _scannerStatus = ScannerStatus.Unknown;
+            UpdateConnectionState();
+        }
+        else
+        {
+            _scannerStatus = ScannerStatus.Disconnected;
+        }
         UpdateTrayVisuals();
         UpdateMenuItems();
     }
