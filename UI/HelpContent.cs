@@ -40,7 +40,7 @@ internal class HelpTopic
 /// </summary>
 internal static class HelpContent
 {
-    private const string Css = @"
+    public const string Css = @"
         body { font-family: 'Microsoft Sans Serif', Verdana, sans-serif; font-size: 9pt; color: #000; margin: 8px 16px 16px 16px; }
         h1 { color: #2B579A; font-size: 14pt; margin: 0 0 12px 0; }
         h2 { color: #2B579A; font-size: 11pt; margin: 16px 0 6px 0; }
@@ -55,11 +55,13 @@ internal static class HelpContent
         .warning { background: #FFF0F0; border: 1px solid #E09090; padding: 6px 10px; margin: 8px 0; }
         .warning-title { font-weight: bold; color: #CC0000; }
         .see-also { margin: 12px 0 4px 0; font-style: italic; color: #555; }
-        .see-also ul { font-style: normal; color: #000; }
+        .see-also ul { font-style: normal; color: #000; padding-left: 16px; margin-top: 4px; }
         table { border-collapse: collapse; margin: 8px 0; }
         td, th { border: 1px solid #999; padding: 4px 8px; font-size: 9pt; }
         th { background: #E8E8E8; }
         .kbd { background: #F0F0F0; border: 1px solid #CCC; padding: 1px 4px; font-family: monospace; }
+        code { font-family: 'Consolas', monospace; font-size: 9pt; background-color: #F6F6F6; padding: 1px 4px; }
+        kbd { background: #E8E8E8; border: 1px solid #CCC; padding: 1px 6px; font-family: 'Microsoft Sans Serif', monospace; font-size: 9pt; white-space: nowrap; }
     ";
 
     /// <summary>Wraps body content in a full HTML document with CSS.</summary>

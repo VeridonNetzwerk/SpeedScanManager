@@ -17,6 +17,10 @@ internal class HelpForm : Form
     private readonly Panel _navTabStrip;
     private readonly TreeView _treeView;
     private readonly WebBrowser _webBrowser;
+    private ListView? _indexListView;
+    private Panel? _searchPanel;
+    private TextBox? _searchBox;
+    private ListBox? _searchResults;
     private bool _navVisible = true;
 
     private readonly HelpTopic _rootTopic;
@@ -256,16 +260,9 @@ internal class HelpForm : Form
         }
         else
         {
-            // Branch node: show child topic links
+            // Branch node: show child topic links using shared CSS
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("<html><head><meta charset='utf-8'>");
-            sb.AppendLine("<style>");
-            sb.AppendLine("body { font-family: 'Microsoft Sans Serif', Verdana, sans-serif; font-size: 9pt; margin: 8px 16px; }");
-            sb.AppendLine("h1 { color: #2B579A; font-size: 14pt; }");
-            sb.AppendLine("ul { list-style: none; padding-left: 8px; }");
-            sb.AppendLine("li { margin: 4px 0; }");
-            sb.AppendLine("a { color: #0000CC; text-decoration: underline; }");
-            sb.AppendLine("</style></head><body>");
+            sb.AppendLine($"<html><head><meta charset='utf-8'><style>{HelpContent.Css}</style></head><body>");
             sb.AppendLine($"<h1>{topic.Title}</h1>");
             sb.AppendLine("<ul>");
             foreach (var child in topic.Children)
@@ -383,11 +380,25 @@ internal class HelpForm : Form
             e.Cancel = true;
     }
 
+    private static int GetTabWidth()
+    {
+        string[] tabs = { "Inhalt", "Index", "Suchen" };
+        int maxW = 0;
+        using var bmp = new Bitmap(1, 1);
+        using var g = Graphics.FromImage(bmp);
+        foreach (var tab in tabs)
+        {
+            var sz = TextRenderer.MeasureText(g, tab, UiFont);
+            if (sz.Width > maxW) maxW = sz.Width;
+        }
+        return Math.Max(maxW + 16, 60);
+    }
+
     private void NavTabStrip_Paint(object? sender, PaintEventArgs e)
     {
         var g = e.Graphics;
         string[] tabs = { "Inhalt", "Index", "Suchen" };
-        int tabW = 70;
+        int tabW = GetTabWidth();
         for (int i = 0; i < tabs.Length; i++)
         {
             var rect = new Rectangle(i * tabW, 0, tabW, _navTabStrip.Height - 1);
@@ -415,12 +426,159 @@ internal class HelpForm : Form
     private void NavTabStrip_Click(object? sender, EventArgs e)
     {
         var mp = _navTabStrip.PointToClient(MousePosition);
-        int tab = mp.X / 70;
+        int tabW = GetTabWidth();
+        int tab = mp.X / tabW;
         if (tab >= 0 && tab <= 2 && tab != _activeNavTab)
         {
             _activeNavTab = tab;
             _navTabStrip.Invalidate();
+            OnNavTabChanged();
         }
+    }
+
+    private void OnNavTabChanged()
+    {
+        switch (_activeNavTab)
+        {
+            case 0: // Inhalt
+                _treeView.Visible = true;
+                _indexListView?.Hide();
+                _searchPanel?.Hide();
+                break;
+            case 1: // Index
+                EnsureIndexListView();
+                _treeView.Visible = false;
+                _indexListView!.Visible = true;
+                _searchPanel?.Hide();
+                break;
+            case 2: // Suchen
+                EnsureSearchPanel();
+                _treeView.Visible = false;
+                _indexListView?.Hide();
+                _searchPanel!.Visible = true;
+                break;
+        }
+    }
+
+    private void EnsureIndexListView()
+    {
+        if (_indexListView != null) return;
+
+        _indexListView = new ListView
+        {
+            Dock = DockStyle.Fill,
+            View = View.List,
+            Font = UiFont,
+            BorderStyle = BorderStyle.None,
+            FullRowSelect = true,
+            Sorting = SortOrder.Ascending
+        };
+
+        var leafTopics = _topicMap.Values
+            .Where(t => !string.IsNullOrEmpty(t.Html))
+            .OrderBy(t => t.Title, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var topic in leafTopics)
+        {
+            var item = new ListViewItem(topic.Title) { Tag = topic.Id };
+            _indexListView.Items.Add(item);
+        }
+
+        _indexListView.DoubleClick += (s, e) =>
+        {
+            if (_indexListView.SelectedItems.Count > 0 && _indexListView.SelectedItems[0].Tag is string id)
+                NavigateTo(id);
+        };
+
+        _split.Panel1.Controls.Add(_indexListView);
+        _indexListView.BringToFront();
+        _indexListView.Hide();
+    }
+
+    private void EnsureSearchPanel()
+    {
+        if (_searchPanel != null) return;
+
+        _searchPanel = new Panel { Dock = DockStyle.Fill };
+
+        var topPanel = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 32,
+            BackColor = SystemColors.Control
+        };
+
+        var lblSearch = new Label
+        {
+            Text = "Suchen:",
+            Location = new Point(6, 7),
+            Font = UiFont,
+            AutoSize = true
+        };
+
+        _searchBox = new TextBox
+        {
+            Location = new Point(58, 5),
+            Size = new Size(180, 22),
+            Font = UiFont
+        };
+        _searchBox.TextChanged += (s, e) => PerformSearch();
+
+        var btnSearch = new Button
+        {
+            Text = "Suchen",
+            Location = new Point(244, 4),
+            Size = new Size(60, 23),
+            Font = UiFont,
+            FlatStyle = FlatStyle.Standard,
+            UseVisualStyleBackColor = true
+        };
+        btnSearch.Click += (s, e) => PerformSearch();
+
+        topPanel.Controls.AddRange(new Control[] { lblSearch, _searchBox, btnSearch });
+
+        _searchResults = new ListBox
+        {
+            Dock = DockStyle.Fill,
+            Font = UiFont,
+            BorderStyle = BorderStyle.None
+        };
+        _searchResults.DoubleClick += (s, e) =>
+        {
+            if (_searchResults.SelectedItem is string title)
+            {
+                var topic = _topicMap.Values.FirstOrDefault(t => t.Title == title);
+                if (topic != null) NavigateTo(topic.Id);
+            }
+        };
+
+        _searchPanel.Controls.Add(_searchResults);
+        _searchPanel.Controls.Add(topPanel);
+
+        _split.Panel1.Controls.Add(_searchPanel);
+        _searchPanel.BringToFront();
+        _searchPanel.Hide();
+    }
+
+    private void PerformSearch()
+    {
+        if (_searchResults == null || _searchBox == null) return;
+        var query = _searchBox.Text.Trim();
+        _searchResults.Items.Clear();
+
+        if (string.IsNullOrEmpty(query)) return;
+
+        var results = _topicMap.Values
+            .Where(t => !string.IsNullOrEmpty(t.Html) &&
+                   (t.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    t.Html.Contains(query, StringComparison.OrdinalIgnoreCase)))
+            .OrderBy(t => t.Title, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var topic in results)
+            _searchResults.Items.Add(topic.Title);
+
+        if (_searchResults.Items.Count > 0)
+            _searchResults.SelectedIndex = 0;
     }
 
     private void ToggleNavigation()
@@ -478,11 +636,11 @@ internal class HelpForm : Form
 
     private static Bitmap CreateBookIcon() => DrawIcon16(g =>
     {
-        var bookColor = new SolidBrush(Color.FromArgb(140, 60, 140));
-        var darkColor = new Pen(Color.FromArgb(100, 40, 100));
+        var bookColor = new SolidBrush(Color.FromArgb(60, 90, 170));
+        var darkColor = new Pen(Color.FromArgb(40, 60, 120));
         g.FillRectangle(bookColor, 3, 3, 10, 11);
         g.DrawRectangle(darkColor, 3, 3, 10, 11);
-        g.FillRectangle(new SolidBrush(Color.FromArgb(100, 40, 100)), 3, 3, 2, 11);
+        g.FillRectangle(new SolidBrush(Color.FromArgb(40, 60, 120)), 3, 3, 2, 11);
         g.FillRectangle(new SolidBrush(Color.White), 6, 5, 6, 7);
         g.DrawRectangle(darkColor, 6, 5, 6, 7);
         g.DrawLine(new Pen(Color.FromArgb(180, 180, 180)), 7, 7, 11, 7);
