@@ -303,9 +303,7 @@ internal class TrayApplicationContext : ApplicationContext
                         if (fileNames.Count > 0)
                         {
                             _lastScanFiles = fileNames;
-                            _notifyIcon.ShowBalloonTip(3000, TrayNotificationTitle,
-                                $"Scan abgeschlossen: {fileNames.Count} Datei(en) erstellt.",
-                                ToolTipIcon.Info);
+                            Debug.WriteLine($"[Tray] Scan abgeschlossen: {fileNames.Count} Datei(en) erstellt.");
 
                             // Open mail client if Scan to E-Mail
                             if (_currentApplicationType == ApplicationType.ScanToEmail)
@@ -321,9 +319,7 @@ internal class TrayApplicationContext : ApplicationContext
                         }
                         else
                         {
-                            _notifyIcon.ShowBalloonTip(3000, TrayNotificationTitle,
-                                "Scan abgeschlossen, aber keine Dateien erstellt.",
-                                ToolTipIcon.Warning);
+                            Debug.WriteLine("[Tray] Scan abgeschlossen, aber keine Dateien erstellt.");
                         }
                     });
                 }
@@ -331,9 +327,7 @@ internal class TrayApplicationContext : ApplicationContext
                 {
                     _hiddenWindow.BeginInvoke(() =>
                     {
-                        _notifyIcon.ShowBalloonTip(3000, TrayNotificationTitle,
-                            "Keine Bilder vom Scanner empfangen.",
-                            ToolTipIcon.Warning);
+                        Debug.WriteLine("[Tray] Keine Bilder vom Scanner empfangen.");
                     });
                 }
             }
@@ -342,9 +336,7 @@ internal class TrayApplicationContext : ApplicationContext
                 System.Diagnostics.Debug.WriteLine($"Scan failed: {ex}");
                 _hiddenWindow.BeginInvoke(() =>
                 {
-                    _notifyIcon.ShowBalloonTip(3000, TrayNotificationTitle,
-                        $"Scan-Fehler: {ex.Message}",
-                        ToolTipIcon.Error);
+                    Debug.WriteLine($"[Tray] Scan-Fehler: {ex.Message}");
                 });
             }
             finally
@@ -445,17 +437,13 @@ internal class TrayApplicationContext : ApplicationContext
 
             if (!success)
             {
-                _notifyIcon.ShowBalloonTip(3000, TrayNotificationTitle,
-                    "E-Mail-Client konnte nicht geöffnet werden. Dateien wurden im Zielordner gespeichert.",
-                    ToolTipIcon.Warning);
+                Debug.WriteLine("[Tray] E-Mail-Client konnte nicht geöffnet werden. Dateien wurden im Zielordner gespeichert.");
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Mail client failed: {ex.Message}");
-            _notifyIcon.ShowBalloonTip(3000, TrayNotificationTitle,
-                $"E-Mail-Fehler: {ex.Message}",
-                ToolTipIcon.Error);
+            Debug.WriteLine($"[Tray] E-Mail-Fehler: {ex.Message}");
         }
     }
 
@@ -467,23 +455,17 @@ internal class TrayApplicationContext : ApplicationContext
 
             if (success)
             {
-                _notifyIcon.ShowBalloonTip(3000, TrayNotificationTitle,
-                    "Dokument wurde zum Drucker gesendet.",
-                    ToolTipIcon.Info);
+                Debug.WriteLine("[Tray] Dokument wurde zum Drucker gesendet.");
             }
             else
             {
-                _notifyIcon.ShowBalloonTip(3000, TrayNotificationTitle,
-                    "Druck fehlgeschlagen. Dateien wurden im Zielordner gespeichert.",
-                    ToolTipIcon.Warning);
+                Debug.WriteLine("[Tray] Druck fehlgeschlagen. Dateien wurden im Zielordner gespeichert.");
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Print failed: {ex.Message}");
-            _notifyIcon.ShowBalloonTip(3000, TrayNotificationTitle,
-                $"Druck-Fehler: {ex.Message}",
-                ToolTipIcon.Error);
+            Debug.WriteLine($"[Tray] Druck-Fehler: {ex.Message}");
         }
         finally
         {
@@ -734,9 +716,7 @@ internal class TrayApplicationContext : ApplicationContext
 
     private void ShowScannerDisconnectedBalloon()
     {
-        _notifyIcon.ShowBalloonTip(5000, TrayNotificationTitle,
-            "Der Scanner ist nicht angeschlossen oder ausgeschaltet.",
-            ToolTipIcon.Warning);
+        Debug.WriteLine("[Tray] Der Scanner ist nicht angeschlossen oder ausgeschaltet.");
     }
 
     private Icon GetConnectedIcon()
