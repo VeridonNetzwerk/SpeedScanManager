@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/VeridonNetzwerk/SpeedScanManager/main/img/SpeedScan_logo.png" height="128" alt="SpeedScan Manager Logo">
+<img src="assets/SpeedScanManager_Logo.png" height="128" alt="SpeedScan Manager Logo">
 
 **Private, lokal gehostete Alternative zum Fujitsu ScanSnap Manager — vollständig offline.**
 
@@ -109,37 +109,50 @@ Output: `dist\SpeedScanManager.exe` — standalone, kein .NET Runtime-Download n
 
 ```
 SpeedScanManager/
-├── MainForm.cs                  # Hauptfenster (Quick-Menü + Settings-Dialog)
-├── TrayApplicationContext.cs    # Taskleiste, Scanner-Monitoring, Kontextmenü
-├── ScanPipeline.cs              # TWAIN-Scan-Ausführung (Image Acquisition)
-├── ScanOutputProcessor.cs       # Image → PDF/JPEG Konvertierung
-├── ScanSettings.cs              # Zentrale Settings-Datenklasse
-├── ScanProfile.cs               # Profil-Speicherung/Ladung (XML-Serialisierung)
-├── ProfileManager.cs            # Profile-Kollektion + Persistenz
-├── PreferencesDialog.cs         # Präferenzen (Status/Bestätigung) — TabControl-Dialog
-├── VersionInfoDialog.cs         # Versionsinformationen-Fenster
-│   └── ScannerDriverInfoDialog.cs  # Unterdialog: Scannername + Dateiversion-Tabelle
-├── SaveTabContent.cs            # Speichern-Tab (Folder-Browser, Filename-Format)
-├── ApplicationTabContent.cs     # Anwendung-Tab (Scan to Folder/Email/Print)
-├── ScanModeTabContent.cs        # Scanmodus-Tab (Qualität, Farbe, Seite, Optionen)
-├── FileTypeTabContent.cs        # Dateiart-Tab (PDF/JPEG/PNG + OCR)
-├── PaperTabContent.cs           # Papier-Tab (Größe, Custom, Carrier Sheet)
-├── FileSizeTabContent.cs        # Dateigröße-Tab (Komprimierungs-Slider)
-├── TabIcons.cs                  # Runtime-Icon-Generierung für Tabs & ComboBoxes
-├── ScanModeOptionsDialog.cs     # Optionen-Detaildialog (Helligkeit, Deskew, etc.)
-├── PdfOptionsDialog.cs          # PDF-spezifische Optionen (Split, Passwort)
-├── FileNameFormatDialog.cs      # Dateiname-Template-Konfiguration
-├── ApplicationManageDialog.cs   # Installieren/Deinstallieren benutzerdef. Applikationen
-├── ProfileManagementDialog.cs   # Profilverwaltung (CRUD)
-├── CarrierSheetDialog.cs        # Trägerblatteinstellungen
-├── CustomSizeDialog.cs          # Benutzerdefinierte Papiergröße
-├── MailHelper.cs                # E-Mail-Versand via Outlook/SMTP
-├── PrintHelper.cs               # Druck-Integration
-├── ScannerStateService.cs       # Scanner-State-Cache (TWAIN State)
-├── HelpForm.cs                  # Hilfe-Dokumentation (Tree + WebView2)
-├── HelpContent.cs               # Hilfetexte als Ressourcen
-├── OcrProcessor.cs              # OCR-Verarbeitung via Tesseract
-└── SpeedScanManager.csproj      # Projektdatei (.NET 8, x86, WinForms)
+├── Program.cs                      # Entry point + global exception handler
+├── SpeedScanManager.csproj         # Project file (.NET 8, x86, WinForms)
+├── Core/                           # Scan engine, settings, profiles, OCR
+│   ├── ScanPipeline.cs             # TWAIN scan execution (image acquisition)
+│   ├── ScanOutputProcessor.cs      # Image → PDF/JPEG conversion + OCR
+│   ├── ScanSettings.cs             # Central settings data class
+│   ├── ScanProfile.cs              # Profile model
+│   ├── ProfileManager.cs           # Profile collection + JSON persistence
+│   ├── ScannerStateService.cs      # TWAIN scanner state cache
+│   └── OcrProcessor.cs             # OCR via Tesseract
+├── UI/                             # Forms, dialogs, tab content
+│   ├── MainForm.cs                 # Main window (quick-menu + settings)
+│   ├── TrayApplicationContext.cs   # Tray icon, scanner monitoring, context menu
+│   ├── PreferencesDialog.cs        # Preferences dialog
+│   ├── VersionInfoDialog.cs        # Version info window
+│   ├── ScannerDriverInfoDialog.cs  # Scanner/driver info sub-dialog
+│   ├── HelpForm.cs / HelpContent.cs
+│   ├── ProfileManagementDialog.cs
+│   ├── PdfOptionsDialog.cs
+│   ├── FileNameFormatDialog.cs
+│   ├── ApplicationManageDialog.cs
+│   ├── CarrierSheetDialog.cs
+│   ├── CustomSizeDialog.cs
+│   ├── ScanModeOptionsDialog.cs
+│   ├── ScanToEmailOptionsDialog.cs
+│   ├── ScanToPrintOptionsDialog.cs
+│   └── Tabs/                       # Tab content user controls
+│       ├── SaveTabContent.cs
+│       ├── ApplicationTabContent.cs
+│       ├── ScanModeTabContent.cs
+│       ├── FileTypeTabContent.cs
+│       ├── PaperTabContent.cs
+│       └── FileSizeTabContent.cs
+├── Helpers/                        # Icons, mail, print, resources
+│   ├── AppResources.cs             # Embedded resource loader (logo, text)
+│   ├── TrayIcons.cs                # Tray icon generation from logo
+│   ├── TabIcons.cs                 # Tab/combobox icon generation
+│   ├── FlagIcons.cs                # Language flag icons
+│   ├── MailHelper.cs               # E-mail via MAPI
+│   └── PrintHelper.cs              # Print integration
+├── assets/                         # Logo and wordmark images
+└── build/                          # Build scripts and manifest
+    ├── AppManifest.xml
+    └── Create-SigningCert.ps1
 ```
 
 ### Tech Stack

@@ -12,7 +12,6 @@ namespace SpeedScanManager;
 internal class MainForm : Form
 {
     private readonly Panel _headerPanel;
-    readonly Label _logoLabel;
 
     private readonly CheckBox _quickMenuCheckBox;
 
@@ -107,15 +106,18 @@ internal class MainForm : Form
             BackColor = Color.White
         };
 
-        _logoLabel = new Label
+        var textBmp = AppResources.TextLogo;
+        int hdrTextH = 26;
+        int hdrTextW = (int)(textBmp.Width * (hdrTextH / (double)textBmp.Height));
+        var pbHeaderLogo = new PictureBox
         {
-            Text = "SpeedScan Manager",
-            Font = new Font("Microsoft Sans Serif", 14f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(35, 90, 170),
-            AutoSize = true,
-            Location = new Point(16, 10)
+            Image = textBmp,
+            SizeMode = PictureBoxSizeMode.Zoom,
+            AutoSize = false,
+            Location = new Point(16, 9),
+            Size = new Size(hdrTextW, hdrTextH)
         };
-        _headerPanel.Controls.Add(_logoLabel);
+        _headerPanel.Controls.Add(pbHeaderLogo);
         _topPanel.Controls.Add(_headerPanel);
 
         // === Quick-Menü checkbox (in gray zone) ===

@@ -16,6 +16,11 @@
     <PackageReference Include="Tesseract" Version="5.2.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="assets\SpeedScanManager_Logo.png" LogicalName="SpeedScanManager_Logo.png" />
+    <EmbeddedResource Include="assets\SpeedScanManager_Text.png" LogicalName="SpeedScanManager_Text.png" />
+  </ItemGroup>
+
   <Target Name="UnblockPublishedFile" AfterTargets="Publish">
     <Exec Condition="'$([System.OperatingSystem]::IsWindows())' == 'true'"
           Command="powershell -NoProfile -Command &quot;Get-ChildItem -Path '$(PublishDir)' -Recurse -File | Unblock-File&quot;" />

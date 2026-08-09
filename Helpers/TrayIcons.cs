@@ -31,59 +31,44 @@ internal static class TrayIcons
     }
 
     /// <summary>
-    /// Normal "connected" icon: a simple scanner silhouette in dark blue.
+    /// Normal "connected" icon: the app logo with a green status dot.
     /// </summary>
     public static Icon CreateConnectedIcon()
     {
         using var bmp = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bmp);
         g.SmoothingMode = SmoothingMode.AntiAlias;
-
         g.Clear(Color.Transparent);
 
-        // Scanner body (rounded rectangle)
-        var bodyRect = new Rectangle(6, 10, 20, 14);
-        using (var brush = new SolidBrush(Color.FromArgb(45, 90, 170)))
-        using (var pen = new Pen(Color.FromArgb(25, 55, 120), 1.5f))
-        {
-            FillRoundedRect(g, brush, bodyRect, 3);
-            DrawRoundedRect(g, pen, bodyRect, 3);
-        }
+        // Draw the logo scaled to fit 32x32
+        DrawLogoCentered(g, 28);
 
-        // Paper feed slot (lighter line)
-        using var slotPen = new Pen(Color.FromArgb(180, 200, 230), 1.5f);
-        g.DrawLine(slotPen, 9, 14, 23, 14);
-
-        // Status LED (green dot)
+        // Status LED (green dot) in bottom-right corner
         using var ledBrush = new SolidBrush(Color.FromArgb(80, 200, 80));
-        g.FillEllipse(ledBrush, 22, 19, 4, 4);
+        g.FillEllipse(ledBrush, 23, 23, 7, 7);
+        using var ledPen = new Pen(Color.White, 1.5f);
+        g.DrawEllipse(ledPen, 23, 23, 7, 7);
 
         return IconFromBitmap(bmp);
     }
 
     /// <summary>
-    /// "Disconnected" icon: same scanner silhouette with a red diagonal slash overlay.
+    /// "Disconnected" icon: the app logo dimmed with a red slash overlay.
     /// </summary>
     public static Icon CreateDisconnectedIcon()
     {
         using var bmp = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bmp);
         g.SmoothingMode = SmoothingMode.AntiAlias;
-
         g.Clear(Color.Transparent);
 
-        // Scanner body (dimmed)
-        var bodyRect = new Rectangle(6, 10, 20, 14);
-        using (var brush = new SolidBrush(Color.FromArgb(90, 110, 150)))
-        using (var pen = new Pen(Color.FromArgb(60, 80, 120), 1.5f))
+        // Draw the logo dimmed
+        DrawLogoCentered(g, 28);
+        // Apply dimming overlay
+        using (var dimBrush = new SolidBrush(Color.FromArgb(100, 200, 200, 200)))
         {
-            FillRoundedRect(g, brush, bodyRect, 3);
-            DrawRoundedRect(g, pen, bodyRect, 3);
+            g.FillRectangle(dimBrush, 0, 0, 32, 32);
         }
-
-        // Paper feed slot
-        using var slotPen = new Pen(Color.FromArgb(160, 170, 190), 1.5f);
-        g.DrawLine(slotPen, 9, 14, 23, 14);
 
         // Red diagonal slash (the "no signal" overlay)
         using var slashPen = new Pen(Color.FromArgb(220, 40, 40), 3f)
@@ -94,6 +79,39 @@ internal static class TrayIcons
         g.DrawLine(slashPen, 4, 28, 28, 4);
 
         return IconFromBitmap(bmp);
+    }
+
+    /// <summary>
+    /// Draws the app logo centered in the bitmap at the given max size.
+    /// </summary>
+    private static void DrawLogoCentered(Graphics g, int maxSize)
+    {
+        try
+        {
+            var logo = AppResources.Logo;
+            int w = logo.Width;
+            int h = logo.Height;
+            if (w > h)
+            {
+                h = (int)(h * (maxSize / (double)w));
+                w = maxSize;
+            }
+            else
+            {
+                w = (int)(w * (maxSize / (double)h));
+                h = maxSize;
+            }
+            int x = (32 - w) / 2;
+            int y = (32 - h) / 2;
+            g.DrawImage(logo, new Rectangle(x, y, w, h));
+        }
+        catch
+        {
+            // Fallback: draw simple scanner silhouette if logo unavailable
+            var bodyRect = new Rectangle(6, 10, 20, 14);
+            using var brush = new SolidBrush(Color.FromArgb(45, 90, 170));
+            FillRoundedRect(g, brush, bodyRect, 3);
+        }
     }
 
     private static void FillRoundedRect(Graphics g, Brush brush, Rectangle rect, int radius)

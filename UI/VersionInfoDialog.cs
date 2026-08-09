@@ -20,22 +20,27 @@ internal class VersionInfoDialog : Form
 
         var font = new Font("Microsoft Sans Serif", 8.25f);
 
-        // === Logo line: "SpeedScan" (red bold) + "for fi Series" (dark gray) ===
-        var lblLogo = new Label
+        // === Logo line: logo icon + text wordmark ===
+        var logoBmp = AppResources.Logo;
+        var textBmp = AppResources.TextLogo;
+        int logoH = 36;
+        int logoW = (int)(logoBmp.Width * (logoH / (double)logoBmp.Height));
+        int textH = 28;
+        int textW = (int)(textBmp.Width * (textH / (double)textBmp.Height));
+
+        var pbLogo = new PictureBox
         {
-            Text = "SpeedScan",
-            Font = new Font("Microsoft Sans Serif", 14f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(200, 40, 40),
-            Location = new Point(24, 18),
-            AutoSize = true
+            Image = logoBmp,
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Location = new Point(24, 12),
+            Size = new Size(logoW, logoH)
         };
-        var lblForFi = new Label
+        var pbText = new PictureBox
         {
-            Text = " for fi Series",
-            Font = new Font("Microsoft Sans Serif", 14f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(60, 60, 60),
-            Location = new Point(24 + lblLogo.PreferredWidth, 18),
-            AutoSize = true
+            Image = textBmp,
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Location = new Point(24 + logoW + 6, 16),
+            Size = new Size(textW, textH)
         };
 
         // === Version title line ===
@@ -140,8 +145,8 @@ internal class VersionInfoDialog : Form
         Controls.Add(lblLicense);
         Controls.Add(btnDetail);
         Controls.Add(lblVersionTitle);
-        Controls.Add(lblLogo);
-        Controls.Add(lblForFi);
+        Controls.Add(pbText);
+        Controls.Add(pbLogo);
 
         AcceptButton = btnOk;
     }
