@@ -1,0 +1,46 @@
+# Visual Studio / .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+[Dd]ebug/
+[Rr]elease/x86/
+x64/
+[Bb]uild/
+publish/
+dist/
+
+# VS IDE
+.vs/
+[Oo]utput/
+logs/
+*.log
+
+# NuGet
+packages/
+*.nupkg
+**/packages.config
+
+# JetBrains Rider
+[Rr]ider/
+[Dd]esktop/
+[Ii]dea/
+*.sln.iml
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.LNK
+
+# SpeedScan Manager spezifisch
+SpeedScanManager/bin/
+SpeedScanManager/obj/
+SpeedScanManager/packages/
+
+# Docs - exclude scanned PDFs
+*.pdf
+help_extract.txt

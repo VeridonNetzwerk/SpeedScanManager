@@ -1,0 +1,37 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        configuration: [Release]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore SpeedScanManager/SpeedScanManager.csproj
+
+    - name: Build
+      run: dotnet build SpeedScanManager/SpeedScanManager.csproj --configuration ${{ matrix.configuration }} --no-restore
+
+    - name: Publish (self-contained)
+      run: dotnet publish SpeedScanManager/SpeedScanManager.csproj -c ${{ matrix.configuration }} -r win-x86 --self-contained true -p:PublishSingleFile=true -o dist
+      
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SpeedScanManager
+        path: dist/
