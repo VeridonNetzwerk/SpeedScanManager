@@ -52,8 +52,8 @@ dotnet publish -c Release -r win-x86 --self-contained true -p:PublishSingleFile=
 | Komponente | Technologie |
 |------------|-------------|
 | UI | WinForms, .NET 8 |
-| Scanner | [NTwain](https://github.com/matthewjberger/NTwain) |
-| PDF | [PdfSharpCore](https://github.com/stickles/PdfSharpCore) |
+| Scanner | [NTwain](https://github.com/soukoku/NTwain) |
+| PDF | [PdfSharpCore](https://github.com/fmenounos/PdfSharpCore) |
 | OCR | [Tesseract](https://github.com/tesseract-ocr/tesseract) |
 
 ## Bug melden
