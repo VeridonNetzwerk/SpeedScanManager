@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/SpeedScanManager_Logo.png" height="100" alt="SpeedScan Manager Logo">
+<img src="assets/SpeedScanManager_Text.png" height="60" alt="SpeedScan Manager">
 
 # SpeedScan Manager
 
@@ -53,7 +53,7 @@ dotnet publish -c Release -r win-x86 --self-contained true -p:PublishSingleFile=
 |------------|-------------|
 | UI | WinForms, .NET 8 |
 | Scanner | [NTwain](https://github.com/soukoku/NTwain) |
-| PDF | [PdfSharpCore](https://github.com/fmenounos/PdfSharpCore) |
+| PDF | [PdfSharpCore](https://github.com/ststeiger/PdfSharpCore) |
 | OCR | [Tesseract](https://github.com/tesseract-ocr/tesseract) |
 
 ## Bug melden
