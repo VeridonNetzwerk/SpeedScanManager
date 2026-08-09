@@ -2,8 +2,6 @@
 
 <img src="assets/SpeedScanManager_Text.png" height="60" alt="SpeedScan Manager">
 
-# SpeedScan Manager
-
 Open-Source TWAIN-Scanning-Software für Fujitsu fi-Series Scanner.
 
 <p>
@@ -19,27 +17,27 @@ Open-Source TWAIN-Scanning-Software für Fujitsu fi-Series Scanner.
 
 ## Features
 
-- **Tray-Icon** mit Live-Scanner-Status (verbunden / getrennt)
-- **Quick-Menü** mit Presets: Empfohlen, Kleine Datei, Hohe Qualität
-- **6 Einstellungs-Tabs**: Anwendung, Speichern, Scanmodus, Dateiart, Papier, Dateigröße
-- **PDF / JPEG / PNG** Ausgabe mit OCR (Tesseract) für durchsuchbare PDFs
-- **Profile** speichern und laden
-- **Scan to Folder / E-Mail / Print**
+- 🖥️ **Tray-Icon** mit Live-Scanner-Status (verbunden / getrennt)
+- ⚡ **Quick-Menü** mit Presets: Empfohlen, Kleine Datei, Hohe Qualität
+- 📑 **6 Einstellungs-Tabs**: Anwendung, Speichern, Scanmodus, Dateiart, Papier, Dateigröße
+- 📄 **PDF / JPEG / PNG** Ausgabe mit OCR (Tesseract) für durchsuchbare PDFs
+- 👤 **Profile** speichern und laden
+- 📂 **Scan to Folder / E-Mail / Print**
 
 ## Anforderungen
 
-- Windows 10/11
-- .NET 8.0 Runtime (x86) — oder self-contained Build
-- TWAIN-kompatibler Scanner (getestet mit Fujitsu fi-Series)
+- 🪟 Windows 10/11
+- 📦 .NET 8.0 Runtime (x86) — oder self-contained Build
+- 🖨️ TWAIN-kompatibler Scanner (getestet mit Fujitsu fi-Series)
 
 ## Installation
 
-### Release herunterladen
+### 📥 Release herunterladen
 
 1. ZIP von [Releases](https://github.com/VeridonNetzwerk/SpeedScanManager/releases) entpacken
 2. `SpeedScanManager.exe` starten — Tray-Icon erscheint
 
-### Selber bauen
+### 🔨 Selber bauen
 
 ```bash
 git clone https://github.com/VeridonNetzwerk/SpeedScanManager.git
@@ -56,12 +54,12 @@ dotnet publish -c Release -r win-x86 --self-contained true -p:PublishSingleFile=
 | PDF | [PdfSharpCore](https://github.com/ststeiger/PdfSharpCore) |
 | OCR | [Tesseract](https://github.com/tesseract-ocr/tesseract) |
 
-## Bug melden
+## 🐛 Bug melden
 
 [Issue erstellen](https://github.com/VeridonNetzwerk/SpeedScanManager/issues/new) mit Scannermodell, Windows-Version und Fehlerbeschreibung.
 
 ---
 
 <div align="center">
-  <sub>© 2026 VeridonNetzwerk · MIT License</sub>
+  <sub>© 2026 VeridonNetzwerk · MIT License · Built with AI 🤖</sub>
 </div>
