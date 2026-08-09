@@ -268,7 +268,7 @@ internal class TrayApplicationContext : ApplicationContext
 
         _isScanning = true;
         _scannerStatus = ScannerStatus.Scanning;
-        _notifyIcon.Text = "SpeedScan Manager – Scanne...";
+        _notifyIcon.Text = "SpeedScan Manager\nScanne...";
 
         // Run scan on a background thread to avoid blocking the UI message loop
         Task.Run(() =>
@@ -728,8 +728,8 @@ internal class TrayApplicationContext : ApplicationContext
         bool connected = _scannerStatus == ScannerStatus.Connected;
         _notifyIcon.Icon = connected ? GetConnectedIcon() : GetDisconnectedIcon();
         _notifyIcon.Text = connected
-            ? $"SpeedScan Manager – {_currentScannerName}"
-            : "SpeedScan Manager – Kein Scanner";
+            ? $"SpeedScan Manager\n{_currentScannerName}"
+            : "SpeedScan Manager\nKein Scanner";
     }
 
     private void ShowScannerDisconnectedBalloon()
