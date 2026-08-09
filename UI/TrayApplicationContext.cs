@@ -525,9 +525,13 @@ internal class TrayApplicationContext : ApplicationContext
             _hiddenWindow.Show();
             _hiddenWindow.Hide();
 
-            var appId = TWIdentity.CreateFromAssembly(
+            var appId = TWIdentity.Create(
                 DataGroups.Control | DataGroups.Image,
-                Assembly.GetExecutingAssembly());
+                new Version(1, 0, 0, 0),
+                "VeridonNetzwerk",
+                "SpeedScan Manager",
+                "SpeedScan Manager",
+                "SpeedScan Manager TWAIN");
 
             _twain = new TwainSession(appId);
             _msgLoop = new WindowsFormsMessageLoopHook(_hiddenWindow.Handle);
