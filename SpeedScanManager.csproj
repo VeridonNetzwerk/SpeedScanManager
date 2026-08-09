@@ -7,6 +7,7 @@
     <PlatformTarget>x86</PlatformTarget>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>build\AppManifest.xml</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +19,10 @@
   <Target Name="UnblockPublishedFile" AfterTargets="Publish">
     <Exec Condition="'$([System.OperatingSystem]::IsWindows())' == 'true'"
           Command="powershell -NoProfile -Command &quot;Get-ChildItem -Path '$(PublishDir)' -Recurse -File | Unblock-File&quot;" />
+  </Target>
+
+  <Target Name="SignPublishedFile" AfterTargets="UnblockPublishedFile" Condition="'$([System.OperatingSystem]::IsWindows())' == 'true' And Exists('$(MSBuildThisFileDirectory)build\cert\SpeedScan.pfx')">
+    <Exec Command="powershell -NoProfile -Command &quot;$sdkPath = '$(ProgramFiles)\Windows Kits\10\bin'; if (-not (Test-Path $sdkPath)) { Write-Warning 'Windows SDK not found, skipping code signing'; exit 0 }; $sdks = Get-ChildItem $sdkPath -Directory | Sort-Object Name -Descending; if ($sdks.Count -eq 0) { Write-Warning 'No Windows SDK versions found, skipping code signing'; exit 0 }; $tool = Join-Path $sdks[0].FullName 'x86\signtool.exe'; if (-not (Test-Path $tool)) { Write-Warning 'signtool.exe not found, skipping code signing'; exit 0 }; &amp; $tool sign /f '$(MSBuildThisFileDirectory)build\cert\SpeedScan.pfx' /p SpeedScan2026 /t http://timestamp.digicert.com /fd SHA256 '$(PublishDir)SpeedScanManager.exe'&quot;" />
   </Target>
 
 </Project>

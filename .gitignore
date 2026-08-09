@@ -8,7 +8,11 @@ obj/
 [Dd]ebug/
 [Rr]elease/x86/
 x64/
-[Bb]uild/
+[Bb]uild/bin/
+[Bb]uild/cert/
+*.pfx
+*.p12
+*.snk
 publish/
 dist/
 
