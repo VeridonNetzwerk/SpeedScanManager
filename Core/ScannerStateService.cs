@@ -57,6 +57,7 @@ internal sealed class ScannerStateService
         }
 
         DataSource? source = null;
+        bool sourceWasAlreadyOpen = false;
         try
         {
             // Prefer the system default source (set via TWAIN user selector)
@@ -69,11 +70,17 @@ internal sealed class ScannerStateService
                 source = sources[0];
             }
 
-            var openRc = source.Open();
-            if (openRc != ReturnCode.Success)
+            // If the source is already open (e.g. persistent source for device events),
+            // don't close it when we're done — just use it as-is.
+            sourceWasAlreadyOpen = source.IsOpen;
+            if (!sourceWasAlreadyOpen)
             {
-                LogDiag($"QueryState: source.Open rc={openRc}, returning disconnected");
-                return DisconnectedState();
+                var openRc = source.Open();
+                if (openRc != ReturnCode.Success)
+                {
+                    LogDiag($"QueryState: source.Open rc={openRc}, returning disconnected");
+                    return DisconnectedState();
+                }
             }
 
             // Check if the device is actually online (hardware powered & connected)
@@ -97,7 +104,8 @@ internal sealed class ScannerStateService
         }
         finally
         {
-            if (source != null && source.IsOpen)
+            // Only close the source if we opened it (don't close persistent source)
+            if (source != null && source.IsOpen && !sourceWasAlreadyOpen)
             {
                 try { source.Close(); } catch { }
             }

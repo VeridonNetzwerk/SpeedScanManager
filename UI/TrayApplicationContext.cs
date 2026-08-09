@@ -38,6 +38,8 @@ internal class TrayApplicationContext : ApplicationContext
     private ApplicationType _currentApplicationType = ApplicationType.ScanToFolder;
     private List<string> _lastScanFiles = new();
     private ScannerState? _lastScannerState;
+    private DataSource? _persistentSource;
+    private bool _deviceEventSubscribed;
 
     // State machine for scanner connection
     private ScannerStatus _scannerStatus = ScannerStatus.Unknown;
@@ -266,6 +268,9 @@ internal class TrayApplicationContext : ApplicationContext
         // Sync settings from MainForm if it's open
         SyncSettingsFromMainForm();
 
+        // Close persistent source before scanning — ScanPipeline manages its own source lifecycle
+        ClosePersistentSource();
+
         _isScanning = true;
         _scannerStatus = ScannerStatus.Scanning;
         _notifyIcon.Text = "SpeedScan Manager\nScanne...";
@@ -350,6 +355,8 @@ internal class TrayApplicationContext : ApplicationContext
                     if (_scanPipeline != null && _scanPipeline.AcquiredImages.Count > 0)
                     {
                         _scannerStatus = ScannerStatus.Connected;
+                        // Reopen persistent source to capture future button events
+                        OpenPersistentSource();
                     }
                     else
                     {
@@ -514,6 +521,7 @@ internal class TrayApplicationContext : ApplicationContext
 
     private void ExitApplication()
     {
+        ClosePersistentSource();
         _notifyIcon.Visible = false;
         Application.Exit();
     }
@@ -676,7 +684,8 @@ internal class TrayApplicationContext : ApplicationContext
                 _scannerStatus = ScannerStatus.Connected;
                 _currentScannerName = scannerName;
                 UpdateTrayVisuals();
-                // No balloon on connect (matching original ScanSnap Manager behavior)
+                // Open persistent source to capture scanner button events
+                OpenPersistentSource();
             }
         }
         else
@@ -687,6 +696,7 @@ internal class TrayApplicationContext : ApplicationContext
                 LogDiag("UpdateConnectionState: ->Disconnected (initial), showing balloon");
                 _scannerStatus = ScannerStatus.Disconnected;
                 _currentScannerName = "";
+                ClosePersistentSource();
                 UpdateTrayVisuals();
                 ShowScannerDisconnectedBalloon();
             }
@@ -699,6 +709,7 @@ internal class TrayApplicationContext : ApplicationContext
                     LogDiag("UpdateConnectionState: ->Disconnected (confirmed), showing balloon");
                     _scannerStatus = ScannerStatus.Disconnected;
                     _currentScannerName = "";
+                    ClosePersistentSource();
                     UpdateTrayVisuals();
                     ShowScannerDisconnectedBalloon();
                 }
@@ -723,6 +734,95 @@ internal class TrayApplicationContext : ApplicationContext
         _notifyIcon.Text = connected
             ? $"SpeedScan Manager\n{_currentScannerName}"
             : "SpeedScan Manager\nKein Scanner";
+    }
+
+    /// <summary>
+    /// Opens the default TWAIN source and keeps it open to receive device events
+    /// (scanner button presses). This prevents Windows from showing its own
+    /// scanner button event dialog.
+    /// </summary>
+    private void OpenPersistentSource()
+    {
+        if (_twain == null || !_twain.IsDsmOpen) return;
+        if (_persistentSource != null && _persistentSource.IsOpen) return;
+
+        try
+        {
+            var source = _twain.DefaultSource;
+            if (source == null)
+            {
+                LogDiag("OpenPersistentSource: no default source");
+                return;
+            }
+
+            var rc = source.Open();
+            if (rc != ReturnCode.Success)
+            {
+                LogDiag($"OpenPersistentSource: source.Open rc={rc}");
+                return;
+            }
+
+            _persistentSource = source;
+            LogDiag($"OpenPersistentSource: opened '{source.Name}'");
+
+            // Register for device events so the scanner sends button presses to us
+            try
+            {
+                source.Capabilities.CapDeviceEvent.SetValue(DeviceEvent.CheckDeviceOnline);
+                LogDiag("OpenPersistentSource: CapDeviceEvent set to CheckDeviceOnline");
+            }
+            catch (Exception ex)
+            {
+                LogDiag($"OpenPersistentSource: CapDeviceEvent failed: {ex.Message}");
+            }
+
+            if (!_deviceEventSubscribed)
+            {
+                _twain.DeviceEvent += OnScannerDeviceEvent;
+                _deviceEventSubscribed = true;
+                LogDiag("OpenPersistentSource: subscribed to DeviceEvent");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"OpenPersistentSource exception: {ex.Message}");
+        }
+    }
+
+    private void ClosePersistentSource()
+    {
+        if (_twain != null && _deviceEventSubscribed)
+        {
+            _twain.DeviceEvent -= OnScannerDeviceEvent;
+            _deviceEventSubscribed = false;
+            LogDiag("ClosePersistentSource: unsubscribed from DeviceEvent");
+        }
+
+        if (_persistentSource != null && _persistentSource.IsOpen)
+        {
+            try { _persistentSource.Close(); LogDiag("ClosePersistentSource: closed"); }
+            catch (Exception ex) { LogDiag($"ClosePersistentSource close failed: {ex.Message}"); }
+        }
+        _persistentSource = null;
+    }
+
+    private void OnScannerDeviceEvent(object? sender, DeviceEventArgs e)
+    {
+        var eventType = e.DeviceEvent.Event;
+        LogDiag($"OnScannerDeviceEvent: {eventType}");
+
+        // Trigger scan on any device event that indicates user interaction
+        // (button press, device ready, etc.)
+        if (eventType == DeviceEvent.CheckDeviceOnline ||
+            eventType == DeviceEvent.DeviceReady ||
+            eventType == DeviceEvent.CustomEvents)
+        {
+            if (!_isScanning && _scannerStatus == ScannerStatus.Connected)
+            {
+                LogDiag("OnScannerDeviceEvent: triggering scan from button press");
+                _hiddenWindow.BeginInvoke(() => StartScan(ScanSide.Automatic));
+            }
+        }
     }
 
     private void ShowScannerDisconnectedBalloon()
