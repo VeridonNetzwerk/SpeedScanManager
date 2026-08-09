@@ -849,6 +849,7 @@ internal class TrayApplicationContext : ApplicationContext
 
             _cachedConnectedIcon?.Dispose();
             _cachedDisconnectedIcon?.Dispose();
+            _scanPipeline?.Dispose();
         }
 
         base.Dispose(disposing);

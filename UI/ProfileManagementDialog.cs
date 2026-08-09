@@ -148,7 +148,7 @@ internal class ProfileManagementDialog : Form
 
         var result = MessageBox.Show(
             $"Profil \"{_manager.Profiles[idx].Name}\" wirklich löschen?",
-            "SpeedScanManager", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            "SpeedScan Manager", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
         if (result == DialogResult.Yes)
         {

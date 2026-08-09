@@ -202,7 +202,7 @@ internal class PdfOptionsDialog : Form
                 if (_txtPassword.Text != _txtConfirmPassword.Text)
                 {
                     MessageBox.Show("Die eingegebenen Kennwörter stimmen nicht überein.",
-                        "SpeedScanManager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     e.Cancel = true;
                     return;
                 }

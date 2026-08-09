@@ -94,7 +94,7 @@ internal class HelpForm : Form
             TextAlign = ContentAlignment.BottomCenter,
             TextImageRelation = TextImageRelation.ImageAboveText
         };
-        btnPrint.Click += (s, e) => _webBrowser.Print();
+        btnPrint.Click += (s, e) => _webBrowser?.Print();
 
         var btnOptions = new ToolStripDropDownButton("Optionen")
         {
@@ -109,7 +109,7 @@ internal class HelpForm : Form
         btnOptions.DropDownItems.Add("Vorwärts", null, (s, e) => GoForward()).Enabled = false;
         btnOptions.DropDownItems.Add("Startseite", null, (s, e) => NavigateTo("root"));
         btnOptions.DropDownItems.Add(new ToolStripSeparator());
-        btnOptions.DropDownItems.Add("Drucken...", null, (s, e) => _webBrowser.Print());
+        btnOptions.DropDownItems.Add("Drucken...", null, (s, e) => _webBrowser?.Print());
         btnOptions.DropDownItems.Add("Suchbegriffhervorhebung deaktivieren", null, (s, e) => { });
 
         _toolStrip.Items.AddRange(new ToolStripItem[]
@@ -339,7 +339,7 @@ internal class HelpForm : Form
 
     private void TreeView_AfterSelect(object? sender, TreeViewEventArgs e)
     {
-        if (e.Node.Tag is string topicId)
+        if (e.Node?.Tag is string topicId)
             NavigateTo(topicId);
     }
 
@@ -349,7 +349,7 @@ internal class HelpForm : Form
     /// </summary>
     private void WebBrowser_Navigating(object? sender, WebBrowserNavigatingEventArgs e)
     {
-        var url = e.Url.ToString();
+        var url = e.Url?.ToString() ?? string.Empty;
 
         // Internal help:// protocol links
         if (url.StartsWith("help://"))
@@ -370,7 +370,7 @@ internal class HelpForm : Form
         }
 
         // Fragment links from DocumentText appear as about:blank#topic-id
-        var fragment2 = e.Url.Fragment;
+        var fragment2 = e.Url?.Fragment;
         if (!string.IsNullOrEmpty(fragment2))
         {
             e.Cancel = true;

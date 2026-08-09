@@ -46,7 +46,7 @@ internal static class PrintHelper
             var doc = new PrintDocument
             {
                 PrinterSettings = settings,
-                DocumentName = "SpeedScanManager – Gescanntes Dokument"
+                DocumentName = "SpeedScan Manager – Gescanntes Dokument"
             };
 
             doc.PrintPage += (sender, e) =>

@@ -19,7 +19,7 @@ internal static class Program
                 "SpeedScanManager", "crash.log");
             Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
             File.WriteAllText(logPath, $"{DateTime.Now}: {ex}\n\nInner: {ex.InnerException}");
-            MessageBox.Show(ex.ToString(), "SpeedScanManager – Fehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(ex.ToString(), "SpeedScan Manager – Fehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

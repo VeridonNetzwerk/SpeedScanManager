@@ -93,7 +93,7 @@ internal class ApplicationManageDialog : Form
         btnHelp.Click += (s, e) => MessageBox.Show(
             "Hier können Sie benutzerdefinierte Anwendungen hinzufügen, entfernen oder bearbeiten.\n" +
             "Es sind maximal 10 Einträge erlaubt.",
-            "SpeedScanManager", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         _btnClose = new Button
         {
@@ -151,7 +151,7 @@ internal class ApplicationManageDialog : Form
         if (CustomApps.Count >= MaxEntries)
         {
             MessageBox.Show($"Maximal {MaxEntries} Einträge sind erlaubt.",
-                "SpeedScanManager", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -262,7 +262,7 @@ internal class ApplicationEditDialog : Form
         {
             if (string.IsNullOrWhiteSpace(_txtName.Text))
             {
-                MessageBox.Show("Bitte einen Namen eingeben.", "SpeedScanManager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Bitte einen Namen eingeben.", "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 e.Cancel = true;
                 return;
             }

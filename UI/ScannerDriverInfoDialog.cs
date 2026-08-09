@@ -67,9 +67,16 @@ internal class ScannerDriverInfoDialog : Form
         lvwVersions.Columns.Add("Zeit", 146, HorizontalAlignment.Right);
 
         var asm = Assembly.GetExecutingAssembly();
-        var fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(asm.Location);
-        var ver = fvi.FileVersion ?? asm.GetName().Version?.ToString() ?? "1.0.0.0";
-        var buildDate = System.IO.File.GetLastWriteTime(asm.Location).ToString("yyyy.MM.dd HH:mm:ss");
+        var exePath = Environment.ProcessPath ?? asm.Location ?? "";
+        var ver = asm.GetName().Version?.ToString() ?? "1.0.0.0";
+        var buildDate = !string.IsNullOrEmpty(exePath)
+            ? System.IO.File.GetLastWriteTime(exePath).ToString("yyyy.MM.dd HH:mm:ss")
+            : "—";
+        if (!string.IsNullOrEmpty(exePath))
+        {
+            var fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(exePath);
+            ver = fvi.FileVersion ?? ver;
+        }
 
         lvwVersions.Items.Add(new ListViewItem(new[] { "SpeedScanManager.exe", ver, buildDate }));
         lvwVersions.Items.Add(new ListViewItem(new[] { "NTwain.dll", "4.0.0.0", "—" }));

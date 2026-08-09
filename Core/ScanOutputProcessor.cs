@@ -249,11 +249,6 @@ internal class ScanOutputProcessor
         return result;
     }
 
-    private void CreatePdfFile(List<Bitmap> images, string filePath, ScanSettings settings)
-    {
-        CreatePdfFile(images, filePath, settings, null);
-    }
-
     private void CreatePdfFile(List<Bitmap> images, string filePath, ScanSettings settings,
         List<List<OcrWord>>? ocrData)
     {
@@ -289,11 +284,11 @@ internal class ScanOutputProcessor
             using var ms = new MemoryStream();
             var encoderParams = new EncoderParameters(1);
             encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, (long)jpegQuality);
-            bmp.Save(ms, GetJpegEncoder(jpegQuality), encoderParams);
+            bmp.Save(ms, GetJpegEncoder(), encoderParams);
             ms.Position = 0;
 
             using var xImg = XImage.FromStream(() => new MemoryStream(ms.ToArray()));
-            var gfx = XGraphics.FromPdfPage(page);
+            using var gfx = XGraphics.FromPdfPage(page);
             gfx.DrawImage(xImg, 0, 0, page.Width, page.Height);
 
             // Embed invisible text layer if OCR data is available for this page
@@ -317,11 +312,6 @@ internal class ScanOutputProcessor
         double scaleX = pdfWidth.Point / imgWidth;
         double scaleY = pdfHeight.Point / imgHeight;
 
-        // Use a very small font size – the text is invisible, we just need it to be selectable
-        // Use a transparent color so the text doesn't show visually
-        var transparentColor = XColor.FromArgb(0, 0, 0, 0); // Fully transparent
-        var font = new XFont("Arial", 1, XFontStyle.Regular);
-
         foreach (var word in words)
         {
             if (string.IsNullOrWhiteSpace(word.Text)) continue;
@@ -330,7 +320,6 @@ internal class ScanOutputProcessor
             // PDF origin is bottom-left, image origin is top-left, so flip Y
             double x = word.Bounds.X * scaleX;
             double y = pdfHeight.Point - (word.Bounds.Y + word.Bounds.Height) * scaleY;
-            double width = word.Bounds.Width * scaleX;
             double height = word.Bounds.Height * scaleY;
 
             // Use font size proportional to word height
@@ -339,17 +328,16 @@ internal class ScanOutputProcessor
             var wordFont = new XFont("Arial", fontSize, XFontStyle.Regular);
 
             // Draw text transparently so it's invisible but searchable
-            // PdfSharpCore doesn't support truly transparent text directly,
-            // so we use text rendering mode 3 (invisible) via raw PDF content
             gfx.DrawString(word.Text, wordFont, XBrushes.Transparent,
                 x, y + fontSize, XStringFormats.TopLeft);
         }
     }
 
-    private ImageCodecInfo GetJpegEncoder(int quality)
+    private ImageCodecInfo GetJpegEncoder()
     {
         var encoders = ImageCodecInfo.GetImageEncoders();
-        return encoders.First(e => e.FormatID == ImageFormat.Jpeg.Guid);
+        return encoders.FirstOrDefault(e => e.FormatID == ImageFormat.Jpeg.Guid)
+            ?? throw new InvalidOperationException("No JPEG encoder available.");
     }
 
     private List<string> GenerateJpeg(List<Bitmap> images, string targetFolder, ScanSettings settings,
@@ -370,7 +358,7 @@ internal class ScanOutputProcessor
 
         var encoderParams = new EncoderParameters(1);
         encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, (long)jpegQuality);
-        var jpegEncoder = GetJpegEncoder(jpegQuality);
+        var jpegEncoder = GetJpegEncoder();
 
         for (int i = 0; i < images.Count; i++)
         {

@@ -304,7 +304,7 @@ internal class CustomSizeDialog : Form
         if (CustomSizes.Count >= MaxEntries)
         {
             MessageBox.Show($"Maximal {MaxEntries} Einträge sind erlaubt.",
-                "SpeedScanManager", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -517,7 +517,7 @@ internal class CustomSizeEditDialog : Form
         {
             if (string.IsNullOrWhiteSpace(_txtName.Text))
             {
-                MessageBox.Show("Bitte einen Namen eingeben.", "SpeedScanManager",
+                MessageBox.Show("Bitte einen Namen eingeben.", "SpeedScan Manager",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 e.Cancel = true;
                 return;

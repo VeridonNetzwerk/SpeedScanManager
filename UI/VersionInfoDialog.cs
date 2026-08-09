@@ -39,8 +39,11 @@ internal class VersionInfoDialog : Form
         };
 
         // === Version title line ===
-        var fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
-        var version = fvi.FileVersion ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0.0";
+        var asm = Assembly.GetExecutingAssembly();
+        var exePath = Environment.ProcessPath ?? asm.Location ?? "";
+        var version = !string.IsNullOrEmpty(exePath)
+            ? (System.Diagnostics.FileVersionInfo.GetVersionInfo(exePath).FileVersion ?? asm.GetName().Version?.ToString() ?? "1.0.0.0")
+            : (asm.GetName().Version?.ToString() ?? "1.0.0.0");
 
         var lblVersionTitle = new Label
         {

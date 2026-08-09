@@ -15,4 +15,9 @@
     <PackageReference Include="Tesseract" Version="5.2.0" />
   </ItemGroup>
 
+  <Target Name="UnblockPublishedFile" AfterTargets="Publish">
+    <Exec Condition="'$([System.OperatingSystem]::IsWindows())' == 'true'"
+          Command="powershell -NoProfile -Command &quot;Get-ChildItem -Path '$(PublishDir)' -Recurse -File | Unblock-File&quot;" />
+  </Target>
+
 </Project>

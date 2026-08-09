@@ -10,7 +10,7 @@ namespace SpeedScanManager;
 /// Core scan pipeline: opens a TWAIN data source, configures capabilities,
 /// acquires images, and returns them as Bitmap list.
 /// </summary>
-internal class ScanPipeline
+internal class ScanPipeline : IDisposable
 {
     private readonly TwainSession _twain;
     private readonly WindowsFormsMessageLoopHook _msgLoop;
@@ -76,7 +76,7 @@ internal class ScanPipeline
     {
         using var dlg = new Form
         {
-            Text = "SpeedScanManager – Quelle wählen",
+            Text = "SpeedScan Manager – Quelle wählen",
             FormBorderStyle = FormBorderStyle.FixedDialog,
             MaximizeBox = false,
             MinimizeBox = false,
@@ -453,10 +453,15 @@ internal class ScanPipeline
     {
         var result = MessageBox.Show(
             "Mehrfacheinzug erkannt – Scan fortsetzen oder abbrechen?",
-            "SpeedScanManager – Mehrfacheinzug",
+            "SpeedScan Manager – Mehrfacheinzug",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning,
             MessageBoxDefaultButton.Button1);
         return result == DialogResult.Yes;
+    }
+
+    public void Dispose()
+    {
+        _scanComplete.Dispose();
     }
 }
