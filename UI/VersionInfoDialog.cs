@@ -15,7 +15,7 @@ internal class VersionInfoDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;
-        ClientSize = new Size(460, 310);
+        ClientSize = new Size(460, 350);
         Font = new Font("Microsoft Sans Serif", 8.25f);
 
         var font = new Font("Microsoft Sans Serif", 8.25f);
@@ -63,13 +63,18 @@ internal class VersionInfoDialog : Form
         {
             Text = "SpeedScan Manager for fi Series\n\n" +
                    "Open-Source Scanning-Verwaltungssoftware für Fujitsu fi-Series Scanner.\n\n" +
+                   "Lizenziert unter GNU General Public License v3 (GPL-3.0).\n" +
+                   "Dieses Programm ist freie Software: Sie können es weitergeben\n" +
+                   "und/oder modifizieren unter Beachtung der GPL-3.0-Bedingungen.\n" +
+                   "Credits müssen in allen Kopien und abgeleiteten Werken erhalten\n" +
+                   "bleiben.\n\n" +
                    "TWAIN-Unterstützung durch NTwain.\n" +
                    "OCR-Engine: Tesseract.NET.\n" +
                    "PDF-Verarbeitung: PdfPig.\n\n" +
-                   "Copyright © 2024-2026 SpeedScan Manager Projekt",
+                   "Copyright © 2024-2026 VeridonNetzwerk",
             Font = font,
             Location = new Point(24, 90),
-            Size = new Size(400, 180),
+            Size = new Size(400, 200),
             AutoSize = false,
             BackColor = Color.White
         };

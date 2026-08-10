@@ -61,5 +61,5 @@ dotnet publish -c Release -r win-x86 --self-contained true -p:PublishSingleFile=
 ---
 
 <div align="center">
-  <sub>© 2026 VeridonNetzwerk · MIT License · Built with AI 🤖</sub>
+  <sub>© 2026 VeridonNetzwerk · GPL-3.0 License · Built with AI 🤖</sub>
 </div>
