@@ -22,11 +22,13 @@ internal class ScanPipeline : IDisposable
     private bool _scanCancelled;
     private bool _multiFeedDetected;
     private bool _userCancelledMultiFeed;
+    private bool _disableMultiFeedDetection;
 
     public IReadOnlyList<Bitmap> AcquiredImages => _acquiredImages;
     public bool WasCancelled => _scanCancelled;
     public bool MultiFeedDetected => _multiFeedDetected;
     public bool UserCancelledMultiFeed => _userCancelledMultiFeed;
+    public bool DisableMultiFeedDetection => _disableMultiFeedDetection;
 
     public ScanPipeline(TwainSession twain, WindowsFormsMessageLoopHook msgLoop, Form hiddenWindow, ScanSettings settings)
     {
@@ -295,7 +297,24 @@ internal class ScanPipeline : IDisposable
         // Paper size
         try
         {
-            if (_settings.PaperSize != PaperSizeMode.Automatic)
+            if (_settings.PaperSize == PaperSizeMode.Automatic)
+            {
+                // When paper size is automatic and length detection is off,
+                // enable long paper / max size scanning
+                var lengthDetectionOff = _settings.MultiFeedDetection != MultiFeedDetection.Length
+                    && _settings.MultiFeedDetection != MultiFeedDetection.Both;
+
+                if (lengthDetectionOff)
+                {
+                    var supportedSizes = _currentSource.Capabilities.ICapSupportedSizes.GetValues();
+                    if (supportedSizes.Contains(SupportedSize.MaxSize))
+                    {
+                        _currentSource.Capabilities.ICapSupportedSizes.SetValue(SupportedSize.MaxSize);
+                        System.Diagnostics.Debug.WriteLine("Paper size set to MaxSize (unlimited length)");
+                    }
+                }
+            }
+            else if (_settings.PaperSize != PaperSizeMode.Automatic)
             {
                 var supportedSizes = _currentSource.Capabilities.ICapSupportedSizes.GetValues();
                 var targetSize = _settings.PaperSize switch
@@ -419,20 +438,24 @@ internal class ScanPipeline : IDisposable
             System.Diagnostics.Debug.WriteLine("Multi-feed detected by scanner!");
             _multiFeedDetected = true;
 
+            // Get preview images: current page (last acquired) and previous page
+            Bitmap? currentPage = _acquiredImages.Count > 0 ? _acquiredImages[^1] : null;
+            Bitmap? previousPage = _acquiredImages.Count > 1 ? _acquiredImages[^2] : null;
+
             // Show warning dialog on UI thread
-            bool continueScan = false;
+            MultiFeedWarningDialog.MultiFeedAction action = MultiFeedWarningDialog.MultiFeedAction.Rescan;
             try
             {
                 if (_hiddenWindow.InvokeRequired)
                 {
                     _hiddenWindow.Invoke(() =>
                     {
-                        continueScan = ShowMultiFeedWarning();
+                        action = ShowMultiFeedWarning(currentPage, previousPage);
                     });
                 }
                 else
                 {
-                    continueScan = ShowMultiFeedWarning();
+                    action = ShowMultiFeedWarning(currentPage, previousPage);
                 }
             }
             catch (Exception ex)
@@ -440,24 +463,40 @@ internal class ScanPipeline : IDisposable
                 System.Diagnostics.Debug.WriteLine($"Multi-feed dialog failed: {ex.Message}");
             }
 
-            if (!continueScan)
+            switch (action)
             {
-                _userCancelledMultiFeed = true;
-                _scanCancelled = true;
-                _scanComplete.Set();
+                case MultiFeedWarningDialog.MultiFeedAction.Rescan:
+                    _userCancelledMultiFeed = true;
+                    _scanCancelled = true;
+                    _scanComplete.Set();
+                    break;
+
+                case MultiFeedWarningDialog.MultiFeedAction.KeepAsIs:
+                    // Continue scanning, keep current page
+                    System.Diagnostics.Debug.WriteLine("User chose to keep page despite multi-feed");
+                    break;
+
+                case MultiFeedWarningDialog.MultiFeedAction.DisableDetection:
+                    // Disable multi-feed detection for the rest of this scan
+                    _disableMultiFeedDetection = true;
+                    try
+                    {
+                        _currentSource?.Capabilities.CapDoubleFeedDetection.Reset();
+                        System.Diagnostics.Debug.WriteLine("Multi-feed detection disabled by user");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to disable multi-feed: {ex.Message}");
+                    }
+                    break;
             }
         }
     }
 
-    private bool ShowMultiFeedWarning()
+    private MultiFeedWarningDialog.MultiFeedAction ShowMultiFeedWarning(Bitmap? currentPage, Bitmap? previousPage)
     {
-        var result = MessageBox.Show(
-            "Mehrfacheinzug erkannt – Scan fortsetzen oder abbrechen?",
-            "SpeedScan Manager – Mehrfacheinzug",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Warning,
-            MessageBoxDefaultButton.Button1);
-        return result == DialogResult.Yes;
+        using var dlg = new MultiFeedWarningDialog(currentPage, previousPage);
+        return dlg.ShowDialog() == DialogResult.OK ? dlg.Action : MultiFeedWarningDialog.MultiFeedAction.Rescan;
     }
 
     public void Dispose()

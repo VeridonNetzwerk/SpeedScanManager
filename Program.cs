@@ -1,14 +1,40 @@
+using System.Diagnostics;
+using System.IO.Pipes;
 using System.Windows.Forms;
 
 namespace SpeedScanManager;
 
 internal static class Program
 {
+    internal const string PipeName = "SpeedScanManager_ScanButton";
+
     [STAThread]
-    static void Main()
+    static void Main(string[] args)
     {
         try
         {
+            // Elevated helper: do registry setup and exit
+            if (args.Contains("/setup", StringComparer.OrdinalIgnoreCase))
+            {
+                WiaEventWatcher.DoRegistrySetup();
+                return;
+            }
+
+            // If launched with /scanbutton, signal the running instance via named pipe
+            if (args.Contains("/scanbutton", StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
+                    client.Connect(3000);
+                    using var writer = new StreamWriter(client);
+                    writer.WriteLine("SCAN");
+                    writer.Flush();
+                }
+                catch { }
+                return;
+            }
+
             ApplicationConfiguration.Initialize();
             Application.Run(new TrayApplicationContext());
         }

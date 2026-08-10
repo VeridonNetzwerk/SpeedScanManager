@@ -12,7 +12,7 @@ internal enum ScannerStatus { Unknown, Connected, Disconnected, Scanning }
 /// ApplicationContext that runs the app as a tray-only application.
 /// Polls TWAIN every 3 seconds and updates the tray icon accordingly.
 /// </summary>
-internal class TrayApplicationContext : ApplicationContext
+internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 {
     private readonly NotifyIcon _notifyIcon;
     private ContextMenuStrip _contextMenu = null!;
@@ -40,6 +40,7 @@ internal class TrayApplicationContext : ApplicationContext
     private ScannerState? _lastScannerState;
     private DataSource? _persistentSource;
     private bool _deviceEventSubscribed;
+    private WiaEventWatcher? _wiaWatcher;
 
     // State machine for scanner connection
     private ScannerStatus _scannerStatus = ScannerStatus.Unknown;
@@ -268,8 +269,10 @@ internal class TrayApplicationContext : ApplicationContext
         // Sync settings from MainForm if it's open
         SyncSettingsFromMainForm();
 
-        // Close persistent source before scanning — ScanPipeline manages its own source lifecycle
+        // Close persistent source and stop WIA watcher before scanning —
+        // ScanPipeline manages its own source lifecycle, and WIA must release the device
         ClosePersistentSource();
+        StopWiaWatcher();
 
         _isScanning = true;
         _scannerStatus = ScannerStatus.Scanning;
@@ -355,15 +358,16 @@ internal class TrayApplicationContext : ApplicationContext
                     if (_scanPipeline != null && _scanPipeline.AcquiredImages.Count > 0)
                     {
                         _scannerStatus = ScannerStatus.Connected;
-                        // Reopen persistent source to capture future button events
-                        OpenPersistentSource();
                     }
                     else
                     {
-                        _scannerStatus = ScannerStatus.Disconnected;
-                        _currentScannerName = "";
-                        _lastScannerState = null;
+                        // No images doesn't necessarily mean disconnected — could be
+                        // user cancelled or no pages in ADF. Keep current status and
+                        // try a lightweight reconnection check.
+                        _scannerStatus = ScannerStatus.Connected;
                     }
+                    // Always restart WIA watcher to detect future button presses
+                    StartWiaWatcher();
                     UpdateTrayVisuals();
                 });
             }
@@ -522,6 +526,8 @@ internal class TrayApplicationContext : ApplicationContext
     private void ExitApplication()
     {
         ClosePersistentSource();
+        StopWiaWatcher();
+        WiaEventWatcher.Shutdown();
         _notifyIcon.Visible = false;
         Application.Exit();
     }
@@ -608,12 +614,15 @@ internal class TrayApplicationContext : ApplicationContext
         try
         {
             // When already disconnected, skip background polling entirely.
-            // The TWAIN driver shows a "Kommunikation fehlgeschlagen" dialog
-            // every time source.Open() is attempted on a disconnected scanner.
-            // Reconnection is detected when the user opens the context menu
-            // (OnContextMenuOpening) or tries to scan — both call UpdateConnectionState().
             if (_scannerStatus == ScannerStatus.Disconnected)
                 return;
+
+            // When WIA watcher is active (connected, waiting for button events),
+            // skip polling — QueryState would open/close the TWAIN source and
+            // interfere with WIA event delivery.
+            if (_wiaWatcher != null)
+                return;
+
             UpdateConnectionState();
         }
         catch (Exception ex)
@@ -684,8 +693,8 @@ internal class TrayApplicationContext : ApplicationContext
                 _scannerStatus = ScannerStatus.Connected;
                 _currentScannerName = scannerName;
                 UpdateTrayVisuals();
-                // Open persistent source to capture scanner button events
-                OpenPersistentSource();
+                // Start WIA event watcher for scanner button presses
+                StartWiaWatcher();
             }
         }
         else
@@ -697,6 +706,7 @@ internal class TrayApplicationContext : ApplicationContext
                 _scannerStatus = ScannerStatus.Disconnected;
                 _currentScannerName = "";
                 ClosePersistentSource();
+                StopWiaWatcher();
                 UpdateTrayVisuals();
                 ShowScannerDisconnectedBalloon();
             }
@@ -710,6 +720,7 @@ internal class TrayApplicationContext : ApplicationContext
                     _scannerStatus = ScannerStatus.Disconnected;
                     _currentScannerName = "";
                     ClosePersistentSource();
+                    StopWiaWatcher();
                     UpdateTrayVisuals();
                     ShowScannerDisconnectedBalloon();
                 }
@@ -765,22 +776,25 @@ internal class TrayApplicationContext : ApplicationContext
             _persistentSource = source;
             LogDiag($"OpenPersistentSource: opened '{source.Name}'");
 
-            // Register for device events so the scanner sends button presses to us
+            // Log supported device events (CAP_DEVICEEVENT is typically read-only —
+            // the driver reports which events it can send; the app processes them
+            // via the message loop when the source is open)
             try
             {
-                source.Capabilities.CapDeviceEvent.SetValue(DeviceEvent.CheckDeviceOnline);
-                LogDiag("OpenPersistentSource: CapDeviceEvent set to CheckDeviceOnline");
+                var supportedEvents = source.Capabilities.CapDeviceEvent.GetValues();
+                LogDiag($"OpenPersistentSource: supported device events: [{string.Join(", ", supportedEvents)}]");
             }
             catch (Exception ex)
             {
-                LogDiag($"OpenPersistentSource: CapDeviceEvent failed: {ex.Message}");
+                LogDiag($"OpenPersistentSource: CapDeviceEvent GetValues failed: {ex.Message}");
             }
 
             if (!_deviceEventSubscribed)
             {
                 _twain.DeviceEvent += OnScannerDeviceEvent;
                 _deviceEventSubscribed = true;
-                LogDiag("OpenPersistentSource: subscribed to DeviceEvent");
+                Application.AddMessageFilter(this);
+                LogDiag("OpenPersistentSource: subscribed to DeviceEvent + message filter");
             }
         }
         catch (Exception ex)
@@ -795,7 +809,8 @@ internal class TrayApplicationContext : ApplicationContext
         {
             _twain.DeviceEvent -= OnScannerDeviceEvent;
             _deviceEventSubscribed = false;
-            LogDiag("ClosePersistentSource: unsubscribed from DeviceEvent");
+            Application.RemoveMessageFilter(this);
+            LogDiag("ClosePersistentSource: unsubscribed from DeviceEvent + message filter");
         }
 
         if (_persistentSource != null && _persistentSource.IsOpen)
@@ -809,20 +824,80 @@ internal class TrayApplicationContext : ApplicationContext
     private void OnScannerDeviceEvent(object? sender, DeviceEventArgs e)
     {
         var eventType = e.DeviceEvent.Event;
-        LogDiag($"OnScannerDeviceEvent: {eventType}");
+        LogDiag($"OnScannerDeviceEvent: {eventType}, device='{e.DeviceEvent.DeviceName}'");
 
-        // Trigger scan on any device event that indicates user interaction
-        // (button press, device ready, etc.)
-        if (eventType == DeviceEvent.CheckDeviceOnline ||
-            eventType == DeviceEvent.DeviceReady ||
-            eventType == DeviceEvent.CustomEvents)
+        // Trigger scan on any device event when connected and not already scanning.
+        // Fujitsu scanners may use different event types for button presses.
+        if (!_isScanning && _scannerStatus == ScannerStatus.Connected)
         {
-            if (!_isScanning && _scannerStatus == ScannerStatus.Connected)
-            {
-                LogDiag("OnScannerDeviceEvent: triggering scan from button press");
-                _hiddenWindow.BeginInvoke(() => StartScan(ScanSide.Automatic));
-            }
+            LogDiag("OnScannerDeviceEvent: triggering scan from button press");
+            _hiddenWindow.BeginInvoke(() => StartScan(ScanSide.Automatic));
         }
+    }
+
+    private void StartWiaWatcher()
+    {
+        if (_wiaWatcher != null) return;
+
+        try
+        {
+            // Close persistent TWAIN source so WIA can access the scanner device
+            ClosePersistentSource();
+
+            _wiaWatcher = new WiaEventWatcher();
+            _wiaWatcher.ScanButtonPressed += OnWiaScanButtonPressed;
+            _wiaWatcher.Start();
+            LogDiag("StartWiaWatcher: started");
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"StartWiaWatcher exception: {ex.Message}");
+        }
+    }
+
+    private void StopWiaWatcher()
+    {
+        if (_wiaWatcher == null) return;
+
+        try
+        {
+            _wiaWatcher.ScanButtonPressed -= OnWiaScanButtonPressed;
+            _wiaWatcher.Dispose();
+            _wiaWatcher = null;
+            LogDiag("StopWiaWatcher: stopped");
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"StopWiaWatcher exception: {ex.Message}");
+        }
+    }
+
+    private void OnWiaScanButtonPressed()
+    {
+        LogDiag($"OnWiaScanButtonPressed: isScanning={_isScanning}, status={_scannerStatus}");
+
+        if (!_isScanning && _scannerStatus == ScannerStatus.Connected)
+        {
+            LogDiag("OnWiaScanButtonPressed: triggering scan");
+            _hiddenWindow.BeginInvoke(() => StartScan(ScanSide.Automatic));
+        }
+    }
+
+    /// <summary>
+    /// IMessageFilter implementation — intercepts Windows messages and forwards
+    /// them to TWAIN for device event processing when the source is open but not enabled.
+    /// </summary>
+    public bool PreFilterMessage(ref System.Windows.Forms.Message m)
+    {
+        if (_twain != null && _persistentSource != null && _persistentSource.IsOpen && !_isScanning)
+        {
+            try
+            {
+                _twain.IsTwainMessage(m.HWnd, m.Msg, m.WParam, m.LParam);
+            }
+            catch { }
+        }
+        return false;
     }
 
     private void ShowScannerDisconnectedBalloon()
