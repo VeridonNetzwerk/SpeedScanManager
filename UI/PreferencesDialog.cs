@@ -15,12 +15,12 @@ internal class PreferencesDialog : Form
     {
         _settings = settings;
 
-        Text = "SpeedScan Manager for fi Series - Präferenzen";
+        Text = "SpeedScan Manager - Präferenzen";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(485, 205);
+        ClientSize = new Size(485, 255);
         AutoScaleMode = AutoScaleMode.None;
         Font = new Font("Microsoft Sans Serif", 8.25f);
         ShowInTaskbar = false;
@@ -182,7 +182,7 @@ internal class PreferencesDialog : Form
 
         var lblStartupDesc = new Label
         {
-            Text = "Beim Start von SpeedScan Manager for fi Series eine Bestätigungsmeldung anzeigen.",
+            Text = "Beim Start von SpeedScan Manager eine Bestätigungsmeldung anzeigen.",
             Location = new Point(13, 14),
             Size = new Size(428, 20),
             AutoSize = false,

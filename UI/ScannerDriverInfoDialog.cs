@@ -8,7 +8,7 @@ internal class ScannerDriverInfoDialog : Form
 {
     public ScannerDriverInfoDialog()
     {
-        Text = "SpeedScan Manager for fi Series - Scanner- und Treiberinformationen";
+        Text = "SpeedScan Manager - Scanner- und Treiberinformationen";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;

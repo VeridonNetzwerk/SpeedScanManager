@@ -32,8 +32,8 @@ internal class HelpTopic
 
 /// <summary>
 /// Static class that builds the help topic tree and provides HTML content
-/// adapted from the ScanSnap Manager for fi Series help documentation.
-/// All references to "ScanSnap Manager for fi Series" have been changed to
+/// adapted from the ScanSnap Manager help documentation.
+/// All references to "ScanSnap Manager" have been changed to
 /// "SpeedScan Manager". Features not present in the actual program have been
 /// removed. Features present in the program but not in the original help
 /// (e.g. PNG format) have been added.

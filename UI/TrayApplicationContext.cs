@@ -134,7 +134,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
         // Help submenu items
         var miHelpTopics = new ToolStripMenuItem("Hilfethemen");
-        var miVersionInfo = new ToolStripMenuItem("SpeedScan Manager for fi Series – Versionsinformationen");
+        var miVersionInfo = new ToolStripMenuItem("SpeedScan Manager – Versionsinformationen");
         var miPreferences = new ToolStripMenuItem("Präferenzen...");
 
         _miDuplexScan.Click += (s, e) => StartScan(ScanSide.Duplex);

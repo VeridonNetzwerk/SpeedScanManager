@@ -8,7 +8,7 @@ internal class VersionInfoDialog : Form
 {
     public VersionInfoDialog()
     {
-        Text = "SpeedScan Manager for fi Series \u2013 Versionsinformationen";
+        Text = "SpeedScan Manager \u2013 Versionsinformationen";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -52,7 +52,7 @@ internal class VersionInfoDialog : Form
 
         var lblVersionTitle = new Label
         {
-            Text = $"SpeedScan Manager for fi Series Version {version}",
+            Text = $"SpeedScan Manager Version {version}",
             Font = new Font("Microsoft Sans Serif", 9f, FontStyle.Bold),
             Location = new Point(24, 58),
             AutoSize = true
@@ -61,7 +61,7 @@ internal class VersionInfoDialog : Form
         // === Info text block ===
         var lblLicense = new Label
         {
-            Text = "SpeedScan Manager for fi Series\n\n" +
+            Text = "SpeedScan Manager\n\n" +
                    "Open-Source Scanning-Verwaltungssoftware für Fujitsu fi-Series Scanner.\n\n" +
                    "Lizenziert unter GNU General Public License v3 (GPL-3.0).\n" +
                    "Dieses Programm ist freie Software: Sie können es weitergeben\n" +

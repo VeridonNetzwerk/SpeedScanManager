@@ -87,7 +87,7 @@ internal class PostScanMediaDialog : Form
         };
         var lblForFi = new Label
         {
-            Text = " for fi Series",
+            Text = "",
             Font = new Font("Microsoft Sans Serif", 10f),
             ForeColor = Color.FromArgb(220, 230, 245),
             Location = new Point(68, 10),
