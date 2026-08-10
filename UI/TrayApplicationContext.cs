@@ -43,6 +43,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     private MainForm? _mainForm;
     private readonly ScanSettings _settings = new();
     private readonly ProfileManager _profileManager = new();
+    private readonly AppSettings _appSettings;
     private ScanPipeline? _scanPipeline;
     private bool _isScanning;
     private ApplicationType _currentApplicationType = ApplicationType.ScanToFolder;
@@ -69,6 +70,18 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
     public TrayApplicationContext()
     {
+        // Load persisted app settings
+        _appSettings = AppSettings.Load();
+        _quickMenuScanTriggered = _appSettings.QuickMenuEnabled;
+        _currentApplicationType = _appSettings.CurrentApplicationType;
+
+        // Apply saved profile to settings if it exists
+        var savedProfile = _profileManager.GetByName(_appSettings.SelectedProfileName);
+        if (savedProfile != null)
+        {
+            savedProfile.ApplyTo(_settings);
+        }
+
         // Hidden window provides the HWND that TWAIN DSM requires.
         _hiddenWindow = new Form
         {
@@ -499,6 +512,19 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
                 _currentApplicationType = _mainForm.ApplicationTab.SelectedApplicationType;
             }
             _quickMenuScanTriggered = _mainForm.QuickMenuEnabled;
+
+            // Persist settings
+            _appSettings.QuickMenuEnabled = _quickMenuScanTriggered;
+            _appSettings.CurrentApplicationType = _currentApplicationType;
+            if (_mainForm.SaveTab != null)
+            {
+                var (folder, formatMode, customName, digits) = _mainForm.SaveTab.GetSaveConfig();
+                _appSettings.FolderPath = folder;
+                _appSettings.FileNameFormat = formatMode;
+                _appSettings.CustomFileName = customName;
+                _appSettings.CounterDigits = digits;
+            }
+            _appSettings.Save();
         }
     }
 
@@ -509,11 +535,11 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
             return _mainForm.SaveTab.GetSaveConfig();
         }
 
-        // Default config when MainForm isn't open
-        string defaultFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "SpeedScanManager");
-        return (defaultFolder, FileNameFormatDialog.FormatMode.Timestamp, "unbenannt", 3);
+        // Use persisted settings when MainForm isn't open
+        string folder = !string.IsNullOrEmpty(_appSettings.FolderPath)
+            ? _appSettings.FolderPath
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SpeedScanManager");
+        return (folder, _appSettings.FileNameFormat, _appSettings.CustomFileName, _appSettings.CounterDigits);
     }
 
     private void OpenScanResultFolder()
@@ -887,7 +913,11 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         if (_mainForm == null || _mainForm.IsDisposed)
         {
             _mainForm = new MainForm(_settings);
-            _mainForm.FormClosed += (s, e) => _mainForm = null;
+            _mainForm.FormClosed += (s, e) =>
+            {
+                SyncSettingsFromMainForm();
+                _mainForm = null;
+            };
         }
         if (!_mainForm.Visible)
         {
@@ -1413,6 +1443,11 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
             _cachedConnectedIcon?.Dispose();
             _cachedDisconnectedIcon?.Dispose();
             _scanPipeline?.Dispose();
+
+            // Persist settings on exit
+            _appSettings.QuickMenuEnabled = _quickMenuScanTriggered;
+            _appSettings.CurrentApplicationType = _currentApplicationType;
+            _appSettings.Save();
         }
 
         base.Dispose(disposing);

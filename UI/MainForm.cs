@@ -740,9 +740,12 @@ internal class MainForm : Form
 
     private void TabControl_Selecting(object? sender, TabControlCancelEventArgs e)
     {
-        // Prevent selecting the Anwendung tab when Quick-Menü is on
+        // Prevent selecting the Anwendung tab when Quick-Menü is on — redirect to Speichern
         if (e.TabPageIndex == 0 && _quickMenuCheckBox.Checked)
+        {
             e.Cancel = true;
+            _tabControl.SelectedIndex = 1; // Speichern tab
+        }
     }
 
     private void TabControl_DrawItem(object? sender, DrawItemEventArgs e)

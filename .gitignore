@@ -48,3 +48,8 @@ SpeedScanManager/packages/
 # Docs - exclude scanned PDFs
 *.pdf
 help_extract.txt
+
+# Code signing certificate
+build/cert/SpeedScanDev.pfx
+build/cert/SpeedScan.pfx
+
