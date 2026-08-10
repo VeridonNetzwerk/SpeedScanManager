@@ -18,6 +18,19 @@ internal class ScanPipeline : IDisposable
     private readonly ScanSettings _settings;
     private DataSource? _currentSource;
     private readonly List<Bitmap> _acquiredImages = new();
+
+    private static void LogDiag(string msg)
+    {
+        try
+        {
+            var logPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "SpeedScanManager", "twain_diag.log");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            File.AppendAllText(logPath, $"{DateTime.Now:HH:mm:ss.fff} {msg}\n");
+        }
+        catch { }
+    }
     private readonly ManualResetEventSlim _scanComplete = new(false);
     private bool _scanCancelled;
     private bool _multiFeedDetected;
@@ -145,7 +158,7 @@ internal class ScanPipeline : IDisposable
             var rc = _twain.Open(_msgLoop);
             if (rc != ReturnCode.Success)
             {
-                System.Diagnostics.Debug.WriteLine($"DSM open failed: {rc}");
+                LogDiag($"DSM open failed: {rc}");
                 return new List<Bitmap>();
             }
         }
@@ -162,26 +175,33 @@ internal class ScanPipeline : IDisposable
         var openRc = _currentSource.Open();
         if (openRc != ReturnCode.Success)
         {
-            System.Diagnostics.Debug.WriteLine($"Source open failed: {openRc}");
+            LogDiag($"Source open failed: {openRc}");
             return new List<Bitmap>();
         }
 
-        // Configure capabilities
+        // Determine if we're in long page mode
+        bool isLongPageMode = _settings.PaperSize == PaperSizeMode.Automatic
+            && _settings.MultiFeedDetection != MultiFeedDetection.Length
+            && _settings.MultiFeedDetection != MultiFeedDetection.Both;
+
+        // Configure capabilities (sets custom PaperStream IP caps for long page mode)
         ConfigureCapabilities(scanSideOverride);
 
         // Subscribe to transfer events
         _twain.DataTransferred += OnDataTransferred;
         _twain.SourceDisabled += OnSourceDisabled;
         _twain.DeviceEvent += OnDeviceEvent;
+        _twain.TransferReady += OnTransferReady;
 
         // Enable the source (starts scanning)
         var enableRc = _currentSource.Enable(SourceEnableMode.NoUI, true, _hiddenWindow.Handle);
         if (enableRc != ReturnCode.Success)
         {
-            System.Diagnostics.Debug.WriteLine($"Enable failed: {enableRc}");
+            LogDiag($"Enable failed: {enableRc}");
             _twain.DataTransferred -= OnDataTransferred;
             _twain.SourceDisabled -= OnSourceDisabled;
             _twain.DeviceEvent -= OnDeviceEvent;
+            _twain.TransferReady -= OnTransferReady;
             _currentSource.Close();
             return new List<Bitmap>();
         }
@@ -190,7 +210,7 @@ internal class ScanPipeline : IDisposable
         // Use a timeout to avoid hanging forever
         if (!_scanComplete.Wait(120000)) // 2 minute timeout
         {
-            System.Diagnostics.Debug.WriteLine("Scan timed out");
+            LogDiag("Scan timed out");
             _scanCancelled = true;
         }
 
@@ -198,6 +218,7 @@ internal class ScanPipeline : IDisposable
         _twain.DataTransferred -= OnDataTransferred;
         _twain.SourceDisabled -= OnSourceDisabled;
         _twain.DeviceEvent -= OnDeviceEvent;
+        _twain.TransferReady -= OnTransferReady;
 
         if (_currentSource.IsOpen)
         {
@@ -205,6 +226,95 @@ internal class ScanPipeline : IDisposable
         }
 
         return new List<Bitmap>(_acquiredImages);
+    }
+
+    private void OnTransferReady(object? sender, TransferReadyEventArgs e)
+    {
+        // In long page mode, try to set the frame to 120 inches right before the scan starts.
+        // The TransferReady event fires after the driver dialog (if any) but before data transfer.
+        // This is our last chance to override the frame.
+        bool isLongPageMode = _settings.PaperSize == PaperSizeMode.Automatic
+            && _settings.MultiFeedDetection != MultiFeedDetection.Length
+            && _settings.MultiFeedDetection != MultiFeedDetection.Both;
+
+        if (!isLongPageMode || _currentSource == null)
+            return;
+
+        LogDiag("TransferReady: attempting to set long page frame (125 inches)");
+
+        try
+        {
+            // Set units to inches
+            _currentSource.Capabilities.ICapUnits.SetValue(Unit.Inches);
+
+            // Try ICapFrames
+            var longFrame = new TWFrame
+            {
+                Left = 0,
+                Right = 8.5f,
+                Top = 0,
+                Bottom = 125f
+            };
+            _currentSource.Capabilities.ICapFrames.SetValue(longFrame);
+            LogDiag("TransferReady: ICapFrames set to 8.5x125");
+
+            // Try ImageLayout
+            if (_currentSource.DGImage.ImageLayout.Get(out var layout) == ReturnCode.Success)
+            {
+                layout.Frame = longFrame;
+                var rc = _currentSource.DGImage.ImageLayout.Set(layout);
+                LogDiag($"TransferReady: ImageLayout set rc={rc}");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"TransferReady: frame set failed: {ex.Message}");
+        }
+    }
+
+    private void SetCustomCapFix32(ushort capId, float value)
+    {
+        try
+        {
+            // TW_FIX32 is a struct: { short Whole (16-bit), ushort Frac (16-bit) }
+            // In memory layout (little-endian): Whole in low 16 bits, Frac in high 16 bits
+            short whole = (short)Math.Truncate(value);
+            ushort frac = (ushort)((value - whole) * 65536);
+            // Pack as: Whole in low word, Frac in high word
+            uint fix32Value = (uint)((frac << 16) | (ushort)whole);
+
+            var cap = (NTwain.Data.CapabilityId)capId;
+            var rc = _currentSource!.DGControl.Capability.Set(
+                new NTwain.Data.TWCapability(cap, new NTwain.Data.TWOneValue
+                {
+                    Item = fix32Value,
+                    ItemType = NTwain.Data.ItemType.Fix32
+                }));
+            LogDiag($"Custom cap {capId} SET to {value} (whole={whole} frac={frac} raw=0x{fix32Value:X8}) rc={rc}");
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"Custom cap {capId} SET failed: {ex.Message}");
+        }
+    }
+
+    private void SetCustomCapUInt16(ushort capId, ushort value)
+    {
+        try
+        {
+            var cap = (NTwain.Data.CapabilityId)capId;
+            var rc = _currentSource!.DGControl.Capability.Set(
+                new NTwain.Data.TWCapability(cap, new NTwain.Data.TWOneValue
+                {
+                    Item = value,
+                    ItemType = NTwain.Data.ItemType.UInt16
+                }));
+            LogDiag($"Custom cap {capId} SET to {value} rc={rc}");
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"Custom cap {capId} SET failed: {ex.Message}");
+        }
     }
 
     private void ConfigureCapabilities(ScanSide scanSideOverride)
@@ -216,6 +326,63 @@ internal class ScanPipeline : IDisposable
             ? scanSideOverride
             : _settings.ScanSide;
 
+        // In long page mode (Automatic paper size + no length detection), skip ALL capability
+        // configuration. The PaperStream IP driver resets paper size to 14 inches (Legal) whenever
+        // ANY capability is set. With ShowUI mode, the driver keeps its previous settings
+        // (e.g. Long Page + 120 inch custom length) only if we don't touch any capabilities.
+        bool isLongPageMode = _settings.PaperSize == PaperSizeMode.Automatic
+            && _settings.MultiFeedDetection != MultiFeedDetection.Length
+            && _settings.MultiFeedDetection != MultiFeedDetection.Both;
+
+        if (isLongPageMode)
+        {
+            // Try to set the frame to 120 inches BEFORE the driver UI appears.
+            try
+            {
+                _currentSource.Capabilities.ICapUnits.SetValue(Unit.Inches);
+
+                // Set SupportedSize to None (custom frame)
+                var supportedSizes = _currentSource.Capabilities.ICapSupportedSizes.GetValues();
+                if (supportedSizes.Contains(SupportedSize.None))
+                {
+                    _currentSource.Capabilities.ICapSupportedSizes.SetValue(SupportedSize.None);
+                    LogDiag("Long page mode: ICapSupportedSizes set to None (custom frame)");
+                }
+
+                // Set ICapFrames to 125 inches
+                var longFrame = new TWFrame
+                {
+                    Left = 0,
+                    Right = 8.5f,
+                    Top = 0,
+                    Bottom = 125f
+                };
+                _currentSource.Capabilities.ICapFrames.SetValue(longFrame);
+                LogDiag("Long page mode: ICapFrames set to 8.5x125");
+
+                // Also try ImageLayout
+                if (_currentSource.DGImage.ImageLayout.Get(out var layout) == ReturnCode.Success)
+                {
+                    layout.Frame = longFrame;
+                    var rc = _currentSource.DGImage.ImageLayout.Set(layout);
+                    LogDiag($"Long page mode: ImageLayout set rc={rc}");
+                }
+
+                // Try setting PaperStream IP custom caps directly:
+                // Cap 40983 = paper width (TW_FIX32), Cap 40984 = paper length (TW_FIX32)
+                // Cap 41095 = cropping mode (0=Fixed, 1=DetectLength, 2=Automatic, 3=LongPage)
+                // TW_FIX32: 16-bit whole + 16-bit fraction (frac/65536)
+                SetCustomCapFix32(40983, 8.5f);
+                SetCustomCapFix32(40984, 125f);
+                SetCustomCapUInt16(41095, 3); // Long Page mode
+            }
+            catch (Exception ex)
+            {
+                LogDiag($"Long page mode: frame pre-set failed: {ex.Message}");
+            }
+            return;
+        }
+
         // Flatbed mode: disable feeder to use flatbed
         if (effectiveSide == ScanSide.Flatbed)
         {
@@ -225,7 +392,7 @@ internal class ScanPipeline : IDisposable
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Feeder disable (flatbed) failed: {ex.Message}");
+                LogDiag($"Feeder disable (flatbed) failed: {ex.Message}");
             }
         }
         else
@@ -237,7 +404,7 @@ internal class ScanPipeline : IDisposable
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Feeder enable failed: {ex.Message}");
+                LogDiag($"Feeder enable failed: {ex.Message}");
             }
 
             // Duplex / Simplex
@@ -254,7 +421,7 @@ internal class ScanPipeline : IDisposable
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Duplex cap failed: {ex.Message}");
+                LogDiag($"Duplex cap failed: {ex.Message}");
             }
         }
 
@@ -272,7 +439,7 @@ internal class ScanPipeline : IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"PixelType cap failed: {ex.Message}");
+            LogDiag($"PixelType cap failed: {ex.Message}");
         }
 
         // Resolution based on image quality
@@ -286,12 +453,14 @@ internal class ScanPipeline : IDisposable
                 ImageQuality.Excellent => 600,
                 _ => 200 // Automatic
             };
+
             _currentSource.Capabilities.ICapXResolution.SetValue(dpi);
             _currentSource.Capabilities.ICapYResolution.SetValue(dpi);
+            LogDiag($"Resolution set to {dpi} DPI");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Resolution cap failed: {ex.Message}");
+            LogDiag($"Resolution cap failed: {ex.Message}");
         }
 
         // Paper size
@@ -306,12 +475,11 @@ internal class ScanPipeline : IDisposable
 
                 if (lengthDetectionOff)
                 {
-                    var supportedSizes = _currentSource.Capabilities.ICapSupportedSizes.GetValues();
-                    if (supportedSizes.Contains(SupportedSize.MaxSize))
-                    {
-                        _currentSource.Capabilities.ICapSupportedSizes.SetValue(SupportedSize.MaxSize);
-                        System.Diagnostics.Debug.WriteLine("Paper size set to MaxSize (unlimited length)");
-                    }
+                    // Don't set ICapSupportedSizes here — setting MaxSize resets the driver's
+                    // frame to 14 inches (Legal), overwriting any long page setting the user
+                    // configured in the driver UI. With ShowUI mode, the driver keeps its
+                    // previous settings (e.g. Long Page + 120 inch custom length).
+                    LogDiag("Long page mode: skipping ICapSupportedSizes set to preserve driver UI settings");
                 }
             }
             else if (_settings.PaperSize != PaperSizeMode.Automatic)
@@ -342,7 +510,7 @@ internal class ScanPipeline : IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Paper size cap failed: {ex.Message}");
+            LogDiag($"Paper size cap failed: {ex.Message}");
         }
 
         // Brightness (only for B/W)
@@ -356,7 +524,7 @@ internal class ScanPipeline : IDisposable
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Brightness cap failed: {ex.Message}");
+                LogDiag($"Brightness cap failed: {ex.Message}");
             }
         }
 
@@ -378,11 +546,11 @@ internal class ScanPipeline : IDisposable
                 _currentSource.Capabilities.CapDoubleFeedDetectionResponse.SetValue(
                     DoubleFeedDetectionResponse.StopAndWait);
 
-                System.Diagnostics.Debug.WriteLine($"Multi-feed detection set: {detectionMode}");
+                LogDiag($"Multi-feed detection set: {detectionMode}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Multi-feed detection cap failed: {ex.Message}");
+                LogDiag($"Multi-feed detection cap failed: {ex.Message}");
             }
         }
     }
@@ -422,7 +590,7 @@ internal class ScanPipeline : IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Image transfer failed: {ex.Message}");
+            LogDiag($"Image transfer failed: {ex.Message}");
         }
     }
 
@@ -435,7 +603,7 @@ internal class ScanPipeline : IDisposable
     {
         if (e.DeviceEvent.Event == DeviceEvent.PaperDoubleFeed)
         {
-            System.Diagnostics.Debug.WriteLine("Multi-feed detected by scanner!");
+            LogDiag("Multi-feed detected by scanner!");
             _multiFeedDetected = true;
 
             // Get preview images: current page (last acquired) and previous page
@@ -460,7 +628,7 @@ internal class ScanPipeline : IDisposable
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Multi-feed dialog failed: {ex.Message}");
+                LogDiag($"Multi-feed dialog failed: {ex.Message}");
             }
 
             switch (action)
@@ -473,7 +641,7 @@ internal class ScanPipeline : IDisposable
 
                 case MultiFeedWarningDialog.MultiFeedAction.KeepAsIs:
                     // Continue scanning, keep current page
-                    System.Diagnostics.Debug.WriteLine("User chose to keep page despite multi-feed");
+                    LogDiag("User chose to keep page despite multi-feed");
                     break;
 
                 case MultiFeedWarningDialog.MultiFeedAction.DisableDetection:
@@ -482,11 +650,11 @@ internal class ScanPipeline : IDisposable
                     try
                     {
                         _currentSource?.Capabilities.CapDoubleFeedDetection.Reset();
-                        System.Diagnostics.Debug.WriteLine("Multi-feed detection disabled by user");
+                        LogDiag("Multi-feed detection disabled by user");
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Failed to disable multi-feed: {ex.Message}");
+                        LogDiag($"Failed to disable multi-feed: {ex.Message}");
                     }
                     break;
             }

@@ -1,8 +1,18 @@
 using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Presentation;
+using DocumentFormat.OpenXml.Spreadsheet;
+using DocumentFormat.OpenXml.Wordprocessing;
 using NTwain;
 using NTwain.Data;
+using A = DocumentFormat.OpenXml.Drawing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using Xdr = DocumentFormat.OpenXml.Drawing.Spreadsheet;
+using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 
 namespace SpeedScanManager;
 
@@ -41,6 +51,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     private DataSource? _persistentSource;
     private bool _deviceEventSubscribed;
     private WiaEventWatcher? _wiaWatcher;
+    private bool _quickMenuScanTriggered;
 
     // State machine for scanner connection
     private ScannerStatus _scannerStatus = ScannerStatus.Unknown;
@@ -290,46 +301,149 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
                 {
                     // Get save config
                     var (folder, formatMode, customName, digits) = GetSaveConfig();
-                    Directory.CreateDirectory(folder);
 
-                    var processor = new ScanOutputProcessor(_settings);
-                    var fileNames = processor.ProcessAndSave(images, folder, _settings, formatMode, customName, digits);
+                    // Determine if we need to show the PostScanSaveDialog (Scan to Folder)
+                    bool isScanToFolder = _quickMenuScanTriggered
+                        ? false  // Quick-Menü: PostScanMediaDialog handles folder selection
+                        : _currentApplicationType == ApplicationType.ScanToFolder;
 
-                    // If Scan to Print, keep copies of images for printing before disposal
-                    List<Bitmap>? imagesToPrint = null;
-                    if (_currentApplicationType == ApplicationType.ScanToPrint)
+                    // For non-QuickMenu Scan to Folder: keep images for the verify dialog
+                    List<Bitmap>? imagesForDialog = null;
+                    List<string> fileNames;
+
+                    if (isScanToFolder)
                     {
-                        imagesToPrint = images.Select(b => (Bitmap)b.Clone()).ToList();
+                        // Keep cloned images for the dialog, dispose originals
+                        imagesForDialog = images.Select(b => (Bitmap)b.Clone()).ToList();
+                        foreach (var img in images)
+                            img.Dispose();
+
+                        // Process on UI thread after dialog
+                        fileNames = new List<string>();
+                    }
+                    else
+                    {
+                        // Normal flow: save immediately
+                        Directory.CreateDirectory(folder);
+                        var processor = new ScanOutputProcessor(_settings);
+                        fileNames = processor.ProcessAndSave(images, folder, _settings, formatMode, customName, digits);
+
+                        // If Scan to Print, keep copies of images for printing before disposal
+                        List<Bitmap>? imagesToPrint = null;
+                        if (_currentApplicationType == ApplicationType.ScanToPrint || _quickMenuScanTriggered)
+                        {
+                            imagesToPrint = images.Select(b => (Bitmap)b.Clone()).ToList();
+                        }
+
+                        // Dispose images
+                        foreach (var img in images)
+                            img.Dispose();
+
+                        _hiddenWindow.BeginInvoke(() =>
+                        {
+                            if (fileNames.Count > 0)
+                            {
+                                _lastScanFiles = fileNames;
+                                Debug.WriteLine($"[Tray] Scan abgeschlossen: {fileNames.Count} Datei(en) erstellt.");
+
+                                if (_quickMenuScanTriggered)
+                                {
+                                    using var dlg = new PostScanMediaDialog(fileNames, imagesToPrint);
+                                    dlg.StartPosition = FormStartPosition.CenterParent;
+
+                                    if (dlg.ShowDialog(_hiddenWindow) == DialogResult.OK)
+                                    {
+                                        switch (dlg.SelectedMediaAction)
+                                        {
+                                            case PostScanMediaDialog.MediaAction.ScanToFolder:
+                                                OpenScanResultFolder();
+                                                break;
+
+                                            case PostScanMediaDialog.MediaAction.ScanToEmail:
+                                                OpenMailClient(fileNames);
+                                                break;
+
+                                            case PostScanMediaDialog.MediaAction.ScanToPrint:
+                                                if (imagesToPrint != null && imagesToPrint.Count > 0)
+                                                    PrintScannedImages(imagesToPrint);
+                                                break;
+
+                                            case PostScanMediaDialog.MediaAction.ScanToWord:
+                                                CreateWordDocument(fileNames);
+                                                break;
+
+                                            case PostScanMediaDialog.MediaAction.ScanToExcel:
+                                                CreateExcelDocument(fileNames);
+                                                break;
+
+                                            case PostScanMediaDialog.MediaAction.ScanToPowerPoint:
+                                                CreatePowerPointPresentation(fileNames);
+                                                break;
+
+                                            case PostScanMediaDialog.MediaAction.ScanPictureFolder:
+                                                SaveToPictureFolder(fileNames);
+                                                break;
+
+                                            case PostScanMediaDialog.MediaAction.EditWithPdf:
+                                                OpenPdfEditor(fileNames);
+                                                break;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    // No Quick-Menü → use configured application type directly
+                                    if (_currentApplicationType == ApplicationType.ScanToEmail)
+                                        OpenMailClient(fileNames);
+
+                                    if (_currentApplicationType == ApplicationType.ScanToPrint && imagesToPrint != null)
+                                        PrintScannedImages(imagesToPrint);
+                                }
+                            }
+                            else
+                            {
+                                Debug.WriteLine("[Tray] Scan abgeschlossen, aber keine Dateien erstellt.");
+                            }
+                        });
                     }
 
-                    // Dispose images
-                    foreach (var img in images)
-                        img.Dispose();
-
-                    _hiddenWindow.BeginInvoke(() =>
+                    // Scan to Folder without Quick-Menü: show verify dialog, then save
+                    if (isScanToFolder && imagesForDialog != null)
                     {
-                        if (fileNames.Count > 0)
+                        _hiddenWindow.BeginInvoke(() =>
                         {
-                            _lastScanFiles = fileNames;
-                            Debug.WriteLine($"[Tray] Scan abgeschlossen: {fileNames.Count} Datei(en) erstellt.");
+                            using var saveDlg = new PostScanSaveDialog(imagesForDialog, _settings);
+                            saveDlg.StartPosition = FormStartPosition.CenterParent;
 
-                            // Open mail client if Scan to E-Mail
-                            if (_currentApplicationType == ApplicationType.ScanToEmail)
+                            if (saveDlg.ShowDialog(_hiddenWindow) == DialogResult.OK)
                             {
-                                OpenMailClient(fileNames);
+                                string finalFolder = saveDlg.SelectedFolderPath;
+                                string finalTitle = saveDlg.SelectedTitle;
+                                Directory.CreateDirectory(finalFolder);
+
+                                var processor = new ScanOutputProcessor(_settings);
+                                fileNames = processor.ProcessAndSave(
+                                    imagesForDialog,
+                                    finalFolder,
+                                    _settings,
+                                    formatMode,
+                                    finalTitle,
+                                    digits);
+
+                                _lastScanFiles = fileNames;
+                                Debug.WriteLine($"[Tray] Scan gespeichert in: {finalFolder} ({fileNames.Count} Datei(en))");
+                                OpenScanResultFolder();
+                            }
+                            else
+                            {
+                                Debug.WriteLine("[Tray] Scan abgebrochen durch Verify-Dialog.");
                             }
 
-                            // Print if Scan to Print
-                            if (_currentApplicationType == ApplicationType.ScanToPrint && imagesToPrint != null)
-                            {
-                                PrintScannedImages(imagesToPrint);
-                            }
-                        }
-                        else
-                        {
-                            Debug.WriteLine("[Tray] Scan abgeschlossen, aber keine Dateien erstellt.");
-                        }
-                    });
+                            // Dispose dialog images
+                            foreach (var img in imagesForDialog)
+                                img.Dispose();
+                        });
+                    }
                 }
                 else if (!_scanPipeline.WasCancelled)
                 {
@@ -384,6 +498,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
             {
                 _currentApplicationType = _mainForm.ApplicationTab.SelectedApplicationType;
             }
+            _quickMenuScanTriggered = _mainForm.QuickMenuEnabled;
         }
     }
 
@@ -483,6 +598,288 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
             foreach (var img in images)
                 img.Dispose();
         }
+    }
+
+    private void CreateWordDocument(List<string> filePaths)
+    {
+        try
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), $"SpeedScanManager_Word_{DateTime.Now:yyyyMMddHHmmss}");
+            Directory.CreateDirectory(tempDir);
+            var docxPath = Path.Combine(tempDir, "ScanResult.docx");
+
+            using var doc = WordprocessingDocument.Create(docxPath, WordprocessingDocumentType.Document);
+
+            var mainPart = doc.AddMainDocumentPart();
+            mainPart.Document = new Document();
+            var body = new Body();
+
+            foreach (var imgFile in filePaths)
+            {
+                if (!File.Exists(imgFile)) continue;
+
+                var imagePart = mainPart.AddImagePart(GetImagePartType(imgFile));
+                using (var fs = File.OpenRead(imgFile))
+                {
+                    imagePart.FeedData(fs);
+                }
+
+                var relId = mainPart.GetIdOfPart(imagePart);
+                var drawing = new DocumentFormat.OpenXml.Wordprocessing.Drawing(CreateInlineDrawing(relId));
+                var paragraph = new Paragraph(new DocumentFormat.OpenXml.Wordprocessing.Run(drawing));
+                body.Append(paragraph);
+            }
+
+            mainPart.Document.Append(body);
+            mainPart.Document.Save();
+
+            Process.Start(new ProcessStartInfo { FileName = docxPath, UseShellExecute = true });
+            Debug.WriteLine("[Tray] Word-Dokument erstellt und geöffnet.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"CreateWordDocument failed: {ex.Message}");
+            Debug.WriteLine($"[Tray] Word-Erstellung fehlgeschlagen: {ex.Message}");
+        }
+    }
+
+    private void CreateExcelDocument(List<string> filePaths)
+    {
+        try
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), $"SpeedScanManager_Excel_{DateTime.Now:yyyyMMddHHmmss}");
+            Directory.CreateDirectory(tempDir);
+            var xlsxPath = Path.Combine(tempDir, "ScanResult.xlsx");
+
+            using var doc = SpreadsheetDocument.Create(xlsxPath, SpreadsheetDocumentType.Workbook);
+
+            var wbPart = doc.AddWorkbookPart();
+            wbPart.Workbook = new Workbook();
+            var wsPart = wbPart.AddNewPart<WorksheetPart>();
+            wsPart.Worksheet = new Worksheet(new SheetData());
+
+            var sheets = wbPart.Workbook.AppendChild(new Sheets());
+            sheets.AppendChild(new Sheet
+            {
+                Id = wbPart.GetIdOfPart(wsPart),
+                SheetId = 1,
+                Name = "Scan"
+            });
+
+            var drawingsPart = wsPart.AddNewPart<DrawingsPart>();
+            wsPart.Worksheet.AppendChild(new DocumentFormat.OpenXml.Spreadsheet.Drawing
+            {
+                Id = wsPart.GetIdOfPart(drawingsPart)
+            });
+
+            var drawing = new Xdr.WorksheetDrawing();
+            uint drawingId = 1;
+            int rowOffset = 0;
+
+            foreach (var imgFile in filePaths)
+            {
+                if (!File.Exists(imgFile)) continue;
+
+                var imagePart = drawingsPart.AddImagePart(GetImagePartType(imgFile));
+                using (var fs = File.OpenRead(imgFile))
+                {
+                    imagePart.FeedData(fs);
+                }
+                var relId = drawingsPart.GetIdOfPart(imagePart);
+
+                var anchor = new Xdr.AbsoluteAnchor
+                {
+                    Position = new Xdr.Position { X = 0, Y = rowOffset },
+                    Extent = new Xdr.Extent { Cx = 6000000, Cy = 8000000 }
+                };
+                anchor.AppendChild(new A.Blip { Embed = relId });
+                drawing.AppendChild(anchor);
+                drawingId++;
+                rowOffset += 8200000;
+            }
+
+            drawingsPart.WorksheetDrawing = drawing;
+            wbPart.Workbook.Save();
+
+            Process.Start(new ProcessStartInfo { FileName = xlsxPath, UseShellExecute = true });
+            Debug.WriteLine("[Tray] Excel-Dokument erstellt und geöffnet.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"CreateExcelDocument failed: {ex.Message}");
+            Debug.WriteLine($"[Tray] Excel-Erstellung fehlgeschlagen: {ex.Message}");
+        }
+    }
+
+    private void CreatePowerPointPresentation(List<string> filePaths)
+    {
+        try
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), $"SpeedScanManager_Pptx_{DateTime.Now:yyyyMMddHHmmss}");
+            Directory.CreateDirectory(tempDir);
+            var pptxPath = Path.Combine(tempDir, "ScanResult.pptx");
+
+            using var doc = PresentationDocument.Create(pptxPath, PresentationDocumentType.Presentation);
+
+            var presPart = doc.AddPresentationPart();
+            presPart.Presentation = new Presentation();
+            var slideIdList = new SlideIdList();
+            presPart.Presentation.Append(slideIdList);
+
+            var slideMasterPart = presPart.AddNewPart<SlideMasterPart>();
+            slideMasterPart.SlideMaster = new SlideMaster(
+                new CommonSlideData(),
+                new ColorMap(),
+                new SlideLayoutIdList(),
+                new TextStyles());
+            slideMasterPart.SlideMaster.Save();
+
+            var slideLayoutPart = slideMasterPart.AddNewPart<SlideLayoutPart>();
+            slideLayoutPart.SlideLayout = new SlideLayout(
+                new CommonSlideData(),
+                new ColorMapOverride());
+            slideLayoutPart.SlideLayout.Save();
+
+            presPart.Presentation.SlideMasterIdList = new SlideMasterIdList(
+                new SlideMasterId { Id = 2147483648U, RelationshipId = presPart.GetIdOfPart(slideMasterPart) });
+
+            presPart.Presentation.SlideSize = new SlideSize { Cx = 9144000, Cy = 6858000 };
+            presPart.Presentation.NotesSize = new NotesSize { Cx = 6858000, Cy = 9144000 };
+
+            uint slideIdx = 1;
+            foreach (var imgFile in filePaths)
+            {
+                if (!File.Exists(imgFile)) continue;
+
+                var slidePart = presPart.AddNewPart<SlidePart>();
+                slidePart.Slide = new Slide(
+                    new CommonSlideData(
+                        new ShapeTree(
+                            new NonVisualGroupShapeProperties(
+                                new NonVisualDrawingProperties { Id = 1U, Name = "Group 1" },
+                                new NonVisualGroupShapeProperties()),
+                            new GroupShapeProperties(new A.TransformGroup()))));
+
+                var imagePart = slidePart.AddImagePart(GetImagePartType(imgFile));
+                using (var fs = File.OpenRead(imgFile))
+                {
+                    imagePart.FeedData(fs);
+                }
+                var relId = slidePart.GetIdOfPart(imagePart);
+
+                var shapeTree = slidePart.Slide.CommonSlideData!.ShapeTree!;
+                shapeTree.AppendChild(new DocumentFormat.OpenXml.Presentation.Picture(
+                    new NonVisualPictureProperties(
+                        new NonVisualDrawingProperties { Id = 2U, Name = $"Image {slideIdx}" },
+                        new NonVisualPictureDrawingProperties()),
+                    new BlipFill(
+                        new A.Blip { Embed = relId },
+                        new A.Stretch(new A.FillRectangle())),
+                    new ShapeProperties(
+                        new A.Transform2D(
+                            new A.Offset { X = 457200, Y = 342900 },
+                            new A.Extents { Cx = 8229600, Cy = 6172200 }))));
+
+                slideIdList.AppendChild(new SlideId
+                {
+                    Id = 256U + slideIdx,
+                    RelationshipId = presPart.GetIdOfPart(slidePart)
+                });
+                slideIdx++;
+            }
+
+            presPart.Presentation.Save();
+
+            Process.Start(new ProcessStartInfo { FileName = pptxPath, UseShellExecute = true });
+            Debug.WriteLine("[Tray] PowerPoint-Präsentation erstellt und geöffnet.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"CreatePowerPointPresentation failed: {ex.Message}");
+            Debug.WriteLine($"[Tray] PowerPoint-Erstellung fehlgeschlagen: {ex.Message}");
+        }
+    }
+
+    private void SaveToPictureFolder(List<string> filePaths)
+    {
+        try
+        {
+            var picsPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                "SpeedScanManager",
+                $"Scan_{DateTime.Now:yyyyMMdd_HHmmss}");
+
+            Directory.CreateDirectory(picsPath);
+
+            foreach (var imgFile in filePaths)
+            {
+                if (!File.Exists(imgFile)) continue;
+                var dest = Path.Combine(picsPath, Path.GetFileName(imgFile));
+                File.Copy(imgFile, dest, true);
+            }
+
+            Process.Start(new ProcessStartInfo { FileName = picsPath, UseShellExecute = true });
+            Debug.WriteLine($"[Tray] Bilder gespeichert in: {picsPath}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"SaveToPictureFolder failed: {ex.Message}");
+            Debug.WriteLine($"[Tray] Bilder-Ordner fehlgeschlagen: {ex.Message}");
+        }
+    }
+
+    private void OpenPdfEditor(List<string> filePaths)
+    {
+        try
+        {
+            foreach (var f in filePaths.Where(File.Exists))
+            {
+                Process.Start(new ProcessStartInfo { FileName = f, UseShellExecute = true });
+            }
+            Debug.WriteLine("[Tray] PDF-Editor geöffnet.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"OpenPdfEditor failed: {ex.Message}");
+            Debug.WriteLine($"[Tray] PDF-Editor fehlgeschlagen: {ex.Message}");
+        }
+    }
+
+    private static PartTypeInfo GetImagePartType(string filePath)
+    {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        return ext switch
+        {
+            ".jpeg" or ".jpg" => ImagePartType.Jpeg,
+            ".png" => ImagePartType.Png,
+            ".bmp" => ImagePartType.Bmp,
+            ".gif" => ImagePartType.Gif,
+            ".tiff" or ".tif" => ImagePartType.Tiff,
+            _ => ImagePartType.Jpeg
+        };
+    }
+
+    private static DW.Inline CreateInlineDrawing(string relId)
+    {
+        return new DW.Inline
+        {
+            Extent = new DW.Extent { Cx = 6000000, Cy = 8000000 },
+            DocProperties = new DW.DocProperties { Id = 1, Name = "Scan Image" },
+            Graphic = new A.Graphic(
+                new A.GraphicData(
+                    new PIC.Picture(
+                        new PIC.NonVisualPictureProperties(
+                            new PIC.NonVisualDrawingProperties { Id = 0, Name = "Scan" },
+                            new PIC.NonVisualPictureDrawingProperties()),
+                        new PIC.BlipFill(
+                            new A.Blip { Embed = relId },
+                            new A.Stretch(new A.FillRectangle())),
+                        new PIC.ShapeProperties(
+                            new A.Transform2D(
+                                new A.Offset { X = 0, Y = 0 },
+                                new A.Extents { Cx = 6000000, Cy = 8000000 }))))
+                { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
+        };
     }
 
     private void ShowMainForm()

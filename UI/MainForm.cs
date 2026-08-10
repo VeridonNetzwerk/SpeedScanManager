@@ -35,6 +35,7 @@ internal class MainForm : Form
     public SaveTabContent? SaveTab => _saveTabContent;
     public ApplicationTabContent? ApplicationTab => _applicationTabContent;
     public PaperTabContent? PaperTab => _paperTabContent;
+    public bool QuickMenuEnabled => _quickMenuCheckBox.Checked;
     private ScanModeTabContent? _scanModeTabContent;
     private FileTypeTabContent? _fileTypeTabContent;
     private PaperTabContent? _paperTabContent;
