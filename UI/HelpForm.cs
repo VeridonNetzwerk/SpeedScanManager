@@ -32,8 +32,11 @@ internal class HelpForm : Form
     private static readonly Color NavTabInactive = SystemColors.Control;
     private static readonly Font UiFont = new("Microsoft Sans Serif", 8.25f);
 
-    public HelpForm()
+    private readonly string _initialTopic;
+
+    public HelpForm(string? topicId = null)
     {
+        _initialTopic = topicId ?? "root";
         Text = "SpeedScan Manager Hilfe";
         ClientSize = new Size(780, 560);
         StartPosition = FormStartPosition.CenterParent;
@@ -197,7 +200,7 @@ internal class HelpForm : Form
             _split.Panel1MinSize = 150;
             _split.Panel2MinSize = 300;
             _split.SplitterDistance = 280;
-            NavigateTo("root");
+            NavigateTo(_initialTopic);
         };
     }
 
@@ -371,7 +374,20 @@ internal class HelpForm : Form
         if (!string.IsNullOrEmpty(fragment2))
         {
             e.Cancel = true;
-            NavigateTo(fragment2.TrimStart('#'));
+            var frag = fragment2.TrimStart('#');
+            if (_topicMap.ContainsKey(frag))
+                NavigateTo(frag);
+            return;
+        }
+
+        // Fallback: parse fragment from the full URL string
+        var hashInUrl = url.IndexOf('#');
+        if (hashInUrl >= 0)
+        {
+            e.Cancel = true;
+            var frag = url.Substring(hashInUrl + 1);
+            if (_topicMap.ContainsKey(frag))
+                NavigateTo(frag);
             return;
         }
 
@@ -679,7 +695,7 @@ internal class HelpForm : Form
     {
         if (disposing)
         {
-            UiFont.Dispose();
+            // UiFont is static readonly — do not dispose
         }
         base.Dispose(disposing);
     }

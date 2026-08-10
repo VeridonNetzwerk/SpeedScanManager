@@ -221,12 +221,7 @@ internal class FileNameFormatDialog : Form
             Font = font,
             Margin = Padding.Empty
         };
-        btnHelp.Click += (s, e) => MessageBox.Show(
-            "Wählen Sie ein Dateinamenformat.\n\n" +
-            "Bei 'Benutzerdefinierter Dateiname' können Sie einen eigenen Namen " +
-            "und die Anzahl der Zählerstellen festlegen.",
-            "Hilfe – Dateinamenformat",
-            MessageBoxButtons.OK, MessageBoxIcon.Information);
+        btnHelp.Click += (s, e) => { using var h = new HelpForm("filename-format"); h.ShowDialog(this); };
 
         var btnApply = new Button
         {

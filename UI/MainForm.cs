@@ -52,6 +52,7 @@ internal class MainForm : Form
     private Button? _activePreset;
     private readonly ProfileManager _profileManager;
     private ScanSettings? _snapshot;
+    private bool _quickMenuSnapshot;
 
     // Layout constants
     private const int ClientWidth = 686;
@@ -79,7 +80,7 @@ internal class MainForm : Form
         HelpButtonClicked += (s, e) =>
         {
             e.Cancel = true;
-            using var help = new HelpForm();
+            using var help = new HelpForm("settings");
             help.ShowDialog(this);
         };
         StartPosition = FormStartPosition.CenterScreen;
@@ -201,15 +202,15 @@ internal class MainForm : Form
             Text = "Profil:",
             AutoSize = true,
             Font = contentFont,
-            Anchor = AnchorStyles.Left,
-            Padding = new Padding(0, 3, 4, 0)
+            Visible = false
         };
 
         _profileDropdown = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             Font = contentFont,
-            Dock = DockStyle.Fill
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+            Visible = false
         };
 
         _profileSelectorPanel = new Panel
@@ -218,18 +219,6 @@ internal class MainForm : Form
             Visible = false,
             BackColor = Color.FromArgb(235, 235, 235)
         };
-        var profileLayout = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
-            AutoSize = false,
-            Padding = new Padding(0, 1, 0, 0),
-            BackColor = Color.FromArgb(235, 235, 235)
-        };
-        profileLayout.Controls.Add(_profileLabel);
-        profileLayout.Controls.Add(_profileDropdown);
-        _profileSelectorPanel.Controls.Add(profileLayout);
 
         RefreshProfileDropdown();
         _profileDropdown.SelectedIndexChanged += (s, e) => OnProfileSelected();
@@ -237,7 +226,25 @@ internal class MainForm : Form
         // Add profile selector to the 4th column (replaces Benutzerdefiniert when Quick-Menü is off)
         presetTable.Controls.Add(_profileSelectorPanel, 7, 0);
 
-        _topPanel.Controls.Add(_presetPanel);
+        // Position profile label and dropdown above/in the 4th preset column
+        _topPanel.Layout += (s, e) =>
+        {
+            if (_presetPanel.Width > 0)
+            {
+                var widths = ((TableLayoutPanel)_presetPanel).GetColumnWidths();
+                int x = 0;
+                for (int i = 0; i < 7; i++) x += widths[i];
+                int colWidth = widths.Length > 7 ? widths[7] : 100;
+                _profileLabel.Location = new Point(x, 86 - 13);
+                _profileDropdown.Location = new Point(x, 86 + 2);
+                _profileDropdown.Width = colWidth;
+                _profileDropdown.BringToFront();
+                _profileLabel.BringToFront();
+            }
+        };
+        _topPanel.Controls.Add(_profileDropdown);
+        _topPanel.Controls.Add(_profileLabel);
+        Load += (s, e) => _topPanel.PerformLayout();
         _tabControl = new TabControl
         {
             Dock = DockStyle.Fill,
@@ -392,6 +399,7 @@ internal class MainForm : Form
 
         // Take initial snapshot for Cancel restore
         _snapshot = _scanSettings.Clone();
+        _quickMenuSnapshot = _quickMenuCheckBox.Checked;
 
         // Wire tab content changes to enable Apply button
         WireTabContentChanges();
@@ -511,6 +519,8 @@ internal class MainForm : Form
         // 4th column: Benutzerdefiniert (Quick on) vs Profil dropdown (Quick off)
         _btnCustom.Visible = useQuick;
         _profileSelectorPanel.Visible = !useQuick;
+        _profileLabel.Visible = !useQuick;
+        _profileDropdown.Visible = !useQuick;
 
         // Disable Anwendung tab when Quick-Menü is on
         _applicationTabContent!.Enabled = !useQuick;
@@ -521,7 +531,7 @@ internal class MainForm : Form
             _tabControl.SelectedIndex = 1;
     }
 
-    private void RefreshProfileDropdown()
+    public void RefreshProfileDropdown()
     {
         _profileDropdown.Items.Clear();
         foreach (var profile in _profileManager.Profiles)
@@ -650,6 +660,10 @@ internal class MainForm : Form
             _detailButton.Text = "Ausblenden";
             _detailButton.Image = _upArrowIcon;
             _tabControl.Visible = true;
+
+            // When Quick-Menü is on, never show the Anwendung tab
+            if (_quickMenuCheckBox.Checked && _tabControl.SelectedIndex == 0)
+                _tabControl.SelectedIndex = 1; // Speichern
         }
         else
         {
@@ -679,6 +693,7 @@ internal class MainForm : Form
         // Settings are already live in _scanSettings via direct modification.
         // Take a new snapshot so Cancel won't revert past this point.
         _snapshot = _scanSettings.Clone();
+        _quickMenuSnapshot = _quickMenuCheckBox.Checked;
         _applyButton.Enabled = false;
     }
 
@@ -691,7 +706,9 @@ internal class MainForm : Form
 
     private void OnSettingsChanged()
     {
-        _applyButton.Enabled = true;
+        bool settingsChanged = !_scanSettings.SettingsEqual(_snapshot!);
+        bool quickMenuChanged = _quickMenuCheckBox.Checked != _quickMenuSnapshot;
+        _applyButton.Enabled = settingsChanged || quickMenuChanged;
     }
 
     /// <summary>
@@ -729,7 +746,7 @@ internal class MainForm : Form
     private void WireTabContentChanges()
     {
         // Wire quick-menu checkbox
-        _quickMenuCheckBox.CheckedChanged += (s, e) => OnSettingsChanged();
+        _quickMenuCheckBox.CheckedChanged += (s, e) => { OnQuickMenuToggled(); OnSettingsChanged(); };
 
         // Wire all tab pages
         foreach (TabPage page in _tabControl.TabPages)
@@ -740,11 +757,12 @@ internal class MainForm : Form
 
     private void TabControl_Selecting(object? sender, TabControlCancelEventArgs e)
     {
-        // Prevent selecting the Anwendung tab when Quick-Menü is on — redirect to Speichern
+        // Prevent selecting the Anwendung tab when Quick-Menü is on
         if (e.TabPageIndex == 0 && _quickMenuCheckBox.Checked)
         {
             e.Cancel = true;
-            _tabControl.SelectedIndex = 1; // Speichern tab
+            // Use BeginInvoke to switch to Speichern after the event completes
+            _tabControl.BeginInvoke(() => _tabControl.SelectedIndex = 1);
         }
     }
 

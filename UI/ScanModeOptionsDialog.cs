@@ -178,12 +178,7 @@ internal class ScanModeOptionsDialog : Form
             Size = new Size(75, 28),
             Font = font
         };
-        btnHelp.Click += (s, e) => MessageBox.Show(
-            "Der Helligkeits-Slider ist nur für Schwarz-Weiß-Scans verfügbar.\n" +
-            "Verschieben Sie den Regler nach links für hellere oder nach rechts für dunklere Scans.",
-            "Hilfe – Helligkeit",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information);
+        btnHelp.Click += (s, e) => { using var h = new HelpForm("scanmode-options"); h.ShowDialog(this); };
 
         var buttonPanel = new TableLayoutPanel
         {

@@ -111,7 +111,11 @@ internal static class HelpContent
                 TopicCarrierSheetDialog(),
                 TopicCustomSizeDialog(),
                 TopicSerializeDialog(),
-                TopicPasswordDialog()
+                TopicPasswordDialog(),
+                TopicPreferencesDialog(),
+                TopicVersionInfoDialog(),
+                TopicPostScanMediaDialog(),
+                TopicScannerDriverInfoDialog()
             ),
             new HelpTopic("profiles", "Profile",
                 TopicProfileManagement(),
@@ -136,7 +140,7 @@ internal static class HelpContent
 
     private static HelpTopic TopicOverview() => new("overview", "Überblick",
         Wrap("Überblick", @"
-        <p>SpeedScan Manager ist eine Software für den Betrieb von Fujitsu fi-Scanner-Serien.
+        <p>SpeedScan Manager ist eine Software für den Betrieb von TWAIN-kompatiblen Scannern.
         Mit SpeedScan Manager können Sie Dokumente einfach und schnell scannen und die gescannten
         Bilder in verschiedenen Formaten speichern oder weiterverarbeiten.</p>
 
@@ -255,8 +259,25 @@ internal static class HelpContent
         <ol>
             <li>Legen Sie die Dokumente in den Scanner ein.</li>
             <li>Drücken Sie die Scan-Taste am Scanner oder starten Sie den Scan über das Tray-Kontextmenü.</li>
-            <li>Wählen Sie im Quick-Menü die gewünschte Aktion (z. B. Scan to Folder, Scan to E-Mail, Scan to Print).</li>
+            <li>Wählen Sie im Quick-Menü die gewünschte Aktion:</li>
         </ol>
+        <ul>
+            <li>Scan to Folder</li>
+            <li>Scan to E-Mail</li>
+            <li>Scan to Print</li>
+            <li>Scan to Word</li>
+            <li>Scan to Excel</li>
+            <li>Scan to PowerPoint</li>
+            <li>Scan Picture Folder</li>
+            <li>Edit with PDF</li>
+        </ul>
+
+        <div class='note'>
+            <div class='note-title'>HINWEIS</div>
+            <p>Wenn das Quick-Menü aktiviert ist, ist die [Anwendung] Registerkarte im
+            Einstellungsdialogfeld deaktiviert. Die Anwendung wird stattdessen nach dem Scannen
+            über das Quick-Menü ausgewählt.</p>
+        </div>
 
         <h2>Voreingestellte Profile</h2>
         <ul>
@@ -325,6 +346,9 @@ internal static class HelpContent
             <li><b>Scan to Folder</b> – Das <a href='#scan-folder-dialog'>[Scan to Folder] Dialogfeld</a> erscheint</li>
             <li><b>Scan to E-Mail</b> – Das <a href='#email-dialog'>[Scan to E-Mail] Dialogfeld</a> erscheint (falls Vorschau aktiviert)</li>
             <li><b>Scan to Print</b> – Das <a href='#print-dialog'>[Scan to Print] Dialogfeld</a> erscheint (falls Druckdialog aktiviert)</li>
+            <li><b>Scan to Word / Excel / PowerPoint</b> – Die gescannten Daten werden an die jeweilige Anwendung übergeben</li>
+            <li><b>Scan Picture Folder</b> – Bilder werden im Bildordner gespeichert</li>
+            <li><b>Edit with PDF</b> – Die PDF-Datei wird in einem PDF-Editor geöffnet</li>
         </ul>
     "));
 
@@ -433,6 +457,11 @@ internal static class HelpContent
             <li>Scan to Folder</li>
             <li>Scan to E-Mail</li>
             <li>Scan to Print</li>
+            <li>Scan to Word</li>
+            <li>Scan to Excel</li>
+            <li>Scan to PowerPoint</li>
+            <li>Scan Picture Folder</li>
+            <li>Edit with PDF</li>
         </ul>
         <p>Weitere Anwendungen können über das [Anwendung hinzufügen/entfernen] Dialogfeld hinzugefügt werden.</p>
 
@@ -793,10 +822,10 @@ internal static class HelpContent
 
         <h2>Elemente</h2>
         <p><b>[Umbenennen] Taste</b> – Ändert die ausgewählte Profilbezeichnung.
-        [Standard] kann nicht umbenannt werden.</p>
+        Alle Profile können umbenannt werden.</p>
 
         <p><b>[Löschen] Taste</b> – Löscht das gewählte Profil.
-        [Standard] kann nicht gelöscht werden.</p>
+        Alle Profile können gelöscht werden.</p>
 
         <p><b>[Oben] Taste</b> – Verschiebt das Profil um eine Position nach oben.</p>
         <p><b>[Unten] Taste</b> – Verschiebt das Profil um eine Position nach unten.</p>
@@ -804,7 +833,7 @@ internal static class HelpContent
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
-            <p>Die Anzeigeposition von [Standard] kann nicht geändert werden.</p>
+            <p>Alle Profile können frei umbenannt, gelöscht und neu angeordnet werden.</p>
         </div>
     "));
 
@@ -1095,17 +1124,16 @@ internal static class HelpContent
             <tr><td>Automatisches Löschen leerer Seiten</td><td>Aktiviert</td></tr>
         </table>
 
-        <h2>Grundeinstellungen von [Standard]</h2>
+        <h2>Standardprofile</h2>
+        <p>Beim ersten Start werden folgende Standardprofile erstellt:</p>
         <table>
-            <tr><th>Einstellung</th><th>Grundeinstellung</th></tr>
-            <tr><td>Anwendung</td><td>Scan to Folder</td></tr>
-            <tr><td>Bildqualität</td><td>Automatisch</td></tr>
-            <tr><td>Farbmodus</td><td>Automatische Farberkennung</td></tr>
-            <tr><td>Scan-Seite</td><td>Automatisch</td></tr>
-            <tr><td>Dateiformat</td><td>PDF (*.pdf)</td></tr>
-            <tr><td>Papiergröße</td><td>Automatische Erkennung</td></tr>
-            <tr><td>Komprimierungsrate</td><td>Stufe 3 von 5</td></tr>
+            <tr><th>Profil</th><th>Anwendung</th><th>Bildqualität</th><th>Komprimierungsrate</th></tr>
+            <tr><td>Scan to Folder</td><td>Scan to Folder</td><td>Automatisch</td><td>Stufe 3</td></tr>
+            <tr><td>Empfohlen</td><td>Scan to Folder</td><td>Automatisch</td><td>Stufe 3</td></tr>
+            <tr><td>Kleine Datei</td><td>Scan to Folder</td><td>Normal</td><td>Stufe 5</td></tr>
+            <tr><td>Hohe Bildqualität</td><td>Scan to Folder</td><td>Fein</td><td>Stufe 1</td></tr>
         </table>
+        <p>Alle Standardprofile können umbenannt, gelöscht und neu angeordnet werden.</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
@@ -1340,6 +1368,98 @@ internal static class HelpContent
                 <li><a href='#filetype-tab'>[Dateiart] Registerkarte</a></li>
             </ul>
         </div>
+    "));
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Zusätzliche Dialogfelder
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static HelpTopic TopicPreferencesDialog() => new("preferences", "[Präferenzen] Dialogfeld",
+        Wrap("[Präferenzen] Dialogfeld", @"
+        <p>In diesem Dialogfeld können Sie Einstellungen für Statusanzeigen und Bestätigungsmeldungen
+        festlegen.</p>
+
+        <h2>Statusanzeige Registerkarte</h2>
+        <p><b>Benachrichtigung des Kommunikationsstatus</b> – Wenn aktiviert, wird beim Verbinden
+        oder Trennen des Scanners eine Popup-Benachrichtigung angezeigt.</p>
+        <p><b>Status des Scanvorgangs anzeigen</b> – Wenn aktiviert, wird der Scan-Status als
+        Benachrichtigung angezeigt (empfohlen).</p>
+
+        <h2>Bestätigung Registerkarte</h2>
+        <p><b>Bestätigungsmeldung beim Start</b> – Zeigt beim Start von SpeedScan Manager eine
+        Bestätigungsmeldung an.</p>
+        <p><b>Bestätigungsmeldung beim Flachbettscannen</b> – Zeigt eine Bestätigungsmeldung an,
+        wenn der automatische Erkennungsmodus aktiviert ist und über das Flachbett gescannt wird.</p>
+
+        <h2>Tasten</h2>
+        <p><b>[OK] Taste</b> – Einstellungen übernehmen und Dialogfeld schließen.</p>
+        <p><b>[Abbrechen] Taste</b> – Einstellungen verwerfen und Dialogfeld schließen.</p>
+        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
+    "));
+
+    private static HelpTopic TopicVersionInfoDialog() => new("version-info", "[Versionsinformationen] Dialogfeld",
+        Wrap("[Versionsinformationen] Dialogfeld", @"
+        <p>In diesem Dialogfeld werden Versionsinformationen zu SpeedScan Manager und den
+        verwendeten Komponenten angezeigt.</p>
+
+        <h2>Elemente</h2>
+        <p><b>Logo und Versionsnummer</b> – Zeigt das SpeedScan Manager Logo und die aktuelle
+        Version an.</p>
+        <p><b>Lizenzinformationen</b> – Zeigt Informationen zur GPL-3.0-Lizenz und die
+        Copyright-Hinweise an.</p>
+        <p><b>Verwendete Komponenten</b> – Listet die verwendeten Bibliotheken auf:</p>
+        <ul>
+            <li>NTwain (TWAIN-Unterstützung)</li>
+            <li>Tesseract.NET (OCR-Engine)</li>
+            <li>PdfPig (PDF-Verarbeitung)</li>
+        </ul>
+        <p><b>[Detail...] Taste</b> – Öffnet das Dialogfeld für Scanner- und Treiberinformationen.</p>
+        <p><b>[OK] Taste</b> – Schließt das Dialogfeld.</p>
+        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
+    "));
+
+    private static HelpTopic TopicPostScanMediaDialog() => new("postscan-media", "[Quick-Menü] Dialogfeld",
+        Wrap("[Quick-Menü] Dialogfeld", @"
+        <p>Nach dem Scannen wird dieses Dialogfeld angezeigt, wenn das Quick-Menü aktiviert ist.
+        Wählen Sie eine Aktion für die gescannten Dokumente aus.</p>
+
+        <h2>Verfügbare Aktionen</h2>
+        <ul>
+            <li><b>Scan to Folder</b> – Speichert die gescannten Bilder in einem Ordner.</li>
+            <li><b>Scan to E-mail</b> – Versendet die gescannten Bilder als E-Mail-Anhang.</li>
+            <li><b>Scan to Print</b> – Druckt die gescannten Bilder direkt.</li>
+            <li><b>Scan to Word</b> – Erstellt ein Word-Dokument mit den gescannten Bildern.</li>
+            <li><b>Scan to Excel</b> – Erstellt eine Excel-Datei mit den gescannten Bildern.</li>
+            <li><b>Scan to PowerPoint</b> – Erstellt eine PowerPoint-Präsentation mit den gescannten Bildern.</li>
+            <li><b>Scan Picture Folder</b> – Speichert die Bilder als Bilddateien in einem Ordner.</li>
+            <li><b>Edit with PDF Edit</b> – Öffnet die gescannte PDF-Datei zur Bearbeitung.</li>
+        </ul>
+
+        <h2>Bedienung</h2>
+        <p>Klicken Sie auf eine Aktion, um sie auszuwählen. Doppelklicken Sie, um die Aktion
+        direkt auszuführen. Alternativ wählen Sie eine Aktion aus und klicken Sie auf
+        <b>[Speichern]</b>.</p>
+
+        <p><b>[Speichern] Taste</b> – Führt die ausgewählte Aktion aus.</p>
+        <p><b>[Abbrechen] Taste</b> – Bricht ab und schließt das Dialogfeld.</p>
+    "));
+
+    private static HelpTopic TopicScannerDriverInfoDialog() => new("driver-info", "[Scanner- und Treiberinformationen] Dialogfeld",
+        Wrap("[Scanner- und Treiberinformationen] Dialogfeld", @"
+        <p>In diesem Dialogfeld werden detaillierte Informationen zum angeschlossenen Scanner
+        und den installierten Treiberkomponenten angezeigt.</p>
+
+        <h2>Elemente</h2>
+        <p><b>Scanner-Informationen</b> – Zeigt Modellname, Seriennummer und Firmware-Version
+        des angeschlossenen Scanners an.</p>
+        <p><b>Treiber-Versionen</b> – Listet die Versionen der verwendeten Bibliotheken auf:</p>
+        <ul>
+            <li>NTwain (TWAIN-Treiber-Bibliothek)</li>
+            <li>Tesseract (OCR-Engine)</li>
+            <li>PdfPig (PDF-Verarbeitung)</li>
+        </ul>
+        <p><b>[OK] Taste</b> – Schließt das Dialogfeld.</p>
+        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
     "));
 
     /// <summary>

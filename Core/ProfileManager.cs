@@ -58,10 +58,11 @@ internal class ProfileManager
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             "SpeedScanManager");
 
+        // Scan to Folder
         Profiles.Add(new ScanProfile
         {
-            Name = "Standard",
-            IsBuiltIn = true,
+            Name = "Scan to Folder",
+            IsBuiltIn = false,
             ApplicationType = ApplicationType.ScanToFolder,
             FolderPath = defaultFolder,
             FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp,
@@ -69,15 +70,46 @@ internal class ProfileManager
             CounterDigits = 3
         });
 
+        // Empfohlen (Quick-Menu preset)
         Profiles.Add(new ScanProfile
         {
-            Name = "Scan to Folder",
-            IsBuiltIn = true,
+            Name = "Empfohlen",
+            IsBuiltIn = false,
             ApplicationType = ApplicationType.ScanToFolder,
             FolderPath = defaultFolder,
             FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp,
             CustomFileName = "unbenannt",
-            CounterDigits = 3
+            CounterDigits = 3,
+            ImageQuality = ImageQuality.Automatic,
+            CompressionRate = 3
+        });
+
+        // Kleine Datei (Quick-Menu preset)
+        Profiles.Add(new ScanProfile
+        {
+            Name = "Kleine Datei",
+            IsBuiltIn = false,
+            ApplicationType = ApplicationType.ScanToFolder,
+            FolderPath = defaultFolder,
+            FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp,
+            CustomFileName = "unbenannt",
+            CounterDigits = 3,
+            ImageQuality = ImageQuality.Normal,
+            CompressionRate = 5
+        });
+
+        // Hohe Bildqualität (Quick-Menu preset)
+        Profiles.Add(new ScanProfile
+        {
+            Name = "Hohe Bildqualität",
+            IsBuiltIn = false,
+            ApplicationType = ApplicationType.ScanToFolder,
+            FolderPath = defaultFolder,
+            FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp,
+            CustomFileName = "unbenannt",
+            CounterDigits = 3,
+            ImageQuality = ImageQuality.Fine,
+            CompressionRate = 1
         });
 
         Save();
@@ -110,7 +142,7 @@ internal class ProfileManager
 
     public void RemoveProfile(int index)
     {
-        if (index >= 0 && index < Profiles.Count && !Profiles[index].IsBuiltIn)
+        if (index >= 0 && index < Profiles.Count)
         {
             Profiles.RemoveAt(index);
             Save();
@@ -119,7 +151,7 @@ internal class ProfileManager
 
     public void RenameProfile(int index, string newName)
     {
-        if (index >= 0 && index < Profiles.Count && !Profiles[index].IsBuiltIn)
+        if (index >= 0 && index < Profiles.Count)
         {
             Profiles[index].Name = newName;
             Save();
@@ -128,7 +160,7 @@ internal class ProfileManager
 
     public void MoveUp(int index)
     {
-        if (index > 0 && index < Profiles.Count && !Profiles[index].IsBuiltIn)
+        if (index > 0 && index < Profiles.Count)
         {
             (Profiles[index - 1], Profiles[index]) = (Profiles[index], Profiles[index - 1]);
             Save();
@@ -137,7 +169,7 @@ internal class ProfileManager
 
     public void MoveDown(int index)
     {
-        if (index >= 0 && index < Profiles.Count - 1 && !Profiles[index].IsBuiltIn)
+        if (index >= 0 && index < Profiles.Count - 1)
         {
             (Profiles[index + 1], Profiles[index]) = (Profiles[index], Profiles[index + 1]);
             Save();

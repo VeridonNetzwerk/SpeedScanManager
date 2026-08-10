@@ -4,8 +4,7 @@ using System.Drawing.Drawing2D;
 namespace SpeedScanManager;
 
 /// <summary>
-/// Renders detailed 3D-style icons for the PostScanMediaDialog grid items,
-/// matching the Fujitsu ScanSnap original visual style.
+/// Renders detailed 3D-style icons for the PostScanMediaDialog grid items.
 /// </summary>
 internal static class PostScanIcons
 {

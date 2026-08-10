@@ -10,6 +10,7 @@ namespace SpeedScanManager;
 internal class ProfileManagementDialog : Form
 {
     private readonly ListBox _listBox;
+    private readonly Button _btnAdd;
     private readonly Button _btnRename;
     private readonly Button _btnDelete;
     private readonly Button _btnUp;
@@ -26,7 +27,7 @@ internal class ProfileManagementDialog : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "SpeedScanManager – Profilverwaltung";
-        ClientSize = new Size(420, 340);
+        ClientSize = new Size(420, 370);
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;
 
@@ -37,16 +38,25 @@ internal class ProfileManagementDialog : Form
         _listBox = new ListBox
         {
             Location = new Point(12, 12),
-            Size = new Size(260, 250),
+            Size = new Size(260, 280),
             Font = font
         };
         _listBox.SelectedIndexChanged += (s, e) => UpdateButtonStates();
 
         // === Buttons ===
+        _btnAdd = new Button
+        {
+            Text = "Hinzufügen...",
+            Location = new Point(299, 12),
+            Size = new Size(100, 28),
+            Font = font
+        };
+        _btnAdd.Click += (s, e) => AddProfile();
+
         _btnRename = new Button
         {
             Text = "Umbenennen...",
-            Location = new Point(299, 12),
+            Location = new Point(299, 46),
             Size = new Size(100, 28),
             Font = font
         };
@@ -55,7 +65,7 @@ internal class ProfileManagementDialog : Form
         _btnDelete = new Button
         {
             Text = "Löschen",
-            Location = new Point(299, 46),
+            Location = new Point(299, 80),
             Size = new Size(100, 28),
             Font = font
         };
@@ -64,7 +74,7 @@ internal class ProfileManagementDialog : Form
         _btnUp = new Button
         {
             Text = "Oben",
-            Location = new Point(299, 80),
+            Location = new Point(299, 114),
             Size = new Size(100, 28),
             Font = font
         };
@@ -73,7 +83,7 @@ internal class ProfileManagementDialog : Form
         _btnDown = new Button
         {
             Text = "Unten",
-            Location = new Point(299, 114),
+            Location = new Point(299, 148),
             Size = new Size(100, 28),
             Font = font
         };
@@ -83,7 +93,7 @@ internal class ProfileManagementDialog : Form
         {
             Text = "Schließen",
             DialogResult = DialogResult.OK,
-            Location = new Point(299, 248),
+            Location = new Point(299, 280),
             Size = new Size(100, 28),
             Font = font
         };
@@ -91,7 +101,7 @@ internal class ProfileManagementDialog : Form
         Controls.AddRange(new Control[]
         {
             _listBox,
-            _btnRename, _btnDelete, _btnUp, _btnDown,
+            _btnAdd, _btnRename, _btnDelete, _btnUp, _btnDown,
             _btnClose
         });
 
@@ -115,19 +125,54 @@ internal class ProfileManagementDialog : Form
     {
         int idx = _listBox.SelectedIndex;
         bool hasSelection = idx >= 0;
-        bool isBuiltIn = hasSelection && idx < _manager.Profiles.Count && _manager.Profiles[idx].IsBuiltIn;
 
-        _btnRename.Enabled = hasSelection && !isBuiltIn;
-        _btnDelete.Enabled = hasSelection && !isBuiltIn;
-        _btnUp.Enabled = hasSelection && !isBuiltIn && idx > 0;
-        _btnDown.Enabled = hasSelection && !isBuiltIn && idx < _manager.Profiles.Count - 1;
+        _btnAdd.Enabled = true;
+        _btnRename.Enabled = hasSelection;
+        _btnDelete.Enabled = hasSelection;
+        _btnUp.Enabled = hasSelection && idx > 0;
+        _btnDown.Enabled = hasSelection && idx < _manager.Profiles.Count - 1;
+    }
+
+    private void AddProfile()
+    {
+        string? name = ShowInputDialog("Neues Profil", "Name des neuen Profils:", "Neues Profil");
+
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        name = name.Trim();
+
+        // Ensure unique name
+        if (_manager.GetByName(name) != null)
+        {
+            MessageBox.Show($"Ein Profil mit dem Namen \"{name}\" existiert bereits.",
+                "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        var defaultFolder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "SpeedScanManager");
+
+        var profile = ScanProfile.FromCurrent(
+            new ScanSettings(),
+            defaultFolder,
+            FileNameFormatDialog.FormatMode.Timestamp,
+            "unbenannt",
+            3,
+            ApplicationType.ScanToFolder,
+            name,
+            isBuiltIn: false);
+
+        _manager.AddProfile(profile);
+        RefreshList();
+        _listBox.SelectedIndex = _manager.Profiles.Count - 1;
     }
 
     private void RenameProfile()
     {
         int idx = _listBox.SelectedIndex;
         if (idx < 0 || idx >= _manager.Profiles.Count) return;
-        if (_manager.Profiles[idx].IsBuiltIn) return;
 
         string currentName = _manager.Profiles[idx].Name;
         string? newName = ShowInputDialog("Profil umbenennen", "Neuer Name:", currentName);
@@ -144,7 +189,6 @@ internal class ProfileManagementDialog : Form
     {
         int idx = _listBox.SelectedIndex;
         if (idx < 0 || idx >= _manager.Profiles.Count) return;
-        if (_manager.Profiles[idx].IsBuiltIn) return;
 
         var result = MessageBox.Show(
             $"Profil \"{_manager.Profiles[idx].Name}\" wirklich löschen?",

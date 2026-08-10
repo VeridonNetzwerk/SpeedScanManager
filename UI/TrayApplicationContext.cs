@@ -134,7 +134,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
         // Help submenu items
         var miHelpTopics = new ToolStripMenuItem("Hilfethemen");
-        var miVersionInfo = new ToolStripMenuItem("SpeedScan Manager – Versionsinformationen");
+        var miVersionInfo = new ToolStripMenuItem("Versionsinformationen");
         var miPreferences = new ToolStripMenuItem("Präferenzen...");
 
         _miDuplexScan.Click += (s, e) => StartScan(ScanSide.Duplex);
@@ -253,14 +253,14 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
             return;
         }
 
-        _helpForm = new HelpForm();
+        _helpForm = new HelpForm("root");
         _helpForm.FormClosed += (s, e) => _helpForm = null;
         _helpForm.Show(_hiddenWindow);
     }
 
     private void ShowVersionInfo()
     {
-        using var dlg = new VersionInfoDialog();
+        using var dlg = new VersionInfoDialog(_lastScannerState);
         dlg.ShowDialog(_hiddenWindow);
     }
 
@@ -274,6 +274,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     {
         using var dlg = new ProfileManagementDialog(_profileManager);
         dlg.ShowDialog(_mainForm ?? _hiddenWindow);
+        _mainForm?.RefreshProfileDropdown();
     }
 
     private void StartScan(ScanSide scanSideOverride)
@@ -406,11 +407,31 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
                                 else
                                 {
                                     // No Quick-Menü → use configured application type directly
-                                    if (_currentApplicationType == ApplicationType.ScanToEmail)
-                                        OpenMailClient(fileNames);
-
-                                    if (_currentApplicationType == ApplicationType.ScanToPrint && imagesToPrint != null)
-                                        PrintScannedImages(imagesToPrint);
+                                    switch (_currentApplicationType)
+                                    {
+                                        case ApplicationType.ScanToEmail:
+                                            OpenMailClient(fileNames);
+                                            break;
+                                        case ApplicationType.ScanToPrint:
+                                            if (imagesToPrint != null && imagesToPrint.Count > 0)
+                                                PrintScannedImages(imagesToPrint);
+                                            break;
+                                        case ApplicationType.ScanToWord:
+                                            CreateWordDocument(fileNames);
+                                            break;
+                                        case ApplicationType.ScanToExcel:
+                                            CreateExcelDocument(fileNames);
+                                            break;
+                                        case ApplicationType.ScanToPowerPoint:
+                                            CreatePowerPointPresentation(fileNames);
+                                            break;
+                                        case ApplicationType.ScanPictureFolder:
+                                            SaveToPictureFolder(fileNames);
+                                            break;
+                                        case ApplicationType.EditWithPdf:
+                                            OpenPdfEditor(fileNames);
+                                            break;
+                                    }
                                 }
                             }
                             else
@@ -1254,7 +1275,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         LogDiag($"OnScannerDeviceEvent: {eventType}, device='{e.DeviceEvent.DeviceName}'");
 
         // Trigger scan on any device event when connected and not already scanning.
-        // Fujitsu scanners may use different event types for button presses.
+        // Some scanners may use different event types for button presses.
         if (!_isScanning && _scannerStatus == ScannerStatus.Connected)
         {
             LogDiag("OnScannerDeviceEvent: triggering scan from button press");

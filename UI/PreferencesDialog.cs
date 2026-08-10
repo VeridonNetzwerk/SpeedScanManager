@@ -68,8 +68,8 @@ internal class PreferencesDialog : Form
         };
         btnHelp.Click += (s, e) =>
         {
-            using var help = new HelpForm();
-            help.Show(this);
+            using var help = new HelpForm("preferences");
+            help.ShowDialog(this);
         };
 
         var footerTable = new TableLayoutPanel
@@ -128,7 +128,7 @@ internal class PreferencesDialog : Form
         _cbCommNotification = new CheckBox
         {
             Text = "Eine Benachrichtigung des Kommunikationsstatus anzeigen",
-            Location = new Point(13, 46),
+            Location = new Point(13, 50),
             AutoSize = true,
             Font = font,
             Checked = true
@@ -157,7 +157,7 @@ internal class PreferencesDialog : Form
         _cbScanStatus = new CheckBox
         {
             Text = "Den Status des Scanvorgangs anzeigen (empfohlen)",
-            Location = new Point(13, 34),
+            Location = new Point(13, 42),
             AutoSize = true,
             Font = font,
             Checked = true
@@ -192,7 +192,7 @@ internal class PreferencesDialog : Form
         _cbStartupConfirmation = new CheckBox
         {
             Text = "Die Meldung anzeigen",
-            Location = new Point(13, 30),
+            Location = new Point(13, 36),
             AutoSize = true,
             Font = font,
             Checked = true
@@ -221,7 +221,7 @@ internal class PreferencesDialog : Form
         _cbFlatbedConfirmation = new CheckBox
         {
             Text = "Die Meldung anzeigen",
-            Location = new Point(13, 38),
+            Location = new Point(13, 42),
             AutoSize = true,
             Font = font,
             Checked = true

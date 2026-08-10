@@ -7,7 +7,6 @@ namespace SpeedScanManager;
 /// <summary>
 /// Post-scan media selection dialog shown when Quick-Menü is enabled.
 /// Offers 8 actions: Scan to Folder, E-mail, Print, Word, Excel, PowerPoint, Picture Folder, PDF Edit.
-/// Styled after the Fujitsu ScanSnap original dialog design.
 /// </summary>
 internal class PostScanMediaDialog : Form
 {
@@ -105,6 +104,7 @@ internal class PostScanMediaDialog : Form
             Location = new Point(ClientSize.Width - 72, 6),
             FlatAppearance = { BorderSize = 0 }
         };
+        btnHelp.Click += (s, e) => { using var h = new HelpForm("postscan-media"); h.ShowDialog(this); };
         var btnClose = new Button
         {
             Text = "\u2715",

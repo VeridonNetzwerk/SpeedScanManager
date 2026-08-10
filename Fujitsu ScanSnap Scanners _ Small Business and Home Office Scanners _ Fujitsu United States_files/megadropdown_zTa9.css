@@ -1,0 +1,119 @@
+@charset "utf-8";
+
+/* --------------------------------------------------------------------
+
+# FUJITSU CSS v2.0 -- FUJITSU.COM EDITION #
+
+Copyright 2010 FUJITSU LIMITED 
+
+-------------------------------------------------------------------- */
+
+/* Layout in MegaDropdown -----------------*/
+
+#headerbottom div.grid1span { width: 180px; }/* <-- with clearfix class */
+#headerbottom div.grid2span { width: 375px; }/* <-- with clearfix class */
+	* html #headerbottom div.grid2span { margin-right: -1px; }/* <-- with clearfix class */
+#headerbottom div.grid3span { width: 570px; }/* <-- with clearfix class */
+#headerbottom div.grid4span { width: 765px; }/* <-- with clearfix class */
+	* html #headerbottom div.grid4span { margin-right: -1px; }/* <-- with clearfix class */
+#headerbottom div.grid5span { width: 960px; }/* <-- with clearfix class */
+#headerbottom div.col1span { width: 180px; float: left; margin-right: 15px; }
+#headerbottom div.col2span { width: 375px; float: left; margin-right: 15px; }
+#headerbottom div.col3span { width: 570px; float: left; margin-right: 15px; }
+#headerbottom div.col4span { width: 765px; float: left; margin-right: 15px; }
+#headerbottom div.lastcol { margin-right: 0px; }
+
+/* MegaDropDown insert styles -----------------*/
+
+#headerbottom li.glbnavlist:hover a.glbnavtitle { display: block; float: left; padding: 6px 0px 5px 0px; border: none; background: none; margin-left: 0; }
+#headerbottom li.glbnavlist:hover a.glbnavtitle span { border-left: 1px solid #ffffff; border-right: 1px solid #999999; }
+#headerbottom li.glbnavlist.first:hover a.glbnavtitle { background: none; padding: 6px 0px 7px 0px; border: none; margin-left: 0; }
+#headerbottom li.glbnavlist.first:hover a.glbnavtitle span { border-left: none; border-right: 1px solid #999999; }
+
+	* html #headerbottom li.glbnavlist a.glbnavtitle:hover { display: block; float: left; padding: 6px 0px 7px 0px; border: none; background: none; margin-left: 0; margin-right: -1px; }
+	* html #headerbottom li.glbnavlist a.glbnavtitle:hover span { border-left: 1px solid #ffffff; border-right: 1px solid #999999; }
+	* html #headerbottom li.glbnavlist.first a.glbnavtitle:hover { background: none; padding: 6px 1px 7px 0px; border: none; margin-left: 0; }
+	* html #headerbottom li.glbnavlist.first a.glbnavtitle:hover span { border-left: none; border-right: 1px solid #999999; }
+
+
+#headerbottom li.glbnavlist div.hidemenu { display: none; position: absolute; top: 0; left: 0; font-weight: normal; margin: 0; padding: 0; margin-bottom: 15px; width: 1px; z-index: 1000; background: none; overflow: visible; }
+#headerbottom li.glbnavlist div.hidemenu a.glbnavtitle { display: block; position: relative; float: left; padding: 6px 0 10px 1px; margin: 0 0 0 -1px; overflow: visible; border: 1px solid #b8b8b8; border-bottom: none; background: #ffffff url(https://web.archive.org/web/20110520232321im_/http://www.fujitsu.com/imgv4/common/mainnav-back-btnover.png) repeat-x left top; cursor: pointer; white-space: nowrap; }
+#headerbottom li.glbnavlist div.hidemenu a.glbnavtitle span { border: none; }
+	* html #headerbottom li.glbnavlist div.hidemenu a.glbnavtitle { padding: 6px 1px 10px 0px; margin-left: -1px; overflow: visible;  cursor: pointer; word-break: keep-all; }
+	* html #headerbottom li.glbnavlist div.hidemenu a.glbnavtitle:hover { padding: 6px 1px 10px 0px; margin-left: -1px; overflow: visible; border: 1px solid #b8b8b8; border-bottom: none; background: #ffffff url(https://web.archive.org/web/20110520232321im_/http://www.fujitsu.com/imgv4/common/mainnav-back-btnover.png) repeat-x left top; cursor: pointer; word-break: keep-all; }
+	* html #headerbottom li.glbnavlist div.hidemenu a.glbnavtitle:hover span { border: none; }
+
+#headerbottom li.glbnavlist.first div.hidemenu a.glbnavtitle { display: block; float: left; padding: 6px 0px 10px 0px; margin: 0; margin-left: -1px; overflow: visible; border: 1px solid #b8b8b8; border-bottom: none; background: #ffffff url(https://web.archive.org/web/20110520232321im_/http://www.fujitsu.com/imgv4/common/mainnav-back-btnover.png) repeat-x left top; }
+#headerbottom li.glbnavlist.first div.hidemenu a.glbnavtitle span { border: none; }
+	* html #headerbottom li.glbnavlist.first div.hidemenu a.glbnavtitle { padding-right: 0px; margin-left: -1px; }
+	* html #headerbottom li.glbnavlist.first div.hidemenu a.glbnavtitle:hover { margin-left: -1px; padding-right: 0; overflow: visible; border: 1px solid #b8b8b8; border-bottom: none; background: #ffffff url(https://web.archive.org/web/20110520232321im_/http://www.fujitsu.com/imgv4/common/mainnav-back-btnover.png) repeat-x left top; }
+
+#headerbottom div.hidemenu div.hidemenuwrapper { margin-top: -1px; margin-left: -1px; clear: left; float: left; font-size: 86%; }
+* html #headerbottom div.hidemenu div.hidemenuwrapper { float: left; display: inline; }
+#headerbottom div.hidemenu div.hidemenuwrapper ul { padding-left: 0; }
+#headerbottom div.hidemenu div.hidemenuwrapper ul li { padding-left: 24px; background: url(https://web.archive.org/web/20110520232321im_/http://www.fujitsu.com/imgv4/common/li_dot_lv1.gif) no-repeat 6px 0.5em; }
+#headerbottom div.hidemenu div.hidemenubg { float: left; margin-left: -10px; margin-right: -10px; padding: 0 9px; border-left: 1px solid #b8b8b8; border-right: 1px solid #b8b8b8; background: #ffffff; }
+	* html #headerbottom div.hidemenu div.hidemenubg { position: relative; zoom: 1; }
+
+#headerbottom div.hidemenu div.hidemenu-right-bottom{ padding-bottom: 20px; padding-right: 10px; margin-bottom: 0px; margin-right: -10px; overflow: visible; background: transparent url(https://web.archive.org/web/20110520232321im_/http://www.fujitsu.com/imgv4/common/ajax/megadropdown/dropdown-back-right-bottom.png) no-repeat right bottom; }
+#headerbottom div.hidemenu div.hidemenu-left-bottom{ margin-left: -10px; margin-right: 10px; padding-left: 10px; overflow: visible; background: transparent url(https://web.archive.org/web/20110520232321im_/http://www.fujitsu.com/imgv4/common/ajax/megadropdown/dropdown-back-left-bottom.png) no-repeat left bottom; }
+#headerbottom div.hidemenu div.hidemenu-right-top{ padding-top: 10px; margin-right: -10px; margin-left: 10px; margin-top: -10px; overflow: visible; background: transparent url(https://web.archive.org/web/20110520232321im_/http://www.fujitsu.com/imgv4/common/ajax/megadropdown/dropdown-back-right-top.png) no-repeat right top; }
+#headerbottom div.hidemenu div.hidemenu-left-top{ padding-top: 10px; margin-right: 10px; overflow: visible; background: transparent url(https://web.archive.org/web/20110520232321im_/http://www.fujitsu.com/imgv4/common/ajax/megadropdown/dropdown-back-left-top.png) no-repeat left top; }
+	* html #headerbottom div.hidemenu div.hidemenu-right-bottom { padding-right: 20px; }
+
+#headerbottom p.megaclosebtn { text-align: right; }
+
+/* For Dropdown in MegaDrop -----------------*/
+
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box { list-style: none; margin: 0; padding: 0; }
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li { color: #444444; margin: 0px; padding: 0px; background: none; cursor: pointer; border-bottom: 1px solid #e8e8e8; zoom: 1; }
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li a { display: block; margin: 0px; padding: 2px 16px 2px 0px; zoom: 1; }
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li span { display: block; margin: 0px; padding: 2px 16px 2px 0px; zoom: 1; }
+*:first-child+html #headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li a { display: inline-block; }
+* html #headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li a { display: inline-block; width: 100%; }
+*:first-child+html #headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li span { display: inline-block; }
+* html #headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li span { display: inline-block; width: 100%; }
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li ul { list-style: none; display: none; position: absolute; top: 0px; left: 100%; margin: 0px; padding: 0px; border-bottom: solid 1px #aaaaaa; zoom: 1; z-index: 1003; }
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li.right ul { left: -100%; }
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li.bottom ul { }
+
+/* If menu is secondary */
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li li { list-style: none; margin-bottom: 0px; padding: 0px; border-style: solid; border-width: 1px 1px 0px 1px; border-color: #aaaaaa; background-color: #f3f3f3; }
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li li a { padding-left: 4px; }
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li li span { padding-left: 4px; }
+
+/* If menu has children */
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li.has_children { background-image: url(https://web.archive.org/web/20110520232321im_/http://www.fujitsu.com/imgv4/common/arrows/dropdown-list-arrow.gif); background-repeat: no-repeat; background-position: 98% 50%; }
+
+/* If menu has selected */
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li.selected,
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box a.selected:link,
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box a.selected:visited,
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box a.selected:active,
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box a.selected:hover { background: #555555; color: #ffffff !important; }
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li.selected ul { display: block; }
+
+/* If menu has out of focus */
+#headerbottom div.hidemenu div.hidemenuwrapper ul.dropdown-box li.hidden ul { display: none; }
+
+/*
+     FILE ARCHIVED ON 23:23:21 May 20, 2011 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 16:47:45 Aug 10, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  capture_cache.get: 0.396
+  captures_list: 0.393
+  exclusion.robots: 0.045
+  exclusion.robots.policy: 0.037
+  esindex: 0.006
+  cdx.remote: 5.355
+  LoadShardBlock: 73.747 (3)
+  PetaboxLoader3.datanode: 108.565 (5)
+  load_resource: 173.383 (2)
+  PetaboxLoader3.resolve: 96.173 (2)
+*/

@@ -64,6 +64,54 @@ internal class ScanSettings
     public bool ShowFlatbedConfirmation { get; set; } = true;
 
     /// <summary>
+    /// Compares all setting values with another instance.
+    /// </summary>
+    public bool SettingsEqual(ScanSettings other)
+    {
+        if (ImageQuality != other.ImageQuality) return false;
+        if (ColorMode != other.ColorMode) return false;
+        if (ScanSide != other.ScanSide) return false;
+        if (ContinueScanning != other.ContinueScanning) return false;
+        if (Brightness != other.Brightness) return false;
+        if (TextOnlySettings != other.TextOnlySettings) return false;
+        if (AllowDeleteBlankPages != other.AllowDeleteBlankPages) return false;
+        if (AllowDeskew != other.AllowDeskew) return false;
+        if (AllowAutoRotate != other.AllowAutoRotate) return false;
+        if (FaceUpFeeding != other.FaceUpFeeding) return false;
+        if (FileFormat != other.FileFormat) return false;
+        if (PdfSplitMode != other.PdfSplitMode) return false;
+        if (PdfSplitPages != other.PdfSplitPages) return false;
+        if (PdfUsePassword != other.PdfUsePassword) return false;
+        if (PdfPassword != other.PdfPassword) return false;
+        if (OcrEnabled != other.OcrEnabled) return false;
+        if (OcrLanguage != other.OcrLanguage) return false;
+        if (OcrTargetPages != other.OcrTargetPages) return false;
+        if (AddKeywordToPdf != other.AddKeywordToPdf) return false;
+        if (KeywordTarget != other.KeywordTarget) return false;
+        if (EmailRecipient != other.EmailRecipient) return false;
+        if (EmailSubjectTemplate != other.EmailSubjectTemplate) return false;
+        if (PrinterName != other.PrinterName) return false;
+        if (CarrierSheetEnabled != other.CarrierSheetEnabled) return false;
+        if (CarrierSheetOutputSize != other.CarrierSheetOutputSize) return false;
+        if (CarrierSheetCustomWidth != other.CarrierSheetCustomWidth) return false;
+        if (CarrierSheetCustomHeight != other.CarrierSheetCustomHeight) return false;
+        if (PaperSize != other.PaperSize) return false;
+        if (SelectedCustomSizeIndex != other.SelectedCustomSizeIndex) return false;
+        if (MultiFeedDetection != other.MultiFeedDetection) return false;
+        if (CompressionRate != other.CompressionRate) return false;
+        if (ShowCommStatusNotification != other.ShowCommStatusNotification) return false;
+        if (ShowScanStatusNotification != other.ShowScanStatusNotification) return false;
+        if (ShowStartupConfirmation != other.ShowStartupConfirmation) return false;
+        if (ShowFlatbedConfirmation != other.ShowFlatbedConfirmation) return false;
+        if (CustomPaperSizes.Count != other.CustomPaperSizes.Count) return false;
+        for (int i = 0; i < CustomPaperSizes.Count; i++)
+        {
+            if (CustomPaperSizes[i] != other.CustomPaperSizes[i]) return false;
+        }
+        return true;
+    }
+
+    /// <summary>
     /// Creates a deep copy of the current settings for snapshot/restore.
     /// </summary>
     public ScanSettings Clone()

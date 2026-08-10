@@ -87,15 +87,7 @@ internal class CustomSizeDialog : Form
             Dock = DockStyle.Top,
             Margin = new Padding(0, 20, 0, 0)
         };
-        _btnHelp.Click += (s, e) => MessageBox.Show(
-            "Benutzerdefinierte Größen erlauben es, Papierformate zu definieren, " +
-            "die nicht in der Standardliste enthalten sind.\n\n" +
-            "Klicken Sie auf „Hinzufügen...“, um eine neue Größe mit Name, Breite und Länge zu erstellen.\n" +
-            "Wählen Sie einen Eintrag aus und klicken Sie auf „Entfernen“ oder „Ändern...“, " +
-            "um ihn zu löschen oder zu bearbeiten.\n\n" +
-            $"Es können bis zu {MaxEntries} benutzerdefinierte Größen angelegt werden.",
-            "Hilfe – Benutzerdefinierte Größen",
-            MessageBoxButtons.OK, MessageBoxIcon.Information);
+        _btnHelp.Click += (s, e) => { using var h = new HelpForm("custom-size-dialog"); h.ShowDialog(this); };
 
         _btnClose = new Button
         {

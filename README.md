@@ -2,7 +2,7 @@
 
 <img src="assets/SpeedScanManager_Text.png" height="60" alt="SpeedScan Manager">
 
-Open-Source TWAIN-Scanning-Software für Fujitsu fi-Series Scanner.
+Open-Source TWAIN-Scanning-Software.
 
 <p>
   <a href="https://github.com/VeridonNetzwerk/SpeedScanManager/blob/main/LICENSE"><img src="https://img.shields.io/github/license/VeridonNetzwerk/SpeedScanManager?style=flat-square" alt="License"></a>
@@ -28,7 +28,7 @@ Open-Source TWAIN-Scanning-Software für Fujitsu fi-Series Scanner.
 
 - 🪟 Windows 10/11
 - 📦 .NET 8.0 Runtime (x86) — oder self-contained Build
-- 🖨️ TWAIN-kompatibler Scanner (getestet mit Fujitsu fi-Series)
+- 🖨️ TWAIN-kompatibler Scanner ([getestete Scanner]())
 
 ## Installation
 

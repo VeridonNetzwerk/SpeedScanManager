@@ -18,6 +18,9 @@ internal sealed record ScannerState
     public bool SupportsUltrasonicDetection { get; init; }
     public bool SupportsLengthDetection { get; init; }
     public string SourceName { get; init; } = "";
+    public string Manufacturer { get; init; } = "";
+    public string ProductFamily { get; init; } = "";
+    public string DriverVersion { get; init; } = "";
 }
 
 /// <summary>
@@ -218,7 +221,10 @@ internal sealed class ScannerStateService
             SupportsLongPaper = supportsLongPaper,
             SupportsUltrasonicDetection = supportsUltrasonic,
             SupportsLengthDetection = supportsLength,
-            SourceName = source.Name
+            SourceName = source.Name ?? "",
+            Manufacturer = source.Manufacturer ?? "",
+            ProductFamily = source.ProductFamily ?? "",
+            DriverVersion = source.Version.Info ?? ""
         };
     }
 

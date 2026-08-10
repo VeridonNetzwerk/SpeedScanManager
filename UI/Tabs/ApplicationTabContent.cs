@@ -10,8 +10,13 @@ namespace SpeedScanManager;
 internal enum ApplicationType
 {
     ScanToFolder,
-    ScanToEmail,   // Phase 12
-    ScanToPrint    // Phase 13
+    ScanToEmail,
+    ScanToPrint,
+    ScanToWord,
+    ScanToExcel,
+    ScanToPowerPoint,
+    ScanPictureFolder,
+    EditWithPdf
 }
 
 /// <summary>
@@ -38,7 +43,12 @@ internal class ApplicationTabContent : Panel
     {
         new ApplicationEntry("Scan to Folder", ApplicationType.ScanToFolder),
         new ApplicationEntry("Scan to E-Mail", ApplicationType.ScanToEmail),
-        new ApplicationEntry("Scan to Print", ApplicationType.ScanToPrint)
+        new ApplicationEntry("Scan to Print", ApplicationType.ScanToPrint),
+        new ApplicationEntry("Scan to Word", ApplicationType.ScanToWord),
+        new ApplicationEntry("Scan to Excel", ApplicationType.ScanToExcel),
+        new ApplicationEntry("Scan to PowerPoint", ApplicationType.ScanToPowerPoint),
+        new ApplicationEntry("Scan Picture Folder", ApplicationType.ScanPictureFolder),
+        new ApplicationEntry("Edit with PDF", ApplicationType.EditWithPdf)
     };
 
     private readonly List<ApplicationEntry> _customApps = new();

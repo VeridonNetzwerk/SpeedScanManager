@@ -90,10 +90,7 @@ internal class ApplicationManageDialog : Form
             Size = new Size(120, 28),
             Font = font
         };
-        btnHelp.Click += (s, e) => MessageBox.Show(
-            "Hier können Sie benutzerdefinierte Anwendungen hinzufügen, entfernen oder bearbeiten.\n" +
-            "Es sind maximal 10 Einträge erlaubt.",
-            "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        btnHelp.Click += (s, e) => { using var h = new HelpForm("app-add-remove"); h.ShowDialog(this); };
 
         _btnClose = new Button
         {
@@ -237,7 +234,12 @@ internal class ApplicationEditDialog : Form
         {
             "Scan to Folder",
             "Scan to E-Mail",
-            "Scan to Print"
+            "Scan to Print",
+            "Scan to Word",
+            "Scan to Excel",
+            "Scan to PowerPoint",
+            "Scan Picture Folder",
+            "Edit with PDF"
         });
         _cbType.SelectedIndex = 0;
 

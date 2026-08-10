@@ -1,0 +1,66 @@
+@charset "utf-8";
+
+/* --------------------------------------------------------------------
+
+# FUJITSU CSS v2.0 -- FUJITSU.COM EDITION #
+
+Copyright 2010 FUJITSU LIMITED 
+
+-------------------------------------------------------------------- */
+
+/* For Dropdown of Country Selector */
+
+
+/* Constructure */
+.headertop div.dd-country-selector { position: relative; }
+* html .headertop div.dd-country-selector { z-index: 1; }
+*:first-child+html .headertop div.dd-country-selector { z-index: 1; }
+.headertop div.dd-country-selector ul.dropdown-box { z-index: 1; float: left; left: 8px; top: 1em; margin: 0px; width: 140px; padding: 0; font-size: 93%; text-align: left; border-bottom: 1px solid #aaaaaa; zoom: 1; }
+.headertop div.dd-country-selector li { z-index: 0; line-height: 1.2; list-style: none; display: block; margin: 0; padding: 6px 14px 6px 10px; background: #f3f3f3; color: #000000; border-style: solid; border-width: 1px 1px 0 1px; border-color: #aaaaaa; cursor: pointer; zoom: 1; }
+.headertop div.dd-country-selector li ul { list-style: none; display: none; top: -1px; padding: 0; border-bottom: 1px solid #aaaaaa; zoom: 1; }  /*<-- doropdown.js : This Element inherit the width of the parent UL element. */
+
+
+/* If menu is secondary */
+.headertop div.dd-country-selector li li { list-style: none; margin-bottom: 0px; padding: 0px; border-top: none; }
+.headertop div.dd-country-selector li li a { border-top: 1px solid #aaaaaa; display: block; padding: 6px 14px 6px 10px; }
+
+
+/* If menu has children */
+.headertop div.dd-country-selector li.has_children { background-image: url(https://web.archive.org/web/20110520232253im_/http://www.fujitsu.com/imgv4/common/arrows/dropdown-list-arrow.gif); background-repeat: no-repeat; background-position: 98% 50%; }
+
+
+/* If menu has selected */
+.headertop div.dd-country-selector li.selected  { background: #555555; color: #ffffff !important; }
+.headertop div.dd-country-selector li.selected li { background: #f3f3f3 url(https://web.archive.org/web/20110520232253im_/http://www.fujitsu.com/imgv4/common/arrows/dropdown-list-arrow.gif) no-repeat 98% center; color: #000000; zoom: 1; }
+.headertop div.dd-country-selector li.selected a { background: #f3f3f3; color: #000000; zoom: 1; }
+.headertop div.dd-country-selector li.selected ul { width: 140px !important; /* <-- for IE8 dropdown-contryselector.js Bug */ ; margin-left: -8px !important; } 
+
+.headertop div.dd-country-selector a.selected:link,
+.headertop div.dd-country-selector a.selected:visited,
+.headertop div.dd-country-selector a.selected:active,
+.headertop div.dd-country-selector a.selected:hover { background: #555555; color: #ffffff !important; position: relative; /* <- Bug Fix For Opera10 */ }
+
+.headertop div.dd-country-selector li.selected ul { display: block; margin: 0px; padding: 0px; }
+
+
+/*
+     FILE ARCHIVED ON 23:22:53 May 20, 2011 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 16:47:44 Aug 10, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  capture_cache.get: 0.399
+  captures_list: 0.381
+  exclusion.robots: 0.048
+  exclusion.robots.policy: 0.041
+  esindex: 0.006
+  cdx.remote: 17.198
+  LoadShardBlock: 100.778 (3)
+  PetaboxLoader3.datanode: 156.228 (5)
+  load_resource: 175.388 (2)
+  PetaboxLoader3.resolve: 103.377 (2)
+*/

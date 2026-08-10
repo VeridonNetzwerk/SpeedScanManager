@@ -6,8 +6,11 @@ namespace SpeedScanManager;
 
 internal class VersionInfoDialog : Form
 {
-    public VersionInfoDialog()
+    private readonly ScannerState? _scannerState;
+
+    public VersionInfoDialog(ScannerState? scannerState = null)
     {
+        _scannerState = scannerState;
         Text = "SpeedScan Manager \u2013 Versionsinformationen";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -15,7 +18,7 @@ internal class VersionInfoDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;
-        ClientSize = new Size(460, 350);
+        ClientSize = new Size(390, 355);
         Font = new Font("Microsoft Sans Serif", 8.25f);
 
         var font = new Font("Microsoft Sans Serif", 8.25f);
@@ -62,28 +65,27 @@ internal class VersionInfoDialog : Form
         var lblLicense = new Label
         {
             Text = "SpeedScan Manager\n\n" +
-                   "Open-Source Scanning-Verwaltungssoftware für Fujitsu fi-Series Scanner.\n\n" +
+                   "Open-Source TWAIN-Scanning-Software.\n\n" +
                    "Lizenziert unter GNU General Public License v3 (GPL-3.0).\n" +
-                   "Dieses Programm ist freie Software: Sie können es weitergeben\n" +
-                   "und/oder modifizieren unter Beachtung der GPL-3.0-Bedingungen.\n" +
-                   "Credits müssen in allen Kopien und abgeleiteten Werken erhalten\n" +
-                   "bleiben.\n\n" +
+                   "Dieses Programm ist freie Software: Sie können es weitergeben und/oder " +
+                   "modifizieren unter Beachtung der GPL-3.0-Bedingungen.\n" +
+                   "Credits müssen in allen Kopien und abgeleiteten Werken erhalten bleiben.\n\n" +
                    "TWAIN-Unterstützung durch NTwain.\n" +
                    "OCR-Engine: Tesseract.NET.\n" +
                    "PDF-Verarbeitung: PdfPig.\n\n" +
-                   "Copyright © 2024-2026 VeridonNetzwerk",
+                   "Copyright © 2026 VeridonNetzwerk",
             Font = font,
             Location = new Point(24, 90),
-            Size = new Size(400, 200),
+            Size = new Size(335, 230),
             AutoSize = false,
             BackColor = Color.White
         };
 
-        // === Detail button ===
+        // === Detail button (right of text block) ===
         var btnDetail = new Button
         {
             Text = "Detail...",
-            Location = new Point(370, 130),
+            Location = new Point(290, 56),
             Size = new Size(65, 22),
             Font = font,
             FlatStyle = FlatStyle.Standard,
@@ -91,8 +93,41 @@ internal class VersionInfoDialog : Form
         };
         btnDetail.Click += (s, e) =>
         {
-            using var dlg = new ScannerDriverInfoDialog();
+            using var dlg = new ScannerDriverInfoDialog(_scannerState);
             dlg.ShowDialog(this);
+        };
+
+        // === GitHub + Discord link icons (inside white box, below text) ===
+        var pbGithub = new PictureBox
+        {
+            Image = CreateGithubIcon(),
+            SizeMode = PictureBoxSizeMode.AutoSize,
+            Location = new Point(8, 198),
+            Cursor = Cursors.Hand
+        };
+        pbGithub.Click += (s, e) =>
+        {
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://github.com/VeridonNetzwerk/SpeedScanManager",
+                UseShellExecute = true
+            }); } catch { }
+        };
+
+        var pbDiscord = new PictureBox
+        {
+            Image = CreateDiscordIcon(),
+            SizeMode = PictureBoxSizeMode.AutoSize,
+            Location = new Point(8 + 28 + 8, 198),
+            Cursor = Cursors.Hand
+        };
+        pbDiscord.Click += (s, e) =>
+        {
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://discord.gg/CmCXZhAr59",
+                UseShellExecute = true
+            }); } catch { }
         };
 
         // === Footer (OK + Hilfe) ===
@@ -136,8 +171,8 @@ internal class VersionInfoDialog : Form
         };
         btnHelp.Click += (s, e) =>
         {
-            using var help = new HelpForm();
-            help.Show(this);
+            using var help = new HelpForm("version-info");
+            help.ShowDialog(this);
         };
 
         footerTable.Controls.Add(new Panel(), 0, 0);
@@ -145,6 +180,9 @@ internal class VersionInfoDialog : Form
         footerTable.Controls.Add(new Panel(), 2, 0);
         footerTable.Controls.Add(btnHelp, 3, 0);
         footerTable.Controls.Add(new Panel(), 4, 0);
+
+        lblLicense.Controls.Add(pbDiscord);
+        lblLicense.Controls.Add(pbGithub);
 
         Controls.Add(footerTable);
         Controls.Add(lblLicense);
@@ -154,5 +192,33 @@ internal class VersionInfoDialog : Form
         Controls.Add(pbLogo);
 
         AcceptButton = btnOk;
+    }
+
+    private static Bitmap CreateGithubIcon()
+    {
+        return LoadSvgResource("github_logo.svg", 28, 28);
+    }
+
+    private static Bitmap CreateDiscordIcon()
+    {
+        return LoadSvgResource("discord_logo.svg", 28, 28);
+    }
+
+    private static Bitmap LoadSvgResource(string resourceName, int width, int height)
+    {
+        try
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            using var stream = asm.GetManifestResourceStream(resourceName);
+            if (stream != null)
+            {
+                var doc = Svg.SvgDocument.Open<Svg.SvgDocument>(stream);
+                doc.Width = width;
+                doc.Height = height;
+                return doc.Draw(width, height);
+            }
+        }
+        catch { }
+        return new Bitmap(width, height);
     }
 }
