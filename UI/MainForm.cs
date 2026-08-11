@@ -69,9 +69,10 @@ internal class MainForm : Form
     private readonly Panel _separatorPanel;
     private readonly Panel _bottomPanel;
 
-    public MainForm(ScanSettings? settings = null)
+    public MainForm(ScanSettings? settings = null, ProfileManager? profileManager = null)
     {
         _scanSettings = settings ?? new ScanSettings();
+        _profileManager = profileManager ?? new ProfileManager();
         AutoScaleMode = AutoScaleMode.None;
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
@@ -192,9 +193,6 @@ internal class MainForm : Form
             BackColor = Color.FromArgb(160, 175, 195)
         };
         _topPanel.Controls.Add(_separatorPanel);
-
-        // === Profile manager ===
-        _profileManager = new ProfileManager();
 
         // === Profile dropdown (shown in 4th column when Quick-Menü is off) ===
         _profileLabel = new Label
@@ -594,6 +592,9 @@ internal class MainForm : Form
             profile.CustomFileName,
             profile.CounterDigits);
 
+        // Restore application tab
+        _applicationTabContent?.SetApplicationType(profile.ApplicationType);
+
         // Update tab UIs
         _scanModeTabContent?.ApplyPreset(profile.ImageQuality);
         _fileSizeTabContent?.ApplyPreset(profile.CompressionRate);
@@ -610,7 +611,8 @@ internal class MainForm : Form
 
         var profile = ScanProfile.FromCurrent(
             _scanSettings, folder, formatMode, customName, digits,
-            ApplicationType.ScanToFolder, name.Trim(), isBuiltIn: false);
+            _applicationTabContent?.SelectedApplicationType ?? ApplicationType.ScanToFolder,
+            name.Trim(), isBuiltIn: false);
 
         _profileManager.AddProfile(profile);
         RefreshProfileDropdown();
@@ -869,14 +871,5 @@ internal class GradientInfoBar : Panel
         var textRect = new Rectangle(7, 0, Width - 10, Height);
         TextRenderer.DrawText(e.Graphics, _text, InfoFont, textRect, Color.White,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            InfoFont.Dispose();
-        }
-        base.Dispose(disposing);
     }
 }

@@ -63,6 +63,7 @@ internal class ScanProfile
     public PaperSizeMode PaperSize { get; set; } = PaperSizeMode.Automatic;
     public List<CustomPaperSize> CustomPaperSizes { get; set; } = new();
     public MultiFeedDetection MultiFeedDetection { get; set; } = MultiFeedDetection.Off;
+    public int SelectedCustomSizeIndex { get; set; } = -1;
 
     // Dateigröße tab
     public int CompressionRate { get; set; } = 3;
@@ -123,6 +124,7 @@ internal class ScanProfile
             PaperSize = settings.PaperSize,
             CustomPaperSizes = new List<CustomPaperSize>(settings.CustomPaperSizes),
             MultiFeedDetection = settings.MultiFeedDetection,
+            SelectedCustomSizeIndex = settings.SelectedCustomSizeIndex,
             CompressionRate = settings.CompressionRate,
             ShowCommStatusNotification = settings.ShowCommStatusNotification,
             ShowScanStatusNotification = settings.ShowScanStatusNotification,
@@ -165,6 +167,7 @@ internal class ScanProfile
         settings.CustomPaperSizes.Clear();
         settings.CustomPaperSizes.AddRange(CustomPaperSizes);
         settings.MultiFeedDetection = MultiFeedDetection;
+        settings.SelectedCustomSizeIndex = SelectedCustomSizeIndex;
         settings.CompressionRate = CompressionRate;
         settings.ShowCommStatusNotification = ShowCommStatusNotification;
         settings.ShowScanStatusNotification = ShowScanStatusNotification;

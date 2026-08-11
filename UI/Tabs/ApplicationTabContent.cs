@@ -183,6 +183,19 @@ internal class ApplicationTabContent : Panel
         _btnPrintOptions.Visible = SelectedApplication.Type == ApplicationType.ScanToPrint;
     }
 
+    public void SetApplicationType(ApplicationType type)
+    {
+        var allApps = GetAllApps();
+        for (int i = 0; i < allApps.Count; i++)
+        {
+            if (allApps[i].Type == type)
+            {
+                _cbApplication.SelectedIndex = i;
+                return;
+            }
+        }
+    }
+
     private void OpenEmailOptionsDialog()
     {
         using var dlg = new ScanToEmailOptionsDialog

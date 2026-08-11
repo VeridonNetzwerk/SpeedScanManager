@@ -340,7 +340,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
                         // Normal flow: save immediately
                         Directory.CreateDirectory(folder);
                         var processor = new ScanOutputProcessor(_settings);
-                        fileNames = processor.ProcessAndSave(images, folder, _settings, formatMode, customName, digits);
+                        fileNames = processor.ProcessAndSave(images, folder, formatMode, customName, digits);
 
                         // If Scan to Print, keep copies of images for printing before disposal
                         List<Bitmap>? imagesToPrint = null;
@@ -459,7 +459,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
                                 fileNames = processor.ProcessAndSave(
                                     imagesForDialog,
                                     finalFolder,
-                                    _settings,
                                     formatMode,
                                     finalTitle,
                                     digits);
@@ -933,7 +932,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     {
         if (_mainForm == null || _mainForm.IsDisposed)
         {
-            _mainForm = new MainForm(_settings);
+            _mainForm = new MainForm(_settings, _profileManager);
             _mainForm.FormClosed += (s, e) =>
             {
                 SyncSettingsFromMainForm();
@@ -1350,6 +1349,12 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
     private void ShowScannerDisconnectedBalloon()
     {
+        if (_settings.ShowCommStatusNotification)
+        {
+            _notifyIcon.ShowBalloonTip(5000, TrayNotificationTitle,
+                "Der Scanner ist nicht angeschlossen oder ausgeschaltet.",
+                ToolTipIcon.Warning);
+        }
         Debug.WriteLine("[Tray] Der Scanner ist nicht angeschlossen oder ausgeschaltet.");
     }
 

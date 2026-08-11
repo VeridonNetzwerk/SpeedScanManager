@@ -138,7 +138,7 @@ internal class ScannerDriverInfoDialog : Form
         lvwVersions.Items.Add(new ListViewItem(new[] { "SpeedScanManager.exe", ver, buildDate }));
         lvwVersions.Items.Add(new ListViewItem(new[] { "NTwain.dll", "4.0.0.0", "—" }));
         lvwVersions.Items.Add(new ListViewItem(new[] { "Tesseract.dll", "5.0.0.0", "—" }));
-        lvwVersions.Items.Add(new ListViewItem(new[] { "PdfPig.dll", "0.1.9.0", "—" }));
+        lvwVersions.Items.Add(new ListViewItem(new[] { "PdfSharpCore.dll", "1.3.65.0", "—" }));
 
         // === Footer (OK + Hilfe) ===
         var footerTable = new TableLayoutPanel

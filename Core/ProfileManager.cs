@@ -53,64 +53,35 @@ internal class ProfileManager
 
     private void CreateDefaultProfiles()
     {
-        var defaultSettings = new ScanSettings();
         var defaultFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             "SpeedScanManager");
 
-        // Scan to Folder
-        Profiles.Add(new ScanProfile
+        var appTypes = new[]
         {
-            Name = "Scan to Folder",
-            IsBuiltIn = false,
-            ApplicationType = ApplicationType.ScanToFolder,
-            FolderPath = defaultFolder,
-            FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp,
-            CustomFileName = "unbenannt",
-            CounterDigits = 3
-        });
+            ApplicationType.ScanToFolder,
+            ApplicationType.ScanToEmail,
+            ApplicationType.ScanToPrint,
+            ApplicationType.ScanToWord,
+            ApplicationType.ScanToExcel,
+            ApplicationType.ScanToPowerPoint,
+            ApplicationType.ScanPictureFolder,
+            ApplicationType.EditWithPdf
+        };
 
-        // Empfohlen (Quick-Menu preset)
-        Profiles.Add(new ScanProfile
+        foreach (var appType in appTypes)
         {
-            Name = "Empfohlen",
-            IsBuiltIn = false,
-            ApplicationType = ApplicationType.ScanToFolder,
-            FolderPath = defaultFolder,
-            FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp,
-            CustomFileName = "unbenannt",
-            CounterDigits = 3,
-            ImageQuality = ImageQuality.Automatic,
-            CompressionRate = 3
-        });
-
-        // Kleine Datei (Quick-Menu preset)
-        Profiles.Add(new ScanProfile
-        {
-            Name = "Kleine Datei",
-            IsBuiltIn = false,
-            ApplicationType = ApplicationType.ScanToFolder,
-            FolderPath = defaultFolder,
-            FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp,
-            CustomFileName = "unbenannt",
-            CounterDigits = 3,
-            ImageQuality = ImageQuality.Normal,
-            CompressionRate = 5
-        });
-
-        // Hohe Bildqualität (Quick-Menu preset)
-        Profiles.Add(new ScanProfile
-        {
-            Name = "Hohe Bildqualität",
-            IsBuiltIn = false,
-            ApplicationType = ApplicationType.ScanToFolder,
-            FolderPath = defaultFolder,
-            FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp,
-            CustomFileName = "unbenannt",
-            CounterDigits = 3,
-            ImageQuality = ImageQuality.Fine,
-            CompressionRate = 1
-        });
+            Profiles.Add(new ScanProfile
+            {
+                Name = appType.ToString(),
+                IsBuiltIn = false,
+                ApplicationType = appType,
+                FolderPath = defaultFolder,
+                FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp,
+                CustomFileName = "unbenannt",
+                CounterDigits = 3
+            });
+        }
 
         Save();
     }

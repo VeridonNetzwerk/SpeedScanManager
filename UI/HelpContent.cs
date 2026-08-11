@@ -1411,7 +1411,7 @@ internal static class HelpContent
         <ul>
             <li>NTwain (TWAIN-Unterstützung)</li>
             <li>Tesseract.NET (OCR-Engine)</li>
-            <li>PdfPig (PDF-Verarbeitung)</li>
+            <li>PdfSharpCore (PDF-Verarbeitung)</li>
         </ul>
         <p><b>[Detail...] Taste</b> – Öffnet das Dialogfeld für Scanner- und Treiberinformationen.</p>
         <p><b>[OK] Taste</b> – Schließt das Dialogfeld.</p>
@@ -1456,7 +1456,7 @@ internal static class HelpContent
         <ul>
             <li>NTwain (TWAIN-Treiber-Bibliothek)</li>
             <li>Tesseract (OCR-Engine)</li>
-            <li>PdfPig (PDF-Verarbeitung)</li>
+            <li>PdfSharpCore (PDF-Verarbeitung)</li>
         </ul>
         <p><b>[OK] Taste</b> – Schließt das Dialogfeld.</p>
         <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>

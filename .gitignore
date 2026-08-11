@@ -47,8 +47,7 @@ SpeedScanManager/packages/
 
 # Docs - exclude scanned PDFs
 *.pdf
-Fujitsu ScanSnap Scanners _ Small Business and Home Office Scanners _ Fujitsu United States.htm
-Fujitsu ScanSnap Scanners _ Small Business and Home Office Scanners _ Fujitsu United States_files/
+Dev-Docs/
 help_extract.txt
 
 # Code signing certificate

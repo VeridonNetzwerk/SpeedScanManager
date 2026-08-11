@@ -5,7 +5,6 @@ namespace SpeedScanManager;
 
 /// <summary>
 /// Profile management window: list profiles, rename, delete, reorder.
-/// "Standard" profile is protected – all buttons except "Schließen" disabled.
 /// </summary>
 internal class ProfileManagementDialog : Form
 {

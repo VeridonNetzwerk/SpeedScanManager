@@ -21,7 +21,7 @@ internal class ScanOutputProcessor
     /// <summary>
     /// Full pipeline: post-process images, generate output file(s), return list of created file paths.
     /// </summary>
-    public List<string> ProcessAndSave(List<Bitmap> images, string targetFolder, ScanSettings settings,
+    public List<string> ProcessAndSave(List<Bitmap> images, string targetFolder,
         FileNameFormatDialog.FormatMode formatMode = FileNameFormatDialog.FormatMode.Timestamp,
         string customFileName = "unbenannt", int counterDigits = 3)
     {
@@ -32,12 +32,12 @@ internal class ScanOutputProcessor
         var processed = ApplyPostProcessing(images);
 
         // Generate output based on format
-        return settings.FileFormat switch
+        return _settings.FileFormat switch
         {
-            FileFormat.Pdf => GeneratePdf(processed, targetFolder, settings, formatMode, customFileName, counterDigits),
-            FileFormat.Jpeg => GenerateJpeg(processed, targetFolder, settings, formatMode, customFileName, counterDigits),
-            FileFormat.Png => GeneratePng(processed, targetFolder, settings, formatMode, customFileName, counterDigits),
-            _ => GeneratePdf(processed, targetFolder, settings, formatMode, customFileName, counterDigits)
+            FileFormat.Pdf => GeneratePdf(processed, targetFolder, formatMode, customFileName, counterDigits),
+            FileFormat.Jpeg => GenerateJpeg(processed, targetFolder, formatMode, customFileName, counterDigits),
+            FileFormat.Png => GeneratePng(processed, targetFolder, formatMode, customFileName, counterDigits),
+            _ => GeneratePdf(processed, targetFolder, formatMode, customFileName, counterDigits)
         };
     }
 
@@ -195,7 +195,7 @@ internal class ScanOutputProcessor
         return result;
     }
 
-    private List<string> GeneratePdf(List<Bitmap> images, string targetFolder, ScanSettings settings,
+    private List<string> GeneratePdf(List<Bitmap> images, string targetFolder,
         FileNameFormatDialog.FormatMode formatMode, string customFileName, int counterDigits)
     {
         var result = new List<string>();
@@ -203,14 +203,14 @@ internal class ScanOutputProcessor
 
         // Run OCR if enabled
         List<List<OcrWord>>? ocrData = null;
-        if (settings.OcrEnabled)
+        if (_settings.OcrEnabled)
         {
             try
             {
-                using var ocr = new OcrProcessor(settings.OcrLanguage);
+                using var ocr = new OcrProcessor(_settings.OcrLanguage);
                 if (ocr.IsAvailable)
                 {
-                    ocrData = ocr.RecognizeAll(images, settings.OcrTargetPages);
+                    ocrData = ocr.RecognizeAll(images, _settings.OcrTargetPages);
                 }
                 else
                 {
@@ -223,24 +223,24 @@ internal class ScanOutputProcessor
             }
         }
 
-        if (settings.PdfSplitMode == PdfSplitMode.MultiPage)
+        if (_settings.PdfSplitMode == PdfSplitMode.MultiPage)
         {
             // All pages in one PDF
             string filePath = Path.Combine(targetFolder, $"{baseFileName}.pdf");
-            CreatePdfFile(images, filePath, settings, ocrData);
+            CreatePdfFile(images, filePath, ocrData);
             result.Add(filePath);
         }
         else
         {
             // Split by page count
-            int pagesPerFile = settings.PdfSplitPages;
+            int pagesPerFile = _settings.PdfSplitPages;
             int fileCounter = 1;
             for (int i = 0; i < images.Count; i += pagesPerFile)
             {
                 var chunk = images.Skip(i).Take(pagesPerFile).ToList();
                 var chunkOcr = ocrData?.Skip(i).Take(pagesPerFile).ToList();
                 string filePath = Path.Combine(targetFolder, $"{baseFileName}_{fileCounter:D3}.pdf");
-                CreatePdfFile(chunk, filePath, settings, chunkOcr);
+                CreatePdfFile(chunk, filePath, chunkOcr);
                 result.Add(filePath);
                 fileCounter++;
             }
@@ -249,20 +249,20 @@ internal class ScanOutputProcessor
         return result;
     }
 
-    private void CreatePdfFile(List<Bitmap> images, string filePath, ScanSettings settings,
+    private void CreatePdfFile(List<Bitmap> images, string filePath,
         List<List<OcrWord>>? ocrData)
     {
         var doc = new PdfDocument();
 
         // Set password if configured
-        if (settings.PdfUsePassword && !string.IsNullOrEmpty(settings.PdfPassword))
+        if (_settings.PdfUsePassword && !string.IsNullOrEmpty(_settings.PdfPassword))
         {
-            doc.SecuritySettings.UserPassword = settings.PdfPassword;
-            doc.SecuritySettings.OwnerPassword = settings.PdfPassword;
+            doc.SecuritySettings.UserPassword = _settings.PdfPassword;
+            doc.SecuritySettings.OwnerPassword = _settings.PdfPassword;
         }
 
         // Compression quality based on settings (1-5)
-        int jpegQuality = settings.CompressionRate switch
+        int jpegQuality = _settings.CompressionRate switch
         {
             1 => 100, // Highest quality, largest file
             2 => 85,
@@ -340,13 +340,13 @@ internal class ScanOutputProcessor
             ?? throw new InvalidOperationException("No JPEG encoder available.");
     }
 
-    private List<string> GenerateJpeg(List<Bitmap> images, string targetFolder, ScanSettings settings,
+    private List<string> GenerateJpeg(List<Bitmap> images, string targetFolder,
         FileNameFormatDialog.FormatMode formatMode, string customFileName, int counterDigits)
     {
         var result = new List<string>();
         string baseFileName = GenerateFileName(formatMode, customFileName, counterDigits);
 
-        int jpegQuality = settings.CompressionRate switch
+        int jpegQuality = _settings.CompressionRate switch
         {
             1 => 100,
             2 => 85,
@@ -371,7 +371,7 @@ internal class ScanOutputProcessor
         return result;
     }
 
-    private List<string> GeneratePng(List<Bitmap> images, string targetFolder, ScanSettings settings,
+    private List<string> GeneratePng(List<Bitmap> images, string targetFolder,
         FileNameFormatDialog.FormatMode formatMode, string customFileName, int counterDigits)
     {
         var result = new List<string>();

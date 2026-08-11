@@ -72,7 +72,7 @@ internal class VersionInfoDialog : Form
                    "Credits müssen in allen Kopien und abgeleiteten Werken erhalten bleiben.\n\n" +
                    "TWAIN-Unterstützung durch NTwain.\n" +
                    "OCR-Engine: Tesseract.NET.\n" +
-                   "PDF-Verarbeitung: PdfPig.\n\n" +
+                   "PDF-Verarbeitung: PdfSharpCore.\n\n" +
                    "Copyright © 2026 VeridonNetzwerk",
             Font = font,
             Location = new Point(24, 90),
