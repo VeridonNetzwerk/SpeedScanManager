@@ -4,21 +4,27 @@ using System.Windows.Forms;
 namespace SpeedScanManager;
 
 /// <summary>
-/// Post-scan "Verify and save" dialog shown when destination is Scan to Folder.
+/// Post-scan "In Ordner speichern" dialog shown when destination is Scan to Folder.
 /// Lets the user preview scanned images, choose a title and destination folder before saving.
+/// Styled to match the rest of SpeedScan Manager (gray panels, blue accents, icon buttons).
 /// </summary>
 internal class PostScanSaveDialog : Form
 {
+    private static readonly Color PanelGray = Color.FromArgb(235, 235, 235);
+    private static readonly Color AccentBlue = Color.FromArgb(45, 90, 170);
+    private static readonly Color TextGray = Color.FromArgb(80, 85, 95);
+
     private readonly List<Bitmap> _scanImages;
     private readonly ScanSettings _settings;
     private int _currentPageIndex;
 
     private static readonly Font UiFont = new("Microsoft Sans Serif", 8.25f);
+    private static readonly Font BoldFont = new("Microsoft Sans Serif", 8.25f, FontStyle.Bold);
 
     private readonly SplitContainer _split;
     private readonly PictureBox _imgPreview;
     private readonly Label _lblPageCounter;
-    private readonly ComboBox _cbTitle;
+    private readonly TextBox _txtTitle;
     private readonly TextBox _txtFolderPath;
     private readonly Button _btnBrowse;
     private readonly Button _btnSave;
@@ -26,25 +32,26 @@ internal class PostScanSaveDialog : Form
     private readonly Button _btnPrev;
     private readonly Button _btnNext;
 
-    public string SelectedTitle => _cbTitle.SelectedItem?.ToString() ?? "ScanSnap";
+    public string SelectedTitle => string.IsNullOrWhiteSpace(_txtTitle.Text) ? "ScanSnap" : _txtTitle.Text;
     public string SelectedFolderPath => _txtFolderPath.Text;
 
-    public PostScanSaveDialog(List<Bitmap> scanImages, ScanSettings settings)
+    public PostScanSaveDialog(List<Bitmap> scanImages, ScanSettings settings, string defaultTitle, string defaultFolder)
     {
         _scanImages = scanImages;
         _settings = settings;
         _currentPageIndex = 0;
 
-        Text = "Verify and save";
+        Text = "In Ordner speichern";
+        Icon = TrayIcons.GetAppIcon();
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(520, 340);
+        ClientSize = new Size(560, 420);
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;
         Font = UiFont;
-        BackColor = Color.FromArgb(240, 240, 240);
+        BackColor = PanelGray;
 
         // === SplitContainer ===
         _split = new SplitContainer
@@ -52,8 +59,7 @@ internal class PostScanSaveDialog : Form
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
             SplitterWidth = 4,
-            BackColor = SystemColors.Control,
-            SplitterDistance = 260
+            BackColor = PanelGray
         };
 
         // === Left side: Preview ===
@@ -66,121 +72,133 @@ internal class PostScanSaveDialog : Form
 
         _imgPreview = new PictureBox
         {
-            Dock = DockStyle.Fill,
             SizeMode = PictureBoxSizeMode.Zoom,
-            Image = null
+            Image = null,
+            Size = new Size(240, 339),
+            Anchor = AnchorStyles.None
         };
 
         _lblPageCounter = new Label
         {
-            Text = "1 / 1",
+            Text = "Seite 1",
             Font = UiFont,
             AutoSize = true,
-            BackColor = Color.FromArgb(240, 240, 240)
+            BackColor = PanelGray,
+            ForeColor = TextGray,
+            Anchor = AnchorStyles.None
         };
 
-        _btnPrev = new Button { Text = "\u25C0", FlatStyle = FlatStyle.Standard, Size = new Size(28, 22) };
-        _btnNext = new Button { Text = "\u25B6", FlatStyle = FlatStyle.Standard, Size = new Size(28, 22) };
-        var btnZoom = new Button { Text = "\u2795", FlatStyle = FlatStyle.Standard, Size = new Size(28, 22) };
-        var btnComment = new Button { Text = "\u270E", FlatStyle = FlatStyle.Standard, Size = new Size(28, 22) };
+        _btnPrev = new Button { Text = "\u25C0", FlatStyle = FlatStyle.Standard, UseVisualStyleBackColor = true, Size = new Size(28, 22), Font = UiFont, Anchor = AnchorStyles.None };
+        _btnNext = new Button { Text = "\u25B6", FlatStyle = FlatStyle.Standard, UseVisualStyleBackColor = true, Size = new Size(28, 22), Font = UiFont, Anchor = AnchorStyles.None };
 
         // Navigation bar at bottom of preview
         var navPanel = new Panel
         {
             Dock = DockStyle.Bottom,
             Height = 28,
-            BackColor = Color.FromArgb(240, 240, 240)
+            BackColor = PanelGray
         };
         var navTable = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 6,
+            ColumnCount = 3,
             RowCount = 1
         };
-        for (int i = 0; i < 6; i++)
-            navTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 32));
-        navTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        navTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        navTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));
+        navTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         navTable.Controls.Add(_btnPrev, 0, 0);
-        navTable.Controls.Add(_btnNext, 1, 0);
-        navTable.Controls.Add(btnZoom, 2, 0);
-        navTable.Controls.Add(btnComment, 3, 0);
-        navTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 4, 0);
-        navTable.Controls.Add(_lblPageCounter, 5, 0);
+        navTable.Controls.Add(_lblPageCounter, 1, 0);
+        navTable.Controls.Add(_btnNext, 2, 0);
         navPanel.Controls.Add(navTable);
 
-        previewPanel.Controls.AddRange(new Control[] { _imgPreview, navPanel });
+        previewPanel.Controls.AddRange(new Control[] { navPanel, _imgPreview });
+        previewPanel.Resize += (_, _) =>
+        {
+            int x = (previewPanel.Width - _imgPreview.Width) / 2;
+            int y = (previewPanel.Height - navPanel.Height - _imgPreview.Height) / 2;
+            _imgPreview.Location = new Point(x < 0 ? 0 : x, y < 0 ? 0 : y);
+        };
         _split.Panel1.Controls.Add(previewPanel);
 
         // === Right side: Title + Folder ===
-        var contentPanel = new Panel { Dock = DockStyle.Fill };
+        var contentPanel = new Panel { Dock = DockStyle.Fill, BackColor = PanelGray };
 
         var lblTitle = new Label
         {
-            Text = "Specify a title",
-            Font = UiFont,
-            Location = new Point(12, 12),
+            Text = "Titel festlegen",
+            Font = BoldFont,
+            Location = new Point(14, 12),
             AutoSize = true,
-            ForeColor = Color.FromArgb(80, 80, 80)
+            ForeColor = Color.FromArgb(40, 40, 40)
         };
 
-        _cbTitle = new ComboBox
+        _txtTitle = new TextBox
         {
-            DropDownStyle = ComboBoxStyle.DropDownList,
             Font = UiFont,
-            Location = new Point(12, 30),
-            Size = new Size(230, 24)
+            Location = new Point(14, 32),
+            Size = new Size(260, 24),
+            BackColor = Color.White,
+            Text = defaultTitle
         };
-        _cbTitle.Items.AddRange(new string[] { "ScanSnap", "Neuer Titel...", "Benutzerdefiniert..." });
-        _cbTitle.SelectedIndex = 0;
 
         var lblFolder = new Label
         {
-            Text = "Specify destination folder",
-            Font = UiFont,
-            Location = new Point(12, 70),
+            Text = "Zielordner festlegen",
+            Font = BoldFont,
+            Location = new Point(14, 74),
             AutoSize = true,
-            ForeColor = Color.FromArgb(80, 80, 80)
+            ForeColor = Color.FromArgb(40, 40, 40)
         };
-
-        // Default folder from save config
-        string defaultFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "SpeedScanManager");
 
         _txtFolderPath = new TextBox
         {
             ReadOnly = true,
             Font = UiFont,
-            Location = new Point(12, 90),
-            Size = new Size(230, 24),
-            BackColor = SystemColors.Control,
+            Location = new Point(14, 94),
+            Size = new Size(260, 24),
+            BackColor = Color.White,
             Text = defaultFolder
         };
 
         _btnBrowse = new Button
         {
-            Text = "Browse...",
+            Text = "Durchsuchen...",
             FlatStyle = FlatStyle.Standard,
             UseVisualStyleBackColor = true,
-            Size = new Size(75, 24),
+            Size = new Size(135, 26),
             Font = UiFont,
-            Location = new Point(12, 120)
+            Location = new Point(14, 124),
+            Image = TabIcons.CreateBrowseIcon(),
+            ImageAlign = ContentAlignment.MiddleLeft,
+            TextAlign = ContentAlignment.MiddleRight,
+            Padding = new Padding(4, 0, 2, 0)
         };
         _btnBrowse.Click += (_, _) => BrowseFolder();
 
         // Scan settings summary
         var grpSummary = new GroupBox
         {
-            Text = "Scan settings summary",
-            Location = new Point(12, 158),
-            Size = new Size(230, 60),
+            Text = "Scaneinstellungen",
+            Location = new Point(14, 168),
+            Size = new Size(260, 130),
             Font = UiFont,
-            BackColor = Color.White
+            ForeColor = TextGray,
+            BackColor = PanelGray
+        };
+
+        var dpiValue = _settings.ImageQuality switch
+        {
+            ImageQuality.Normal => 150,
+            ImageQuality.Fine => 200,
+            ImageQuality.Best => 300,
+            ImageQuality.Excellent => 600,
+            _ => 200
         };
 
         var presetText = _settings.ImageQuality switch
         {
-            ImageQuality.Automatic => "Empfohlen",
+            ImageQuality.Automatic => "200 dpi",
             ImageQuality.Normal => "Kleine Datei",
             ImageQuality.Fine => "Fein",
             ImageQuality.Best => "Beste Qualität",
@@ -188,76 +206,134 @@ internal class PostScanSaveDialog : Form
             _ => "Empfohlen"
         };
 
-        var qualityDetail = $"{GetColorModeText(_settings.ColorMode)} · {GetScanSideText(_settings.ScanSide)}";
+        var fileFormatText = _settings.FileFormat switch
+        {
+            FileFormat.Pdf => "PDF",
+            FileFormat.Jpeg => "JPEG",
+            FileFormat.Png => "PNG",
+            _ => "PDF"
+        };
 
         var lblPreset = new Label
         {
             Text = presetText,
             Font = new Font("Microsoft Sans Serif", 9f, FontStyle.Bold),
             Location = new Point(10, 16),
-            AutoSize = true
+            AutoSize = true,
+            ForeColor = AccentBlue
         };
 
-        var lblQuality = new Label
+        var lblDpi = new Label
         {
-            Text = qualityDetail,
+            Text = $"Auflösung: {dpiValue} dpi",
             Font = UiFont,
             Location = new Point(10, 34),
             AutoSize = true,
-            ForeColor = Color.FromArgb(80, 80, 80)
+            ForeColor = TextGray
         };
 
-        grpSummary.Controls.AddRange(new Control[] { lblPreset, lblQuality });
+        var lblColor = new Label
+        {
+            Text = $"Farbmodus: {GetColorModeText(_settings.ColorMode)}",
+            Font = UiFont,
+            Location = new Point(10, 52),
+            AutoSize = true,
+            ForeColor = TextGray
+        };
 
-        contentPanel.Controls.AddRange(new Control[] { lblTitle, _cbTitle, lblFolder, _txtFolderPath, _btnBrowse, grpSummary });
+        var lblSide = new Label
+        {
+            Text = $"Scanseite: {GetScanSideText(_settings.ScanSide)}",
+            Font = UiFont,
+            Location = new Point(10, 70),
+            AutoSize = true,
+            ForeColor = TextGray
+        };
+
+        var lblFormat = new Label
+        {
+            Text = $"Dateiformat: {fileFormatText}",
+            Font = UiFont,
+            Location = new Point(10, 88),
+            AutoSize = true,
+            ForeColor = TextGray
+        };
+
+        var lblCompression = new Label
+        {
+            Text = $"Kompression: Stufe {_settings.CompressionRate}",
+            Font = UiFont,
+            Location = new Point(10, 106),
+            AutoSize = true,
+            ForeColor = TextGray
+        };
+
+        grpSummary.Controls.AddRange(new Control[] { lblPreset, lblDpi, lblColor, lblSide, lblFormat, lblCompression });
+
+        contentPanel.Controls.AddRange(new Control[] { lblTitle, _txtTitle, lblFolder, _txtFolderPath, _btnBrowse, grpSummary });
         _split.Panel2.Controls.Add(contentPanel);
 
         // === Footer ===
         var footerPanel = new Panel
         {
             Dock = DockStyle.Bottom,
-            Height = 40,
-            BackColor = Color.FromArgb(240, 240, 240)
+            Height = 42,
+            BackColor = PanelGray
+        };
+        footerPanel.Paint += (_, e) =>
+        {
+            using var pen = new Pen(Color.FromArgb(200, 200, 200), 1f);
+            e.Graphics.DrawLine(pen, 0, 0, footerPanel.Width, 0);
         };
 
         _btnSave = new Button
         {
-            Text = "Save",
+            Text = "Speichern",
             FlatStyle = FlatStyle.Standard,
             UseVisualStyleBackColor = true,
-            Size = new Size(80, 26),
+            Size = new Size(116, 26),
             Font = UiFont,
-            BackColor = Color.FromArgb(59, 130, 246),
-            ForeColor = Color.White
+            Image = TabIcons.CreateCheckIcon(),
+            ImageAlign = ContentAlignment.MiddleLeft,
+            TextAlign = ContentAlignment.MiddleRight,
+            Anchor = AnchorStyles.Top | AnchorStyles.Left,
+            Margin = new Padding(0, 7, 0, 0)
         };
 
         _btnCancel = new Button
         {
-            Text = "Cancel",
+            Text = "Abbrechen",
             FlatStyle = FlatStyle.Standard,
             UseVisualStyleBackColor = true,
-            Size = new Size(80, 26),
-            Font = UiFont
+            Size = new Size(116, 26),
+            Font = UiFont,
+            Image = TabIcons.CreateCrossIcon(),
+            ImageAlign = ContentAlignment.MiddleLeft,
+            TextAlign = ContentAlignment.MiddleRight,
+            Anchor = AnchorStyles.Top | AnchorStyles.Left,
+            Margin = new Padding(0, 7, 0, 0)
         };
 
         var footerTable = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 4,
-            RowCount = 1
+            RowCount = 1,
+            BackColor = PanelGray
         };
         footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84));
-        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84));
-        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 12));
-        footerTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 0, 0);
+        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
+        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
+        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 14));
+        footerTable.Controls.Add(new Panel { Dock = DockStyle.Fill, BackColor = PanelGray }, 0, 0);
         footerTable.Controls.Add(_btnCancel, 1, 0);
         footerTable.Controls.Add(_btnSave, 2, 0);
-        footerTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 3, 0);
+        footerTable.Controls.Add(new Panel { Dock = DockStyle.Fill, BackColor = PanelGray }, 3, 0);
         footerPanel.Controls.Add(footerTable);
 
         Controls.Add(footerPanel);
         Controls.Add(_split);
+        _split.SplitterDistance = 260;
 
         AcceptButton = _btnSave;
         CancelButton = _btnCancel;
@@ -298,12 +374,12 @@ internal class PostScanSaveDialog : Form
         if (_scanImages.Count > 0 && _currentPageIndex < _scanImages.Count)
         {
             _imgPreview.Image = _scanImages[_currentPageIndex];
-            _lblPageCounter.Text = $"{_currentPageIndex + 1} / {_scanImages.Count}";
+            _lblPageCounter.Text = $"Seite {_currentPageIndex + 1}";
         }
         else
         {
             _imgPreview.Image = null;
-            _lblPageCounter.Text = "0 / 0";
+            _lblPageCounter.Text = "Seite 1";
         }
 
         _btnPrev.Enabled = _currentPageIndex > 0;
@@ -312,19 +388,19 @@ internal class PostScanSaveDialog : Form
 
     private static string GetColorModeText(ColorMode mode) => mode switch
     {
-        ColorMode.Automatic => "Automatisch",
+        ColorMode.Automatic => "Farbe",
         ColorMode.Color => "Farbe",
         ColorMode.Grayscale => "Graustufen",
         ColorMode.BlackWhite => "S/W",
-        _ => "Automatisch"
+        _ => "Farbe"
     };
 
     private static string GetScanSideText(ScanSide side) => side switch
     {
-        ScanSide.Automatic => "Automatisch",
+        ScanSide.Automatic => "Duplex",
         ScanSide.Simplex => "Simplex",
         ScanSide.Duplex => "Duplex",
         ScanSide.Flatbed => "Flachbett",
-        _ => "Automatisch"
+        _ => "Duplex"
     };
 }

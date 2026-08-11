@@ -9,6 +9,7 @@ internal class ScannerDriverInfoDialog : Form
     public ScannerDriverInfoDialog(ScannerState? scannerState = null)
     {
         Text = "SpeedScan Manager - Scanner- und Treiberinformationen";
+        Icon = TrayIcons.GetAppIcon();
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;

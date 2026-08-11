@@ -8,6 +8,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>build\AppManifest.xml</ApplicationManifest>
+    <ApplicationIcon>assets\SpeedScanManager.ico</ApplicationIcon>
+    <DefaultItemExcludes>$(DefaultItemExcludes);installer\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

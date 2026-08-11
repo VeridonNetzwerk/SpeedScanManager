@@ -7,6 +7,7 @@ namespace SpeedScanManager;
 /// <summary>
 /// Post-scan media selection dialog shown when Quick-Menü is enabled.
 /// Offers 8 actions: Scan to Folder, E-mail, Print, Word, Excel, PowerPoint, Picture Folder, PDF Edit.
+/// Styled to match the rest of SpeedScan Manager (blue gradient header, rounded window, accent-blue selection).
 /// </summary>
 internal class PostScanMediaDialog : Form
 {
@@ -26,25 +27,29 @@ internal class PostScanMediaDialog : Form
 
     private readonly List<Panel> _itemPanels = new();
     private int _selectedIndex = 0;
-    private static readonly Color SelectedBg = Color.FromArgb(160, 200, 245);
-    private static readonly Color SelectedBorder = Color.FromArgb(80, 130, 200);
+    private static readonly Color AccentBlue = Color.FromArgb(45, 90, 170);
+    private static readonly Color HeaderTop = Color.FromArgb(70, 110, 175);
+    private static readonly Color HeaderBottom = Color.FromArgb(40, 75, 140);
+    private static readonly Color SelectedBg = Color.FromArgb(220, 230, 245);
+    private static readonly Color SelectedBorder = AccentBlue;
     private static readonly Color NormalBg = Color.White;
-    private static readonly Color NormalBorder = Color.FromArgb(180, 180, 180);
-    private static readonly Color HeaderBg = Color.FromArgb(120, 150, 200);
+    private static readonly Color NormalBorder = Color.FromArgb(210, 210, 210);
+    private static readonly Color PanelGray = Color.FromArgb(240, 240, 240);
 
     private readonly string[] _labels =
     {
-        "Scan to Folder",
-        "Scan to E-mail",
-        "Scan to Print",
-        "Scan to Word",
-        "Scan to Excel",
-        "Scan to PowerPoint(R)",
-        "Scan Picture Folder",
-        "Edit with PDF Edit"
+        "In Ordner speichern",
+        "Per E-Mail versenden",
+        "Drucken",
+        "Nach Word",
+        "Nach Excel",
+        "Nach PowerPoint",
+        "In Bilderordner",
+        "Mit PDF Edit bearbeiten"
     };
 
     private readonly Bitmap[] _icons;
+    private Point? _dragStart;
 
     public PostScanMediaDialog(List<string> filePaths, List<Bitmap>? images)
     {
@@ -62,68 +67,97 @@ internal class PostScanMediaDialog : Form
 
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(580, 470);
+        ClientSize = new Size(520, 410);
+        Icon = TrayIcons.GetAppIcon();
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;
         Font = new Font("Microsoft Sans Serif", 8.25f);
-        BackColor = Color.FromArgb(240, 240, 240);
+        BackColor = PanelGray;
 
-        // === Custom header bar ===
+        // Rounded window outline + thin border
+        Region = new Region(RoundedRect(new Rectangle(0, 0, ClientSize.Width, ClientSize.Height), 8));
+        Paint += (_, e) =>
+        {
+            using var pen = new Pen(Color.FromArgb(140, 150, 165), 1f);
+            var rect = new Rectangle(0, 0, ClientSize.Width - 1, ClientSize.Height - 1);
+            using var path = RoundedRect(rect, 8);
+            e.Graphics.DrawPath(pen, path);
+        };
+
+        // === Custom gradient header bar ===
         var headerBar = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 36,
-            BackColor = HeaderBg
+            Height = 44,
+            BackColor = HeaderTop
         };
-        var lblLogo = new Label
+        headerBar.Paint += (_, e) =>
         {
-            Text = "Scan",
-            Font = new Font("Microsoft Sans Serif", 14f, FontStyle.Bold),
+            var rect = new Rectangle(0, 0, headerBar.Width, headerBar.Height);
+            using var brush = new LinearGradientBrush(rect, HeaderTop, HeaderBottom, LinearGradientMode.Vertical);
+            e.Graphics.FillRectangle(brush, rect);
+        };
+        headerBar.MouseDown += (s, e) => _dragStart = e.Location;
+        headerBar.MouseMove += (s, e) =>
+        {
+            if (_dragStart.HasValue && e.Button == MouseButtons.Left)
+            {
+                Location = new Point(Location.X + (e.X - _dragStart.Value.X), Location.Y + (e.Y - _dragStart.Value.Y));
+            }
+        };
+        headerBar.MouseUp += (s, e) => _dragStart = null;
+
+        var pbLogo = new PictureBox
+        {
+            Image = AppResources.Logo,
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Size = new Size(24, 24),
+            Location = new Point(12, 10),
+            BackColor = Color.Transparent
+        };
+
+        var lblTitle = new Label
+        {
+            Text = "Wohin möchtest du scannen?",
+            Font = new Font("Microsoft Sans Serif", 10f, FontStyle.Bold),
             ForeColor = Color.White,
-            Location = new Point(12, 6),
+            Location = new Point(44, 6),
             AutoSize = true,
-            BackColor = HeaderBg
+            BackColor = Color.Transparent
         };
-        var lblForFi = new Label
+
+        int fileCount = filePaths?.Count ?? images?.Count ?? 0;
+        var lblSubtitle = new Label
         {
-            Text = "",
-            Font = new Font("Microsoft Sans Serif", 10f),
-            ForeColor = Color.FromArgb(220, 230, 245),
-            Location = new Point(68, 10),
+            Text = fileCount == 1 ? "1 Seite gescannt" : $"{fileCount} Seiten gescannt",
+            Font = new Font("Microsoft Sans Serif", 8.25f),
+            ForeColor = Color.FromArgb(215, 225, 245),
+            Location = new Point(45, 24),
             AutoSize = true,
-            BackColor = HeaderBg
+            BackColor = Color.Transparent
         };
-        var btnHelp = new Button
+
+        var btnHelp = new CircleButton("?", Color.FromArgb(80, 130, 195))
         {
-            Text = "?",
-            FlatStyle = FlatStyle.Flat,
-            Font = new Font("Microsoft Sans Serif", 10f),
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(80, 120, 180),
-            Size = new Size(32, 24),
-            Location = new Point(ClientSize.Width - 72, 6),
-            FlatAppearance = { BorderSize = 0 }
+            Size = new Size(22, 22),
+            Location = new Point(ClientSize.Width - 58, 11)
         };
         btnHelp.Click += (s, e) => { using var h = new HelpForm("postscan-media"); h.ShowDialog(this); };
-        var btnClose = new Button
+
+        var btnClose = new CircleButton("\u2715", Color.FromArgb(190, 70, 70))
         {
-            Text = "\u2715",
-            FlatStyle = FlatStyle.Flat,
-            Font = new Font("Microsoft Sans Serif", 12f, FontStyle.Bold),
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(180, 60, 60),
-            Size = new Size(32, 24),
-            Location = new Point(ClientSize.Width - 36, 6),
-            FlatAppearance = { BorderSize = 0 }
+            Size = new Size(22, 22),
+            Location = new Point(ClientSize.Width - 30, 11)
         };
         btnClose.Click += (_, _) => Close();
-        headerBar.Controls.AddRange(new Control[] { lblLogo, lblForFi, btnHelp, btnClose });
+
+        headerBar.Controls.AddRange(new Control[] { pbLogo, lblTitle, lblSubtitle, btnHelp, btnClose });
 
         // === Content area with grid ===
         var contentPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = Color.FromArgb(240, 240, 240),
+            BackColor = PanelGray,
             Padding = new Padding(0)
         };
 
@@ -132,8 +166,8 @@ internal class PostScanMediaDialog : Form
             Dock = DockStyle.Fill,
             ColumnCount = 4,
             RowCount = 2,
-            Padding = new Padding(12, 12, 12, 12),
-            BackColor = Color.FromArgb(240, 240, 240),
+            Padding = new Padding(16, 20, 16, 20),
+            BackColor = PanelGray,
             CellBorderStyle = TableLayoutPanelCellBorderStyle.None
         };
         for (int i = 0; i < 4; i++)
@@ -155,7 +189,7 @@ internal class PostScanMediaDialog : Form
         {
             Dock = DockStyle.Bottom,
             Height = 40,
-            BackColor = Color.FromArgb(245, 245, 245)
+            BackColor = PanelGray
         };
         footerPanel.Paint += (_, e) =>
         {
@@ -168,9 +202,12 @@ internal class PostScanMediaDialog : Form
             Text = "Speichern",
             FlatStyle = FlatStyle.Standard,
             UseVisualStyleBackColor = true,
-            Size = new Size(90, 26),
+            Size = new Size(116, 26),
             Font = new Font("Microsoft Sans Serif", 8.25f),
-            Location = new Point(ClientSize.Width - 190, 7)
+            Image = TabIcons.CreateCheckIcon(),
+            ImageAlign = ContentAlignment.MiddleLeft,
+            TextAlign = ContentAlignment.MiddleRight,
+            Location = new Point(ClientSize.Width - 244, 7)
         };
         btnSave.Click += (_, _) =>
         {
@@ -184,16 +221,19 @@ internal class PostScanMediaDialog : Form
             Text = "Abbrechen",
             FlatStyle = FlatStyle.Standard,
             UseVisualStyleBackColor = true,
-            Size = new Size(90, 26),
+            Size = new Size(116, 26),
             Font = new Font("Microsoft Sans Serif", 8.25f),
-            Location = new Point(ClientSize.Width - 95, 7),
+            Image = TabIcons.CreateCrossIcon(),
+            ImageAlign = ContentAlignment.MiddleLeft,
+            TextAlign = ContentAlignment.MiddleRight,
+            Location = new Point(ClientSize.Width - 122, 7),
             DialogResult = DialogResult.Cancel
         };
 
         footerPanel.Controls.AddRange(new Control[] { btnCancel, btnSave });
 
-        // Add controls in correct z-order (bottom and top dock first, then fill)
-        Controls.AddRange(new Control[] { footerPanel, headerBar, contentPanel });
+        // Add Fill control first so Top/Bottom docked controls correctly reserve their space
+        Controls.AddRange(new Control[] { contentPanel, footerPanel, headerBar });
 
         AcceptButton = btnSave;
         CancelButton = btnCancel;
@@ -201,26 +241,39 @@ internal class PostScanMediaDialog : Form
         UpdateSelection();
     }
 
+    private static GraphicsPath RoundedRect(Rectangle bounds, int radius)
+    {
+        int d = radius * 2;
+        var path = new GraphicsPath();
+        path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
+        path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
+        path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
+        path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
+        path.CloseFigure();
+        return path;
+    }
+
     private Panel CreateItemPanel(int index)
     {
         var panel = new Panel
         {
             Dock = DockStyle.Fill,
-            BorderStyle = BorderStyle.FixedSingle,
+            BorderStyle = BorderStyle.None,
             BackColor = NormalBg,
-            Margin = new Padding(3),
+            Margin = new Padding(4),
             Padding = new Padding(2),
             Tag = index
         };
+        panel.Paint += (_, e) => PaintItemBorder(panel, index, e.Graphics);
 
         var imgBox = new PictureBox
         {
             SizeMode = PictureBoxSizeMode.Zoom,
-            Size = new Size(48, 48),
+            Size = new Size(40, 40),
             Image = _icons[index],
             Dock = DockStyle.Top,
             Margin = Padding.Empty,
-            BackColor = NormalBg
+            BackColor = Color.Transparent
         };
 
         var lblText = new Label
@@ -231,7 +284,7 @@ internal class PostScanMediaDialog : Form
             TextAlign = ContentAlignment.MiddleCenter,
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
-            BackColor = NormalBg
+            BackColor = Color.Transparent
         };
 
         panel.Controls.Add(lblText);
@@ -274,26 +327,56 @@ internal class PostScanMediaDialog : Form
         return panel;
     }
 
+    private void PaintItemBorder(Panel panel, int index, Graphics g)
+    {
+        bool selected = index == _selectedIndex;
+        var rect = new Rectangle(0, 0, panel.Width - 1, panel.Height - 1);
+        using var path = RoundedRect(rect, 6);
+        using var pen = new Pen(selected ? SelectedBorder : NormalBorder, selected ? 2f : 1f);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.DrawPath(pen, path);
+    }
+
     private void UpdateSelection()
     {
         for (int i = 0; i < _itemPanels.Count; i++)
         {
             var panel = _itemPanels[i];
-            if (i == _selectedIndex)
-            {
-                panel.BackColor = SelectedBg;
-                panel.BorderStyle = BorderStyle.FixedSingle;
-            }
-            else
-            {
-                panel.BackColor = NormalBg;
-                panel.BorderStyle = BorderStyle.FixedSingle;
-            }
-            // Update child backcolors too
-            foreach (Control c in panel.Controls)
-                c.BackColor = panel.BackColor;
+            panel.BackColor = i == _selectedIndex ? SelectedBg : NormalBg;
             panel.Invalidate();
         }
     }
 
+    /// <summary>
+    /// Small circular icon button used for Help/Close in the header bar.
+    /// </summary>
+    private class CircleButton : Button
+    {
+        private readonly Color _bg;
+
+        public CircleButton(string text, Color bg)
+        {
+            _bg = bg;
+            Text = text;
+            FlatStyle = FlatStyle.Flat;
+            FlatAppearance.BorderSize = 0;
+            ForeColor = Color.White;
+            Font = new Font("Microsoft Sans Serif", 9f, FontStyle.Bold);
+            BackColor = Color.Transparent;
+            Cursor = Cursors.Hand;
+        }
+
+        protected override void OnPaint(PaintEventArgs pevent)
+        {
+            var g = pevent.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+            using var brush = new SolidBrush(_bg);
+            g.FillEllipse(brush, rect);
+            TextRenderer.DrawText(g, Text, Font, rect, ForeColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+        }
+
+        protected override void OnParentBackColorChanged(EventArgs e) { }
+    }
 }

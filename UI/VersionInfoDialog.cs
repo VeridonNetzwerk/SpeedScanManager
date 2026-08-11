@@ -12,6 +12,7 @@ internal class VersionInfoDialog : Form
     {
         _scannerState = scannerState;
         Text = "SpeedScan Manager \u2013 Versionsinformationen";
+        Icon = TrayIcons.GetAppIcon();
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;

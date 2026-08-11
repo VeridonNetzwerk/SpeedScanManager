@@ -380,6 +380,9 @@ internal class ScanPipeline : IDisposable
             {
                 LogDiag($"Long page mode: frame pre-set failed: {ex.Message}");
             }
+
+            // Duplex / Simplex — must be set even in long page mode
+            ConfigureScanSide(effectiveSide);
             return;
         }
 
@@ -408,21 +411,7 @@ internal class ScanPipeline : IDisposable
             }
 
             // Duplex / Simplex
-            try
-            {
-                if (effectiveSide == ScanSide.Duplex)
-                {
-                    _currentSource.Capabilities.CapDuplexEnabled.SetValue(BoolType.True);
-                }
-                else if (effectiveSide == ScanSide.Simplex)
-                {
-                    _currentSource.Capabilities.CapDuplexEnabled.SetValue(BoolType.False);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogDiag($"Duplex cap failed: {ex.Message}");
-            }
+            ConfigureScanSide(effectiveSide);
         }
 
         // Color mode
@@ -552,6 +541,42 @@ internal class ScanPipeline : IDisposable
             {
                 LogDiag($"Multi-feed detection cap failed: {ex.Message}");
             }
+        }
+    }
+
+    private void ConfigureScanSide(ScanSide effectiveSide)
+    {
+        if (_currentSource == null) return;
+
+        // Automatic: prefer Duplex, fall back to Simplex
+        if (effectiveSide == ScanSide.Automatic)
+            effectiveSide = ScanSide.Duplex;
+
+        try
+        {
+            if (effectiveSide == ScanSide.Duplex)
+            {
+                try
+                {
+                    _currentSource.Capabilities.CapDuplexEnabled.SetValue(BoolType.True);
+                    LogDiag("Scan side set to Duplex");
+                }
+                catch (Exception ex)
+                {
+                    LogDiag($"Duplex failed, falling back to Simplex: {ex.Message}");
+                    _currentSource.Capabilities.CapDuplexEnabled.SetValue(BoolType.False);
+                    LogDiag("Scan side set to Simplex (fallback)");
+                }
+            }
+            else if (effectiveSide == ScanSide.Simplex)
+            {
+                _currentSource.Capabilities.CapDuplexEnabled.SetValue(BoolType.False);
+                LogDiag("Scan side set to Simplex");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"Duplex cap failed: {ex.Message}");
         }
     }
 

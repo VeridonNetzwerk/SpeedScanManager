@@ -26,6 +26,7 @@ internal class ProfileManagementDialog : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "SpeedScanManager – Profilverwaltung";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(420, 370);
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;

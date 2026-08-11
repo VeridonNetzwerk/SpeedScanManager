@@ -24,6 +24,7 @@ internal class ScanToEmailOptionsDialog : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Scan to E-Mail – Optionen";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(380, 180);
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;

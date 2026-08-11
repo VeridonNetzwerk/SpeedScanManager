@@ -370,7 +370,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
                                         switch (dlg.SelectedMediaAction)
                                         {
                                             case PostScanMediaDialog.MediaAction.ScanToFolder:
-                                                OpenScanResultFolder();
+                                                SaveToFolderWithDialog(fileNames, imagesToPrint);
                                                 break;
 
                                             case PostScanMediaDialog.MediaAction.ScanToEmail:
@@ -446,7 +446,8 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
                     {
                         _hiddenWindow.BeginInvoke(() =>
                         {
-                            using var saveDlg = new PostScanSaveDialog(imagesForDialog, _settings);
+                            var generatedName = GenerateDefaultFileName(formatMode, customName);
+                            using var saveDlg = new PostScanSaveDialog(imagesForDialog, _settings, generatedName, folder);
                             saveDlg.StartPosition = FormStartPosition.CenterParent;
 
                             if (saveDlg.ShowDialog(_hiddenWindow) == DialogResult.OK)
@@ -560,6 +561,68 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
             ? _appSettings.FolderPath
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SpeedScanManager");
         return (folder, _appSettings.FileNameFormat, _appSettings.CustomFileName, _appSettings.CounterDigits);
+    }
+
+    private static string GenerateDefaultFileName(FileNameFormatDialog.FormatMode mode, string customName)
+    {
+        return mode switch
+        {
+            FileNameFormatDialog.FormatMode.OsDefault => DateTime.Now.ToString("yyyyMMdd_HHmmss"),
+            FileNameFormatDialog.FormatMode.Timestamp => DateTime.Now.ToString("yyyyMMddHHmmss"),
+            FileNameFormatDialog.FormatMode.Custom => customName,
+            _ => "ScanSnap"
+        };
+    }
+
+    private void SaveToFolderWithDialog(List<string> fileNames, List<Bitmap>? previewImages)
+    {
+        var images = previewImages ?? new List<Bitmap>();
+        var (folder, formatMode, customName, digits) = GetSaveConfig();
+        var generatedName = GenerateDefaultFileName(formatMode, customName);
+        using var saveDlg = new PostScanSaveDialog(images, _settings, generatedName, folder);
+        saveDlg.StartPosition = FormStartPosition.CenterParent;
+
+        if (saveDlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
+            return;
+
+        string finalFolder = saveDlg.SelectedFolderPath;
+        string finalTitle = saveDlg.SelectedTitle;
+
+        try
+        {
+            Directory.CreateDirectory(finalFolder);
+
+            var updatedFileNames = new List<string>();
+            for (int i = 0; i < fileNames.Count; i++)
+            {
+                var srcFile = fileNames[i];
+                if (!File.Exists(srcFile))
+                    continue;
+
+                var ext = Path.GetExtension(srcFile);
+                var newName = fileNames.Count == 1
+                    ? $"{finalTitle}{ext}"
+                    : $"{finalTitle}_{i + 1:D3}{ext}";
+                var destFile = Path.Combine(finalFolder, newName);
+
+                if (!string.Equals(Path.GetFullPath(srcFile), Path.GetFullPath(destFile), StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Copy(srcFile, destFile, overwrite: true);
+                    File.Delete(srcFile);
+                }
+
+                updatedFileNames.Add(destFile);
+            }
+
+            _lastScanFiles = updatedFileNames;
+            Debug.WriteLine($"[Tray] Scan to Folder: {updatedFileNames.Count} Datei(en) nach {finalFolder} verschoben.");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Tray] Scan to Folder speichern fehlgeschlagen: {ex.Message}");
+        }
+
+        OpenScanResultFolder();
     }
 
     private void OpenScanResultFolder()

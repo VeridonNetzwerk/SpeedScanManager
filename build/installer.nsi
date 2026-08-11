@@ -36,6 +36,9 @@ RequestExecutionLevel admin
 SetCompressor /SOLID lzma
 Unicode True
 
+; === Installer Icon ==========================================================
+Icon "..\assets\SpeedScanManager.ico"
+
 ; === VersionInfo ============================================================
 VIAddVersionKey "ProductName" "${PRODUCT_NAME}"
 VIAddVersionKey "CompanyName" "${PRODUCT_PUBLISHER}"

@@ -126,6 +126,30 @@ internal static class TrayIcons
         g.DrawPath(pen, path);
     }
 
+    /// <summary>
+    /// Creates an Icon from the app logo PNG for use as Form.Icon (title bar).
+    /// </summary>
+    public static Icon GetAppIcon()
+    {
+        try
+        {
+            var logo = AppResources.Logo;
+            using var bmp = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using var g = Graphics.FromImage(bmp);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.Clear(Color.Transparent);
+            int w = logo.Width, h = logo.Height;
+            if (w > h) { h = (int)(h * (28.0 / w)); w = 28; }
+            else { w = (int)(w * (28.0 / h)); h = 28; }
+            g.DrawImage(logo, new Rectangle((32 - w) / 2, (32 - h) / 2, w, h));
+            return IconFromBitmap(bmp);
+        }
+        catch
+        {
+            return SystemIcons.Application;
+        }
+    }
+
     private static GraphicsPath GetRoundedRectPath(Rectangle rect, int radius)
     {
         var path = new GraphicsPath();

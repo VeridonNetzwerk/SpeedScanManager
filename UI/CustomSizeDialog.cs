@@ -30,6 +30,7 @@ internal class CustomSizeDialog : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Hinzufügen oder Entfernen von benutzerdefinierten Größen";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(600, 340);
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;
@@ -367,6 +368,7 @@ internal class CustomSizeEditDialog : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Benutzerdefinierte Größe";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(300, 185);
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;

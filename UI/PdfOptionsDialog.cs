@@ -27,6 +27,7 @@ internal class PdfOptionsDialog : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "PDF-Dateiformat Option";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(400, 300);
         ShowInTaskbar = false;
 

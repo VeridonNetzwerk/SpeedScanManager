@@ -86,6 +86,7 @@ internal class MainForm : Form
         };
         StartPosition = FormStartPosition.CenterScreen;
         Text = "SpeedScan Manager – Einstellungen";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(ClientWidth, CollapsedClientHeight);
         ShowInTaskbar = true;
         Font = new Font("Microsoft Sans Serif", 8.25f);

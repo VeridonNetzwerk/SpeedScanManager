@@ -23,6 +23,7 @@ internal class ScanToPrintOptionsDialog : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Scan to Print – Optionen";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(380, 150);
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;

@@ -36,6 +36,7 @@ internal class ScanModeOptionsDialog : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Scanmodus Option";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(400, 360);
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;

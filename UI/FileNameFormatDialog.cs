@@ -37,6 +37,7 @@ internal class FileNameFormatDialog : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Dateinamenformat";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(550, 270);
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;

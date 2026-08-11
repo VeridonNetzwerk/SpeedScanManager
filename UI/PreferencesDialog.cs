@@ -16,6 +16,7 @@ internal class PreferencesDialog : Form
         _settings = settings;
 
         Text = "SpeedScan Manager - Präferenzen";
+        Icon = TrayIcons.GetAppIcon();
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;

@@ -38,6 +38,7 @@ internal class HelpForm : Form
     {
         _initialTopic = topicId ?? "root";
         Text = "SpeedScan Manager Hilfe";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(780, 560);
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
@@ -46,7 +47,6 @@ internal class HelpForm : Form
         MaximizeBox = true;
         Font = UiFont;
         AutoScaleMode = AutoScaleMode.None;
-        Icon = SystemIcons.Information;
 
         // Build help topic tree
         _rootTopic = HelpContent.BuildTree();

@@ -32,6 +32,7 @@ internal class CarrierSheetDialog : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Trägerblatt Einstellungen";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(480, 520);
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;

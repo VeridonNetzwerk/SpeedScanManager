@@ -28,6 +28,7 @@ internal class ApplicationManageDialog : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Installieren/Deinstallieren";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(590, 200);
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;
@@ -212,6 +213,7 @@ internal class ApplicationEditDialog : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Anwendung hinzufügen";
+        Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(340, 180);
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;

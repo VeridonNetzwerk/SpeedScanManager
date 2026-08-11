@@ -25,6 +25,7 @@ internal class MultiFeedWarningDialog : Form
     public MultiFeedWarningDialog(Bitmap? currentPage, Bitmap? previousPage)
     {
         Text = "SpeedScan Manager – Mehrfacheinzug erkannt";
+        Icon = TrayIcons.GetAppIcon();
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
