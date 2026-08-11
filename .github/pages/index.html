@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SpeedScan Manager – Scanner-Verwaltungssoftware</title>
+<title>SpeedScan Manager | Scanner-Verwaltungssoftware</title>
 <style>
     * { box-sizing: border-box; }
     body {
@@ -15,130 +15,94 @@
     }
     a { color: #0054a6; text-decoration: none; }
     a:hover { text-decoration: underline; }
+    hr.line010 { border: none; border-top: 1px solid #ccc; margin: 6px 0; }
 
-    /* ===== Top bar ===== */
-    .topbar {
-        border-bottom: 3px solid #cc0000;
-        padding: 10px 20px;
+    /* ===== Header top row: logo + search ===== */
+    .headertop {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        padding: 8px 20px;
+        border-bottom: 1px solid #ddd;
     }
-    .topbar .logo { display: flex; align-items: center; gap: 10px; }
-    .topbar .logo img { height: 36px; }
-    .topbar .logo span { font-size: 22px; font-weight: bold; color: #cc0000; letter-spacing: -0.5px; }
-    .topbar .meta { font-size: 11px; color: #555; }
-    .topbar .meta a { margin-left: 8px; }
-    .searchbox { display: flex; }
-    .searchbox input { border: 1px solid #999; padding: 4px 6px; font-size: 12px; width: 180px; }
+    .headertop .logo { display: flex; align-items: baseline; gap: 8px; }
+    .headertop .logo img { height: 30px; vertical-align: middle; }
+    .headertop .logo span { font-size: 24px; font-weight: bold; color: #cc0000; letter-spacing: -0.5px; }
+    .headright { display: flex; align-items: center; gap: 10px; }
+    .headmeta { font-size: 11px; color: #555; }
+    .headmeta a { color: #0054a6; margin: 0 4px; }
+    .searchbox input[type=text] {
+        border: 1px solid #999; padding: 3px 6px; font-size: 12px; width: 170px;
+    }
     .searchbox button {
-        background: #cc0000; color: #fff; border: none; padding: 4px 10px; cursor: pointer; font-size: 12px;
+        background: #cc0000; color: #fff; border: 1px solid #a80000; padding: 3px 9px; cursor: pointer; font-size: 12px; vertical-align: top;
     }
 
-    /* ===== Nav bar ===== */
+    /* ===== Nav bar (dark grey, like Services/Products/...) ===== */
     .navbar {
         background: #4a4a4a;
-        padding: 0 20px;
-        display: flex;
+        border-top: 1px solid #666;
+        border-bottom: 1px solid #666;
+        font-size: 12px;
     }
+    .navbar ul { list-style: none; margin: 0; padding: 0; display: flex; }
+    .navbar li { border-right: 1px solid #666; }
     .navbar a {
         color: #fff;
         display: block;
-        padding: 8px 16px;
-        font-size: 12px;
-        border-right: 1px solid #666;
+        padding: 7px 16px;
     }
     .navbar a:hover { background: #cc0000; text-decoration: none; }
 
     /* ===== Breadcrumb ===== */
     .breadcrumb {
-        background: #f0f0f0;
-        border-bottom: 1px solid #ddd;
         padding: 6px 20px;
         font-size: 11px;
         color: #555;
+        border-bottom: 1px solid #eee;
     }
     .breadcrumb a { color: #0054a6; }
 
-    /* ===== Layout ===== */
-    .layout { display: flex; max-width: 1200px; margin: 0 auto; }
-    .sidebar {
-        width: 190px;
-        padding: 16px 12px;
-        border-right: 1px solid #ddd;
-    }
-    .sidebar h3 {
-        background: #e8e8e8;
-        border: 1px solid #ccc;
-        padding: 6px 10px;
-        font-size: 12px;
+    /* ===== Body layout: sidebar | content | right col ===== */
+    .bodyarea { display: flex; max-width: 1200px; margin: 0 auto; align-items: flex-start; }
+
+    .aside { width: 170px; padding: 16px 10px; }
+    #mainmenu p.top {
+        font-size: 13px;
         margin: 0 0 4px 0;
     }
-    .sidebar ul { list-style: none; margin: 0 0 20px 0; padding: 0; }
-    .sidebar li { border-bottom: 1px solid #eee; }
-    .sidebar li a { display: block; padding: 6px 10px; color: #0054a6; }
-    .sidebar li.active a { background: #f0f0f0; font-weight: bold; color: #cc0000; }
-    .sidebar li a:hover { background: #f6f6f6; text-decoration: none; }
+    #mainmenu p.top a { color: #0054a6; }
+    #mainmenu ul { list-style: none; margin: 4px 0 0 0; padding: 0; border-top: 1px solid #ddd; }
+    #mainmenu li { border-bottom: 1px solid #ddd; }
+    #mainmenu li a, #mainmenu li strong {
+        display: block; padding: 6px 8px; font-weight: normal; color: #0054a6;
+    }
+    #mainmenu li strong.current { color: #cc0000; font-weight: bold; background: #f5f5f5; }
+    #mainmenu li a:hover { background: #f5f5f5; text-decoration: none; }
 
-    .content { flex: 1; padding: 20px 24px; }
-    .content h1 { font-size: 20px; color: #333; margin: 0 0 4px 0; }
-    .content > p.lead { color: #555; margin-top: 0; margin-bottom: 18px; line-height: 1.5; }
+    .contentsarea { flex: 1; display: flex; padding: 16px 0; }
+    .maincontents { flex: 1; padding: 0 20px; min-width: 0; }
+    .maincontents h1 { font-size: 19px; margin: 0 0 8px 0; color: #333; }
+    .maincontents > div > p { line-height: 1.5; margin: 0 0 10px 0; color: #333; }
 
-    .content h2 {
+    .maincontents h2 {
         font-size: 14px;
         color: #cc0000;
         border-bottom: 2px solid #cc0000;
         padding-bottom: 4px;
-        margin-top: 28px;
+        margin-top: 24px;
+        margin-bottom: 10px;
     }
 
-    table.product-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    table.product-table th {
-        background: #e8e8e8;
-        text-align: left;
-        padding: 6px 10px;
-        border: 1px solid #ccc;
-        font-size: 12px;
-    }
-    table.product-table td {
-        border: 1px solid #ddd;
-        padding: 10px;
-        vertical-align: top;
-        font-size: 12px;
-    }
-    table.product-table td.icon-cell { width: 90px; text-align: center; font-size: 32px; }
-    table.product-table .prod-name { font-weight: bold; color: #0054a6; font-size: 13px; }
-    table.product-table ul { margin: 6px 0; padding-left: 18px; }
-    table.product-table ul li { margin-bottom: 3px; line-height: 1.4; }
-
-    .right-col { width: 220px; padding: 16px 12px 16px 0; }
-    .box {
-        border: 1px solid #ccc;
-        margin-bottom: 16px;
-    }
-    .box .box-title {
-        background: #4a4a4a;
-        color: #fff;
-        font-weight: bold;
-        padding: 6px 10px;
-        font-size: 12px;
-    }
-    .box .box-body { padding: 10px; background: #fafafa; }
-    .box .box-body ul { list-style: none; margin: 0; padding: 0; }
-    .box .box-body li { padding: 4px 0; border-bottom: 1px solid #eee; }
-    .box .box-body li a { color: #0054a6; }
-    .box .box-body li:last-child { border-bottom: none; }
-
-    .btn-download {
-        display: block;
-        text-align: center;
-        background: #cc0000;
-        color: #fff !important;
-        padding: 8px 10px;
-        font-weight: bold;
-        margin-bottom: 8px;
-    }
-    .btn-download:hover { background: #a80000; text-decoration: none; }
+    table.ss-index { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table.ss-index td { padding: 8px 6px; vertical-align: top; }
+    table.ss-index td:first-child { width: 90px; text-align: center; }
+    table.ss-index .prod-icon { font-size: 34px; display: block; text-align: center; }
+    table.ss-index .prod-name { font-weight: bold; color: #0054a6; font-size: 12.5px; }
+    table.ss-index ul.compact { margin: 6px 0 0 0; padding-left: 16px; }
+    table.ss-index ul.compact li { margin-bottom: 2px; line-height: 1.4; }
+    table.ss-index .desc-col { color: #333; line-height: 1.5; }
+    table.ss-index .desc-col a { display: inline-block; margin-top: 4px; }
 
     pre {
         background: #f6f6f6;
@@ -148,6 +112,39 @@
         overflow-x: auto;
     }
 
+    /* ===== Right column (submenu / tasks boxes) ===== */
+    .submenu { width: 200px; padding: 0 16px 0 0; }
+    .tasks { margin-bottom: 16px; }
+    .tasks .rounded-inside {
+        border: 1px solid #ccc;
+        background: #f7f7f7;
+        padding: 10px 12px;
+    }
+    .tasks h2 {
+        font-size: 12.5px;
+        color: #fff;
+        background: #4a4a4a;
+        margin: -10px -12px 8px -12px;
+        padding: 6px 12px;
+    }
+    .tasks h3 { font-size: 12px; margin: 10px 0 4px 0; color: #333; }
+    .tasks ul { list-style: none; margin: 0; padding: 0; }
+    .tasks li { padding: 3px 0; }
+    .tasks li a { color: #0054a6; }
+
+    .btn-download {
+        display: block;
+        text-align: center;
+        background: #cc0000;
+        color: #fff !important;
+        padding: 7px 10px;
+        font-weight: bold;
+        margin-bottom: 8px;
+        border: 1px solid #a80000;
+    }
+    .btn-download:hover { background: #a80000; text-decoration: none; }
+
+    /* ===== Footer ===== */
     .footer {
         border-top: 3px solid #cc0000;
         background: #4a4a4a;
@@ -162,13 +159,13 @@
 </head>
 <body>
 
-<div class="topbar">
+<div class="headertop">
     <div class="logo">
         <img src="https://raw.githubusercontent.com/VeridonNetzwerk/SpeedScanManager/main/assets/SpeedScanManager_Logo.png" alt="Logo">
         <span>SpeedScan Manager</span>
     </div>
-    <div style="display:flex; align-items:center; gap:16px;">
-        <div class="meta">
+    <div class="headright">
+        <div class="headmeta">
             v0.1.0 | <a href="https://github.com/VeridonNetzwerk/SpeedScanManager">GitHub</a> | <a href="https://github.com/VeridonNetzwerk/SpeedScanManager/releases">Releases</a>
         </div>
         <div class="searchbox">
@@ -179,173 +176,198 @@
 </div>
 
 <div class="navbar">
-    <a href="#features">Funktionen</a>
-    <a href="#download">Download</a>
-    <a href="#quickstart">Schnellstart</a>
-    <a href="#support">Support</a>
-    <a href="https://github.com/VeridonNetzwerk/SpeedScanManager">Quellcode</a>
+    <ul>
+        <li><a href="#features">Funktionen</a></li>
+        <li><a href="#download">Download</a></li>
+        <li><a href="#quickstart">Schnellstart</a></li>
+        <li><a href="#support">Support</a></li>
+        <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager">Quellcode</a></li>
+    </ul>
 </div>
 
 <div class="breadcrumb">
     <a href="#">Home</a> &gt; <a href="#">Produkte</a> &gt; <a href="#">Scan-Software</a> &gt; SpeedScan Manager
 </div>
 
-<div class="layout">
+<div class="bodyarea">
 
-    <div class="sidebar">
-        <h3>SpeedScan Manager</h3>
-        <ul>
-            <li class="active"><a href="#features">Übersicht</a></li>
-            <li><a href="#download">Download</a></li>
-            <li><a href="#quickstart">Schnellstart</a></li>
-            <li><a href="#support">Support</a></li>
-        </ul>
-
-        <h3>Verwandte Produkte</h3>
-        <ul>
-            <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/releases">Releases</a></li>
-            <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/issues">Fehler melden</a></li>
-            <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/blob/main/LICENSE">Lizenz (MIT)</a></li>
-        </ul>
+    <div class="aside">
+        <div id="mainmenu">
+            <p class="top"><strong><a href="#features">Scanner-Software</a></strong></p>
+            <ul>
+                <li><strong class="current">SpeedScan Manager</strong></li>
+                <li><a href="#download">Download</a></li>
+                <li><a href="#quickstart">Schnellstart</a></li>
+                <li><a href="#support">Support</a></li>
+                <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager">Quellcode</a></li>
+                <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/blob/main/LICENSE">Lizenz (MIT)</a></li>
+            </ul>
+        </div>
     </div>
 
-    <div class="content">
-        <h1 id="features">SpeedScan Manager</h1>
-        <p class="lead">
-            SpeedScan Manager ist eine private, lokal gehostete Scanner-Verwaltungssoftware für TWAIN/WIA-Scanner.
-            Steuert Scanvorgänge per Tray-Icon, automatisiert Post-Scan-Verarbeitung (Speichern, E-Mail, Drucken,
-            Office-Dokumente) und läuft vollständig offline — keine Cloud, keine Telemetrie.
-        </p>
+    <div class="contentsarea">
+        <div class="maincontents">
+            <div id="features">
+                <h1>SpeedScan Manager</h1>
+                <p>
+                    SpeedScan Manager ist eine private, lokal gehostete Scanner-Verwaltungssoftware für TWAIN/WIA-Scanner.
+                    Steuert Scanvorgänge per Tray-Icon, automatisiert Post-Scan-Verarbeitung und läuft vollständig offline
+                    — keine Cloud, keine Registrierung notwendig.
+                </p>
+                <p>
+                    Die Software bringt Ein-Klick-Scannen mit konfigurierbaren Presets für Zuhause und kleine Büros.
+                    SpeedScan Manager legt weiterhin hohen Wert auf Privatsphäre: Alle Daten bleiben lokal auf dem Rechner.
+                </p>
+            </div>
 
-        <h2>Funktionsübersicht</h2>
-        <table class="product-table">
-            <tr>
-                <th style="width:90px;">&nbsp;</th>
-                <th>Funktion</th>
-                <th>Beschreibung</th>
-            </tr>
-            <tr>
-                <td class="icon-cell">�️</td>
-                <td>
-                    <div class="prod-name">Echtzeit-Scanner-Monitoring</div>
-                </td>
-                <td>
-                    <ul>
-                        <li>Tray-Icon mit Verbindungsstatus (TWAIN + WIA)</li>
-                        <li>Automatische Erkennung von Scanner-Tastendruck</li>
-                        <li>Live-Benachrichtigungen bei Verbindungsänderungen</li>
-                    </ul>
-                </td>
-            </tr>
-            <tr>
-                <td class="icon-cell">⚡</td>
-                <td>
-                    <div class="prod-name">Quick-Menü mit Presets</div>
-                </td>
-                <td>
-                    <ul>
-                        <li>Empfohlen, Kleine Datei, Hohe Qualität</li>
-                        <li>Ein-Klick-Umschaltung ohne Einstellungsdialog</li>
-                    </ul>
-                </td>
-            </tr>
-            <tr>
-                <td class="icon-cell">🎨</td>
-                <td>
-                    <div class="prod-name">6 Einstellungs-Tabs</div>
-                </td>
-                <td>
-                    <ul>
-                        <li>Anwendung, Speichern, Scanmodus</li>
-                        <li>Dateiart, Papier, Dateigröße</li>
-                        <li>Profile speichern und laden</li>
-                    </ul>
-                </td>
-            </tr>
-            <tr>
-                <td class="icon-cell">📂</td>
-                <td>
-                    <div class="prod-name">Post-Scan-Aktionen</div>
-                </td>
-                <td>
-                    <ul>
-                        <li>Speichern (Ordner, Bilder), Drucken, E-Mail</li>
-                        <li>Word-, Excel- und PowerPoint-Export</li>
-                        <li>Direktes Öffnen im PDF-Editor</li>
-                    </ul>
-                </td>
-            </tr>
-            <tr>
-                <td class="icon-cell">�</td>
-                <td>
-                    <div class="prod-name">OCR-Texterkennung</div>
-                </td>
-                <td>
-                    <ul>
-                        <li>Powered by Tesseract, mehrsprachig</li>
-                        <li>Erste Seite oder alle Seiten wählbar</li>
-                    </ul>
-                </td>
-            </tr>
-            <tr>
-                <td class="icon-cell">�🔒</td>
-                <td>
-                    <div class="prod-name">100% lokal &amp; privat</div>
-                </td>
-                <td>
-                    <ul>
-                        <li>Keine Cloud-Verbindung, keine Telemetrie</li>
-                        <li>Open Source unter MIT-Lizenz</li>
-                    </ul>
-                </td>
-            </tr>
-        </table>
+            <div>
+                <h2 id="feature-table">Funktionsübersicht</h2>
+                <table class="ss-index" summary="Funktionsübersicht">
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td><strong>Funktion</strong></td>
+                        <td><strong>Beschreibung</strong></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3"><hr class="line010"></td>
+                    </tr>
+                    <tr>
+                        <td><span class="prod-icon">🖨️</span></td>
+                        <td>
+                            <span class="prod-name">Echtzeit-Scanner-<br>Monitoring</span>
+                            <ul class="compact">
+                                <li><strong>Protokolle</strong>: TWAIN und WIA</li>
+                                <li><strong>Tray-Icon</strong>: Live-Verbindungsstatus</li>
+                                <li>Tastendruck-Erkennung am Scanner</li>
+                            </ul>
+                        </td>
+                        <td class="desc-col">Sofortige Rückmeldung im System-Tray, ob der Scanner verbunden ist — und Start des Scans direkt am Gerät.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="prod-icon">⚡</span></td>
+                        <td>
+                            <span class="prod-name">Quick-Menü mit Presets</span>
+                            <ul class="compact">
+                                <li><strong>Presets</strong>: Empfohlen, Kleine Datei, Hohe Qualität</li>
+                                <li>Ein-Klick-Umschaltung ohne Dialog</li>
+                            </ul>
+                        </td>
+                        <td class="desc-col">Schnellzugriff auf die gängigsten Scan-Profile direkt aus dem Tray-Menü heraus.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="prod-icon">🎨</span></td>
+                        <td>
+                            <span class="prod-name">6 Einstellungs-Tabs</span>
+                            <ul class="compact">
+                                <li>Anwendung, Speichern, Scanmodus</li>
+                                <li>Dateiart, Papier, Dateigröße</li>
+                                <li>Profile speichern und laden</li>
+                            </ul>
+                        </td>
+                        <td class="desc-col">Vollständige Kontrolle über jeden Scanparameter, gruppiert in übersichtlichen Tabs.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="prod-icon">📂</span></td>
+                        <td>
+                            <span class="prod-name">Post-Scan-Aktionen</span>
+                            <ul class="compact">
+                                <li>Speichern (Ordner, Bilder), Drucken, E-Mail</li>
+                                <li>Word-, Excel- und PowerPoint-Export</li>
+                                <li>Direktes Öffnen im PDF-Editor</li>
+                            </ul>
+                        </td>
+                        <td class="desc-col">Nach dem Scan automatisch weiterverarbeiten — ganz ohne manuelle Zwischenschritte.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="prod-icon">🔍</span></td>
+                        <td>
+                            <span class="prod-name">OCR-Texterkennung</span>
+                            <ul class="compact">
+                                <li>Powered by Tesseract, mehrsprachig</li>
+                                <li>Erste Seite oder alle Seiten wählbar</li>
+                            </ul>
+                        </td>
+                        <td class="desc-col">Durchsuchbare PDFs direkt beim Scannen erzeugen, lokal und ohne Cloud-Verarbeitung.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="prod-icon"></span></td>
+                        <td>
+                            <span class="prod-name">100% lokal &amp; privat</span>
+                            <ul class="compact">
+                                <li>Keine Cloud-Verbindung, keine Telemetrie</li>
+                                <li>Open Source unter MIT-Lizenz</li>
+                            </ul>
+                        </td>
+                        <td class="desc-col">Alle Daten und Einstellungen verbleiben ausschließlich auf dem eigenen Rechner.</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3"><hr class="line010"></td>
+                    </tr>
+                </table>
+            </div>
 
-        <h2 id="quickstart">Schnellstart</h2>
-        <p>Quellcode klonen und direkt starten:</p>
-        <pre><code>git clone https://github.com/VeridonNetzwerk/SpeedScanManager.git
+            <div id="quickstart">
+                <h2>Schnellstart</h2>
+                <p>Quellcode klonen und direkt starten:</p>
+                <pre><code>git clone https://github.com/VeridonNetzwerk/SpeedScanManager.git
 cd SpeedScanManager
 dotnet run --project SpeedScanManager.csproj</code></pre>
-        <p>Oder den vorgefertigten Installer aus den <a href="https://github.com/VeridonNetzwerk/SpeedScanManager/releases">Releases</a> herunterladen.</p>
+                <p>Oder den vorgefertigten Installer aus den <a href="https://github.com/VeridonNetzwerk/SpeedScanManager/releases">Releases</a> herunterladen.</p>
+            </div>
 
-        <h2 id="support">Support</h2>
-        <p>
-            Fragen oder Probleme? Nutze das <a href="https://github.com/VeridonNetzwerk/SpeedScanManager/issues">Issue-Tracker</a>
-            auf GitHub, um Fehler zu melden oder Features vorzuschlagen.
-        </p>
-    </div>
-
-    <div class="right-col">
-        <div class="box" id="download">
-            <div class="box-title">Download</div>
-            <div class="box-body">
-                <a href="https://github.com/VeridonNetzwerk/SpeedScanManager/releases/latest" class="btn-download">📥 Neueste Version</a>
-                <a href="https://github.com/VeridonNetzwerk/SpeedScanManager/releases" class="btn-download" style="background:#4a4a4a;">Alle Releases</a>
+            <div id="support">
+                <h2>Support</h2>
+                <p>
+                    Fragen oder Probleme? Nutze das <a href="https://github.com/VeridonNetzwerk/SpeedScanManager/issues">Issue-Tracker</a>
+                    auf GitHub, um Fehler zu melden oder Features vorzuschlagen.
+                </p>
             </div>
         </div>
 
-        <div class="box">
-            <div class="box-title">Wir sind hier, um zu helfen</div>
-            <div class="box-body">
-                <ul>
-                    <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager">Quellcode ansehen</a></li>
-                    <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/issues">Fehler melden</a></li>
-                    <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/blob/main/README.md">Dokumentation</a></li>
-                    <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/blob/main/LICENSE">Lizenzinformationen</a></li>
-                </ul>
+        <div class="submenu">
+            <div class="tasks">
+                <div class="rounded-inside">
+                    <h2>Wir sind hier, um zu helfen</h2>
+                    <h3>Download</h3>
+                    <ul>
+                        <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/releases/latest">Neueste Version</a></li>
+                        <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/releases">Alle Releases</a></li>
+                    </ul>
+                    <h3>Support-Info</h3>
+                    <ul>
+                        <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/blob/main/README.md">Dokumentation</a></li>
+                        <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/issues">Fehler melden</a></li>
+                        <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/blob/main/LICENSE">Lizenzinformationen</a></li>
+                    </ul>
+                    <h3>Sprich mit uns</h3>
+                    <ul>
+                        <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/discussions">Diskussionen</a></li>
+                    </ul>
+                </div>
             </div>
-        </div>
 
-        <div class="box">
-            <div class="box-title">Technische Daten</div>
-            <div class="box-body">
-                <ul>
-                    <li>.NET 8, Windows Forms</li>
-                    <li>NTwain (TWAIN-Treiber)</li>
-                    <li>WIA-Ereignisunterstützung</li>
-                    <li>Tesseract OCR</li>
-                    <li>PdfSharpCore, OpenXML</li>
-                </ul>
+            <div class="tasks">
+                <div class="rounded-inside">
+                    <h2>Technische Daten</h2>
+                    <ul>
+                        <li>.NET 8, Windows Forms</li>
+                        <li>NTwain (TWAIN-Treiber)</li>
+                        <li>WIA-Ereignisunterstützung</li>
+                        <li>Tesseract OCR</li>
+                        <li>PdfSharpCore, OpenXML</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="tasks">
+                <div class="rounded-inside">
+                    <h2>Verwandte Links</h2>
+                    <ul>
+                        <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager">Quellcode ansehen</a></li>
+                        <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/issues">Issue-Tracker</a></li>
+                        <li><a href="https://github.com/VeridonNetzwerk/SpeedScanManager/blob/main/LICENSE">MIT-Lizenz</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
