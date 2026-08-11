@@ -51,12 +51,21 @@ internal class VersionInfoDialog : Form
         var asm = Assembly.GetExecutingAssembly();
         var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
         var version = !string.IsNullOrEmpty(exePath)
-            ? (System.Diagnostics.FileVersionInfo.GetVersionInfo(exePath).FileVersion ?? asm.GetName().Version?.ToString() ?? "1.0.0.0")
-            : (asm.GetName().Version?.ToString() ?? "1.0.0.0");
+            ? (System.Diagnostics.FileVersionInfo.GetVersionInfo(exePath).FileVersion ?? asm.GetName().Version?.ToString() ?? "0.1.0.0")
+            : (asm.GetName().Version?.ToString() ?? "0.1.0.0");
+
+        // Trim trailing .0 segments for display (0.1.0.0 -> 0.1.0)
+        var displayVersion = version;
+        var parts = displayVersion.Split('.');
+        while (parts.Length > 2 && parts[^1] == "0")
+        {
+            displayVersion = string.Join('.', parts[..^1]);
+            parts = displayVersion.Split('.');
+        }
 
         var lblVersionTitle = new Label
         {
-            Text = $"SpeedScan Manager Version {version}",
+            Text = $"SpeedScan Manager Version {displayVersion}",
             Font = new Font("Microsoft Sans Serif", 9f, FontStyle.Bold),
             Location = new Point(24, 58),
             AutoSize = true

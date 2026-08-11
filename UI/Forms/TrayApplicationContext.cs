@@ -1054,7 +1054,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
             var appId = TWIdentity.Create(
                 DataGroups.Control | DataGroups.Image,
-                new Version(1, 0, 0, 0),
+                new Version(0, 1, 0, 0),
                 "VeridonNetzwerk",
                 "SpeedScan Manager",
                 "SpeedScan Manager",

@@ -363,7 +363,7 @@ public partial class MainWindow : Window
         key.SetValue("UninstallString", Path.Combine(targetDir, "uninstall.exe"));
         key.SetValue("DisplayIcon", Path.Combine(targetDir, "SpeedScanManager.exe"));
         key.SetValue("Publisher", Publisher);
-        key.SetValue("DisplayVersion", "1.0.0.0");
+        key.SetValue("DisplayVersion", "0.1.0");
         key.SetValue("URLInfoAbout", ProductUrl);
         key.SetValue("NoModify", 1, RegistryValueKind.DWord);
         key.SetValue("NoRepair", 1, RegistryValueKind.DWord);

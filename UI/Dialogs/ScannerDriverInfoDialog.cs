@@ -126,7 +126,7 @@ internal class ScannerDriverInfoDialog : Form
 
         var asm = Assembly.GetExecutingAssembly();
         var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
-        var ver = asm.GetName().Version?.ToString() ?? "1.0.0.0";
+        var ver = asm.GetName().Version?.ToString() ?? "0.1.0.0";
         var buildDate = !string.IsNullOrEmpty(exePath)
             ? System.IO.File.GetLastWriteTime(exePath).ToString("yyyy.MM.dd HH:mm:ss")
             : "—";

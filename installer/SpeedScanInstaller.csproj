@@ -7,6 +7,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Version>0.1.0</Version>
+    <FileVersion>0.1.0.0</FileVersion>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
     <AssemblyName>SpeedScanInstaller</AssemblyName>
     <RootNamespace>SpeedScanInstaller</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
