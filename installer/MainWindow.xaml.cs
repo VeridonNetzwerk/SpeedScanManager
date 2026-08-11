@@ -54,11 +54,21 @@ public partial class MainWindow : Window
         {
             ReadmeBrowser.DefaultBackgroundColor = System.Drawing.Color.White;
             await ReadmeBrowser.EnsureCoreWebView2Async();
+            ReadmeBrowser.NavigationStarting += OnWebViewNavigationStarting;
             _webViewReady = true;
         }
         catch
         {
             // WebView2 runtime not installed — will show error when readme is clicked
+        }
+    }
+
+    private void OnWebViewNavigationStarting(object sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs e)
+    {
+        if (e.Uri != null && e.Uri.StartsWith("http"))
+        {
+            Process.Start(new ProcessStartInfo(e.Uri) { UseShellExecute = true });
+            e.Cancel = true;
         }
     }
 
@@ -153,11 +163,10 @@ public partial class MainWindow : Window
     {
         var dialog = new System.Windows.Forms.FolderBrowserDialog
         {
-            Description = "Zielordner wählen",
-            SelectedPath = TxtInstallPath.Text
+            Description = "Zielordner wählen (SpeedScanManager wird automatisch als Unterordner erstellt)"
         };
         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            TxtInstallPath.Text = dialog.SelectedPath;
+            TxtInstallPath.Text = Path.Combine(dialog.SelectedPath, "SpeedScanManager");
     }
 
     private void OnSupportClick(object sender, RoutedEventArgs e)
@@ -379,7 +388,7 @@ public partial class MainWindow : Window
 
         // Uninstall shortcut
         var uninstallPath = Path.Combine(startMenuDir, "Deinstallieren.lnk");
-        CreateShortcut(uninstallPath, Path.Combine(targetDir, "uninstall.exe"), targetDir);
+        CreateShortcut(uninstallPath, Path.Combine(targetDir, "uninstall.exe"), targetDir, "--uninstall");
 
         // Desktop shortcut
         var desktopPath = Path.Combine(
@@ -388,7 +397,7 @@ public partial class MainWindow : Window
         CreateShortcut(desktopPath, exePath, targetDir);
     }
 
-    private static void CreateShortcut(string shortcutPath, string targetPath, string workingDir)
+    private static void CreateShortcut(string shortcutPath, string targetPath, string workingDir, string? arguments = null)
     {
         var shellType = Type.GetTypeFromProgID("WScript.Shell")!;
         dynamic shell = Activator.CreateInstance(shellType)!;
@@ -396,49 +405,24 @@ public partial class MainWindow : Window
         shortcut.TargetPath = targetPath;
         shortcut.WorkingDirectory = workingDir;
         shortcut.Description = ProductName;
+        if (arguments != null)
+            shortcut.Arguments = arguments;
         shortcut.Save();
     }
 
     private static void CreateUninstaller(string targetDir)
     {
-        // Write a simple uninstall batch script
+        // Copy the installer exe as uninstall.exe — it launches in uninstall mode with --uninstall arg
+        var installerPath = Environment.ProcessPath;
+        if (installerPath == null) return;
+
         var uninstallPath = Path.Combine(targetDir, "uninstall.exe");
-        // We can't easily create a real exe here, so write a PowerShell-based uninstaller
-        var psScript = Path.Combine(targetDir, "uninstall.ps1");
-        File.WriteAllText(psScript, $@"
-# SpeedScan Manager Uninstaller
-$targetDir = '{targetDir}'
-$startMenuDir = Join-Path $env:ProgramData '{ProductName}'
+        File.Copy(installerPath, uninstallPath, overwrite: true);
 
-# Remove shortcuts
-Remove-Item -Path (Join-Path $startMenuDir '*.lnk') -Force -ErrorAction SilentlyContinue
-Remove-Item -Path $startMenuDir -Force -ErrorAction SilentlyContinue
-$desktopLink = Join-Path $env:PUBLIC 'Desktop\{ProductName}.lnk'
-Remove-Item $desktopLink -Force -ErrorAction SilentlyContinue
-
-# Remove registry entries
-Remove-Item -Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\SpeedScanManager' -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -Path 'HKLM:\Software\{Publisher}\SpeedScanManager' -Recurse -Force -ErrorAction SilentlyContinue
-
-# Remove files
-Remove-Item -Path $targetDir -Recurse -Force -ErrorAction SilentlyContinue
-
-Write-Host 'SpeedScan Manager wurde deinstalliert.'
-");
-
-        // Create a simple wrapper exe using a batch file renamed to .cmd
-        // Actually, let's create a proper uninstall.bat that calls the PS script
-        var batPath = Path.Combine(targetDir, "uninstall.bat");
-        File.WriteAllText(batPath, $@"@echo off
-powershell -ExecutionPolicy Bypass -File ""{psScript}""
-");
-
-        // Also write a .cmd that acts as the uninstall "exe" pointer
-        // The registry points to uninstall.exe, so let's create a minimal C# uninstaller
-        // For now, point registry to the bat file
+        // Update registry to call uninstall.exe with --uninstall arg
         using var key = Registry.LocalMachine.OpenSubKey(
             @"Software\Microsoft\Windows\CurrentVersion\Uninstall\SpeedScanManager", writable: true);
-        key?.SetValue("UninstallString", $"cmd.exe /c \"{batPath}\"");
+        key?.SetValue("UninstallString", $"\"{uninstallPath}\" --uninstall");
     }
 
     // ===== Restart as admin =====

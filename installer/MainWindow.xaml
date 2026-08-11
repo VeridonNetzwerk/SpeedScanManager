@@ -88,6 +88,55 @@
             </ControlTemplate.Triggers>
         </ControlTemplate>
 
+        <!-- ===== Inline Button Template (no shadow, no bottom margin) ===== -->
+        <ControlTemplate x:Key="InlineButtonTemplate" TargetType="Button">
+            <Border x:Name="bd"
+                    CornerRadius="4"
+                    BorderThickness="1"
+                    BorderBrush="#a0b0c0"
+                    Padding="10,0"
+                    Height="28">
+                <Border.Background>
+                    <LinearGradientBrush x:Name="btnBg" StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#f5f7fa" Offset="0"/>
+                        <GradientStop Color="#e8edf3" Offset="0.5"/>
+                        <GradientStop Color="#d8dfe8" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <ContentPresenter x:Name="cp" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  TextBlock.Foreground="#1c2633" TextBlock.FontFamily="Segoe UI"
+                                  TextBlock.FontSize="12" TextBlock.FontWeight="Normal"/>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="bd" Property="Background">
+                        <Setter.Value>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#eef4fc" Offset="0"/>
+                                <GradientStop Color="#d8e4f4" Offset="0.5"/>
+                                <GradientStop Color="#c4d4e8" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter TargetName="bd" Property="BorderBrush" Value="#8aa0c0"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter TargetName="bd" Property="Background">
+                        <Setter.Value>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#d0dce8" Offset="0"/>
+                                <GradientStop Color="#bccce0" Offset="0.5"/>
+                                <GradientStop Color="#a8bcd4" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="cp" Property="Opacity" Value="0.4"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
         <!-- ===== Install Button (accent) ===== -->
         <ControlTemplate x:Key="InstallButtonTemplate" TargetType="Button">
             <Border x:Name="bd"
@@ -284,30 +333,27 @@
 
                         <!-- Description -->
                         <TextBlock Grid.Row="1" TextWrapping="Wrap"
-                                   Text="SpeedScan Manager ist eine modale, privat gehostete Alternative zum Fujitsu ScanSnap Manager. Open-Source TWAIN-Scanning-Software für Windows 10/11."
+                                   Text="Klicke auf &quot;Installieren&quot;, um SpeedScan Manager auf deinem Computer einzurichten."
                                    FontFamily="Segoe UI" FontSize="13"
                                    Foreground="#555555" Margin="0,0,0,20"/>
 
                         <!-- Install path -->
-                        <StackPanel Grid.Row="2" Margin="0,0,0,12" VerticalAlignment="Top">
+                        <StackPanel Grid.Row="2" Margin="0,0,0,24" VerticalAlignment="Top">
                             <TextBlock Text="Zielordner:" FontFamily="Segoe UI"
                                        FontSize="15" FontWeight="SemiBold" Foreground="#333333"
                                        Margin="0,0,0,8"/>
                             <StackPanel Orientation="Horizontal">
                                 <TextBox x:Name="TxtInstallPath"
-                                         Width="420" Height="32"
+                                         Width="370" Height="28"
                                          FontFamily="Segoe UI" FontSize="13"
                                          VerticalContentAlignment="Center"
                                          Padding="6,0,0,0"
                                          BorderBrush="#c0c8d0" BorderThickness="1"/>
                                 <Button x:Name="BtnBrowse"
-                                        Content="Ändern..."
-                                        Width="90" Height="32"
+                                        Template="{StaticResource InlineButtonTemplate}"
+                                        Content="Durchsuchen..."
                                         Margin="8,0,0,0"
-                                        FontFamily="Segoe UI" FontSize="13"
-                                        Click="OnBrowseClick"
-                                        BorderBrush="#c0c8d0" BorderThickness="1"
-                                        Background="#f0f2f5"/>
+                                        Click="OnBrowseClick"/>
                             </StackPanel>
                         </StackPanel>
 
@@ -444,8 +490,10 @@
                 <Grid>
                     <!-- Left: Copyright + License -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
-                        <TextBlock Text="© VeridonNetzwerk" FontFamily="Segoe UI" FontSize="10"
-                                   Foreground="#888888" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="© 2026 VeridonNetzwerk" FontFamily="Segoe UI" FontSize="10"
+                                   Foreground="#888888" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="·" FontFamily="Segoe UI" FontSize="10"
+                                   Foreground="#888888" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <TextBlock Text="GPL-3.0 License" FontFamily="Segoe UI" FontSize="10"
                                    Foreground="#5566aa" Cursor="Hand" VerticalAlignment="Center"
                                    MouseLeftButtonDown="OnLicenseLinkClick"/>
