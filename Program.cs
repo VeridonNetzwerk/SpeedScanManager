@@ -13,6 +13,17 @@ internal static class Program
     {
         try
         {
+            // Early diagnostic: verify the app starts at all
+            var debugFile = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "SpeedScanManager", "startup.log");
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(debugFile)!);
+                File.WriteAllText(debugFile, $"{DateTime.Now}: App started. Args: {string.Join(",", args)}\nExe: {Environment.ProcessPath ?? "?"}\nRuntime: {Environment.Version}\nOS: {Environment.OSVersion}");
+            }
+            catch { }
+
             // Elevated helper: do registry setup and exit
             if (args.Contains("/setup", StringComparer.OrdinalIgnoreCase))
             {

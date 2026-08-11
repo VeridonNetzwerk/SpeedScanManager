@@ -1,0 +1,525 @@
+<Window x:Class="SpeedScanInstaller.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:WPF="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="SpeedScan Manager Setup"
+        Height="520" Width="780"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        Background="White"
+        ShowInTaskbar="True">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0"
+                      ResizeBorderThickness="0"
+                      GlassFrameThickness="0"
+                      CornerRadius="8"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <!-- ===== Sidebar Gradient ===== -->
+        <LinearGradientBrush x:Key="SidebarBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#2b3a4d" Offset="0"/>
+            <GradientStop Color="#1c2633" Offset="1"/>
+        </LinearGradientBrush>
+
+        <!-- ===== Content Background ===== -->
+        <LinearGradientBrush x:Key="ContentBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#ffffff" Offset="0"/>
+            <GradientStop Color="#f0f2f5" Offset="1"/>
+        </LinearGradientBrush>
+
+        <!-- ===== Footer Background ===== -->
+        <SolidColorBrush x:Key="FooterBrush" Color="#e8eaed"/>
+
+        <!-- ===== Metallic Gloss Button Template ===== -->
+        <ControlTemplate x:Key="SidebarButtonTemplate" TargetType="Button">
+            <Border x:Name="bd"
+                    CornerRadius="4"
+                    BorderThickness="1"
+                    BorderBrush="#4a6080"
+                    Margin="0,0,0,6"
+                    Padding="10,0"
+                    Height="36">
+                <Border.Background>
+                    <LinearGradientBrush x:Name="btnBg" StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#dfe6ef" Offset="0"/>
+                        <GradientStop Color="#c5d0dd" Offset="0.5"/>
+                        <GradientStop Color="#b0bccb" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.Effect>
+                    <DropShadowEffect Color="#000000" BlurRadius="4" ShadowDepth="1" Opacity="0.3" Direction="270"/>
+                </Border.Effect>
+                <ContentPresenter x:Name="cp" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                  TextBlock.Foreground="#1c2633" TextBlock.FontFamily="Segoe UI"
+                                  TextBlock.FontSize="12" TextBlock.FontWeight="SemiBold"/>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="bd" Property="Background">
+                        <Setter.Value>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#e8f0fc" Offset="0"/>
+                                <GradientStop Color="#b8d0f0" Offset="0.5"/>
+                                <GradientStop Color="#9ab8e0" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter TargetName="bd" Property="BorderBrush" Value="#6a8cb5"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter TargetName="bd" Property="Background">
+                        <Setter.Value>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#a0b8d8" Offset="0"/>
+                                <GradientStop Color="#88a0c8" Offset="0.5"/>
+                                <GradientStop Color="#7088b0" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="cp" Property="Opacity" Value="0.4"/>
+                    <Setter TargetName="bd" Property="Opacity" Value="0.5"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <!-- ===== Inline Button Template (no shadow, no bottom margin) ===== -->
+        <ControlTemplate x:Key="InlineButtonTemplate" TargetType="Button">
+            <Border x:Name="bd"
+                    CornerRadius="4"
+                    BorderThickness="1"
+                    BorderBrush="#a0b0c0"
+                    Padding="10,0"
+                    Height="28">
+                <Border.Background>
+                    <LinearGradientBrush x:Name="btnBg" StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#f5f7fa" Offset="0"/>
+                        <GradientStop Color="#e8edf3" Offset="0.5"/>
+                        <GradientStop Color="#d8dfe8" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <ContentPresenter x:Name="cp" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  TextBlock.Foreground="#1c2633" TextBlock.FontFamily="Segoe UI"
+                                  TextBlock.FontSize="12" TextBlock.FontWeight="Normal"/>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="bd" Property="Background">
+                        <Setter.Value>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#eef4fc" Offset="0"/>
+                                <GradientStop Color="#d8e4f4" Offset="0.5"/>
+                                <GradientStop Color="#c4d4e8" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter TargetName="bd" Property="BorderBrush" Value="#8aa0c0"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter TargetName="bd" Property="Background">
+                        <Setter.Value>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#d0dce8" Offset="0"/>
+                                <GradientStop Color="#bccce0" Offset="0.5"/>
+                                <GradientStop Color="#a8bcd4" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="cp" Property="Opacity" Value="0.4"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <!-- ===== Install Button (accent) ===== -->
+        <ControlTemplate x:Key="InstallButtonTemplate" TargetType="Button">
+            <Border x:Name="bd"
+                    CornerRadius="4"
+                    BorderThickness="1"
+                    BorderBrush="#2a6ad8"
+                    Padding="0">
+                <Border.Background>
+                    <LinearGradientBrush x:Name="btnBg" StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#4a90e2" Offset="0"/>
+                        <GradientStop Color="#2a6ad8" Offset="0.5"/>
+                        <GradientStop Color="#1a5ac0" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.Effect>
+                    <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="2" Opacity="0.35" Direction="270"/>
+                </Border.Effect>
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  Margin="0"
+                                  TextBlock.Foreground="White" TextBlock.FontFamily="Segoe UI"
+                                  TextBlock.FontSize="13" TextBlock.FontWeight="Bold"/>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="bd" Property="Background">
+                        <Setter.Value>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#6aa8f5" Offset="0"/>
+                                <GradientStop Color="#3a7ae8" Offset="0.5"/>
+                                <GradientStop Color="#2a6ad8" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter TargetName="bd" Property="Background">
+                        <Setter.Value>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#2a6ad8" Offset="0"/>
+                                <GradientStop Color="#1a5ac0" Offset="0.5"/>
+                                <GradientStop Color="#0a4aa8" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="bd" Property="Opacity" Value="0.4"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <!-- ===== Window Border Shadow ===== -->
+        <DropShadowEffect x:Key="WindowShadow" Color="#000000" BlurRadius="15" ShadowDepth="0" Opacity="0.3"/>
+    </Window.Resources>
+
+    <!-- ===== Outer border with rounded corners + shadow ===== -->
+    <Border CornerRadius="8" Background="White" ClipToBounds="True">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="36"/>
+            </Grid.RowDefinitions>
+
+            <!-- ===== Top drag bar (15px, spans full width) ===== -->
+            <Rectangle Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                       Height="15" VerticalAlignment="Top"
+                       Fill="Transparent"
+                       MouseLeftButtonDown="OnDragMove"
+                       Panel.ZIndex="100"/>
+
+            <!-- ===== Minimize button (top-right, in content area) ===== -->
+            <Button Grid.Row="0" Grid.Column="1"
+                    x:Name="BtnMinimize"
+                    Width="28" Height="18"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Margin="0,0,2,0"
+                    Panel.ZIndex="101"
+                    Click="OnMinimizeClick"
+                    Background="Transparent" BorderThickness="0"
+                    Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="0,8,0,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#e0e4e8"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+                <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                           Foreground="#555555"/>
+            </Button>
+
+            <!-- ===== LEFT SIDEBAR ===== -->
+            <Border Grid.Row="0" Grid.Column="0" Background="{StaticResource SidebarBrush}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Logo area -->
+                    <StackPanel Grid.Row="0" Margin="20,24,20,20">
+                        <Image Source="pack://application:,,,/Assets/SpeedScanManager_Text_2Rows.png"
+                               Width="150" Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                    </StackPanel>
+
+                    <!-- Navigation buttons -->
+                    <StackPanel Grid.Row="1" Margin="14,8,14,8">
+
+                        <Button x:Name="BtnInstall"
+                                Template="{StaticResource SidebarButtonTemplate}"
+                                Click="OnInstallClick"
+                                Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE9D5;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                           VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#2a6ad8"/>
+                                <TextBlock x:Name="LblInstall" Text="Installieren"
+                                           FontFamily="Segoe UI" FontSize="12"
+                                           Foreground="#1c2633"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="BtnReadme"
+                                Template="{StaticResource SidebarButtonTemplate}"
+                                Click="OnReadmeClick">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE736;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                           VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#4a6080"/>
+                                <TextBlock x:Name="LblReadme" Text="README anzeigen" FontFamily="Segoe UI" FontSize="12"
+                                           Foreground="#1c2633"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="BtnSupport"
+                                Template="{StaticResource SidebarButtonTemplate}"
+                                Click="OnSupportClick"
+                                Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                           VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#4a6080"/>
+                                <TextBlock x:Name="LblSupport" Text="Support" FontFamily="Segoe UI" FontSize="12"
+                                           Foreground="#1c2633"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Exit button at bottom -->
+                    <Button Grid.Row="2" x:Name="BtnExit"
+                            Template="{StaticResource SidebarButtonTemplate}"
+                            Click="OnExitClick"
+                            Margin="14,0,14,16">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                       VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#4a6080"/>
+                            <TextBlock Text="Beenden" FontFamily="Segoe UI" FontSize="12"
+                                       Foreground="#1c2633"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- ===== RIGHT CONTENT AREA ===== -->
+            <Border Grid.Row="0" Grid.Column="1" Background="{StaticResource ContentBrush}">
+                <Grid>
+
+                    <!-- ===== WELCOME VIEW ===== -->
+                    <Grid x:Name="WelcomeView" Margin="32,24,32,12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Welcome title -->
+                        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+                            <TextBlock Text="Willkommen beim"
+                                       FontFamily="Segoe UI" FontSize="24" FontWeight="SemiBold"
+                                       Foreground="#1c2633"/>
+                            <TextBlock Text="SpeedScan Manager Setup"
+                                       FontFamily="Segoe UI" FontSize="24" FontWeight="SemiBold"
+                                       Foreground="#2a6ad8" Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <!-- Description -->
+                        <TextBlock Grid.Row="1" TextWrapping="Wrap"
+                                   Text="Klicke auf &quot;Installieren&quot;, um SpeedScan Manager auf deinem Computer einzurichten."
+                                   FontFamily="Segoe UI" FontSize="13"
+                                   Foreground="#555555" Margin="0,0,0,20"/>
+
+                        <!-- Install path -->
+                        <StackPanel Grid.Row="2" Margin="0,0,0,24" VerticalAlignment="Top">
+                            <TextBlock Text="Zielordner:" FontFamily="Segoe UI"
+                                       FontSize="15" FontWeight="SemiBold" Foreground="#333333"
+                                       Margin="0,0,0,8"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="TxtInstallPath"
+                                         Width="370" Height="28"
+                                         FontFamily="Segoe UI" FontSize="13"
+                                         VerticalContentAlignment="Center"
+                                         Padding="6,0,0,0"
+                                         BorderBrush="#c0c8d0" BorderThickness="1"/>
+                                <Button x:Name="BtnBrowse"
+                                        Template="{StaticResource InlineButtonTemplate}"
+                                        Content="Durchsuchen..."
+                                        Margin="8,0,0,0"
+                                        Click="OnBrowseClick"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Progress + status (hidden initially) -->
+                        <StackPanel Grid.Row="2" x:Name="ProgressPanel" Visibility="Collapsed"
+                                    VerticalAlignment="Bottom" Margin="0,0,0,8">
+                            <ProgressBar x:Name="InstallProgress" Height="22" Width="510"
+                                         Minimum="0" Maximum="100" Value="0"/>
+                            <TextBlock x:Name="StatusText" Text="" FontFamily="Segoe UI" FontSize="12"
+                                       Foreground="#555555" Margin="0,6,0,0"/>
+                        </StackPanel>
+
+                        <!-- Install button -->
+                        <StackPanel Grid.Row="3" Orientation="Horizontal"
+                                    HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                            <Button x:Name="BtnStartInstall"
+                                    Content="Installieren"
+                                    Template="{StaticResource InstallButtonTemplate}"
+                                    Width="130" Height="36"
+                                    Margin="0,0,0,0"
+                                    Click="OnStartInstallClick"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- ===== README VIEW ===== -->
+                    <Grid x:Name="ReadmeView" Visibility="Collapsed">
+                        <!-- WebView2 for rendered HTML (Chromium engine: color emoji, images, CSS, SVG) -->
+                        <WPF:WebView2 x:Name="ReadmeBrowser" Margin="0,15,0,0"/>
+
+                        <!-- Loading overlay (on top) -->
+                        <StackPanel x:Name="ReadmeLoadingPanel"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    Background="White">
+                            <TextBlock Text="Lade README..." FontFamily="Segoe UI" FontSize="14"
+                                       Foreground="#555555" HorizontalAlignment="Center"/>
+                            <ProgressBar IsIndeterminate="True" Width="240" Height="4" Margin="0,12,0,0"/>
+                        </StackPanel>
+
+                        <!-- Error overlay -->
+                        <TextBlock x:Name="ReadmeErrorText" Visibility="Collapsed"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   TextWrapping="Wrap" TextAlignment="Center"
+                                   FontFamily="Segoe UI" FontSize="13" Foreground="#c0392b"
+                                   Margin="32,0,32,0" Background="White"/>
+                    </Grid>
+
+                    <!-- ===== SUPPORT VIEW ===== -->
+                    <Grid x:Name="SupportView" Visibility="Collapsed" Margin="32,24,32,12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Support title -->
+                        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+                            <TextBlock Text="Support &amp; Hilfe"
+                                       FontFamily="Segoe UI" FontSize="24" FontWeight="SemiBold"
+                                       Foreground="#1c2633"/>
+                            <TextBlock Text="Wir sind für dich da."
+                                       FontFamily="Segoe UI" FontSize="11"
+                                       Foreground="#555555" Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <!-- Support cards -->
+                        <StackPanel Grid.Row="1">
+
+                            <!-- Bug report card -->
+                            <Border Background="#f8f9fb" CornerRadius="6" Padding="16,12" Margin="0,0,0,8"
+                                    BorderBrush="#e0e4e8" BorderThickness="1">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBlock Text="&#xE71C;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                                   Foreground="#e74c3c" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <TextBlock Text="Bug gefunden?" FontFamily="Segoe UI" FontSize="15" FontWeight="SemiBold"
+                                                   Foreground="#1c2633" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Issue auf GitHub mit Scannermodell und Fehlerbeschreibung erstellen."
+                                               FontFamily="Segoe UI" FontSize="12" Foreground="#555555" TextWrapping="Wrap"
+                                               Margin="0,0,0,8"/>
+                                    <TextBlock Text="GitHub Issue melden →" FontFamily="Segoe UI" FontSize="12"
+                                               Foreground="#2a6ad8" Cursor="Hand"
+                                               MouseLeftButtonDown="OnGitHubIssueClick"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Feature request card -->
+                            <Border Background="#f8f9fb" CornerRadius="6" Padding="16,12" Margin="0,0,0,8"
+                                    BorderBrush="#e0e4e8" BorderThickness="1">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBlock Text="&#xE701;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                                   Foreground="#f39c12" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <TextBlock Text="Verbesserungsidee?" FontFamily="Segoe UI" FontSize="15" FontWeight="SemiBold"
+                                                   Foreground="#1c2633" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Ideen und Vorschläge auf Discord teilen."
+                                               FontFamily="Segoe UI" FontSize="12" Foreground="#555555" TextWrapping="Wrap"
+                                               Margin="0,0,0,8"/>
+                                    <TextBlock Text="Discord Feedback →" FontFamily="Segoe UI" FontSize="12"
+                                               Foreground="#5865f2" Cursor="Hand"
+                                               MouseLeftButtonDown="OnDiscordFeedbackClick"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Help card -->
+                            <Border Background="#f8f9fb" CornerRadius="6" Padding="16,12" Margin="0,0,0,8"
+                                    BorderBrush="#e0e4e8" BorderThickness="1">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBlock Text="&#xE9CE;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                                   Foreground="#2a6ad8" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <TextBlock Text="Hilfe benötigt?" FontFamily="Segoe UI" FontSize="15" FontWeight="SemiBold"
+                                                   Foreground="#1c2633" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Im Discord FAQ findest du Antworten auf häufige Fragen."
+                                               FontFamily="Segoe UI" FontSize="12" Foreground="#555555" TextWrapping="Wrap"
+                                               Margin="0,0,0,8"/>
+                                    <TextBlock Text="Discord FAQ →" FontFamily="Segoe UI" FontSize="12"
+                                               Foreground="#5865f2" Cursor="Hand"
+                                               MouseLeftButtonDown="OnDiscordFaqClick"/>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </Grid>
+
+                </Grid>
+            </Border>
+
+            <!-- ===== FOOTER BAR ===== -->
+            <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                    Background="{StaticResource FooterBrush}"
+                    BorderBrush="#d0d4d8" BorderThickness="0,1,0,0">
+                <Grid>
+                    <!-- Left: Copyright + License -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                        <TextBlock Text="© 2026 VeridonNetzwerk" FontFamily="Segoe UI" FontSize="10"
+                                   Foreground="#888888" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="·" FontFamily="Segoe UI" FontSize="10"
+                                   Foreground="#888888" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="GPL-3.0 License" FontFamily="Segoe UI" FontSize="10"
+                                   Foreground="#5566aa" Cursor="Hand" VerticalAlignment="Center"
+                                   MouseLeftButtonDown="OnLicenseLinkClick"/>
+                    </StackPanel>
+
+                    <!-- Window drag area (entire footer, behind links) -->
+                    <Rectangle x:Name="DragArea" Fill="Transparent"
+                               Panel.ZIndex="-1"
+                               MouseLeftButtonDown="OnDragMove"/>
+
+                    <!-- Right: Discord + GitHub icons -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock x:Name="LnkDiscord"
+                                   Text="Discord" FontFamily="Segoe UI" FontSize="10"
+                                   Foreground="#5566aa" Cursor="Hand"
+                                   Margin="0,0,16,0" VerticalAlignment="Center"
+                                   MouseLeftButtonDown="OnDiscordLinkClick"/>
+                        <TextBlock x:Name="LnkGitHub"
+                                   Text="GitHub" FontFamily="Segoe UI" FontSize="10"
+                                   Foreground="#5566aa" Cursor="Hand"
+                                   VerticalAlignment="Center"
+                                   MouseLeftButtonDown="OnGitHubLinkClick"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

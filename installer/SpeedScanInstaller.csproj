@@ -10,11 +10,8 @@
     <AssemblyName>SpeedScanInstaller</AssemblyName>
     <RootNamespace>SpeedScanInstaller</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\assets\SpeedScanManager.ico</ApplicationIcon>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Resource Include="Assets\**\*" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />

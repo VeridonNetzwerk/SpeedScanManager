@@ -7,7 +7,7 @@
     <PlatformTarget>x86</PlatformTarget>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <ApplicationManifest>build\AppManifest.xml</ApplicationManifest>
+    <ApplicationManifest>AppManifest.xml</ApplicationManifest>
     <ApplicationIcon>assets\SpeedScanManager.ico</ApplicationIcon>
     <DefaultItemExcludes>$(DefaultItemExcludes);installer\**</DefaultItemExcludes>
   </PropertyGroup>
@@ -26,14 +26,5 @@
     <EmbeddedResource Include="assets\github_logo.svg" LogicalName="github_logo.svg" />
     <EmbeddedResource Include="assets\discord_logo.svg" LogicalName="discord_logo.svg" />
   </ItemGroup>
-
-  <Target Name="UnblockPublishedFile" AfterTargets="Publish">
-    <Exec Condition="'$([System.OperatingSystem]::IsWindows())' == 'true'"
-          Command="powershell -NoProfile -Command &quot;Get-ChildItem -Path '$(PublishDir)' -Recurse -File | Unblock-File&quot;" />
-  </Target>
-
-  <Target Name="SignPublishedFile" AfterTargets="UnblockPublishedFile" Condition="'$([System.OperatingSystem]::IsWindows())' == 'true' And Exists('$(MSBuildThisFileDirectory)build\cert\SpeedScanDev.pfx')">
-    <Exec Command="pwsh -NoProfile -Command &quot;$exe = '$(PublishDir)SpeedScanManager.exe'; $pfx = '$(MSBuildThisFileDirectory)build\cert\SpeedScanDev.pfx'; $pass = 'SpeedScan2026'; $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfx, $pass); $result = Set-AuthenticodeSignature -FilePath $exe -Certificate $cert; Write-Output ('Sign status: ' + $result.Status)&quot;" />
-  </Target>
 
 </Project>
