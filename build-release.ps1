@@ -62,7 +62,7 @@ Compress-Archive -Path (Join-Path $distDir "*") -DestinationPath $portableZip -F
 Write-Host "`n[3/4] Publishing installer..." -ForegroundColor Yellow
 dotnet publish (Join-Path $root "installer\SpeedScanInstaller.csproj") `
     -c Release -r win-x86 --self-contained true `
-    -p:PublishSingleFile=true `
+    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
     -o $distInstDir
 if ($LASTEXITCODE -ne 0) { throw "Installer build failed." }
 
