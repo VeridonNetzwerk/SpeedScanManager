@@ -41,8 +41,19 @@ $portableZip  = Join-Path $releaseDir "SpeedScanManager-$Version-portable-win-x8
 $installerDir = Join-Path $releaseDir "SpeedScanManager-$Version-installer-win-x86"
 
 # --- Clean previous outputs ---
-foreach ($dir in @($distDir, $distInstDir, $releaseDir)) {
+foreach ($dir in @($distDir, $distInstDir)) {
     if (Test-Path $dir) { Remove-Item -Recurse -Force $dir }
+}
+# Try to clean release dir, but don't fail if admin-created folders resist
+if (Test-Path $releaseDir) {
+    try { Remove-Item -Recurse -Force $releaseDir -ErrorAction Stop }
+    catch {
+        Write-Host "Warning: Could not fully clean $releaseDir (admin-created?). Using timestamped folder." -ForegroundColor DarkYellow
+        $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+        $releaseDir = Join-Path $root "release\v$Version-$stamp"
+        $portableZip  = Join-Path $releaseDir "SpeedScanManager-$Version-portable-win-x86.zip"
+        $installerDir = Join-Path $releaseDir "SpeedScanManager-$Version-installer-win-x86"
+    }
 }
 New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
 

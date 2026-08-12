@@ -20,4 +20,10 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Resource Include="..\assets\SpeedScanManager_Text_2Rows.png" Link="Assets\SpeedScanManager_Text_2Rows.png" />
+    <Resource Include="..\assets\SpeedScanManager_Text.png" Link="Assets\SpeedScanManager_Text.png" />
+    <Resource Include="..\assets\SpeedScanManager_Logo.png" Link="Assets\SpeedScanManager_Logo.png" />
+  </ItemGroup>
+
 </Project>
