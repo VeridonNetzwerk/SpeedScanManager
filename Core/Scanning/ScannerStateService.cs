@@ -63,7 +63,28 @@ internal sealed class ScannerStateService
             // Use the centralized selection logic (saved preference + USB preference)
             source = ScannerSelectionDialog.SelectBestSource(_twain, _preferredSourceName);
             if (source == null)
-                return DisconnectedState();
+            {
+                // No sources found — the scanner may have been connected after
+                // the DSM was opened. Close and reopen the DSM to force TWAIN
+                // to re-enumerate available sources.
+                LogDiag("QueryState: no sources found, reopening DSM to re-enumerate");
+                try
+                {
+                    _twain.Close();
+                    var reopenRc = _twain.Open(_msgLoop);
+                    LogDiag($"QueryState: DSM reopen rc={reopenRc}");
+                    if (reopenRc == ReturnCode.Success)
+                    {
+                        source = ScannerSelectionDialog.SelectBestSource(_twain, _preferredSourceName);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogDiag($"QueryState: DSM reopen failed: {ex.Message}");
+                }
+                if (source == null)
+                    return DisconnectedState();
+            }
 
             // If the source is already open (e.g. persistent source for device events),
             // don't close it when we're done — just use it as-is.
