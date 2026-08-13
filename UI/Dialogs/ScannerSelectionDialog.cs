@@ -16,10 +16,11 @@ internal class ScannerSelectionDialog : Form
     private readonly string? _currentSelection;
     private readonly Button _btnOk;
     private readonly Button _btnCancel;
-    private readonly Button _btnAuto;
-    private readonly Button _btnRefresh;
     private readonly Label _lblHint;
+    private readonly System.Windows.Forms.Timer _pollTimer;
     private List<DataSource> _sorted = new();
+    private bool _isAutoSelected = true;
+    private int _lastSourceCount = -1;
 
     /// <summary>
     /// Returns the selected source name, or null if the user cancelled or chose automatic.
@@ -39,13 +40,13 @@ internal class ScannerSelectionDialog : Form
         StartPosition = FormStartPosition.CenterScreen;
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;
-        ClientSize = new Size(420, 220);
+        ClientSize = new Size(420, 290);
         Font = new Font("Microsoft Sans Serif", 8.25f);
 
         var lbl = new Label
         {
             Text = "Bitte wählen Sie einen Scanner:",
-            Location = new Point(16, 16),
+            Location = new Point(16, 86),
             AutoSize = true,
             Font = Font
         };
@@ -53,56 +54,43 @@ internal class ScannerSelectionDialog : Form
         _combo = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(16, 40),
-            Size = new Size(340, 24),
+            Location = new Point(16, 110),
+            Size = new Size(388, 24),
             Font = Font
         };
-
-        _btnRefresh = new Button
+        _combo.SelectedIndexChanged += (s, e) =>
         {
-            Text = "Aktualisieren",
-            Location = new Point(362, 39),
-            Size = new Size(42, 24),
-            Font = Font
+            _isAutoSelected = _combo.SelectedIndex == 0;
         };
-        _btnRefresh.Click += (s, e) => RefreshSources();
 
         _lblHint = new Label
         {
             Text = "USB-verbundene Scanner werden bevorzugt oben angezeigt.",
-            Location = new Point(16, 76),
+            Location = new Point(16, 146),
             AutoSize = true,
             ForeColor = Color.Gray,
             Font = Font
-        };
-
-        _btnAuto = new Button
-        {
-            Text = "Automatisch",
-            Location = new Point(16, 170),
-            Size = new Size(90, 28),
-            Font = Font
-        };
-        _btnAuto.Click += (s, e) =>
-        {
-            SelectedSourceName = null;
-            DialogResult = DialogResult.OK;
-            Close();
         };
 
         _btnOk = new Button
         {
             Text = "OK",
             DialogResult = DialogResult.OK,
-            Location = new Point(230, 170),
+            Location = new Point(230, 240),
             Size = new Size(80, 28),
             Font = Font
         };
         _btnOk.Click += (s, e) =>
         {
-            var idx = _combo.SelectedIndex;
-            if (idx >= 0 && idx < _sorted.Count)
-                SelectedSourceName = _sorted[idx].Name;
+            // Index 0 = "Automatisch" -> null (auto selection)
+            if (_combo.SelectedIndex == 0)
+                SelectedSourceName = null;
+            else
+            {
+                var idx = _combo.SelectedIndex - 1; // offset for auto entry
+                if (idx >= 0 && idx < _sorted.Count)
+                    SelectedSourceName = _sorted[idx].Name;
+            }
             DialogResult = DialogResult.OK;
             Close();
         };
@@ -111,36 +99,61 @@ internal class ScannerSelectionDialog : Form
         {
             Text = "Abbrechen",
             DialogResult = DialogResult.Cancel,
-            Location = new Point(324, 170),
+            Location = new Point(324, 240),
             Size = new Size(80, 28),
             Font = Font
         };
 
-        Controls.AddRange(new Control[] { lbl, _combo, _btnRefresh, _lblHint, _btnAuto, _btnOk, _btnCancel });
+        Controls.AddRange(new Control[] { lbl, _combo, _lblHint, _btnOk, _btnCancel });
         AcceptButton = _btnOk;
         CancelButton = _btnCancel;
+
+        // Auto-poll timer: refresh scanner list every 3 seconds
+        _pollTimer = new System.Windows.Forms.Timer { Interval = 3000 };
+        _pollTimer.Tick += (s, e) => RefreshSources(autoRefresh: true);
+        _pollTimer.Start();
 
         RefreshSources();
     }
 
-    private void RefreshSources()
+    private void RefreshSources(bool autoRefresh = false)
     {
-        _combo.Items.Clear();
-        _sorted.Clear();
-
+        List<DataSource> sources;
         try
         {
-            var sources = _twain.GetSources().ToList();
-            // Sort: USB first, then Unknown, then Network last
-            _sorted = sources
+            sources = _twain.GetSources().ToList();
+            sources = sources
                 .OrderBy(s => GetConnectionType(s))
                 .ThenBy(s => s.Name)
                 .ToList();
         }
         catch
         {
-            _sorted = new List<DataSource>();
+            sources = new List<DataSource>();
         }
+
+        // Skip rebuild if nothing changed during auto-refresh
+        if (autoRefresh && sources.Count == _lastSourceCount &&
+            sources.Select(s => s.Name).SequenceEqual(_sorted.Select(s => s.Name)))
+            return;
+
+        _sorted = sources;
+        _lastSourceCount = sources.Count;
+
+        // Preserve current selection state
+        bool wasAuto = _isAutoSelected;
+        string? prevSelectedName = null;
+        if (!wasAuto && _combo.SelectedIndex > 0)
+        {
+            var prevIdx = _combo.SelectedIndex - 1;
+            if (prevIdx >= 0 && prevIdx < _sorted.Count)
+                prevSelectedName = _sorted[prevIdx].Name;
+        }
+
+        _combo.Items.Clear();
+
+        // First entry is always "Automatisch"
+        _combo.Items.Add("(Automatisch)");
 
         foreach (var s in _sorted)
         {
@@ -158,9 +171,10 @@ internal class ScannerSelectionDialog : Form
             _combo.Items.Add("(kein Scanner gefunden)");
             _combo.SelectedIndex = 0;
             _combo.Enabled = false;
-            _btnOk.Enabled = false;
-            _lblHint.Text = "Kein Scanner gefunden. Schließen Sie einen Scanner an und klicken Sie auf 'Aktualisieren'.";
+            _btnOk.Enabled = true; // OK still works for "Automatisch"
+            _lblHint.Text = "Kein Scanner gefunden. Die Liste wird automatisch aktualisiert, sobald ein Scanner erkannt wird.";
             _lblHint.ForeColor = Color.Firebrick;
+            _isAutoSelected = true;
         }
         else
         {
@@ -169,21 +183,58 @@ internal class ScannerSelectionDialog : Form
             _lblHint.Text = "USB-verbundene Scanner werden bevorzugt oben angezeigt.";
             _lblHint.ForeColor = Color.Gray;
 
-            // Select current saved source if it exists
-            int selIdx = 0;
-            if (!string.IsNullOrEmpty(_currentSelection))
+            // Restore selection
+            if (wasAuto)
             {
+                _combo.SelectedIndex = 0;
+                _isAutoSelected = true;
+            }
+            else if (!string.IsNullOrEmpty(prevSelectedName))
+            {
+                // Find previously selected scanner in new list
+                int foundIdx = -1;
+                for (int i = 0; i < _sorted.Count; i++)
+                {
+                    if ((_sorted[i].Name ?? "") == prevSelectedName)
+                    {
+                        foundIdx = i + 1; // +1 for auto entry
+                        break;
+                    }
+                }
+                _combo.SelectedIndex = foundIdx >= 0 ? foundIdx : 0;
+                _isAutoSelected = _combo.SelectedIndex == 0;
+            }
+            else if (!string.IsNullOrEmpty(_currentSelection))
+            {
+                // Select current saved source if it exists
+                int selIdx = 0;
                 for (int i = 0; i < _sorted.Count; i++)
                 {
                     if ((_sorted[i].Name ?? "") == _currentSelection)
                     {
-                        selIdx = i;
+                        selIdx = i + 1; // +1 for auto entry
                         break;
                     }
                 }
+                _combo.SelectedIndex = selIdx;
+                _isAutoSelected = selIdx == 0;
             }
-            _combo.SelectedIndex = selIdx;
+            else
+            {
+                _combo.SelectedIndex = 0;
+                _isAutoSelected = true;
+            }
         }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _pollTimer?.Stop();
+            _pollTimer?.Dispose();
+        }
+        base.Dispose(disposing);
     }
 
     /// <summary>
