@@ -13,6 +13,11 @@
     <ApplicationManifest>AppManifest.xml</ApplicationManifest>
     <ApplicationIcon>assets\SpeedScanManager.ico</ApplicationIcon>
     <DefaultItemExcludes>$(DefaultItemExcludes);installer\**</DefaultItemExcludes>
+    <Company>VeridonNetzwerk</Company>
+    <Product>SpeedScan Manager</Product>
+    <Copyright>Copyright © 2024 VeridonNetzwerk</Copyright>
+    <Description>Document scanning management application with TWAIN support</Description>
+    <Trademark>SpeedScan Manager is a trademark of VeridonNetzwerk</Trademark>
   </PropertyGroup>
 
   <ItemGroup>

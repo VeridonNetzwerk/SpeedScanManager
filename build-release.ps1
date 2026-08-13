@@ -61,7 +61,6 @@ New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
 Write-Host "`n[1/4] Publishing portable app..." -ForegroundColor Yellow
 dotnet publish (Join-Path $root "SpeedScanManager.csproj") `
     -c Release -r win-x86 --self-contained true `
-    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
     -o $distDir
 if ($LASTEXITCODE -ne 0) { throw "App build failed." }
 
