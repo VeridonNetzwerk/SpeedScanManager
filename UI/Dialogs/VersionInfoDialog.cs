@@ -54,10 +54,10 @@ internal class VersionInfoDialog : Form
             ? (System.Diagnostics.FileVersionInfo.GetVersionInfo(exePath).FileVersion ?? asm.GetName().Version?.ToString() ?? "0.1.0.0")
             : (asm.GetName().Version?.ToString() ?? "0.1.0.0");
 
-        // Trim trailing .0 segments for display (0.1.0.0 -> 0.1.0)
+        // Trim trailing .0 segments for display (0.1.0.0 -> 0.1.0), but keep at least 3 segments
         var displayVersion = version;
         var parts = displayVersion.Split('.');
-        while (parts.Length > 2 && parts[^1] == "0")
+        while (parts.Length > 3 && parts[^1] == "0")
         {
             displayVersion = string.Join('.', parts[..^1]);
             parts = displayVersion.Split('.');
