@@ -1,6 +1,4 @@
 using System.Drawing;
-using System.Drawing.Imaging;
-using System.Runtime.InteropServices;
 using NTwain;
 using NTwain.Data;
 
@@ -23,15 +21,9 @@ internal class ScanPipeline : IDisposable
     private static void LogDiag(string msg) => DiagLog.Write(msg);
     private readonly ManualResetEventSlim _scanComplete = new(false);
     private bool _scanCancelled;
-    private bool _multiFeedDetected;
-    private bool _userCancelledMultiFeed;
-    private bool _disableMultiFeedDetection;
 
     public IReadOnlyList<Bitmap> AcquiredImages => _acquiredImages;
     public bool WasCancelled => _scanCancelled;
-    public bool MultiFeedDetected => _multiFeedDetected;
-    public bool UserCancelledMultiFeed => _userCancelledMultiFeed;
-    public bool DisableMultiFeedDetection => _disableMultiFeedDetection;
 
     public ScanPipeline(TwainSession twain, WindowsFormsMessageLoopHook msgLoop, Form hiddenWindow, ScanSettings settings, string? preferredSourceName = null)
     {
@@ -65,8 +57,6 @@ internal class ScanPipeline : IDisposable
         _acquiredImages.Clear();
         _scanComplete.Reset();
         _scanCancelled = false;
-        _multiFeedDetected = false;
-        _userCancelledMultiFeed = false;
 
         // Ensure DSM is open
         if (!_twain.IsDsmOpen)
@@ -545,7 +535,6 @@ internal class ScanPipeline : IDisposable
         if (e.DeviceEvent.Event == DeviceEvent.PaperDoubleFeed)
         {
             LogDiag("Multi-feed detected by scanner!");
-            _multiFeedDetected = true;
 
             // Get preview images: current page (last acquired) and previous page
             Bitmap? currentPage = _acquiredImages.Count > 0 ? _acquiredImages[^1] : null;
@@ -575,7 +564,6 @@ internal class ScanPipeline : IDisposable
             switch (action)
             {
                 case MultiFeedWarningDialog.MultiFeedAction.Rescan:
-                    _userCancelledMultiFeed = true;
                     _scanCancelled = true;
                     _scanComplete.Set();
                     break;
@@ -587,7 +575,6 @@ internal class ScanPipeline : IDisposable
 
                 case MultiFeedWarningDialog.MultiFeedAction.DisableDetection:
                     // Disable multi-feed detection for the rest of this scan
-                    _disableMultiFeedDetection = true;
                     try
                     {
                         _currentSource?.Capabilities.CapDoubleFeedDetection.Reset();

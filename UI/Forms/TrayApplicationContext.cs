@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Windows.Forms;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
@@ -203,16 +202,12 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     private void UpdateMenuItems()
     {
         bool connected = _scannerStatus == ScannerStatus.Connected;
-        bool supportsDuplex = false, supportsSimplex = false, supportsFlatbed = false;
         bool supportsUltrasonic = false, supportsLength = false;
 
         // Use cached scanner state from UpdateConnectionState to avoid
         // opening the TWAIN source a second time (causes native crash).
         if (connected && !_isScanning && _lastScannerState != null)
         {
-            supportsDuplex = _lastScannerState.SupportsDuplex;
-            supportsSimplex = _lastScannerState.SupportsSimplex;
-            supportsFlatbed = _lastScannerState.SupportsFlatbed;
             supportsUltrasonic = _lastScannerState.SupportsUltrasonicDetection;
             supportsLength = _lastScannerState.SupportsLengthDetection;
 

@@ -10,11 +10,6 @@ namespace SpeedScanManager;
 internal sealed record ScannerState
 {
     public bool IsScannerConnected { get; init; }
-    public bool SupportsADF { get; init; }
-    public bool SupportsDuplex { get; init; }
-    public bool SupportsSimplex { get; init; }
-    public bool SupportsFlatbed { get; init; }
-    public bool SupportsLongPaper { get; init; }
     public bool SupportsUltrasonicDetection { get; init; }
     public bool SupportsLengthDetection { get; init; }
     public string SourceName { get; init; } = "";
@@ -115,11 +110,6 @@ internal sealed class ScannerStateService
     private static ScannerState DisconnectedState() => new()
     {
         IsScannerConnected = false,
-        SupportsADF = false,
-        SupportsDuplex = false,
-        SupportsSimplex = false,
-        SupportsFlatbed = false,
-        SupportsLongPaper = false,
         SupportsUltrasonicDetection = false,
         SupportsLengthDetection = false,
         SourceName = ""
@@ -127,45 +117,8 @@ internal sealed class ScannerStateService
 
     private static ScannerState QueryCapabilities(DataSource source)
     {
-        bool supportsDuplex = false;
-        bool supportsADF = false;
-        bool supportsFlatbed = false;
-        bool supportsLongPaper = false;
         bool supportsUltrasonic = false;
         bool supportsLength = false;
-
-        // Duplex support
-        try
-        {
-            var duplexValues = source.Capabilities.CapDuplexEnabled.GetValues();
-            supportsDuplex = duplexValues.Contains(BoolType.True);
-        }
-        catch { }
-
-        // Feeder (ADF) and flatbed support
-        try
-        {
-            var feederValues = source.Capabilities.CapFeederEnabled.GetValues();
-            supportsADF = feederValues.Contains(BoolType.True);
-            // If feeder can be disabled (False), flatbed is available as alternative
-            supportsFlatbed = feederValues.Contains(BoolType.False);
-        }
-        catch
-        {
-            // If CAP_FEEDERENABLED is not supported, the scanner is likely flatbed-only
-            supportsFlatbed = true;
-        }
-
-        // Simplex is always supported if any scanning is possible
-        bool supportsSimplex = true;
-
-        // Long paper mode: check if supported sizes include None (non-standard = long paper)
-        try
-        {
-            var sizes = source.Capabilities.ICapSupportedSizes.GetValues();
-            supportsLongPaper = sizes.Contains(SupportedSize.None);
-        }
-        catch { }
 
         // Multi-feed detection capabilities
         try
@@ -211,11 +164,6 @@ internal sealed class ScannerStateService
         return new ScannerState
         {
             IsScannerConnected = true,
-            SupportsADF = supportsADF,
-            SupportsDuplex = supportsDuplex,
-            SupportsSimplex = supportsSimplex,
-            SupportsFlatbed = supportsFlatbed,
-            SupportsLongPaper = supportsLongPaper,
             SupportsUltrasonicDetection = supportsUltrasonic,
             SupportsLengthDetection = supportsLength,
             SourceName = source.Name ?? "",
