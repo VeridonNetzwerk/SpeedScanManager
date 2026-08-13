@@ -12,18 +12,25 @@ namespace SpeedScanManager;
 internal class ScannerSelectionDialog : Form
 {
     private readonly ComboBox _combo;
-    private readonly List<DataSource> _sources;
+    private readonly TwainSession _twain;
+    private readonly string? _currentSelection;
     private readonly Button _btnOk;
     private readonly Button _btnCancel;
     private readonly Button _btnAuto;
+    private readonly Button _btnRefresh;
+    private readonly Label _lblHint;
+    private List<DataSource> _sorted = new();
 
     /// <summary>
-    /// Returns the selected source name, or null if the user cancelled.
+    /// Returns the selected source name, or null if the user cancelled or chose automatic.
     /// </summary>
     public string? SelectedSourceName { get; private set; }
 
     public ScannerSelectionDialog(TwainSession twain, string? currentSelection)
     {
+        _twain = twain;
+        _currentSelection = currentSelection;
+
         Text = "SpeedScan Manager – Scanner auswählen";
         Icon = TrayIcons.GetAppIcon();
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -34,14 +41,6 @@ internal class ScannerSelectionDialog : Form
         AutoScaleMode = AutoScaleMode.None;
         ClientSize = new Size(420, 220);
         Font = new Font("Microsoft Sans Serif", 8.25f);
-
-        _sources = twain.GetSources().ToList();
-
-        // Sort: USB/local scanners first, then WIA-based, then others
-        var sorted = _sources
-            .OrderByDescending(s => IsUsbLikely(s))
-            .ThenBy(s => s.Name)
-            .ToList();
 
         var lbl = new Label
         {
@@ -55,32 +54,27 @@ internal class ScannerSelectionDialog : Form
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             Location = new Point(16, 40),
-            Size = new Size(388, 24),
+            Size = new Size(340, 24),
             Font = Font
         };
 
-        foreach (var s in sorted)
+        _btnRefresh = new Button
         {
-            var label = s.Name ?? "(unbenannt)";
-            if (IsUsbLikely(s))
-                label += "  (USB)";
-            _combo.Items.Add(label);
-        }
+            Text = "Aktualisieren",
+            Location = new Point(362, 39),
+            Size = new Size(42, 24),
+            Font = Font
+        };
+        _btnRefresh.Click += (s, e) => RefreshSources();
 
-        // Select current saved source if it exists
-        int selIdx = 0;
-        if (!string.IsNullOrEmpty(currentSelection))
+        _lblHint = new Label
         {
-            for (int i = 0; i < sorted.Count; i++)
-            {
-                if ((sorted[i].Name ?? "") == currentSelection)
-                {
-                    selIdx = i;
-                    break;
-                }
-            }
-        }
-        _combo.SelectedIndex = selIdx;
+            Text = "USB-verbundene Scanner werden bevorzugt oben angezeigt.",
+            Location = new Point(16, 76),
+            AutoSize = true,
+            ForeColor = Color.Gray,
+            Font = Font
+        };
 
         _btnAuto = new Button
         {
@@ -107,8 +101,8 @@ internal class ScannerSelectionDialog : Form
         _btnOk.Click += (s, e) =>
         {
             var idx = _combo.SelectedIndex;
-            if (idx >= 0 && idx < sorted.Count)
-                SelectedSourceName = sorted[idx].Name;
+            if (idx >= 0 && idx < _sorted.Count)
+                SelectedSourceName = _sorted[idx].Name;
             DialogResult = DialogResult.OK;
             Close();
         };
@@ -122,18 +116,70 @@ internal class ScannerSelectionDialog : Form
             Font = Font
         };
 
-        var lblHint = new Label
-        {
-            Text = "USB-verbundene Scanner werden bevorzugt oben angezeigt.",
-            Location = new Point(16, 76),
-            AutoSize = true,
-            ForeColor = Color.Gray,
-            Font = Font
-        };
-
-        Controls.AddRange(new Control[] { lbl, _combo, lblHint, _btnAuto, _btnOk, _btnCancel });
+        Controls.AddRange(new Control[] { lbl, _combo, _btnRefresh, _lblHint, _btnAuto, _btnOk, _btnCancel });
         AcceptButton = _btnOk;
         CancelButton = _btnCancel;
+
+        RefreshSources();
+    }
+
+    private void RefreshSources()
+    {
+        _combo.Items.Clear();
+        _sorted.Clear();
+
+        try
+        {
+            var sources = _twain.GetSources().ToList();
+            _sorted = sources
+                .OrderByDescending(s => IsUsbLikely(s))
+                .ThenBy(s => s.Name)
+                .ToList();
+        }
+        catch
+        {
+            _sorted = new List<DataSource>();
+        }
+
+        foreach (var s in _sorted)
+        {
+            var label = s.Name ?? "(unbenannt)";
+            if (IsUsbLikely(s))
+                label += "  (USB)";
+            _combo.Items.Add(label);
+        }
+
+        if (_sorted.Count == 0)
+        {
+            _combo.Items.Add("(kein Scanner gefunden)");
+            _combo.SelectedIndex = 0;
+            _combo.Enabled = false;
+            _btnOk.Enabled = false;
+            _lblHint.Text = "Kein Scanner gefunden. Schließen Sie einen Scanner an und klicken Sie auf 'Aktualisieren'.";
+            _lblHint.ForeColor = Color.Firebrick;
+        }
+        else
+        {
+            _combo.Enabled = true;
+            _btnOk.Enabled = true;
+            _lblHint.Text = "USB-verbundene Scanner werden bevorzugt oben angezeigt.";
+            _lblHint.ForeColor = Color.Gray;
+
+            // Select current saved source if it exists
+            int selIdx = 0;
+            if (!string.IsNullOrEmpty(_currentSelection))
+            {
+                for (int i = 0; i < _sorted.Count; i++)
+                {
+                    if ((_sorted[i].Name ?? "") == _currentSelection)
+                    {
+                        selIdx = i;
+                        break;
+                    }
+                }
+            }
+            _combo.SelectedIndex = selIdx;
+        }
     }
 
     /// <summary>
