@@ -25,6 +25,10 @@ internal class ScanPipeline : IDisposable
     public IReadOnlyList<Bitmap> AcquiredImages => _acquiredImages;
     public bool WasCancelled => _scanCancelled;
 
+    private bool IsLongPageMode => _settings.PaperSize == PaperSizeMode.Automatic
+        && _settings.MultiFeedDetection != MultiFeedDetection.Length
+        && _settings.MultiFeedDetection != MultiFeedDetection.Both;
+
     public ScanPipeline(TwainSession twain, WindowsFormsMessageLoopHook msgLoop, Form hiddenWindow, ScanSettings settings, string? preferredSourceName = null)
     {
         _twain = twain;
@@ -85,11 +89,6 @@ internal class ScanPipeline : IDisposable
             return new List<Bitmap>();
         }
 
-        // Determine if we're in long page mode
-        bool isLongPageMode = _settings.PaperSize == PaperSizeMode.Automatic
-            && _settings.MultiFeedDetection != MultiFeedDetection.Length
-            && _settings.MultiFeedDetection != MultiFeedDetection.Both;
-
         // Configure capabilities (sets custom PaperStream IP caps for long page mode)
         ConfigureCapabilities(scanSideOverride);
 
@@ -139,11 +138,7 @@ internal class ScanPipeline : IDisposable
         // In long page mode, try to set the frame to 120 inches right before the scan starts.
         // The TransferReady event fires after the driver dialog (if any) but before data transfer.
         // This is our last chance to override the frame.
-        bool isLongPageMode = _settings.PaperSize == PaperSizeMode.Automatic
-            && _settings.MultiFeedDetection != MultiFeedDetection.Length
-            && _settings.MultiFeedDetection != MultiFeedDetection.Both;
-
-        if (!isLongPageMode || _currentSource == null)
+        if (!IsLongPageMode || _currentSource == null)
             return;
 
         LogDiag("TransferReady: attempting to set long page frame (125 inches)");
@@ -236,11 +231,7 @@ internal class ScanPipeline : IDisposable
         // configuration. The PaperStream IP driver resets paper size to 14 inches (Legal) whenever
         // ANY capability is set. With ShowUI mode, the driver keeps its previous settings
         // (e.g. Long Page + 120 inch custom length) only if we don't touch any capabilities.
-        bool isLongPageMode = _settings.PaperSize == PaperSizeMode.Automatic
-            && _settings.MultiFeedDetection != MultiFeedDetection.Length
-            && _settings.MultiFeedDetection != MultiFeedDetection.Both;
-
-        if (isLongPageMode)
+        if (IsLongPageMode)
         {
             // Try to set the frame to 120 inches BEFORE the driver UI appears.
             try
@@ -458,31 +449,32 @@ internal class ScanPipeline : IDisposable
         if (effectiveSide == ScanSide.Automatic)
             effectiveSide = ScanSide.Duplex;
 
-        try
+        if (effectiveSide == ScanSide.Duplex)
         {
-            if (effectiveSide == ScanSide.Duplex)
+            try
             {
-                try
-                {
-                    _currentSource.Capabilities.CapDuplexEnabled.SetValue(BoolType.True);
-                    LogDiag("Scan side set to Duplex");
-                }
-                catch (Exception ex)
-                {
-                    LogDiag($"Duplex failed, falling back to Simplex: {ex.Message}");
-                    _currentSource.Capabilities.CapDuplexEnabled.SetValue(BoolType.False);
-                    LogDiag("Scan side set to Simplex (fallback)");
-                }
+                _currentSource.Capabilities.CapDuplexEnabled.SetValue(BoolType.True);
+                LogDiag("Scan side set to Duplex");
             }
-            else if (effectiveSide == ScanSide.Simplex)
+            catch (Exception ex)
+            {
+                LogDiag($"Duplex failed, falling back to Simplex: {ex.Message}");
+                try { _currentSource.Capabilities.CapDuplexEnabled.SetValue(BoolType.False); }
+                catch { }
+                LogDiag("Scan side set to Simplex (fallback)");
+            }
+        }
+        else if (effectiveSide == ScanSide.Simplex)
+        {
+            try
             {
                 _currentSource.Capabilities.CapDuplexEnabled.SetValue(BoolType.False);
                 LogDiag("Scan side set to Simplex");
             }
-        }
-        catch (Exception ex)
-        {
-            LogDiag($"Duplex cap failed: {ex.Message}");
+            catch (Exception ex)
+            {
+                LogDiag($"Simplex cap failed: {ex.Message}");
+            }
         }
     }
 

@@ -190,7 +190,6 @@ internal class ScanOutputProcessor
             var tessDataPath = Path.Combine(AppContext.BaseDirectory, "tessdata");
             if (!File.Exists(Path.Combine(tessDataPath, "osd.traineddata")))
             {
-                // No OSD data available — skip auto-rotate
                 return bmp;
             }
 
@@ -202,7 +201,6 @@ internal class ScanOutputProcessor
             osdEngine.DefaultPageSegMode = Tesseract.PageSegMode.OsdOnly;
             using var page = osdEngine.Process(pix);
 
-            // Try to get orientation from OSD output
             var text = page.GetText();
             if (string.IsNullOrEmpty(text))
                 return bmp;
@@ -226,37 +224,20 @@ internal class ScanOutputProcessor
             if (rotationDegrees == 0)
                 return bmp;
 
-            // Rotate the image to correct orientation
-            var rotated = new Bitmap(bmp.Width, bmp.Height);
-            rotated.SetResolution(bmp.HorizontalResolution, bmp.VerticalResolution);
-            using (var g = Graphics.FromImage(rotated))
+            // Use RotateFlip which handles dimension swapping internally
+            var flipType = rotationDegrees switch
             {
-                g.Clear(Color.White);
-                g.TranslateTransform((float)bmp.Width / 2, (float)bmp.Height / 2);
-                g.RotateTransform(rotationDegrees);
-                g.TranslateTransform(-(float)bmp.Width / 2, -(float)bmp.Height / 2);
-                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                g.DrawImage(bmp, 0, 0);
-            }
+                90 => RotateFlipType.Rotate90FlipNone,
+                180 => RotateFlipType.Rotate180FlipNone,
+                270 => RotateFlipType.Rotate270FlipNone,
+                _ => RotateFlipType.RotateNoneFlipNone
+            };
 
-            // Swap dimensions if rotated 90 or 270
-            if (rotationDegrees == 90 || rotationDegrees == 270)
-            {
-                var swapped = new Bitmap(bmp.Height, bmp.Width);
-                swapped.SetResolution(bmp.HorizontalResolution, bmp.VerticalResolution);
-                using (var g = Graphics.FromImage(swapped))
-                {
-                    g.Clear(Color.White);
-                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                    g.DrawImage(rotated, 0, 0);
-                }
-                rotated.Dispose();
-                bmp.Dispose();
-                return swapped;
-            }
+            if (flipType == RotateFlipType.RotateNoneFlipNone)
+                return bmp;
 
-            bmp.Dispose();
-            return rotated;
+            bmp.RotateFlip(flipType);
+            return bmp;
         }
         catch (Exception ex)
         {
@@ -401,15 +382,7 @@ internal class ScanOutputProcessor
         }
 
         // Compression quality based on settings (1-5)
-        int jpegQuality = _settings.CompressionRate switch
-        {
-            1 => 100, // Highest quality, largest file
-            2 => 85,
-            3 => 70,
-            4 => 50,
-            5 => 30, // Lowest quality, smallest file
-            _ => 70
-        };
+        int jpegQuality = GetJpegQuality();
 
         for (int i = 0; i < images.Count; i++)
         {
@@ -472,6 +445,16 @@ internal class ScanOutputProcessor
         }
     }
 
+    private int GetJpegQuality() => _settings.CompressionRate switch
+    {
+        1 => 100,
+        2 => 85,
+        3 => 70,
+        4 => 50,
+        5 => 30,
+        _ => 70
+    };
+
     private ImageCodecInfo GetJpegEncoder()
     {
         var encoders = ImageCodecInfo.GetImageEncoders();
@@ -485,15 +468,7 @@ internal class ScanOutputProcessor
         var result = new List<string>();
         string baseFileName = GenerateFileName(formatMode, customFileName, counterDigits);
 
-        int jpegQuality = _settings.CompressionRate switch
-        {
-            1 => 100,
-            2 => 85,
-            3 => 70,
-            4 => 50,
-            5 => 30,
-            _ => 70
-        };
+        int jpegQuality = GetJpegQuality();
 
         var encoderParams = new EncoderParameters(1);
         encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, (long)jpegQuality);

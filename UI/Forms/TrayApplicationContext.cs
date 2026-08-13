@@ -356,75 +356,27 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
                                     if (dlg.ShowDialog(_hiddenWindow) == DialogResult.OK)
                                     {
-                                        switch (dlg.SelectedMediaAction)
-                                        {
-                                            case PostScanMediaDialog.MediaAction.ScanToFolder:
-                                                SaveToFolderWithDialog(fileNames, imagesToPrint);
-                                                break;
-
-                                            case PostScanMediaDialog.MediaAction.ScanToEmail:
-                                                OpenMailClient(fileNames);
-                                                break;
-
-                                            case PostScanMediaDialog.MediaAction.ScanToPrint:
-                                                if (imagesToPrint != null && imagesToPrint.Count > 0)
-                                                    PrintScannedImages(imagesToPrint);
-                                                break;
-
-                                            case PostScanMediaDialog.MediaAction.ScanToWord:
-                                                CreateWordDocument(fileNames);
-                                                break;
-
-                                            case PostScanMediaDialog.MediaAction.ScanToExcel:
-                                                CreateExcelDocument(fileNames);
-                                                break;
-
-                                            case PostScanMediaDialog.MediaAction.ScanToPowerPoint:
-                                                CreatePowerPointPresentation(fileNames);
-                                                break;
-
-                                            case PostScanMediaDialog.MediaAction.ScanPictureFolder:
-                                                SaveToPictureFolder(fileNames);
-                                                break;
-
-                                            case PostScanMediaDialog.MediaAction.EditWithPdf:
-                                                OpenPdfEditor(fileNames);
-                                                break;
-                                        }
+                                        ExecuteApplicationAction(dlg.SelectedMediaAction, fileNames, imagesToPrint);
+                                        // Dispose imagesToPrint if not consumed by print
+                                        if (dlg.SelectedMediaAction != PostScanMediaDialog.MediaAction.ScanToPrint)
+                                            DisposeImages(imagesToPrint);
+                                    }
+                                    else
+                                    {
+                                        DisposeImages(imagesToPrint);
                                     }
                                 }
                                 else
                                 {
-                                    // No Quick-Menü → use configured application type directly
-                                    switch (_currentApplicationType)
-                                    {
-                                        case ApplicationType.ScanToEmail:
-                                            OpenMailClient(fileNames);
-                                            break;
-                                        case ApplicationType.ScanToPrint:
-                                            if (imagesToPrint != null && imagesToPrint.Count > 0)
-                                                PrintScannedImages(imagesToPrint);
-                                            break;
-                                        case ApplicationType.ScanToWord:
-                                            CreateWordDocument(fileNames);
-                                            break;
-                                        case ApplicationType.ScanToExcel:
-                                            CreateExcelDocument(fileNames);
-                                            break;
-                                        case ApplicationType.ScanToPowerPoint:
-                                            CreatePowerPointPresentation(fileNames);
-                                            break;
-                                        case ApplicationType.ScanPictureFolder:
-                                            SaveToPictureFolder(fileNames);
-                                            break;
-                                        case ApplicationType.EditWithPdf:
-                                            OpenPdfEditor(fileNames);
-                                            break;
-                                    }
+                                    ExecuteApplicationAction(_currentApplicationType, fileNames, imagesToPrint);
+                                    // Dispose imagesToPrint if not consumed by print
+                                    if (_currentApplicationType != ApplicationType.ScanToPrint)
+                                        DisposeImages(imagesToPrint);
                                 }
                             }
                             else
                             {
+                                DisposeImages(imagesToPrint);
                                 Debug.WriteLine("[Tray] Scan abgeschlossen, aber keine Dateien erstellt.");
                             }
                         });
@@ -495,13 +447,8 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
                     {
                         _scannerStatus = ScannerStatus.Connected;
                     }
-                    else
-                    {
-                        // No images doesn't necessarily mean disconnected — could be
-                        // user cancelled or no pages in ADF. Keep current status and
-                        // try a lightweight reconnection check.
-                        _scannerStatus = ScannerStatus.Connected;
-                    }
+                    // If no images, keep current status — could be user cancel or empty ADF.
+                    // The next poll cycle will re-evaluate.
                     // Always restart WIA watcher to detect future button presses
                     StartWiaWatcher();
                     UpdateTrayVisuals();
@@ -560,6 +507,63 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
             FileNameFormatDialog.FormatMode.Custom => customName,
             _ => "ScanSnap"
         };
+    }
+
+    private void ExecuteApplicationAction(ApplicationType appType, List<string> fileNames, List<Bitmap>? imagesToPrint)
+    {
+        switch (appType)
+        {
+            case ApplicationType.ScanToFolder:
+                SaveToFolderWithDialog(fileNames, imagesToPrint);
+                break;
+            case ApplicationType.ScanToEmail:
+                OpenMailClient(fileNames);
+                break;
+            case ApplicationType.ScanToPrint:
+                if (imagesToPrint != null && imagesToPrint.Count > 0)
+                    PrintScannedImages(imagesToPrint);
+                break;
+            case ApplicationType.ScanToWord:
+                CreateWordDocument(fileNames);
+                break;
+            case ApplicationType.ScanToExcel:
+                CreateExcelDocument(fileNames);
+                break;
+            case ApplicationType.ScanToPowerPoint:
+                CreatePowerPointPresentation(fileNames);
+                break;
+            case ApplicationType.ScanPictureFolder:
+                SaveToPictureFolder(fileNames);
+                break;
+            case ApplicationType.EditWithPdf:
+                OpenPdfEditor(fileNames);
+                break;
+        }
+    }
+
+    private void ExecuteApplicationAction(PostScanMediaDialog.MediaAction action, List<string> fileNames, List<Bitmap>? imagesToPrint)
+    {
+        // Map MediaAction to ApplicationType and reuse the same switch
+        var appType = action switch
+        {
+            PostScanMediaDialog.MediaAction.ScanToFolder => ApplicationType.ScanToFolder,
+            PostScanMediaDialog.MediaAction.ScanToEmail => ApplicationType.ScanToEmail,
+            PostScanMediaDialog.MediaAction.ScanToPrint => ApplicationType.ScanToPrint,
+            PostScanMediaDialog.MediaAction.ScanToWord => ApplicationType.ScanToWord,
+            PostScanMediaDialog.MediaAction.ScanToExcel => ApplicationType.ScanToExcel,
+            PostScanMediaDialog.MediaAction.ScanToPowerPoint => ApplicationType.ScanToPowerPoint,
+            PostScanMediaDialog.MediaAction.ScanPictureFolder => ApplicationType.ScanPictureFolder,
+            PostScanMediaDialog.MediaAction.EditWithPdf => ApplicationType.EditWithPdf,
+            _ => ApplicationType.ScanToFolder
+        };
+        ExecuteApplicationAction(appType, fileNames, imagesToPrint);
+    }
+
+    private static void DisposeImages(List<Bitmap>? images)
+    {
+        if (images == null) return;
+        foreach (var img in images)
+            img.Dispose();
     }
 
     private void SaveToFolderWithDialog(List<string> fileNames, List<Bitmap>? previewImages)
