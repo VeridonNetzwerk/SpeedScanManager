@@ -64,6 +64,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
     private const int PollIntervalMs = 3000;
     private const int SlowPollIntervalMs = 5000;
+    private int _wiaPollSkip;
     public TrayApplicationContext()
     {
         // Load persisted app settings
@@ -1177,14 +1178,14 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
                 return;
 
             // When WIA watcher is active (connected, waiting for button events),
-            // skip polling — QueryState would open/close the TWAIN source and
-            // interfere with WIA event delivery.
-            // But still poll periodically (every ~30s) to detect if the scanner
-            // was disconnected while WIA was active.
+            // poll less frequently to detect disconnection — WIA doesn't reliably
+            // fire events when the scanner is unplugged, so we need to actively check.
             if (_wiaWatcher != null && _scannerStatus == ScannerStatus.Connected)
             {
-                // WIA handles disconnection detection via device events
-                return;
+                _wiaPollSkip++;
+                if (_wiaPollSkip < 2)
+                    return;
+                _wiaPollSkip = 0;
             }
 
             // Keep polling even when disconnected — this is how we detect
