@@ -63,7 +63,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     private Icon? _cachedDisconnectedIcon;
 
     private const int PollIntervalMs = 3000;
-    private const int SlowPollIntervalMs = 30000;
+    private const int SlowPollIntervalMs = 5000;
     public TrayApplicationContext()
     {
         // Load persisted app settings
