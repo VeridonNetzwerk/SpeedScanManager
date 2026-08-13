@@ -29,6 +29,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     private ToolStripMenuItem _miDuplexScan = null!;
     private ToolStripMenuItem _miSimplexScan = null!;
     private ToolStripMenuItem _miFlatbedScan = null!;
+    private ToolStripMenuItem _miSelectScanner = null!;
     private ToolStripMenuItem _miScanKeySettings = null!;
     private ToolStripMenuItem _miProfileManagement = null!;
     private ToolStripMenuItem _miScanResult = null!;
@@ -126,6 +127,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         _miDuplexScan = new ToolStripMenuItem("Duplex-Scan");
         _miSimplexScan = new ToolStripMenuItem("Simplex-Scan");
         _miFlatbedScan = new ToolStripMenuItem("Flachbettscannen");
+        _miSelectScanner = new ToolStripMenuItem("Scanner auswählen...");
         _miScanKeySettings = new ToolStripMenuItem("Einstellungen der SCAN Taste...");
         _miProfileManagement = new ToolStripMenuItem("Profilverwaltung...");
         _miScanResult = new ToolStripMenuItem("Scan-Ergebnis anzeigen");
@@ -140,6 +142,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         _miDuplexScan.Click += (s, e) => StartScan(ScanSide.Duplex);
         _miSimplexScan.Click += (s, e) => StartScan(ScanSide.Simplex);
         _miFlatbedScan.Click += (s, e) => StartScan(ScanSide.Flatbed);
+        _miSelectScanner.Click += (s, e) => ShowScannerSelectionDialog();
         _miScanKeySettings.Click += (s, e) => ShowMainForm();
         _miProfileManagement.Click += (s, e) => OpenProfileManagement();
         _miScanResult.Click += (s, e) => OpenScanResultFolder();
@@ -162,6 +165,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
             _miSimplexScan,
             _miFlatbedScan,
             new ToolStripSeparator(),
+            _miSelectScanner,
             _miScanKeySettings,
             _miProfileManagement,
             new ToolStripSeparator(),
@@ -308,7 +312,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         {
             try
             {
-                _scanPipeline = new ScanPipeline(_twain, _msgLoop, _hiddenWindow, _settings);
+                _scanPipeline = new ScanPipeline(_twain, _msgLoop, _hiddenWindow, _settings, _appSettings.SelectedSourceName);
                 var images = _scanPipeline.ExecuteScan(scanSideOverride);
 
                 if (images.Count > 0)
@@ -1037,6 +1041,32 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         ShowMainForm();
     }
 
+    private void ShowScannerSelectionDialog()
+    {
+        if (_twain == null || !_twain.IsDsmOpen)
+        {
+            MessageBox.Show("TWAIN ist nicht initialisiert. Scanner-Auswahl nicht verfügbar.",
+                "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        using var dlg = new ScannerSelectionDialog(_twain, _appSettings.SelectedSourceName);
+        if (dlg.ShowDialog(_hiddenWindow) == DialogResult.OK)
+        {
+            _appSettings.SelectedSourceName = dlg.SelectedSourceName;
+            _appSettings.Save();
+            LogDiag($"Scanner selection changed to: {dlg.SelectedSourceName ?? "(auto)"}");
+
+            // Re-evaluate connection state with the new source
+            ClosePersistentSource();
+            StopWiaWatcher();
+            _scannerStatus = ScannerStatus.Unknown;
+            UpdateConnectionState();
+            UpdateTrayVisuals();
+            UpdateMenuItems();
+        }
+    }
+
     private void ExitApplication()
     {
         ClosePersistentSource();
@@ -1069,7 +1099,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
             if (_twainInitialized)
             {
-                _scannerStateService = new ScannerStateService(_twain, _msgLoop);
+                _scannerStateService = new ScannerStateService(_twain, _msgLoop, _appSettings.SelectedSourceName);
                 try
                 {
                     var sources = _twain.GetSources().ToList();
@@ -1261,10 +1291,10 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
         try
         {
-            var source = _twain.DefaultSource;
+            var source = ScannerSelectionDialog.SelectBestSource(_twain, _appSettings.SelectedSourceName);
             if (source == null)
             {
-                LogDiag("OpenPersistentSource: no default source");
+                LogDiag("OpenPersistentSource: no source found");
                 return;
             }
 
@@ -1452,14 +1482,11 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
                     return false;
             }
 
-            source = _twain.DefaultSource;
+            source = ScannerSelectionDialog.SelectBestSource(_twain, _appSettings.SelectedSourceName);
             if (source == null)
             {
-                var sources = _twain.GetSources().ToList();
-                LogDiag($"CheckScannerConnected: DefaultSource null, sources={sources.Count}");
-                if (sources.Count == 0)
-                    return false;
-                source = sources[0];
+                LogDiag("CheckScannerConnected: no source found");
+                return false;
             }
 
             LogDiag($"CheckScannerConnected: opening source '{source.Name}'");

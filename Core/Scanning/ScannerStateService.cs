@@ -32,11 +32,13 @@ internal sealed class ScannerStateService
 {
     private readonly TwainSession _twain;
     private readonly WindowsFormsMessageLoopHook _msgLoop;
+    private readonly string? _preferredSourceName;
 
-    public ScannerStateService(TwainSession twain, WindowsFormsMessageLoopHook msgLoop)
+    public ScannerStateService(TwainSession twain, WindowsFormsMessageLoopHook msgLoop, string? preferredSourceName = null)
     {
         _twain = twain;
         _msgLoop = msgLoop;
+        _preferredSourceName = preferredSourceName;
     }
 
     /// <summary>
@@ -63,15 +65,10 @@ internal sealed class ScannerStateService
         bool sourceWasAlreadyOpen = false;
         try
         {
-            // Prefer the system default source (set via TWAIN user selector)
-            source = _twain.DefaultSource;
+            // Use the centralized selection logic (saved preference + USB preference)
+            source = ScannerSelectionDialog.SelectBestSource(_twain, _preferredSourceName);
             if (source == null)
-            {
-                var sources = _twain.GetSources().ToList();
-                if (sources.Count == 0)
-                    return DisconnectedState();
-                source = sources[0];
-            }
+                return DisconnectedState();
 
             // If the source is already open (e.g. persistent source for device events),
             // don't close it when we're done — just use it as-is.

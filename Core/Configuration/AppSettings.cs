@@ -10,6 +10,7 @@ internal class AppSettings
 {
     public bool QuickMenuEnabled { get; set; } = true;
     public string SelectedProfileName { get; set; } = "ScanToFolder";
+    public string? SelectedSourceName { get; set; }
     public ApplicationType CurrentApplicationType { get; set; } = ApplicationType.ScanToFolder;
     public string FolderPath { get; set; } = "";
     public FileNameFormatDialog.FormatMode FileNameFormat { get; set; } = FileNameFormatDialog.FormatMode.Timestamp;

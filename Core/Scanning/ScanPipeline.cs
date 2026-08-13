@@ -16,6 +16,7 @@ internal class ScanPipeline : IDisposable
     private readonly WindowsFormsMessageLoopHook _msgLoop;
     private readonly Form _hiddenWindow;
     private readonly ScanSettings _settings;
+    private readonly string? _preferredSourceName;
     private DataSource? _currentSource;
     private readonly List<Bitmap> _acquiredImages = new();
 
@@ -32,24 +33,30 @@ internal class ScanPipeline : IDisposable
     public bool UserCancelledMultiFeed => _userCancelledMultiFeed;
     public bool DisableMultiFeedDetection => _disableMultiFeedDetection;
 
-    public ScanPipeline(TwainSession twain, WindowsFormsMessageLoopHook msgLoop, Form hiddenWindow, ScanSettings settings)
+    public ScanPipeline(TwainSession twain, WindowsFormsMessageLoopHook msgLoop, Form hiddenWindow, ScanSettings settings, string? preferredSourceName = null)
     {
         _twain = twain;
         _msgLoop = msgLoop;
         _hiddenWindow = hiddenWindow;
         _settings = settings;
+        _preferredSourceName = preferredSourceName;
     }
 
     /// <summary>
-    /// Selects a TWAIN data source. If multiple sources are available, shows a selection dialog.
+    /// Selects a TWAIN data source using the saved preference, USB preference heuristic,
+    /// and falls back to a selection dialog if needed.
     /// </summary>
     private DataSource? SelectSource()
     {
-        // Prefer the system default source
-        var defaultSrc = _twain.DefaultSource;
-        if (defaultSrc != null)
-            return defaultSrc;
+        // Use the centralized selection logic
+        var source = ScannerSelectionDialog.SelectBestSource(_twain, _preferredSourceName);
+        if (source != null)
+        {
+            LogDiag($"SelectSource: selected '{source.Name}' (preferred='{_preferredSourceName ?? "(auto)"}')");
+            return source;
+        }
 
+        // No source found via preference — fall back to dialog if multiple sources
         var sources = _twain.GetSources().ToList();
         if (sources.Count == 0)
             return null;
@@ -57,7 +64,7 @@ internal class ScanPipeline : IDisposable
             return sources[0];
 
         // Multiple sources: show selection dialog
-        string[] names = sources.Select(s => s.Name).ToArray();
+        string[] names = sources.Select(s => s.Name ?? "(unbenannt)").ToArray();
         int selectedIdx = 0;
 
         // Use a simple dialog on the UI thread
