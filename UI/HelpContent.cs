@@ -32,11 +32,8 @@ internal class HelpTopic
 
 /// <summary>
 /// Static class that builds the help topic tree and provides HTML content
-/// adapted from the ScanSnap Manager help documentation.
-/// All references to "ScanSnap Manager" have been changed to
-/// "SpeedScan Manager". Features not present in the actual program have been
-/// removed. Features present in the program but not in the original help
-/// (e.g. PNG format) have been added.
+/// for the SpeedScan Manager help system.
+/// All content reflects the actual implemented features of the application.
 /// </summary>
 internal static class HelpContent
 {
@@ -77,11 +74,13 @@ internal static class HelpContent
                 TopicOverview(),
                 TopicSystemRequirements(),
                 TopicStarting(),
-                TopicScannerConnection()
+                TopicScannerConnection(),
+                TopicScannerSelection()
             ),
             new HelpTopic("scanning", "Scannen von Dokumenten",
                 TopicScanQuickMenu(),
                 TopicScanWithoutQuickMenu(),
+                TopicScanButton(),
                 TopicScanLongPages(),
                 TopicScanDisplay(),
                 TopicScanCarrierSheet()
@@ -101,20 +100,15 @@ internal static class HelpContent
                 TopicFileNameFormatDialog(),
                 TopicNewProfileDialog(),
                 TopicProfileManagementDialog(),
-                TopicAppAddRemoveDialog(),
-                TopicAppSettingsDialog(),
+                TopicAppManageDialog(),
                 TopicEmailOptionsDialog(),
-                TopicEmailDialog(),
                 TopicPrintOptionsDialog(),
-                TopicPrintDialog(),
-                TopicScanToFolderDialog(),
                 TopicCarrierSheetDialog(),
                 TopicCustomSizeDialog(),
-                TopicSerializeDialog(),
-                TopicPasswordDialog(),
                 TopicPreferencesDialog(),
                 TopicVersionInfoDialog(),
                 TopicPostScanMediaDialog(),
+                TopicPostScanSaveDialog(),
                 TopicScannerDriverInfoDialog()
             ),
             new HelpTopic("profiles", "Profile",
@@ -122,14 +116,12 @@ internal static class HelpContent
                 TopicDefaultSettings()
             ),
             new HelpTopic("troubleshooting", "Fehlerbehebung",
-                TopicScanErrorDialog(),
                 TopicMultiFeedDialog(),
                 TopicMultiFeedMeasures(),
                 TopicMessageList()
             ),
             new HelpTopic("reference", "Anhang",
-                TopicAbbreviations(),
-                TopicKeywordMarking()
+                TopicAbbreviations()
             )
         );
     }
@@ -148,11 +140,17 @@ internal static class HelpContent
         <ul>
             <li><b>Quick-Menü</b> – Einfaches Scannen mit voreingestellten Profilen (Empfohlen, Kleine Datei, Hohe Bildqualität, Benutzerdefiniert)</li>
             <li><b>Profile</b> – Bis zu 20 Profile mit individuellen Einstellungen können verwaltet werden</li>
+            <li><b>Scan-Taste am Scanner</b> – Scannen durch Drücken der Hardware-Taste am Scanner</li>
             <li><b>Scan to Folder</b> – Gescannte Bilder in einem Ordner speichern</li>
             <li><b>Scan to E-Mail</b> – Gescannte Bilder als Anhang einer E-Mail versenden</li>
             <li><b>Scan to Print</b> – Gescannte Bilder direkt drucken</li>
+            <li><b>Scan to Word / Excel / PowerPoint</b> – Gescannte Bilder in Office-Dokumente einfügen</li>
+            <li><b>Scan Picture Folder</b> – Bilder im Bildordner speichern</li>
+            <li><b>Edit with PDF</b> – PDF-Datei zur Bearbeitung öffnen</li>
             <li><b>OCR-Texterkennung</b> – Durchsuchbare PDF-Dateien erstellen</li>
             <li><b>Trägerblatt-Unterstützung</b> – Scannen von großen oder empfindlichen Dokumenten</li>
+            <li><b>Automatische Bilddrehung</b> – Korrektur der Ausrichtung mittels Tesseract OSD</li>
+            <li><b>Leere Seitenerkennung</b> – Automatisches Entfernen leerer Seiten</li>
         </ul>
 
         <h2>Unterstützte Dateiformate</h2>
@@ -176,19 +174,22 @@ internal static class HelpContent
             <li>Prozessor: 1 GHz oder schneller</li>
             <li>Arbeitsspeicher: mindestens 2 GB (4 GB empfohlen)</li>
             <li>Festplattenspeicher: mindestens 500 MB freier Speicherplatz</li>
-            <li>USB-Anschluss (USB 2.0 oder höher) für den Scanner</li>
+            <li>USB-Anschluss (USB 2.0 oder höher) oder Netzwerkverbindung für den Scanner</li>
         </ul>
 
         <h2>Software</h2>
         <ul>
             <li>.NET 8.0 Desktop Runtime</li>
-            <li>E-Mail-Programm (für Scan to E-Mail)</li>
+            <li>E-Mail-Programm (MAPI-kompatibel, für Scan to E-Mail)</li>
             <li>Drucker-Treiber (für Scan to Print)</li>
+            <li>TWAIN-Treiber des Scanners</li>
         </ul>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
-            <p>Die OCR-Texterkennung unterstützt die Sprachen Deutsch und Englisch.</p>
+            <p>Die OCR-Texterkennung unterstützt zahlreiche Sprachen, darunter Deutsch, Englisch,
+            Französisch, Italienisch, Spanisch, Japanisch, Chinesisch, Koreanisch, Russisch,
+            Portugiesisch und Arabisch.</p>
         </div>
     "));
 
@@ -207,42 +208,83 @@ internal static class HelpContent
         <h2>Rechtsklick-Menü</h2>
         <p>Klicken Sie mit der rechten Maustaste auf das Tray-Symbol, um das Kontextmenü zu öffnen:</p>
         <ul>
-            <li><b>Duplex-Scan</b> – Startet einen beidseitigen Scan</li>
-            <li><b>Simplex-Scan</b> – Startet einen einseitigen Scan</li>
-            <li><b>Flachbettscannen</b> – Startet einen Scan über das Flachbett</li>
-            <li><b>Einstellungen...</b> – Öffnet das Einstellungsdialogfeld</li>
+            <li><b>Scan</b> – Startet einen Scan mit den aktuell konfigurierten Einstellungen</li>
+            <li><b>Scanner auswählen...</b> – Öffnet den Dialog zur Scanner-Auswahl</li>
+            <li><b>Einstellungen der SCAN Taste...</b> – Öffnet das Einstellungsdialogfeld</li>
+            <li><b>Profilverwaltung...</b> – Verwaltung der Scan-Profile</li>
             <li><b>Scan-Ergebnis anzeigen</b> – Zeigt die zuletzt gescannten Dateien an</li>
-            <li><b>Hilfe</b> – Öffnet diese Hilfe</li>
+            <li><b>Hilfe</b> – Öffnet diese Hilfe, Versionsinformationen oder Präferenzen</li>
             <li><b>Beenden</b> – Beendet SpeedScan Manager</li>
         </ul>
 
         <h2>Doppelklick</h2>
         <p>Ein Doppelklick auf das Tray-Symbol öffnet das Einstellungsdialogfeld.</p>
+
+        <div class='note'>
+            <div class='note-title'>HINWEIS</div>
+            <p>Beim ersten Start prüft SpeedScan Manager automatisch, ob der WIA-Handler für die
+            Scan-Taste registriert ist. Falls nicht, wird eine elevated Installation durchgeführt
+            (UAC-Abfrage). Dies ist für die Funktion der Scan-Taste am Scanner erforderlich.</p>
+        </div>
     "));
 
     private static HelpTopic TopicScannerConnection() => new("scanner-connection", "Scanner verbinden",
         Wrap("Scanner verbinden", @"
-        <p>Verbinden Sie den Scanner über ein USB-Kabel mit dem Computer.</p>
+        <p>SpeedScan Manager unterstützt sowohl USB- als auch Netzwerk-Scanner. Der Scanner wird
+        automatisch erkannt, sobald er eingeschaltet und mit dem Computer verbunden ist.</p>
 
         <h2>Schritte zum Verbinden</h2>
         <ol>
             <li>Schalten Sie den Scanner ein.</li>
-            <li>Verbinden Sie den Scanner über das USB-Kabel mit dem Computer.</li>
+            <li>Verbinden Sie den Scanner über USB oder Netzwerk mit dem Computer.</li>
             <li>SpeedScan Manager erkennt den Scanner automatisch und aktualisiert das Tray-Symbol.</li>
         </ol>
+
+        <p>Die Verbindung wird regelmäßig überprüft (alle 3 Sekunden wenn verbunden,
+        alle 30 Sekunden wenn getrennt). Beim Trennen wird nach einer Bestätigung
+        (2 aufeinanderfolgende fehlgeschlagene Prüfungen) eine Benachrichtigung angezeigt.</p>
 
         <div class='warning'>
             <div class='warning-title'>ACHTUNG</div>
             <ul>
                 <li>Schließen Sie nur einen Scanner gleichzeitig an den Computer an.</li>
-                <li>Wenn der Scanner nicht erkannt wird, prüfen Sie die USB-Verbindung und stellen Sie sicher, dass der Scanner eingeschaltet ist.</li>
+                <li>Wenn der Scanner nicht erkannt wird, prüfen Sie die Verbindung und stellen Sie
+                sicher, dass der Scanner eingeschaltet ist.</li>
+                <li>Stellen Sie sicher, dass der TWAIN-Treiber des Scanners installiert ist.</li>
             </ul>
         </div>
 
+        <div class='see-also'>Siehe auch:
+            <ul>
+                <li><a href='#scanner-selection'>Scanner auswählen</a></li>
+            </ul>
+        </div>
+    "));
+
+    private static HelpTopic TopicScannerSelection() => new("scanner-selection", "Scanner auswählen",
+        Wrap("Scanner auswählen", @"
+        <p>Im Dialog <b>Scanner auswählen</b> können Sie festlegen, welcher TWAIN-Scanner
+        verwendet werden soll. Der Dialog ist über das Tray-Kontextmenü unter
+        <b>Scanner auswählen...</b> erreichbar.</p>
+
+        <h2>Elemente</h2>
+        <p><b>Dropdown-Liste</b> – Zeigt alle verfügbaren TWAIN-Quellen an.
+        USB-verbundene Scanner werden oben in der Liste sortiert.
+        Der Eintrag <b>Automatisch</b> wählt automatisch den besten verfügbaren Scanner.</p>
+
+        <p><b>Automatische Erkennung</b> – Wenn <b>Automatisch</b> ausgewählt ist, wählt
+        SpeedScan Manager den bevorzugten Scanner (gespeicherte Auswahl oder USB-Gerät).</p>
+
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
-            <p>SpeedScan Manager kommuniziert mit dem Scanner über die TWAIN-Schnittstelle.
-            Stellen Sie sicher, dass der TWAIN-Treiber des Scanners installiert ist.</p>
+            <p>Der Dialog aktualisiert sich automatisch, wenn neue Scanner erkannt werden.
+            Es ist kein manueller Aktualisieren-Knopf erforderlich.</p>
+        </div>
+
+        <div class='see-also'>Siehe auch:
+            <ul>
+                <li><a href='#scanner-connection'>Scanner verbinden</a></li>
+            </ul>
         </div>
     "));
 
@@ -291,6 +333,7 @@ internal static class HelpContent
             <ul>
                 <li><a href='#settings'>Einstellungsdialogfeld</a></li>
                 <li><a href='#scan-no-quick'>Scannen ohne Quick-Menü</a></li>
+                <li><a href='#postscan-media'>[Quick-Menü] Dialogfeld</a></li>
             </ul>
         </div>
     "));
@@ -298,20 +341,54 @@ internal static class HelpContent
     private static HelpTopic TopicScanWithoutQuickMenu() => new("scan-no-quick", "Scannen ohne Quick-Menü",
         Wrap("Scannen ohne Quick-Menü", @"
         <p>Wenn das Quick-Menü deaktiviert ist, können Sie detaillierte Scaneinstellungen
-        über das Einstellungsdialogfeld vornehmen und Profile verwenden.</p>
+        über das Einstellungsdialogfeld vornehmen und Profile verwenden. Die nach dem Scan
+        ausgeführte Aktion wird durch die <b>[Anwendung]</b> Registerkarte bestimmt.</p>
 
         <h2>Schritte</h2>
         <ol>
             <li>Wählen Sie ein Profil aus der Profil-Dropdown-Liste im Einstellungsdialogfeld.</li>
             <li>Passen Sie die Einstellungen auf den Registerkarten an (Anwendung, Speichern, Scanmodus, Dateiart, Papier, Dateigröße).</li>
-            <li>Klicken Sie auf <span class='kbd'>OK</span>, um die Einstellungen zu übernehmen.</li>
-            <li>Legen Sie die Dokumente in den Scanner ein und starten Sie den Scan.</li>
+            <li>Schließen Sie das Einstellungsdialogfeld mit <span class='kbd'>OK</span>.</li>
+            <li>Legen Sie die Dokumente in den Scanner ein und starten Sie den Scan über das Tray-Menü oder die Scan-Taste.</li>
         </ol>
 
         <div class='see-also'>Siehe auch:
             <ul>
                 <li><a href='#settings'>Einstellungsdialogfeld</a></li>
                 <li><a href='#profiles'>Profile verwalten</a></li>
+                <li><a href='#app-tab'>[Anwendung] Registerkarte</a></li>
+            </ul>
+        </div>
+    "));
+
+    private static HelpTopic TopicScanButton() => new("scan-button", "Scan-Taste am Scanner",
+        Wrap("Scan-Taste am Scanner", @"
+        <p>SpeedScan Manager unterstützt die Hardware-Scan-Taste am Scanner. Wenn der Scanner
+        verbunden ist und die Scan-Taste gedrückt wird, startet automatisch ein Scanvorgang.</p>
+
+        <h2>Funktionsweise</h2>
+        <p>Die Scan-Taste wird über zwei Mechanismen überwacht:</p>
+        <ul>
+            <li><b>WIA-Ereignisüberwachung</b> – Windows Image Acquisition (WIA) erkennt
+            Hardware-Tastendrücke und löst den Scan aus.</li>
+            <li><b>TWAIN-Geräteereignisse</b> – Bei unterstützten Scannern werden
+            Geräteereignisse direkt über den TWAIN-Treiber verarbeitet.</li>
+        </ul>
+
+        <h2>Setup</h2>
+        <p>Beim ersten Start prüft SpeedScan Manager automatisch, ob der WIA-Handler registriert ist.
+        Falls nicht, wird eine elevated Installation durchgeführt. Dies ist einmalig erforderlich.</p>
+
+        <div class='note'>
+            <div class='note-title'>HINWEIS</div>
+            <p>Die Scan-Taste funktioniert nur, wenn der Scanner als verbunden erkannt wurde
+            und kein Scanvorgang läuft. Während des Scannens wird die Taste ignoriert.</p>
+        </div>
+
+        <div class='see-also'>Siehe auch:
+            <ul>
+                <li><a href='#scanner-connection'>Scanner verbinden</a></li>
+                <li><a href='#starting'>Starten von SpeedScan Manager</a></li>
             </ul>
         </div>
     "));
@@ -319,12 +396,15 @@ internal static class HelpContent
     private static HelpTopic TopicScanLongPages() => new("scan-long", "Scannen langer Seiten",
         Wrap("Scannen langer Seiten", @"
         <p>Lange Dokumente (z. B. Quittungen oder Endlosdokumente) können gescannt werden,
-        wenn für die Papiergröße <b>Automatische Erkennung</b> ausgewählt ist.</p>
+        wenn für die Papiergröße <b>Automatische Erkennung</b> ausgewählt ist und die
+        Mehrfacheinzugserkennung nicht auf <b>Längenprüfung</b> oder <b>Beide</b> steht.</p>
 
-        <p>Beim Scannen langer Seiten gelten folgende Einschränkungen:</p>
+        <p>In diesem Modus (Long Page Mode) gelten folgende Besonderheiten:</p>
         <ul>
-            <li>Die <b>Papiergröße</b>-Einstellung wird ignoriert; es wird immer <b>Automatische Erkennung</b> verwendet.</li>
-            <li>Die <b>Mehrfacheinzugserkennung</b> wird deaktiviert (auf <b>Keine</b> gesetzt).</li>
+            <li>Es wird ein benutzerdefinierter Rahmen von 8,5 × 125 Zoll gesetzt.</li>
+            <li>Spezielle PaperStream-IP-Treiberfunktionen werden konfiguriert (Cap 40983/40984/41095).</li>
+            <li>Die Mehrfacheinzugserkennung wird deaktiviert.</li>
+            <li>Alle TWAIN-Kapabilitäten werden vor dem Scan gesetzt, um den Treiber nicht zu stören.</li>
         </ul>
 
         <div class='warning'>
@@ -336,19 +416,32 @@ internal static class HelpContent
         </div>
     "));
 
-    private static HelpTopic TopicScanDisplay() => new("scan-display", "Anzeige während des Scannens",
-        Wrap("Anzeige während des Scannens", @"
-        <p>Während des Scanvorgangs zeigt das Tray-Symbol den Scan-Status an. Eine
-        Statusanzeige informiert über den Fortschritt.</p>
+    private static HelpTopic TopicScanDisplay() => new("scan-display", "Aktionen nach dem Scannen",
+        Wrap("Aktionen nach dem Scannen", @"
+        <p>Nach Abschluss des Scans wird die gewählte Anwendung gestartet.</p>
 
-        <p>Nach Abschluss des Scans wird die gewählte Anwendung gestartet:</p>
+        <h2>Bei aktivem Quick-Menü</h2>
+        <p>Das <a href='#postscan-media'>[Quick-Menü] Dialogfeld</a> erscheint und bietet folgende Aktionen:</p>
         <ul>
-            <li><b>Scan to Folder</b> – Das <a href='#scan-folder-dialog'>[Scan to Folder] Dialogfeld</a> erscheint</li>
-            <li><b>Scan to E-Mail</b> – Das <a href='#email-dialog'>[Scan to E-Mail] Dialogfeld</a> erscheint (falls Vorschau aktiviert)</li>
-            <li><b>Scan to Print</b> – Das <a href='#print-dialog'>[Scan to Print] Dialogfeld</a> erscheint (falls Druckdialog aktiviert)</li>
-            <li><b>Scan to Word / Excel / PowerPoint</b> – Die gescannten Daten werden an die jeweilige Anwendung übergeben</li>
-            <li><b>Scan Picture Folder</b> – Bilder werden im Bildordner gespeichert</li>
-            <li><b>Edit with PDF</b> – Die PDF-Datei wird in einem PDF-Editor geöffnet</li>
+            <li><b>Scan to Folder</b> – Öffnet das <a href='#postscan-save'>[In Ordner speichern] Dialogfeld</a></li>
+            <li><b>Scan to E-Mail</b> – Startet das E-Mail-Programm mit den Scans als Anhang</li>
+            <li><b>Scan to Print</b> – Druckt die gescannten Bilder</li>
+            <li><b>Scan to Word / Excel / PowerPoint</b> – Erstellt ein Office-Dokument mit den gescannten Bildern</li>
+            <li><b>Scan Picture Folder</b> – Speichert Bilder im Bildordner</li>
+            <li><b>Edit with PDF</b> – Öffnet die PDF-Datei zur Bearbeitung</li>
+        </ul>
+
+        <h2>Bei deaktiviertem Quick-Menü</h2>
+        <p>Die in der <a href='#app-tab'>[Anwendung] Registerkarte</a> ausgewählte Aktion wird
+        direkt ausgeführt, ohne ein Auswahldialogfeld anzuzeigen.</p>
+
+        <h2>Nachverarbeitung</h2>
+        <p>Vor dem Speichern werden folgende Nachverarbeitungsschritte angewendet (je nach Einstellungen):</p>
+        <ul>
+            <li><b>Trägerblatt-Zusammenführung</b> – Paare von Seiten werden nebeneinander zusammengefügt</li>
+            <li><b>Deskew</b> – Korrektur schiefer Zeichen (falls aktiviert)</li>
+            <li><b>Auto-Rotate</b> – Automatische Ausrichtung mittels Tesseract OSD</li>
+            <li><b>Leere Seitenerkennung</b> – Leere Seiten werden entfernt (falls aktiviert)</li>
         </ul>
     "));
 
@@ -389,7 +482,8 @@ internal static class HelpContent
     private static HelpTopic TopicSettingsDialog() => new("settings", "SpeedScan Manager Einstellungsdialogfeld",
         Wrap("SpeedScan Manager Einstellungsdialogfeld", @"
         <p>Im SpeedScan Manager Einstellungsdialogfeld können Sie verschiedene Einstellungen
-        für das Scannen von Dokumenten konfigurieren.</p>
+        für das Scannen von Dokumenten konfigurieren. Es wird durch Doppelklick auf das
+        Tray-Symbol oder über <b>Einstellungen der SCAN Taste...</b> im Kontextmenü geöffnet.</p>
 
         <h2>Elemente</h2>
         <p><b>[Quick-Menü verwenden] Kontrollkästchen</b><br>
@@ -447,12 +541,12 @@ internal static class HelpContent
         <div class='warning'>
             <div class='warning-title'>ACHTUNG</div>
             <p>Die [Anwendung] Registerkarte ist deaktiviert, wenn das Quick-Menü verwendet wird.
-            Wählen Sie die zu startende Anwendung aus dem Quick-Menü.</p>
+            Wählen Sie die zu startende Anwendung aus dem Quick-Menü nach dem Scannen.</p>
         </div>
 
         <h2>Elemente</h2>
         <p><b>[Anwendung] Auswahlliste</b><br>
-        Zeigt eine Liste der mit SpeedScan Manager interagierenden Anwendungen an:</p>
+        Zeigt eine Liste der verfügbaren Anwendungen:</p>
         <ul>
             <li>Scan to Folder</li>
             <li>Scan to E-Mail</li>
@@ -463,7 +557,7 @@ internal static class HelpContent
             <li>Scan Picture Folder</li>
             <li>Edit with PDF</li>
         </ul>
-        <p>Weitere Anwendungen können über das [Anwendung hinzufügen/entfernen] Dialogfeld hinzugefügt werden.</p>
+        <p>Weitere Anwendungen können über das [Installieren/Deinstallieren] Dialogfeld hinzugefügt werden.</p>
 
         <p><b>[E-Mail-Optionen...] Taste</b><br>
         Erscheint, wenn Scan to E-Mail ausgewählt wurde. Öffnet das
@@ -474,12 +568,12 @@ internal static class HelpContent
         <a href='#print-options'>[Scan to Print-Optionen] Dialogfeld</a>.</p>
 
         <p><b>[Installieren/Deinstallieren...] Taste</b><br>
-        Öffnet das <a href='#app-add-remove'>[Anwendung hinzufügen/entfernen] Dialogfeld</a>.</p>
+        Öffnet das <a href='#app-manage'>[Installieren/Deinstallieren] Dialogfeld</a>.</p>
 
         <div class='see-also'>Siehe auch:
             <ul>
                 <li><a href='#settings'>Einstellungsdialogfeld</a></li>
-                <li><a href='#app-add-remove'>[Anwendung hinzufügen/entfernen] Dialogfeld</a></li>
+                <li><a href='#app-manage'>[Installieren/Deinstallieren] Dialogfeld</a></li>
             </ul>
         </div>
     "));
@@ -495,16 +589,15 @@ internal static class HelpContent
         Verwenden Sie die [Durchsuchen] Taste, um einen Ordner zu wählen.</p>
 
         <p><b>[Durchsuchen] Taste</b><br>
-        Zeigt das [Ordner suchen] Dialogfeld an, in dem Sie einen Ordner für das Speichern
-        der Bilder auswählen können.</p>
+        Zeigt einen Ordner-Dialog, in dem Sie einen Ordner für das Speichern der Bilder auswählen können.</p>
 
         <p><b>[Dateinameformat] Taste</b><br>
         Zeigt das <a href='#filename-format'>[Dateinamenformat] Dialogfeld</a> an, in dem das
         Dateinamenformat bestimmt werden kann.</p>
 
         <p><b>[Datei nach Scan umbenennen] Kontrollkästchen</b><br>
-        Wenn markiert, erscheint nach dem Scannen das [Speichern Sie das gescannte Bild als]
-        Dialogfeld, in dem Ziel oder Dateiname geändert werden können.</p>
+        Wenn markiert, erscheint nach dem Scannen das <a href='#postscan-save'>[In Ordner speichern]
+        Dialogfeld</a>, in dem Ziel oder Dateiname geändert werden können.</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
@@ -516,6 +609,7 @@ internal static class HelpContent
         <div class='see-also'>Siehe auch:
             <ul>
                 <li><a href='#filename-format'>[Dateinamenformat] Dialogfeld</a></li>
+                <li><a href='#postscan-save'>[In Ordner speichern] Dialogfeld</a></li>
                 <li><a href='#settings'>Einstellungsdialogfeld</a></li>
             </ul>
         </div>
@@ -544,7 +638,7 @@ internal static class HelpContent
         <ul>
             <li><b>Automatische Farberkennung</b> – Automatische Erkennung von Farbe, Grau oder Schwarzweiß</li>
             <li><b>Farbe</b> – Dokumente werden immer als Farbbilder gespeichert</li>
-            <li><b>Grau (umgekehrt)</b> – Dokumente werden immer als Graubilder gespeichert</li>
+            <li><b>Grau</b> – Dokumente werden immer als Graubilder gespeichert</li>
             <li><b>Schwarzweiß</b> – Dokumente werden immer als Schwarzweiß-Bilder gespeichert</li>
         </ul>
         <div class='warning'>
@@ -563,7 +657,7 @@ internal static class HelpContent
 
         <p><b>[Scanvorgang nach aktuellem Scan fortsetzen] Kontrollkästchen</b><br>
         Ist dieses Kontrollkästchen markiert, erscheint nach dem Scannen eine Abfrage zum
-        Fortsetzen des Scans. Die maximale Seitenzahl für eine PDF-Datei beträgt 1.000 Seiten.</p>
+        Fortsetzen des Scans.</p>
 
         <p><b>[Option] Taste</b><br>
         Zeigt das <a href='#scanmode-options'>[Scanmodus Option] Dialogfeld</a> an.</p>
@@ -593,24 +687,15 @@ internal static class HelpContent
             in der [Scanmodus] Registerkarte gewählt wurde.</p>
         </div>
 
-        <h2>Texterkennung wählen</h2>
-        <p><b>[Markierten Text als Schlüsselwort der PDF-Datei hinzufügen] Kontrollkästchen</b><br>
-        Führt die Texterkennung für den markierten Bereich aus und erstellt eine PDF-Datei
-        mit erkannten Zeichen, die als Schlüsselwörter verwendet werden können.
-        Nur verfügbar, wenn PDF als Dateiformat gewählt wurde.</p>
-
-        <p><b>Zielmarkierung</b><br>
-        <ul>
-            <li><b>Erste markierte Sektion</b> – Texterkennung nur in der ersten markierten Sektion</li>
-            <li><b>Alle markierten Sektionen</b> – Text aller markierten Sektionen als Schlüsselwörter</li>
-        </ul></p>
-
+        <h2>Texterkennung (OCR)</h2>
         <p><b>[In durchsuchbare PDF konvertieren] Kontrollkästchen</b><br>
-        Führt OCR während des Scannens durch und erstellt eine durchsuchbare PDF-Datei.</p>
+        Führt OCR während des Scannens durch und erstellt eine durchsuchbare PDF-Datei.
+        Der erkannte Text wird als unsichtbare Schicht über das Bild gelegt.</p>
 
-        <h2>Texterkennungsoptionen</h2>
         <p><b>[Sprache] Auswahlliste</b><br>
-        Wählen Sie eine der folgenden Sprachen: Deutsch oder Englisch.</p>
+        Wählen Sie die Sprache für die Texterkennung. Verfügbar sind:
+        Automatisch, Deutsch, Englisch, Französisch, Italienisch, Spanisch, Japanisch,
+        Chinesisch (vereinfacht/traditionell), Koreanisch, Russisch, Portugiesisch und Arabisch.</p>
 
         <p><b>Zielseiten</b><br>
         <ul>
@@ -626,7 +711,6 @@ internal static class HelpContent
             <ul>
                 <li><a href='#pdf-options'>[PDF-Dateiformat Option] Dialogfeld</a></li>
                 <li><a href='#scanmode-tab'>[Scanmodus] Registerkarte</a></li>
-                <li><a href='#keyword-marking'>Markieren von Textstellen für PDF-Schlüsselwörter</a></li>
             </ul>
         </div>
     "));
@@ -671,7 +755,14 @@ internal static class HelpContent
             <li><b>Keine</b> – Mehrfacheinzugserkennung wird nicht ausgeführt</li>
             <li><b>Überprüfung der Länge</b> – Überwacht die Blattlängen der eingezogenen Dokumente</li>
             <li><b>Überprüfung von Überlappung (Ultraschall)</b> – Überwacht die Blattstärken der eingezogenen Dokumente</li>
+            <li><b>Beide</b> – Längen- und Ultraschallprüfung kombiniert</li>
         </ul>
+
+        <div class='note'>
+            <div class='note-title'>HINWEIS</div>
+            <p>Die verfügbaren Mehrfacheinzugserkennungs-Modi hängen vom Scannermodell ab.
+            Die Fähigkeiten des Scanners werden beim Verbinden automatisch abgefragt.</p>
+        </div>
 
         <div class='see-also'>Siehe auch:
             <ul>
@@ -719,7 +810,7 @@ internal static class HelpContent
 
         <h2>Elemente</h2>
         <p><b>[Helligkeit (nur Schwarzweiß-Scan)] Regler</b><br>
-        Intensität für das Scannen von Schwarzweißbildern, 11 Stufen einstellbar.
+        Intensität für das Scannen von Schwarzweißbildern, einstellbar.
         Standard: Normal (Mitte). Nur verfügbar, wenn [Schwarzweiß] als Farbmodus gewählt wurde.</p>
 
         <p><b>[Einstellung nur für Textdokumente] Kontrollkästchen</b><br>
@@ -727,24 +818,18 @@ internal static class HelpContent
         Schwarzweißdokumente oder Dokumente mit handschriftlichen Texten.</p>
 
         <p><b>[Automatisches Löschen leerer Seiten zulassen] Kontrollkästchen</b><br>
-        Leere Seiten werden automatisch erkannt und aus dem Ausgabebild gelöscht.</p>
+        Leere Seiten werden automatisch erkannt und aus dem Ausgabebild gelöscht.
+        Die Erkennung erfolgt über schnelle Pixel-Sampling mit LockBits.</p>
 
         <p><b>[Automatische Korrektur schiefer Zeichen zulassen] Kontrollkästchen</b><br>
-        Korrigiert schiefe Zeichen auf einem Dokument (Fehlwinkel bis ±5 Grad).</p>
+        Korrigiert schiefe Zeichen auf einem Dokument.</p>
 
         <p><b>[Automatische Bilddrehung zulassen] Kontrollkästchen</b><br>
         Dokumente, die seitlich oder kopfüber gescannt wurden, werden in der korrekten
-        Richtung ausgegeben.</p>
+        Richtung ausgegeben. Die Ausrichtung wird mittels Tesseract OSD erkannt.</p>
 
         <p><b>[Dokumente mit der Vorderseite nach oben einlegen] Kontrollkästchen</b><br>
         Die erste nach oben zeigende Seite wird als erste Seite gescannt.</p>
-
-        <div class='warning'>
-            <div class='warning-title'>ACHTUNG</div>
-            <p>Wenn [Scan to Print] in der [Anwendung] Auswahlliste gewählt wurde, stehen
-            [Automatisches Löschen leerer Seiten] und [Automatische Bilddrehung zulassen]
-            nicht zur Verfügung.</p>
-        </div>
 
         <div class='see-also'>Siehe auch:
             <ul>
@@ -766,17 +851,15 @@ internal static class HelpContent
 
         <h2>Kennwort</h2>
         <p><b>[Kennwort für PDF-Datei einstellen] Kontrollkästchen</b><br>
-        Nach dem Scannen erscheint ein Dialogfeld zur Kennwortvergabe. Bis zu 16 Zeichen.
-        Das Kennwort wird als ""Kennwort zum Öffnen des Dokuments"" verwendet.</p>
+        Aktiviert den Kennwortschutz für die erstellten PDF-Dateien.</p>
 
-        <p><b>[Festgelegtes Kennwort verwenden] Kontrollkästchen</b><br>
-        Ein festgelegtes Kennwort wird automatisch für die PDF-Dateien vergeben, ohne
-        dass ein Dialogfeld angezeigt wird.</p>
+        <p><b>Kennwort / Kennwort bestätigen</b><br>
+        Geben Sie das gewünschte Kennwort ein und bestätigen Sie es.
+        Das Kennwort wird als ""Kennwort zum Öffnen des Dokuments"" verwendet.</p>
 
         <div class='see-also'>Siehe auch:
             <ul>
                 <li><a href='#filetype-tab'>[Dateiart] Registerkarte</a></li>
-                <li><a href='#password-dialog'>[Kennwort vergeben] Dialogfeld</a></li>
             </ul>
         </div>
     "));
@@ -837,10 +920,10 @@ internal static class HelpContent
         </div>
     "));
 
-    private static HelpTopic TopicAppAddRemoveDialog() => new("app-add-remove", "[Anwendung hinzufügen/entfernen] Dialogfeld",
-        Wrap("[Anwendung hinzufügen/entfernen] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie Anwendungen hinzufügen, entfernen oder ändern.
-        Bis zu zehn Anwendungen können hinzugefügt werden.</p>
+    private static HelpTopic TopicAppManageDialog() => new("app-manage", "[Installieren/Deinstallieren] Dialogfeld",
+        Wrap("[Installieren/Deinstallieren] Dialogfeld", @"
+        <p>In diesem Dialogfeld können Sie benutzerdefinierte Anwendungen hinzufügen, entfernen
+        oder ändern. Bis zu zehn Anwendungen können hinzugefügt werden.</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
@@ -849,31 +932,11 @@ internal static class HelpContent
         </div>
 
         <h2>Elemente</h2>
-        <p><b>[Hinzugefügt]</b> – Liste der Anwendungen, die der [Anwendung] Auswahlliste hinzugefügt werden können.</p>
-        <p><b>[Hinzufügen] Taste</b> – Öffnet das <a href='#app-settings'>[Anwendungseinstellung] Dialogfeld</a>.</p>
+        <p><b>Anwendungsliste</b> – Liste der hinzugefügten Anwendungen.</p>
+        <p><b>[Hinzufügen] Taste</b> – Fügt eine neue Anwendung hinzu.</p>
         <p><b>[Entfernen] Taste</b> – Entfernt die ausgewählte Anwendung.</p>
         <p><b>[Ändern] Taste</b> – Ändert die Einstellungen einer Anwendung.</p>
         <p><b>[Schließen] Taste</b> – Schließt das Dialogfeld.</p>
-    "));
-
-    private static HelpTopic TopicAppSettingsDialog() => new("app-settings", "[Anwendungseinstellung] Dialogfeld",
-        Wrap("[Anwendungseinstellung] Dialogfeld", @"
-        <p>In diesem Dialogfeld kann das Verzeichnis einer Anwendung und deren Bezeichnung
-        festgelegt werden.</p>
-
-        <h2>Elemente</h2>
-        <p><b>[Anwendungsverzeichnis]</b> – Zeigt den Speicherort der Anwendung an.</p>
-        <p><b>[Durchsuchen] Taste</b> – Öffnet einen Datei-Öffnen-Dialog für die Auswahl
-        einer Ausführungsdatei (.exe) oder Verknüpfungsdatei (.lnk).</p>
-        <p><b>[Name der Anwendung]</b> – Name, der in der Liste angezeigt wird. Bis zu 62 Zeichen.</p>
-        <p><b>[OK] Taste</b> – Einstellungen übernehmen.</p>
-        <p><b>[Abbrechen] Taste</b> – Einstellungen verwerfen.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Alle Anwendungen, die PDF- oder JPEG-Dateien unterstützen, können mit
-            SpeedScan Manager verwendet werden.</p>
-        </div>
     "));
 
     private static HelpTopic TopicEmailOptionsDialog() => new("email-options", "[Scan to E-Mail-Optionen] Dialogfeld",
@@ -882,43 +945,16 @@ internal static class HelpContent
         konfigurieren.</p>
 
         <h2>Elemente</h2>
-        <p><b>[Vorschau anzeigen] Kontrollkästchen</b><br>
-        Markieren, um nach dem Scannen das <a href='#email-dialog'>[Scan to E-Mail] Dialogfeld</a>
-        anzuzeigen. Entfernen der Markierung startet direkt ein E-Mail-Programm.</p>
+        <p><b>Standard-Empfänger</b> – E-Mail-Adresse des Standardempfängers.
+        Wird beim Erstellen einer E-Mail automatisch eingetragen.</p>
 
-        <p><b>[""Kennwort zum Öffnen des Dokuments"" für die PDF-Dateien einstellen] Kontrollkästchen</b><br>
-        Öffnet nach dem Scannen das <a href='#password-dialog'>[Kennwort vergeben] Dialogfeld</a>.</p>
-
-        <p><b>[Gescannte Bilder als Datei speichern] Kontrollkästchen</b><br>
-        Speichert gescannte Daten im unter der [Speichern] Registerkarte bestimmten Ordner.</p>
-
-        <p><b>Größe der angefügten Datei</b><br>
-        Maximale Dateigröße für Anlagen (1 bis 10 MB).</p>
-    "));
-
-    private static HelpTopic TopicEmailDialog() => new("email-dialog", "[Scan to E-Mail] Dialogfeld",
-        Wrap("[Scan to E-Mail] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie einen Dateinamen zum Anfügen an eine E-Mail bestimmen
-        und das Bild einer Datei prüfen.</p>
-
-        <h2>Elemente</h2>
-        <p><b>Vorschau</b> – Zeigt das gescannte Bild.</p>
-        <p><b>Dateiname</b> – Zeigt den Dateinamen an. Kann direkt eingegeben und geändert werden
-        (bis zu 100 Zeichen).</p>
-        <p><b>[Verlauf] Taste</b> – Zeigt die zehn zuletzt verwendeten Dateinamen an.</p>
-        <p><b>[Serialisieren] Taste</b> – Erscheint bei mehreren Dateien. Öffnet das
-        <a href='#serialize-dialog'>[Serialisieren] Dialogfeld</a>.</p>
-        <p><b>[""Kennwort zum Öffnen des Dokuments"" für die PDF-Dateien einstellen] Kontrollkästchen</b><br>
-        Erscheint vor dem Versenden von PDF-Dateien das <a href='#password-dialog'>[Kennwort vergeben] Dialogfeld</a>.</p>
-        <p><b>[Gescannte Bilder als Datei speichern] Kontrollkästchen</b></p>
-        <p><b>[Diesen Dialog nicht wieder anzeigen] Kontrollkästchen</b></p>
-        <p><b>[Anfügen] Taste</b> – Startet das E-Mail-Programm mit den gescannten Dokumenten als Anlage.</p>
-        <p><b>[Abbrechen] Taste</b> – Bricht die Einstellungen ab.</p>
+        <p><b>Betreff-Vorlage</b> – Vorlage für den Betreff der E-Mail.
+        Standard: ""Gescanntes Dokument"".</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
-            <p>Das als Standardanwendung festgelegte E-Mail-Programm wird verwendet.
-            Bis zu 10 Dateien können auf einmal an eine E-Mail angefügt werden.</p>
+            <p>Das als Standardanwendung festgelegte E-Mail-Programm (MAPI) wird verwendet.
+            Die gescannten Dateien werden als Anhang versendet.</p>
         </div>
     "));
 
@@ -927,66 +963,13 @@ internal static class HelpContent
         <p>In diesem Dialogfeld können die Optionen der Funktion Scan to Print eingestellt werden.</p>
 
         <h2>Elemente</h2>
-        <p><b>[Für das Drucken verwendete Daten als Datei sichern] Kontrollkästchen</b><br>
-        Speichert gescannte Bilder im unter der [Speichern] Registerkarte bestimmten Ordner.</p>
-
-        <p><b>[""Drucken"" Dialogfeld anzeigen] Kontrollkästchen</b><br>
-        Markieren, um nach dem Scannen das <a href='#print-dialog'>[Scan to Print] Dialogfeld</a>
-        anzuzeigen. Entfernen der Markierung verwendet den Standarddrucker direkt.</p>
-    "));
-
-    private static HelpTopic TopicPrintDialog() => new("print-dialog", "[Scan to Print] Dialogfeld",
-        Wrap("[Scan to Print] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie einen Drucker und die Anzahl der zu druckenden Kopien
-        bestimmen.</p>
-
-        <h2>Elemente</h2>
-        <p><b>Vorschau</b> – Das Bild der aktuell ausgewählten Datei wird angezeigt.</p>
-        <p><b>[Name] Auswahlliste</b> – Zeigt die im Betriebssystem erkannten Drucker.</p>
-        <p><b>[Eigenschaften] Taste</b> – Zeigt die Eigenschaften des ausgewählten Druckers an.</p>
-
-        <h3>Druckeinstellungen</h3>
-        <p><b>[Kopien]</b> – Anzahl der Kopien (1 bis 99).</p>
-        <p><b>[Gleiche Größe/Verkleinern] Auswahlliste</b><br>
-        <ul>
-            <li><b>Auf Papiergröße verkleinern</b> – Bild wird verkleinert, um vollständig auf das Blatt zu passen</li>
-            <li><b>Gleiche Größe</b> – Bilder in Originalgröße (größere Bilder werden abgeschnitten)</li>
-        </ul></p>
-        <p><b>[Druckqualität] Auswahlliste</b> – Normal (150 dpi) oder Hoch (Scan-Auflösung).</p>
-        <p><b>[Automatische Bilddrehung zulassen] Kontrollkästchen</b></p>
-        <p><b>[Bild zentrieren und drucken] Kontrollkästchen</b></p>
-        <p><b>[Für das Drucken verwendete Daten als Datei sichern] Kontrollkästchen</b></p>
-        <p><b>[Diesen Dialog nicht wieder anzeigen] Kontrollkästchen</b></p>
-        <p><b>[Drucken] Taste</b> – Druckt das Bild gemäß den Einstellungen.</p>
-        <p><b>[Abbrechen] Taste</b> – Bricht ab.</p>
+        <p><b>Zieldrucker</b> – Auswahlliste aller im Betriebssystem erkannten Drucker.
+        Der Standarddrucker wird automatisch vorausgewählt.</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
-            <p>Bis zu 100 Dateien können auf einmal gedruckt werden.</p>
-        </div>
-    "));
-
-    private static HelpTopic TopicScanToFolderDialog() => new("scan-folder-dialog", "[Scan to Folder] Dialogfeld",
-        Wrap("[Scan to Folder] Dialogfeld", @"
-        <p>In diesem Dialogfeld können die Bilder der gescannten Dokumente eingesehen und für
-        das Speichern Dateinamen und Zielordner bestimmt werden.</p>
-
-        <h2>Elemente</h2>
-        <p><b>Vorschau</b> – Zeigt das gescannte Dokumentenbild.</p>
-        <p><b>Dateiname</b> – Zeigt den Dateinamen an. Kann geändert werden (bis zu 100 Zeichen).</p>
-        <p><b>[Verlauf] Taste</b> – Zeigt die zehn zuletzt verwendeten Dateinamen an.</p>
-        <p><b>[Serialisieren] Taste</b> – Bei mehreren Dateien. Öffnet das
-        <a href='#serialize-dialog'>[Serialisieren] Dialogfeld</a>.</p>
-        <p><b>Speichern in</b> – Zeigt den Zielordner an. Kann direkt eingegeben oder über
-        [Durchsuchen] geändert werden.</p>
-        <p><b>[Verlauf] Taste (Ordner)</b> – Zeigt die zehn zuletzt verwendeten Ordnerpfade an.</p>
-        <p><b>[Durchsuchen] Taste</b> – Öffnet einen Dialog zur Ordnerauswahl.</p>
-        <p><b>[Speichern] Taste</b> – Speichert das gescannte Bild.</p>
-        <p><b>[Abbrechen] Taste</b> – Bricht ab.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Bis zu 100 Dateien können auf einmal gespeichert werden.</p>
+            <p>Beim Drucken werden die gescannten Bilder an den ausgewählten Drucker gesendet.
+            Die Druckqualität entspricht der Scan-Auflösung.</p>
         </div>
     "));
 
@@ -1042,34 +1025,122 @@ internal static class HelpContent
         <p><b>Bezeichnung</b> – Name für die Papiergröße (bis zu 62 Zeichen).</p>
     "));
 
-    private static HelpTopic TopicSerializeDialog() => new("serialize-dialog", "[Serialisieren] Dialogfeld",
-        Wrap("[Serialisieren] Dialogfeld", @"
-        <p>Wenn Sie mehrere Dateien erstellen, können Sie in diesem Dialogfeld das Format
-        bestimmen, in dem Seriennummern an das Ende von Dateinamen angefügt werden sollen.</p>
+    private static HelpTopic TopicPreferencesDialog() => new("preferences", "[Präferenzen] Dialogfeld",
+        Wrap("[Präferenzen] Dialogfeld", @"
+        <p>In diesem Dialogfeld können Sie Einstellungen für Statusanzeigen und Bestätigungsmeldungen
+        festlegen. Es ist über das Tray-Kontextmenü unter <b>Hilfe → Präferenzen...</b> erreichbar.</p>
 
-        <h2>Elemente</h2>
-        <p><b>Dateiname</b> – Zeigt den festgelegten Dateinamen an. Kann direkt eingegeben werden.</p>
-        <p><b>[Seriennummer] Auswahlliste</b> – Stellenanzahl der Seriennummer (bis zu 6 Stellen).</p>
-        <p>Beispiel: <code>Dateiname_Seriennummer</code> (z. B. Scan_001, Scan_002, ...)</p>
-        <p><b>[OK] Taste</b> – Einstellungen übernehmen.</p>
-        <p><b>[Abbrechen] Taste</b> – Einstellungen verwerfen.</p>
+        <h2>Statusanzeige Registerkarte</h2>
+        <p><b>Benachrichtigung des Kommunikationsstatus</b> – Wenn aktiviert, wird beim Verbinden
+        oder Trennen des Scanners eine Popup-Benachrichtigung angezeigt.</p>
+        <p><b>Status des Scanvorgangs anzeigen</b> – Wenn aktiviert, wird der Scan-Status als
+        Benachrichtigung angezeigt (empfohlen).</p>
+
+        <h2>Bestätigung Registerkarte</h2>
+        <p><b>Bestätigungsmeldung beim Start</b> – Zeigt beim Start von SpeedScan Manager eine
+        Bestätigungsmeldung an.</p>
+        <p><b>Bestätigungsmeldung beim Flachbettscannen</b> – Zeigt eine Bestätigungsmeldung an,
+        wenn der automatische Erkennungsmodus aktiviert ist und über das Flachbett gescannt wird.</p>
+
+        <h2>Tasten</h2>
+        <p><b>[OK] Taste</b> – Einstellungen übernehmen und Dialogfeld schließen.</p>
+        <p><b>[Abbrechen] Taste</b> – Einstellungen verwerfen und Dialogfeld schließen.</p>
+        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
     "));
 
-    private static HelpTopic TopicPasswordDialog() => new("password-dialog", "[Kennwort vergeben] Dialogfeld",
-        Wrap("[Kennwort vergeben] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie ein Kennwort für die PDF-Datei bestimmen.</p>
+    private static HelpTopic TopicVersionInfoDialog() => new("version-info", "[Versionsinformationen] Dialogfeld",
+        Wrap("[Versionsinformationen] Dialogfeld", @"
+        <p>In diesem Dialogfeld werden Versionsinformationen zu SpeedScan Manager und den
+        verwendeten Komponenten angezeigt.</p>
 
         <h2>Elemente</h2>
-        <p><b>Kennwort</b> – Geben Sie ein ""Kennwort zum Öffnen des Dokuments"" ein (bis zu 16 Zeichen).</p>
-        <p><b>Kennwort bestätigen</b> – Geben Sie das Kennwort erneut ein.</p>
-        <p><b>[OK] Taste</b> – Einstellungen übernehmen. Das E-Mail-Programm wird gestartet.</p>
-        <p><b>[Abbrechen] Taste</b> – Bricht ab.</p>
-
-        <h2>Zulässige Zeichen</h2>
+        <p><b>Logo und Versionsnummer</b> – Zeigt das SpeedScan Manager Logo und die aktuelle
+        Version an.</p>
+        <p><b>Lizenzinformationen</b> – Zeigt Informationen zur GPL-3.0-Lizenz und die
+        Copyright-Hinweise an.</p>
+        <p><b>Verwendete Komponenten</b> – Listet die verwendeten Bibliotheken auf:</p>
         <ul>
-            <li>Alphanumerische Zeichen: A-Z, a-z, 0-9</li>
-            <li>Symbole: ! "" # $ % & ' ( ) * + , - . / : ; &lt; = &gt; ? @ [ \ ] ^ _ ` { | } ~</li>
+            <li>NTwain (TWAIN-Unterstützung)</li>
+            <li>Tesseract.NET (OCR-Engine)</li>
+            <li>PdfSharpCore (PDF-Verarbeitung)</li>
         </ul>
+        <p><b>[Detail...] Taste</b> – Öffnet das Dialogfeld für <a href='#driver-info'>Scanner- und Treiberinformationen</a>.</p>
+        <p><b>[OK] Taste</b> – Schließt das Dialogfeld.</p>
+        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
+    "));
+
+    private static HelpTopic TopicPostScanMediaDialog() => new("postscan-media", "[Quick-Menü] Dialogfeld",
+        Wrap("[Quick-Menü] Dialogfeld", @"
+        <p>Nach dem Scannen wird dieses Dialogfeld angezeigt, wenn das Quick-Menü aktiviert ist.
+        Wählen Sie eine Aktion für die gescannten Dokumente aus.</p>
+
+        <h2>Verfügbare Aktionen</h2>
+        <ul>
+            <li><b>Scan to Folder</b> – Speichert die gescannten Bilder in einem Ordner.</li>
+            <li><b>Scan to E-Mail</b> – Versendet die gescannten Bilder als E-Mail-Anhang.</li>
+            <li><b>Scan to Print</b> – Druckt die gescannten Bilder direkt.</li>
+            <li><b>Scan to Word</b> – Erstellt ein Word-Dokument mit den gescannten Bildern.</li>
+            <li><b>Scan to Excel</b> – Erstellt eine Excel-Datei mit den gescannten Bildern.</li>
+            <li><b>Scan to PowerPoint</b> – Erstellt eine PowerPoint-Präsentation mit den gescannten Bildern.</li>
+            <li><b>Scan Picture Folder</b> – Speichert die Bilder als Bilddateien in einem Ordner.</li>
+            <li><b>Edit with PDF</b> – Öffnet die gescannte PDF-Datei zur Bearbeitung.</li>
+        </ul>
+
+        <h2>Bedienung</h2>
+        <p>Klicken Sie auf eine Aktion, um sie auszuwählen. Doppelklicken Sie, um die Aktion
+        direkt auszuführen. Alternativ wählen Sie eine Aktion aus und klicken Sie auf
+        <b>[Speichern]</b>.</p>
+
+        <p><b>[Speichern] Taste</b> – Führt die ausgewählte Aktion aus.</p>
+        <p><b>[Abbrechen] Taste</b> – Bricht ab und schließt das Dialogfeld.</p>
+
+        <div class='see-also'>Siehe auch:
+            <ul>
+                <li><a href='#scan-quick'>Scannen mit dem Quick-Menü</a></li>
+                <li><a href='#postscan-save'>[In Ordner speichern] Dialogfeld</a></li>
+            </ul>
+        </div>
+    "));
+
+    private static HelpTopic TopicPostScanSaveDialog() => new("postscan-save", "[In Ordner speichern] Dialogfeld",
+        Wrap("[In Ordner speichern] Dialogfeld", @"
+        <p>In diesem Dialogfeld können die Bilder der gescannten Dokumente eingesehen und für
+        das Speichern Dateiname und Zielordner bestimmt werden.</p>
+
+        <h2>Elemente</h2>
+        <p><b>Vorschau</b> – Zeigt das gescannte Dokumentenbild an. Bei mehreren Seiten kann
+        durch die Seiten navigiert werden.</p>
+        <p><b>Seitennavigation</b> – Zeigt die aktuelle Seitenzahl und ermöglicht das
+        Durchblättern der gescannten Seiten.</p>
+        <p><b>Titel</b> – Zeigt den Dateinamen an. Kann geändert werden.</p>
+        <p><b>Speichern in</b> – Zeigt den Zielordner an. Kann direkt eingegeben oder über
+        [Durchsuchen] geändert werden.</p>
+        <p><b>[Durchsuchen] Taste</b> – Öffnet einen Dialog zur Ordnerauswahl.</p>
+        <p><b>[Speichern] Taste</b> – Speichert das gescannte Bild.</p>
+        <p><b>[Abbrechen] Taste</b> – Bricht ab. Bereits erstellte Dateien werden gelöscht.</p>
+
+        <div class='note'>
+            <div class='note-title'>HINWEIS</div>
+            <p>Bei mehreren Dateien wird eine Seriennummer angefügt.</p>
+        </div>
+    "));
+
+    private static HelpTopic TopicScannerDriverInfoDialog() => new("driver-info", "[Scanner- und Treiberinformationen] Dialogfeld",
+        Wrap("[Scanner- und Treiberinformationen] Dialogfeld", @"
+        <p>In diesem Dialogfeld werden detaillierte Informationen zum angeschlossenen Scanner
+        und den installierten Treiberkomponenten angezeigt.</p>
+
+        <h2>Elemente</h2>
+        <p><b>Scanner-Informationen</b> – Zeigt Modellname, Hersteller, Produktfamilie und
+        Treiberversion des angeschlossenen Scanners an.</p>
+        <p><b>Treiber-Versionen</b> – Listet die Versionen der verwendeten Bibliotheken auf:</p>
+        <ul>
+            <li>NTwain (TWAIN-Treiber-Bibliothek)</li>
+            <li>Tesseract (OCR-Engine)</li>
+            <li>PdfSharpCore (PDF-Verarbeitung)</li>
+        </ul>
+        <p><b>[OK] Taste</b> – Schließt das Dialogfeld.</p>
+        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
     "));
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -1146,50 +1217,23 @@ internal static class HelpContent
     // Fehlerbehebung
     // ═══════════════════════════════════════════════════════════════════════
 
-    private static HelpTopic TopicScanErrorDialog() => new("scan-error", "Scanfehlerdialogfeld",
-        Wrap("Scanfehlerdialogfeld", @"
-        <p>Tritt beim Scannen ein Fehler auf (z. B. Papierstau), erscheint eine Fehlermeldung.</p>
-
-        <h2>Elemente</h2>
-        <p><b>[Scan fortsetzen] Taste</b><br>
-        Setzt das Scannen fort. Vergewissern Sie sich, dass kein Dokument mehr im ADF vorhanden ist.
-        Legen Sie die noch zu scannenden Dokumente ein und klicken Sie auf [Scan fortsetzen]
-        oder drücken Sie die Scan-Taste des Scanners.</p>
-
-        <p>Verfügbar für folgende Fehler:</p>
-        <ul>
-            <li>Papierstau</li>
-            <li>Kein Papier im Scanner</li>
-            <li>Inkorrekte Papiergröße</li>
-            <li>ADF-Abdeckung geöffnet</li>
-        </ul>
-
-        <p><b>[Beenden] Taste</b><br>
-        Beendet das Scannen. Klicken Sie [Ja], um die gescannten Bilder zu löschen, oder
-        [Nein], um die erstellten Bilder zu speichern und den Scanvorgang zu beenden.</p>
-    "));
-
     private static HelpTopic TopicMultiFeedDialog() => new("multifeed-dialog", "Mehrfacheinzugserkennungsdialogfeld",
         Wrap("Mehrfacheinzugserkennungsdialogfeld", @"
         <p>Wenn während des Scannens ein Mehrfacheinzug erkannt wurde, wird der Scanvorgang
         unterbrochen und dieses Dialogfeld angezeigt.</p>
 
         <h2>Elemente</h2>
-        <p><b>[Vorderseite] / [Rückseite] Taste</b> – Wechselt die Seitenansicht der Miniaturansicht.</p>
-        <p><b>Miniaturansicht Liste</b> – Zeigt die gescannten Bilder in der Reihenfolge des Scannens.
-        Miniaturansichten mit Mehrfacheinzug haben einen rosa Hintergrund.</p>
+        <p><b>Vorschaubilder</b> – Zeigt die aktuelle Seite (mit Mehrfacheinzug) und die
+        vorherige Seite zur Beurteilung.</p>
 
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Maximal 11 Miniaturansichten werden angezeigt. Für die angezeigten Miniaturansichten
-            sind die Scaneinstellungen noch nicht übernommen.</p>
-        </div>
+        <p><b>[Wiederholen] Taste</b> – Bricht den aktuellen Scan ab und startet neu.
+        Die bereits gescannten Bilder werden verworfen.</p>
 
-        <p><b>[Behalten] Taste</b> – Behält die Bilder mit Mehrfacheinzug. Scannen kann fortgesetzt
-        oder abgebrochen werden.</p>
-        <p><b>[Aussondern] Taste</b> – Löscht die Bilder mit Mehrfacheinzug.</p>
-        <p><b>[Scan fortsetzen] Taste</b> – Startet das Scannen erneut.</p>
-        <p><b>[Beenden] Taste</b> – Beendet das Scannen.</p>
+        <p><b>[So übernehmen] Taste</b> – Behält die Bilder mit Mehrfacheinzug.
+        Der Scanvorgang wird fortgesetzt.</p>
+
+        <p><b>[Erkennung ausschalten] Taste</b> – Deaktiviert die Mehrfacheinzugserkennung
+        für den restlichen Scan und übernimmt die aktuelle Seite.</p>
 
         <div class='warning'>
             <div class='warning-title'>ACHTUNG</div>
@@ -1214,18 +1258,17 @@ internal static class HelpContent
 
         <h2>Dokumente wurden in der Reihenfolge des Originaldokuments gescannt</h2>
         <ol>
-            <li>Wählen Sie [Behalten] und klicken Sie auf [Scan fortsetzen].</li>
+            <li>Wählen Sie [So übernehmen] und der Scan wird fortgesetzt.</li>
         </ol>
-        <p>Für Umschläge oder Dokumente mit Briefmarken/Klebenotizen/Fotos: Wählen Sie [Behalten]
-        und klicken Sie auf [Scan fortsetzen] oder drücken Sie die Scan-Taste.</p>
+        <p>Für Umschläge oder Dokumente mit Briefmarken/Klebenotizen/Fotos: Wählen Sie [So übernehmen]
+        um die Seite zu behalten und den Scan fortzusetzen.</p>
 
         <h2>Dokumente wurden nicht in der Reihenfolge des Originaldokuments gescannt</h2>
         <ol>
             <li>Öffnen Sie den ADF, entnehmen Sie die Dokumente und richten Sie die Blattkanten erneut aus.</li>
             <li>Entnehmen Sie die erneut zu scannenden Dokumente aus dem Ausgabefach und legen Sie diese erneut ein.</li>
             <li>Platzieren Sie die in Schritt 1 entfernten Dokumente über den verbliebenen Dokumenten.</li>
-            <li>Wählen Sie [Aussondern] im Mehrfacheinzugserkennungsdialogfeld.</li>
-            <li>Klicken Sie auf [Scan fortsetzen] oder drücken Sie die Scan-Taste.</li>
+            <li>Wählen Sie [Wiederholen] im Mehrfacheinzugserkennungsdialogfeld.</li>
         </ol>
 
         <div class='see-also'>Siehe auch:
@@ -1242,64 +1285,39 @@ internal static class HelpContent
     {
         var messages = new[]
         {
-            "<Systemfehlerdetails> (0xXXXXXXXX)",
-            "Acrobat(R) startet nicht, wenn JPEG als Dateiformat eingestellt ist.",
-            "Alle Seiten wurden als leer erkannt. Überprüfen Sie, ob der Scan korrekt ausgeführt wurde.",
-            "Bildinformationen von xxx konnten nicht erhalten werden.",
-            "Das Kennwort ist inkorrekt. Geben Sie das Kennwort bitte korrekt ein.",
-            "Das Versenden der E-Mail ist fehlgeschlagen oder wurde unterbrochen. (n)",
-            "Datei konnte nicht geöffnet werden.",
-            "Der ausgewählte Zielordner ist ungültig. Überprüfen Sie den Zielordner.",
-            "Der Dateiname ist ungültig, da folgende Zeichen enthalten sind: \\ / : * ? \" < > |",
-            "Der Dateiname kann nicht mit folgenden Zeichen beginnen: \\ / : , ; * ? \" < > |",
-            "Der eingegebene Dateiname ist ungültig. Bitte überprüfen Sie den Dateinamen.",
-            "Der gleiche Dateiname (xxx) wurde ausgewählt. Überprüfen Sie den Dateinamen auf dessen Korrektheit.",
-            "Der Name der serialisierten Datei enthält mehr als n Zeichen. Bestimmen Sie einen kürzeren Namen.",
-            "Der Scanner ist ausgeschaltet.",
+            "Der Scanner ist nicht angeschlossen oder ausgeschaltet.",
             "Der Scanner kann nicht verwendet werden. Prüfen Sie, ob der Scanner von anderen Anwendungen verwendet wird.",
-            "Der von Ihnen angegebene Dateiname (xxx) existiert bereits.",
-            "Die Anzahl der verarbeitbaren Seiten überschreitet den Schwellwert (n Seiten). Die Verarbeitung wurde gestoppt.",
-            "Die Dateien wurden erfolgreich gespeichert.",
-            "Die Gesamtgröße der angefügten Dateien hat den Schwellenwert überschritten. Möchten Sie den Vorgang fortsetzen?",
+            "Keine Verbindung zum Scanner. Prüfen Sie, ob der Scanner eingeschaltet oder verbunden ist.",
+            "Kommunikation mit dem Scanner fehlgeschlagen.",
+            "Scanner wird von einem anderen Benutzer bzw. Programm verwendet.",
+            "Es ist kein Papier im Scanner eingelegt.",
+            "Papierstau.",
             "Die Scannerabdeckung ist offen.",
             "Die Sensoren sind verschmutzt.",
-            "Druck fehlgeschlagen.",
-            "Ein überlappendes Dokument wurde erkannt.",
-            "Ein interner Fehler ist aufgetreten. (n)",
-            "Ein nicht der angegebenen Größe entsprechendes Dokument wurde gescannt oder mehrere Blätter wurden gleichzeitig eingezogen.",
-            "Eine Verarbeitung ist nicht möglich, da der Ordnername folgende Zeichen enthält: * ? \" < > |",
-            "Es ist kein Papier im Scanner eingelegt.",
-            "Es sind mehrere Scanner-Geräte mit dem PC verbunden.",
-            "Fehler bei Datenübertragung aufgetreten.",
-            "Fehler beim Start der gewählten Anwendung.",
             "Fehler im optischen System.",
-            "Fehler während Komprimierung aufgetreten.",
             "Hardwarefehler aufgetreten.",
-            "Initialisierung des Passwortmoduls fehlgeschlagen.",
-            "Kein Drucker verfügbar.",
-            "Keine Verbindung zum Scanner. (n) Prüfen Sie, ob der Scanner eingeschaltet oder mit dem Netzwerk verbunden ist.",
-            "Kommunikation mit dem Scanner fehlgeschlagen (empfange) / Kommunikation mit dem Scanner fehlgeschlagen (sende)",
-            "Möchten Sie das \"Speichern\" abbrechen?",
-            "Möchten Sie diese Operation ohne die Vergabe eines \"Kennwort zum Öffnen des Dokuments\" für die PDF-Dateien fortsetzen?",
-            "Nicht genügend Speicher vorhanden.",
-            "Papierstau.",
-            "PDF-Datei hat die maximale Größe erreicht (1.000 Seiten).",
-            "PDF-Datei konnte nicht erstellt werden.",
             "Problem im Transportmechanismus des Scanners.",
-            "Scan fehlgeschlagen. Der für diesen Vorgang erforderliche Speicher oder benötigte Ressourcen sind eventuell unzureichend.",
-            "Scanner wird von einem anderen Benutzer bzw. Programm verwendet.",
-            "Scanvorgang durch Benutzer abgebrochen.",
-            "Speichern der Bilder fehlgeschlagen.",
-            "Texterkennung fehlgeschlagen.",
-            "Über n Zeichen. Verarbeitung nicht möglich.",
-            "Unerwarteter Fehler aufgetreten. (n)",
-            "Ungültiger Ordner zum Speichern ausgewählt.",
-            "Ungenügender Systemspeicher. Verarbeitung nicht möglich.",
-            "Verarbeitung wegen unzureichendem Festplattenspeicher nicht möglich.",
-            "Während der Verarbeitung des Trägerblatts ist ein Fehler aufgetreten.",
             "Wechsel des Einzugsmodus erkannt.",
+            "Ein überlappendes Dokument wurde erkannt (Mehrfacheinzug).",
+            "Ein nicht der angegebenen Größe entsprechendes Dokument wurde gescannt.",
+            "Fehler bei Datenübertragung aufgetreten.",
             "Zeitüberschreitung während Kommunikation.",
-            "Zugriff auf xxx nicht möglich. Verarbeitung nicht möglich.",
+            "Scanvorgang durch Benutzer abgebrochen.",
+            "Scan fehlgeschlagen. Der erforderliche Speicher oder die benötigten Ressourcen sind eventuell unzureichend.",
+            "Alle Seiten wurden als leer erkannt. Überprüfen Sie, ob der Scan korrekt ausgeführt wurde.",
+            "Texterkennung fehlgeschlagen.",
+            "PDF-Datei konnte nicht erstellt werden.",
+            "Speichern der Bilder fehlgeschlagen.",
+            "Druck fehlgeschlagen.",
+            "Fehler beim Start der gewählten Anwendung.",
+            "E-Mail konnte nicht gesendet werden.",
+            "Der ausgewählte Zielordner ist ungültig.",
+            "Der Dateiname ist ungültig. Folgende Zeichen sind nicht erlaubt: \\ / : * ? \" < > |",
+            "Eine Datei mit diesem Namen existiert bereits.",
+            "Nicht genügend Speicher vorhanden.",
+            "Verarbeitung wegen unzureichendem Festplattenspeicher nicht möglich.",
+            "Ein interner Fehler ist aufgetreten.",
+            "Unerwarteter Fehler aufgetreten.",
         };
 
         var sb = new StringBuilder();
@@ -1321,145 +1339,17 @@ internal static class HelpContent
             <tr><th>Abkürzung</th><th>Bedeutung</th></tr>
             <tr><td>ADF</td><td>Automatic Document Feeder (Automatischer Dokumenteneinzug)</td></tr>
             <tr><td>OCR</td><td>Optical Character Recognition (Optische Zeichenerkennung)</td></tr>
+            <tr><td>OSD</td><td>Orientation and Script Detection (Ausrichtungs- und Schrifterkennung)</td></tr>
             <tr><td>PDF</td><td>Portable Document Format</td></tr>
             <tr><td>JPEG</td><td>Joint Photographic Experts Group (Bildformat)</td></tr>
             <tr><td>PNG</td><td>Portable Network Graphics (Bildformat)</td></tr>
-            <tr><td> dpi</td><td>dots per inch (Punkte pro Zoll)</td></tr>
+            <tr><td>dpi</td><td>dots per inch (Punkte pro Zoll)</td></tr>
             <tr><td>USB</td><td>Universal Serial Bus</td></tr>
+            <tr><td>WIA</td><td>Windows Image Acquisition (Windows-Bilderfassung)</td></tr>
             <tr><td>TWAIN</td><td>Standard-Protokoll für die Kommunikation zwischen Scanner und Software</td></tr>
+            <tr><td>MAPI</td><td>Messaging Application Programming Interface (E-Mail-Schnittstelle)</td></tr>
             <tr><td>S&W</td><td>Schwarz und Weiß</td></tr>
         </table>
-    "));
-
-    private static HelpTopic TopicKeywordMarking() => new("keyword-marking", "Markieren von Textstellen für PDF-Schlüsselwörter",
-        Wrap("Markieren von Textstellen für PDF-Schlüsselwörter", @"
-        <p>Zeichenfolgen wie Titel von Schwarzweißdokumenten können als Schlüsselwörter bestimmt
-        und für die Suche nach PDF-Dateien verwendet werden.</p>
-
-        <p>Markieren Sie eine Zeichenfolge, die als Schlüsselwort bestimmt werden soll, mit einem
-        wasserlöslichen Textmarker, so dass diese Zeichenfolge vollständig bedeckt ist.</p>
-
-        <h2>Markierungsrichtlinien</h2>
-        <ul>
-            <li>Alle herkömmlichen Textmarker können verwendet werden (empfohlen: Rosa, Gelb, Blau, Grün)</li>
-            <li>Markieren Sie gerade</li>
-            <li>Markierte Bereiche sollten innerhalb folgender Abmessungen liegen:
-                <ul>
-                    <li>Minimum: 3 mm (kurze Seite) × 10 mm (lange Seite)</li>
-                    <li>Maximum: 20 mm (kurze Seite) × 150 mm (lange Seite)</li>
-                </ul>
-            </li>
-            <li>Verwenden Sie pro Seite nur eine Farbe</li>
-            <li>Markieren Sie einen Textabschnitt so, dass dieser vollständig hervorgehoben ist</li>
-            <li>Bis zu zehn Textstellen können pro Seite markiert werden</li>
-        </ul>
-
-        <div class='warning'>
-            <div class='warning-title'>ACHTUNG</div>
-            <ul>
-                <li>Für Farbdokumente (Kataloge, Broschüren) können markierte Sektionen nicht erkannt werden</li>
-                <li>Dokumente mit mehreren Farben können nicht erkannt werden</li>
-                <li>Zwischen zwei markierten Textstellen sollte ein Leerraum von mindestens 5 mm verbleiben</li>
-            </ul>
-        </div>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#filetype-tab'>[Dateiart] Registerkarte</a></li>
-            </ul>
-        </div>
-    "));
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Zusätzliche Dialogfelder
-    // ═══════════════════════════════════════════════════════════════════════
-
-    private static HelpTopic TopicPreferencesDialog() => new("preferences", "[Präferenzen] Dialogfeld",
-        Wrap("[Präferenzen] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie Einstellungen für Statusanzeigen und Bestätigungsmeldungen
-        festlegen.</p>
-
-        <h2>Statusanzeige Registerkarte</h2>
-        <p><b>Benachrichtigung des Kommunikationsstatus</b> – Wenn aktiviert, wird beim Verbinden
-        oder Trennen des Scanners eine Popup-Benachrichtigung angezeigt.</p>
-        <p><b>Status des Scanvorgangs anzeigen</b> – Wenn aktiviert, wird der Scan-Status als
-        Benachrichtigung angezeigt (empfohlen).</p>
-
-        <h2>Bestätigung Registerkarte</h2>
-        <p><b>Bestätigungsmeldung beim Start</b> – Zeigt beim Start von SpeedScan Manager eine
-        Bestätigungsmeldung an.</p>
-        <p><b>Bestätigungsmeldung beim Flachbettscannen</b> – Zeigt eine Bestätigungsmeldung an,
-        wenn der automatische Erkennungsmodus aktiviert ist und über das Flachbett gescannt wird.</p>
-
-        <h2>Tasten</h2>
-        <p><b>[OK] Taste</b> – Einstellungen übernehmen und Dialogfeld schließen.</p>
-        <p><b>[Abbrechen] Taste</b> – Einstellungen verwerfen und Dialogfeld schließen.</p>
-        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
-    "));
-
-    private static HelpTopic TopicVersionInfoDialog() => new("version-info", "[Versionsinformationen] Dialogfeld",
-        Wrap("[Versionsinformationen] Dialogfeld", @"
-        <p>In diesem Dialogfeld werden Versionsinformationen zu SpeedScan Manager und den
-        verwendeten Komponenten angezeigt.</p>
-
-        <h2>Elemente</h2>
-        <p><b>Logo und Versionsnummer</b> – Zeigt das SpeedScan Manager Logo und die aktuelle
-        Version an.</p>
-        <p><b>Lizenzinformationen</b> – Zeigt Informationen zur GPL-3.0-Lizenz und die
-        Copyright-Hinweise an.</p>
-        <p><b>Verwendete Komponenten</b> – Listet die verwendeten Bibliotheken auf:</p>
-        <ul>
-            <li>NTwain (TWAIN-Unterstützung)</li>
-            <li>Tesseract.NET (OCR-Engine)</li>
-            <li>PdfSharpCore (PDF-Verarbeitung)</li>
-        </ul>
-        <p><b>[Detail...] Taste</b> – Öffnet das Dialogfeld für Scanner- und Treiberinformationen.</p>
-        <p><b>[OK] Taste</b> – Schließt das Dialogfeld.</p>
-        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
-    "));
-
-    private static HelpTopic TopicPostScanMediaDialog() => new("postscan-media", "[Quick-Menü] Dialogfeld",
-        Wrap("[Quick-Menü] Dialogfeld", @"
-        <p>Nach dem Scannen wird dieses Dialogfeld angezeigt, wenn das Quick-Menü aktiviert ist.
-        Wählen Sie eine Aktion für die gescannten Dokumente aus.</p>
-
-        <h2>Verfügbare Aktionen</h2>
-        <ul>
-            <li><b>Scan to Folder</b> – Speichert die gescannten Bilder in einem Ordner.</li>
-            <li><b>Scan to E-mail</b> – Versendet die gescannten Bilder als E-Mail-Anhang.</li>
-            <li><b>Scan to Print</b> – Druckt die gescannten Bilder direkt.</li>
-            <li><b>Scan to Word</b> – Erstellt ein Word-Dokument mit den gescannten Bildern.</li>
-            <li><b>Scan to Excel</b> – Erstellt eine Excel-Datei mit den gescannten Bildern.</li>
-            <li><b>Scan to PowerPoint</b> – Erstellt eine PowerPoint-Präsentation mit den gescannten Bildern.</li>
-            <li><b>Scan Picture Folder</b> – Speichert die Bilder als Bilddateien in einem Ordner.</li>
-            <li><b>Edit with PDF Edit</b> – Öffnet die gescannte PDF-Datei zur Bearbeitung.</li>
-        </ul>
-
-        <h2>Bedienung</h2>
-        <p>Klicken Sie auf eine Aktion, um sie auszuwählen. Doppelklicken Sie, um die Aktion
-        direkt auszuführen. Alternativ wählen Sie eine Aktion aus und klicken Sie auf
-        <b>[Speichern]</b>.</p>
-
-        <p><b>[Speichern] Taste</b> – Führt die ausgewählte Aktion aus.</p>
-        <p><b>[Abbrechen] Taste</b> – Bricht ab und schließt das Dialogfeld.</p>
-    "));
-
-    private static HelpTopic TopicScannerDriverInfoDialog() => new("driver-info", "[Scanner- und Treiberinformationen] Dialogfeld",
-        Wrap("[Scanner- und Treiberinformationen] Dialogfeld", @"
-        <p>In diesem Dialogfeld werden detaillierte Informationen zum angeschlossenen Scanner
-        und den installierten Treiberkomponenten angezeigt.</p>
-
-        <h2>Elemente</h2>
-        <p><b>Scanner-Informationen</b> – Zeigt Modellname, Seriennummer und Firmware-Version
-        des angeschlossenen Scanners an.</p>
-        <p><b>Treiber-Versionen</b> – Listet die Versionen der verwendeten Bibliotheken auf:</p>
-        <ul>
-            <li>NTwain (TWAIN-Treiber-Bibliothek)</li>
-            <li>Tesseract (OCR-Engine)</li>
-            <li>PdfSharpCore (PDF-Verarbeitung)</li>
-        </ul>
-        <p><b>[OK] Taste</b> – Schließt das Dialogfeld.</p>
-        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
     "));
 
     /// <summary>
