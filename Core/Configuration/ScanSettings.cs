@@ -57,12 +57,6 @@ internal class ScanSettings
     // File size tab
     public int CompressionRate { get; set; } = 3; // 1 (low/large file) to 5 (high/small file)
 
-    // Preferences dialog
-    public bool ShowCommStatusNotification { get; set; } = true;
-    public bool ShowScanStatusNotification { get; set; } = true;
-    public bool ShowStartupConfirmation { get; set; } = true;
-    public bool ShowFlatbedConfirmation { get; set; } = true;
-
     /// <summary>
     /// Compares all setting values with another instance.
     /// </summary>
@@ -99,10 +93,6 @@ internal class ScanSettings
         if (SelectedCustomSizeIndex != other.SelectedCustomSizeIndex) return false;
         if (MultiFeedDetection != other.MultiFeedDetection) return false;
         if (CompressionRate != other.CompressionRate) return false;
-        if (ShowCommStatusNotification != other.ShowCommStatusNotification) return false;
-        if (ShowScanStatusNotification != other.ShowScanStatusNotification) return false;
-        if (ShowStartupConfirmation != other.ShowStartupConfirmation) return false;
-        if (ShowFlatbedConfirmation != other.ShowFlatbedConfirmation) return false;
         if (CustomPaperSizes.Count != other.CustomPaperSizes.Count) return false;
         for (int i = 0; i < CustomPaperSizes.Count; i++)
         {
@@ -161,10 +151,6 @@ internal class ScanSettings
         SelectedCustomSizeIndex = snapshot.SelectedCustomSizeIndex;
         MultiFeedDetection = snapshot.MultiFeedDetection;
         CompressionRate = snapshot.CompressionRate;
-        ShowCommStatusNotification = snapshot.ShowCommStatusNotification;
-        ShowScanStatusNotification = snapshot.ShowScanStatusNotification;
-        ShowStartupConfirmation = snapshot.ShowStartupConfirmation;
-        ShowFlatbedConfirmation = snapshot.ShowFlatbedConfirmation;
     }
 }
 

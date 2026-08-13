@@ -105,7 +105,6 @@ internal static class HelpContent
                 TopicPrintOptionsDialog(),
                 TopicCarrierSheetDialog(),
                 TopicCustomSizeDialog(),
-                TopicPreferencesDialog(),
                 TopicVersionInfoDialog(),
                 TopicPostScanMediaDialog(),
                 TopicPostScanSaveDialog(),
@@ -213,7 +212,7 @@ internal static class HelpContent
             <li><b>Einstellungen der SCAN Taste...</b> – Öffnet das Einstellungsdialogfeld</li>
             <li><b>Profilverwaltung...</b> – Verwaltung der Scan-Profile</li>
             <li><b>Scan-Ergebnis anzeigen</b> – Zeigt die zuletzt gescannten Dateien an</li>
-            <li><b>Hilfe</b> – Öffnet diese Hilfe, Versionsinformationen oder Präferenzen</li>
+            <li><b>Hilfe</b> – Öffnet diese Hilfe oder Versionsinformationen</li>
             <li><b>Beenden</b> – Beendet SpeedScan Manager</li>
         </ul>
 
@@ -1023,29 +1022,6 @@ internal static class HelpContent
         <p><b>Dokumentengröße</b> – Geben Sie Breite und Länge in mm oder inches ein.</p>
         <p><b>[Automatische Länge] Kontrollkästchen</b> – Automatische Erkennung der Länge.</p>
         <p><b>Bezeichnung</b> – Name für die Papiergröße (bis zu 62 Zeichen).</p>
-    "));
-
-    private static HelpTopic TopicPreferencesDialog() => new("preferences", "[Präferenzen] Dialogfeld",
-        Wrap("[Präferenzen] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie Einstellungen für Statusanzeigen und Bestätigungsmeldungen
-        festlegen. Es ist über das Tray-Kontextmenü unter <b>Hilfe → Präferenzen...</b> erreichbar.</p>
-
-        <h2>Statusanzeige Registerkarte</h2>
-        <p><b>Benachrichtigung des Kommunikationsstatus</b> – Wenn aktiviert, wird beim Verbinden
-        oder Trennen des Scanners eine Popup-Benachrichtigung angezeigt.</p>
-        <p><b>Status des Scanvorgangs anzeigen</b> – Wenn aktiviert, wird der Scan-Status als
-        Benachrichtigung angezeigt (empfohlen).</p>
-
-        <h2>Bestätigung Registerkarte</h2>
-        <p><b>Bestätigungsmeldung beim Start</b> – Zeigt beim Start von SpeedScan Manager eine
-        Bestätigungsmeldung an.</p>
-        <p><b>Bestätigungsmeldung beim Flachbettscannen</b> – Zeigt eine Bestätigungsmeldung an,
-        wenn der automatische Erkennungsmodus aktiviert ist und über das Flachbett gescannt wird.</p>
-
-        <h2>Tasten</h2>
-        <p><b>[OK] Taste</b> – Einstellungen übernehmen und Dialogfeld schließen.</p>
-        <p><b>[Abbrechen] Taste</b> – Einstellungen verwerfen und Dialogfeld schließen.</p>
-        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
     "));
 
     private static HelpTopic TopicVersionInfoDialog() => new("version-info", "[Versionsinformationen] Dialogfeld",

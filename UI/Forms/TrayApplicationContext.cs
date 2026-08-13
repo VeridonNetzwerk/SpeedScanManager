@@ -64,8 +64,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
     private const int PollIntervalMs = 3000;
     private const int SlowPollIntervalMs = 30000;
-    private const string TrayNotificationTitle = "[SpeedScan Manager]";
-
     public TrayApplicationContext()
     {
         // Load persisted app settings
@@ -132,8 +130,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         // Help submenu items
         var miHelpTopics = new ToolStripMenuItem("Hilfethemen");
         var miVersionInfo = new ToolStripMenuItem("Versionsinformationen");
-        var miPreferences = new ToolStripMenuItem("Präferenzen...");
-
         _miScan.Click += (s, e) => StartScan(ScanSide.Automatic);
         _miSelectScanner.Click += (s, e) => ShowScannerSelectionDialog();
         _miScanKeySettings.Click += (s, e) => ShowMainForm();
@@ -141,15 +137,12 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         _miScanResult.Click += (s, e) => OpenScanResultFolder();
         miHelpTopics.Click += (s, e) => ShowHelpDialog();
         miVersionInfo.Click += (s, e) => ShowVersionInfo();
-        miPreferences.Click += (s, e) => ShowPreferencesDialog();
         _miExit.Click += (s, e) => ExitApplication();
 
         _miHelp.DropDownItems.AddRange(new ToolStripItem[]
         {
             miHelpTopics,
-            miVersionInfo,
-            new ToolStripSeparator(),
-            miPreferences
+            miVersionInfo
         });
 
         _contextMenu.Items.AddRange(new ToolStripItem[]
@@ -251,12 +244,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     {
         using var dlg = new VersionInfoDialog(_lastScannerState);
         dlg.ShowDialog(_hiddenWindow);
-    }
-
-    private void ShowPreferencesDialog()
-    {
-        using var dlg = new PreferencesDialog(_settings);
-        dlg.ShowDialog(_mainForm ?? _hiddenWindow);
     }
 
     private void OpenProfileManagement()
@@ -1502,12 +1489,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
     private void ShowScannerDisconnectedBalloon()
     {
-        if (_settings.ShowCommStatusNotification)
-        {
-            _notifyIcon.ShowBalloonTip(5000, TrayNotificationTitle,
-                "Der Scanner ist nicht angeschlossen oder ausgeschaltet.",
-                ToolTipIcon.Warning);
-        }
         Debug.WriteLine("[Tray] Der Scanner ist nicht angeschlossen oder ausgeschaltet.");
     }
 

@@ -68,12 +68,6 @@ internal class ScanProfile
     // Dateigröße tab
     public int CompressionRate { get; set; } = 3;
 
-    // Preferences dialog
-    public bool ShowCommStatusNotification { get; set; } = true;
-    public bool ShowScanStatusNotification { get; set; } = true;
-    public bool ShowStartupConfirmation { get; set; } = true;
-    public bool ShowFlatbedConfirmation { get; set; } = true;
-
     /// <summary>
     /// Creates a profile snapshot from current ScanSettings and save config.
     /// </summary>
@@ -125,11 +119,7 @@ internal class ScanProfile
             CustomPaperSizes = new List<CustomPaperSize>(settings.CustomPaperSizes),
             MultiFeedDetection = settings.MultiFeedDetection,
             SelectedCustomSizeIndex = settings.SelectedCustomSizeIndex,
-            CompressionRate = settings.CompressionRate,
-            ShowCommStatusNotification = settings.ShowCommStatusNotification,
-            ShowScanStatusNotification = settings.ShowScanStatusNotification,
-            ShowStartupConfirmation = settings.ShowStartupConfirmation,
-            ShowFlatbedConfirmation = settings.ShowFlatbedConfirmation
+            CompressionRate = settings.CompressionRate
         };
     }
 
@@ -169,9 +159,5 @@ internal class ScanProfile
         settings.MultiFeedDetection = MultiFeedDetection;
         settings.SelectedCustomSizeIndex = SelectedCustomSizeIndex;
         settings.CompressionRate = CompressionRate;
-        settings.ShowCommStatusNotification = ShowCommStatusNotification;
-        settings.ShowScanStatusNotification = ShowScanStatusNotification;
-        settings.ShowStartupConfirmation = ShowStartupConfirmation;
-        settings.ShowFlatbedConfirmation = ShowFlatbedConfirmation;
     }
 }
