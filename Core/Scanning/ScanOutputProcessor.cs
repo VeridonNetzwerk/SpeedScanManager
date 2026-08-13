@@ -75,11 +75,10 @@ internal class ScanOutputProcessor
                 processed = ApplyDeskew(processed);
             }
 
-            // Auto-rotate
+            // Auto-rotate: detect text orientation and rotate if needed
             if (_settings.AllowAutoRotate)
             {
-                // Simple auto-rotate: detect orientation (placeholder - real OCR-based rotation comes later)
-                // For now, just keep the image as-is
+                processed = ApplyAutoRotate(processed);
             }
 
             // Blank page detection
@@ -95,27 +94,80 @@ internal class ScanOutputProcessor
         return result;
     }
 
+    /// <summary>
+    /// Fast blank page detection using LockBits.
+    /// Computes the mean brightness and non-white pixel ratio.
+    /// A page is blank if >98% of pixels are near-white and mean brightness > 245.
+    /// </summary>
     private bool IsBlankPage(Bitmap bmp)
     {
-        // Simple blank detection: sample a grid of pixels and check if mostly white
-        int stepX = Math.Max(1, bmp.Width / 10);
-        int stepY = Math.Max(1, bmp.Height / 10);
+        int width = bmp.Width;
+        int height = bmp.Height;
 
-        int whitePixels = 0;
-        int totalSampled = 0;
+        // Downscale large images for faster sampling
+        int maxSampleDim = 500;
+        int sampleW = Math.Min(width, maxSampleDim);
+        int sampleH = Math.Min(height, (int)(height * (double)sampleW / width));
+        if (sampleH < 1) sampleH = 1;
 
-        for (int x = 0; x < bmp.Width; x += stepX)
+        using var sampled = new Bitmap(sampleW, sampleH, bmp.PixelFormat == System.Drawing.Imaging.PixelFormat.Format8bppIndexed
+            ? bmp.PixelFormat : System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+        using (var g = Graphics.FromImage(sampled))
         {
-            for (int y = 0; y < bmp.Height; y += stepY)
-            {
-                var pixel = bmp.GetPixel(x, y);
-                if (pixel.R > 240 && pixel.G > 240 && pixel.B > 240)
-                    whitePixels++;
-                totalSampled++;
-            }
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
+            g.DrawImage(bmp, 0, 0, sampleW, sampleH);
         }
 
-        return totalSampled > 0 && (double)whitePixels / totalSampled > 0.98;
+        int totalPixels = sampleW * sampleH;
+        long brightnessSum = 0;
+        int nonWhitePixels = 0;
+
+        var rect = new Rectangle(0, 0, sampleW, sampleH);
+        var data = sampled.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly,
+            sampled.PixelFormat);
+
+        try
+        {
+            int bytesPerPixel = System.Drawing.Bitmap.GetPixelFormatSize(sampled.PixelFormat) / 8;
+            int stride = data.Stride;
+            var buffer = new byte[stride * sampleH];
+            System.Runtime.InteropServices.Marshal.Copy(data.Scan0, buffer, 0, buffer.Length);
+
+            for (int y = 0; y < sampleH; y++)
+            {
+                int rowOffset = y * stride;
+                for (int x = 0; x < sampleW; x++)
+                {
+                    int idx = rowOffset + x * bytesPerPixel;
+                    // For 24bpp: B, G, R order; for 8bpp: single luminance byte
+                    int b, g, r;
+                    if (bytesPerPixel == 1)
+                    {
+                        b = g = r = buffer[idx];
+                    }
+                    else
+                    {
+                        b = buffer[idx];
+                        g = buffer[idx + 1];
+                        r = buffer[idx + 2];
+                    }
+                    int luminance = (r * 299 + g * 587 + b * 114) / 1000;
+                    brightnessSum += luminance;
+                    if (luminance < 240)
+                        nonWhitePixels++;
+                }
+            }
+        }
+        finally
+        {
+            sampled.UnlockBits(data);
+        }
+
+        double meanBrightness = (double)brightnessSum / totalPixels;
+        double nonWhiteRatio = (double)nonWhitePixels / totalPixels;
+
+        // Blank if mean brightness is very high and almost no non-white pixels
+        return meanBrightness > 245.0 && nonWhiteRatio < 0.02;
     }
 
     private Bitmap ApplyDeskew(Bitmap bmp)
@@ -124,6 +176,93 @@ internal class ScanOutputProcessor
         // This is a simplified implementation – a full deskew would use Hough transform
         // For now, we keep the image as-is (real deskew can be added later)
         return bmp;
+    }
+
+    /// <summary>
+    /// Auto-rotate: uses Tesseract OSD to detect text orientation (0/90/180/270 degrees)
+    /// and rotates the image so text is upright.
+    /// Falls back to no rotation if Tesseract or osd.traineddata is not available.
+    /// </summary>
+    private Bitmap ApplyAutoRotate(Bitmap bmp)
+    {
+        try
+        {
+            var tessDataPath = Path.Combine(AppContext.BaseDirectory, "tessdata");
+            if (!File.Exists(Path.Combine(tessDataPath, "osd.traineddata")))
+            {
+                // No OSD data available — skip auto-rotate
+                return bmp;
+            }
+
+            using var ms = new MemoryStream();
+            bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
+            using var pix = Tesseract.Pix.LoadFromMemory(ms.ToArray());
+
+            using var osdEngine = new Tesseract.TesseractEngine(tessDataPath, "osd", Tesseract.EngineMode.Default);
+            osdEngine.DefaultPageSegMode = Tesseract.PageSegMode.OsdOnly;
+            using var page = osdEngine.Process(pix);
+
+            // Try to get orientation from OSD output
+            var text = page.GetText();
+            if (string.IsNullOrEmpty(text))
+                return bmp;
+
+            int rotationDegrees = 0;
+            var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("Orientation in degrees:", StringComparison.OrdinalIgnoreCase))
+                {
+                    var parts = trimmed.Split(':');
+                    if (parts.Length >= 2 && int.TryParse(parts[1].Trim(), out int deg))
+                    {
+                        rotationDegrees = deg;
+                        break;
+                    }
+                }
+            }
+
+            if (rotationDegrees == 0)
+                return bmp;
+
+            // Rotate the image to correct orientation
+            var rotated = new Bitmap(bmp.Width, bmp.Height);
+            rotated.SetResolution(bmp.HorizontalResolution, bmp.VerticalResolution);
+            using (var g = Graphics.FromImage(rotated))
+            {
+                g.Clear(Color.White);
+                g.TranslateTransform((float)bmp.Width / 2, (float)bmp.Height / 2);
+                g.RotateTransform(rotationDegrees);
+                g.TranslateTransform(-(float)bmp.Width / 2, -(float)bmp.Height / 2);
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.DrawImage(bmp, 0, 0);
+            }
+
+            // Swap dimensions if rotated 90 or 270
+            if (rotationDegrees == 90 || rotationDegrees == 270)
+            {
+                var swapped = new Bitmap(bmp.Height, bmp.Width);
+                swapped.SetResolution(bmp.HorizontalResolution, bmp.VerticalResolution);
+                using (var g = Graphics.FromImage(swapped))
+                {
+                    g.Clear(Color.White);
+                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                    g.DrawImage(rotated, 0, 0);
+                }
+                rotated.Dispose();
+                bmp.Dispose();
+                return swapped;
+            }
+
+            bmp.Dispose();
+            return rotated;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Auto-rotate failed: {ex.Message}");
+            return bmp;
+        }
     }
 
     /// <summary>
