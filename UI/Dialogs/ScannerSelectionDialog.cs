@@ -131,8 +131,9 @@ internal class ScannerSelectionDialog : Form
         try
         {
             var sources = _twain.GetSources().ToList();
+            // Sort: USB first, then Unknown, then Network last
             _sorted = sources
-                .OrderByDescending(s => IsUsbLikely(s))
+                .OrderBy(s => GetConnectionType(s))
                 .ThenBy(s => s.Name)
                 .ToList();
         }
@@ -144,8 +145,11 @@ internal class ScannerSelectionDialog : Form
         foreach (var s in _sorted)
         {
             var label = s.Name ?? "(unbenannt)";
-            if (IsUsbLikely(s))
+            var connType = GetConnectionType(s);
+            if (connType == ConnectionType.Usb)
                 label += "  (USB)";
+            else if (connType == ConnectionType.Network)
+                label += "  (Netzwerk)";
             _combo.Items.Add(label);
         }
 
@@ -183,26 +187,39 @@ internal class ScannerSelectionDialog : Form
     }
 
     /// <summary>
-    /// Heuristic: TWAIN sources whose name or manufacturer contains "WIA" are
-    /// typically WIA-based (which is the Windows USB scanning layer).
-    /// Sources without "WIA" in the name are likely direct TWAIN drivers
-    /// for USB-connected scanners. We prefer non-WIA TWAIN sources first,
-    /// then WIA sources as fallback.
+    /// Three-way classification of scanner connection type.
     /// </summary>
-    private static bool IsUsbLikely(DataSource s)
+    private enum ConnectionType { Usb = 0, Unknown = 1, Network = 2 }
+
+    /// <summary>
+    /// Classifies a TWAIN data source as USB, Network, or Unknown.
+    /// Only labels as USB when WIA is in the name (WIA is the Windows USB scanning layer).
+    /// Only labels as Network when IP address or network keywords are present.
+    /// Everything else is Unknown — we don't guess.
+    /// </summary>
+    private static ConnectionType GetConnectionType(DataSource s)
     {
         var name = (s.Name ?? "").ToLowerInvariant();
         var mfr = (s.Manufacturer ?? "").ToLowerInvariant();
+        var family = (s.ProductFamily ?? "").ToLowerInvariant();
+        var combined = $"{name} {mfr} {family}";
 
-        // WIA-based TWAIN sources are USB scanners accessed through the WIA bridge
-        // Direct TWAIN drivers are also typically USB — both are USB-connected.
-        // The only non-USB scenario would be network scanners, which often have
-        // "network", "net", "ip", or "wifi" in their name.
-        if (name.Contains("network") || name.Contains("net ") || name.Contains("wifi") || name.Contains("wlan"))
-            return false;
+        // Network indicators: IP address pattern, or explicit network keywords
+        if (System.Text.RegularExpressions.Regex.IsMatch(combined, @"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b"))
+            return ConnectionType.Network;
+        if (combined.Contains("network") || combined.Contains("net scan") ||
+            combined.Contains("wifi") || combined.Contains("wlan") ||
+            combined.Contains("ethernet") || combined.Contains("lan") ||
+            combined.Contains("tcp/ip") || combined.Contains("http://") ||
+            combined.Contains("https://"))
+            return ConnectionType.Network;
 
-        // Everything else is likely USB-connected
-        return true;
+        // USB indicators: WIA is the Windows USB scanning bridge — definitively USB
+        if (name.Contains("wia"))
+            return ConnectionType.Usb;
+
+        // Everything else: Unknown — don't claim USB when we don't know
+        return ConnectionType.Unknown;
     }
 
     /// <summary>
@@ -221,20 +238,27 @@ internal class ScannerSelectionDialog : Form
         }
 
         // No saved selection (or saved selection no longer available):
-        // Prefer USB-connected scanners, then fall back to default source
+        // Prefer USB-connected scanners, then Unknown, then Network
         var sources = twain.GetSources().ToList();
         if (sources.Count == 0)
             return null;
 
-        // Sort by USB likelihood
-        var usbSources = sources
-            .Where(s => IsUsbLikely(s))
+        // Sort by connection type: USB first, then Unknown, then Network
+        var sorted = sources
+            .OrderBy(s => GetConnectionType(s))
+            .ThenBy(s => s.Name)
             .ToList();
 
-        if (usbSources.Count > 0)
-            return usbSources[0];
+        // Prefer the first USB source, then first Unknown, then first Network
+        var usb = sorted.FirstOrDefault(s => GetConnectionType(s) == ConnectionType.Usb);
+        if (usb != null)
+            return usb;
 
-        // Fall back to system default or first available
-        return twain.DefaultSource ?? sources[0];
+        var unknown = sorted.FirstOrDefault(s => GetConnectionType(s) == ConnectionType.Unknown);
+        if (unknown != null)
+            return unknown;
+
+        // Fall back to system default or first available (Network)
+        return twain.DefaultSource ?? sorted[0];
     }
 }
