@@ -1145,16 +1145,24 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     {
         try
         {
-            // When already disconnected, skip background polling entirely.
-            if (_scannerStatus == ScannerStatus.Disconnected)
+            // When scanning, never poll — the scanner is busy
+            if (_isScanning)
                 return;
 
             // When WIA watcher is active (connected, waiting for button events),
             // skip polling — QueryState would open/close the TWAIN source and
             // interfere with WIA event delivery.
-            if (_wiaWatcher != null)
+            // But still poll periodically (every ~30s) to detect if the scanner
+            // was disconnected while WIA was active.
+            if (_wiaWatcher != null && _scannerStatus == ScannerStatus.Connected)
+            {
+                // WIA handles disconnection detection via device events
                 return;
+            }
 
+            // Keep polling even when disconnected — this is how we detect
+            // newly connected scanners. The timer interval is slower when
+            // disconnected to reduce overhead.
             UpdateConnectionState();
         }
         catch (Exception ex)
@@ -1274,9 +1282,29 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     {
         bool connected = _scannerStatus == ScannerStatus.Connected;
         _notifyIcon.Icon = connected ? GetConnectedIcon() : GetDisconnectedIcon();
-        _notifyIcon.Text = connected
-            ? $"SpeedScan Manager\n{_currentScannerName}"
-            : "SpeedScan Manager\nKein Scanner";
+
+        if (connected)
+        {
+            _notifyIcon.Text = $"SpeedScan Manager\n{_currentScannerName}";
+        }
+        else if (!string.IsNullOrEmpty(_appSettings.SelectedSourceName))
+        {
+            _notifyIcon.Text = $"SpeedScan Manager\nAuswahl: {_appSettings.SelectedSourceName} (offline)";
+        }
+        else
+        {
+            _notifyIcon.Text = "SpeedScan Manager\nKein Scanner ausgewählt";
+        }
+
+        // Adjust poll interval: fast when connected or unknown, slow when disconnected
+        int targetInterval = _scannerStatus == ScannerStatus.Disconnected
+            ? SlowPollIntervalMs
+            : PollIntervalMs;
+        if (_pollTimer.Interval != targetInterval)
+        {
+            _pollTimer.Interval = targetInterval;
+            LogDiag($"UpdateTrayVisuals: poll interval -> {targetInterval}ms");
+        }
     }
 
     /// <summary>
