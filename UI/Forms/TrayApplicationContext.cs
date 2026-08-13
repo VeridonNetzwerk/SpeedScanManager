@@ -1130,13 +1130,10 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     {
         try
         {
-            var vbsPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "SpeedScanManager", "scanbutton.vbs");
-
-            if (File.Exists(vbsPath))
+            // Check if WIA scan button handler is already registered
+            if (WiaEventWatcher.IsHandlerRegistered())
             {
-                LogDiag("EnsureScanButtonSetup: scanbutton.vbs already exists, skipping");
+                LogDiag("EnsureScanButtonSetup: WIA handler already registered, skipping");
                 return;
             }
 
@@ -1147,7 +1144,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
                 return;
             }
 
-            LogDiag("EnsureScanButtonSetup: scanbutton.vbs missing, launching /setup elevated");
+            LogDiag("EnsureScanButtonSetup: WIA handler not registered, launching /setup elevated");
             var psi = new ProcessStartInfo
             {
                 FileName = exePath,

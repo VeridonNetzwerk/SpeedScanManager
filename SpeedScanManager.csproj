@@ -35,4 +35,8 @@
     <EmbeddedResource Include="assets\discord_logo.svg" LogicalName="discord_logo.svg" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="assets\scanbutton.vbs" Link="scanbutton.vbs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

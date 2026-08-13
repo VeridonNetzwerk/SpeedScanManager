@@ -38,7 +38,7 @@ internal sealed class WiaEventWatcher : IDisposable
     /// <summary>
     /// Checks if our handler is already registered (read-only, no admin needed).
     /// </summary>
-    private static bool IsHandlerRegistered()
+    internal static bool IsHandlerRegistered()
     {
         try
         {
@@ -61,14 +61,22 @@ internal sealed class WiaEventWatcher : IDisposable
             LogDiag("DoRegistrySetup: starting (elevated)");
 
             var srcExe = Environment.ProcessPath ?? "";
+            var appDir = Path.GetDirectoryName(srcExe) ?? "";
 
-            // Create a VBS launcher script — wscript.exe has no console window
-            var localDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "SpeedScanManager");
-            Directory.CreateDirectory(localDir);
-            var vbsPath = Path.Combine(localDir, "scanbutton.vbs");
-            var vbsContent = $@"Set WshShell = CreateObject(""WScript.Shell"")
+            // Use the VBS script shipped next to the exe (portable/installer).
+            // It resolves the exe path relative to its own location, so it works
+            // regardless of where the app is installed.
+            var vbsPath = Path.Combine(appDir, "scanbutton.vbs");
+
+            if (!File.Exists(vbsPath))
+            {
+                // Fallback: generate VBS in LocalAppData (legacy behavior)
+                var localDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "SpeedScanManager");
+                Directory.CreateDirectory(localDir);
+                vbsPath = Path.Combine(localDir, "scanbutton.vbs");
+                var vbsContent = $@"Set WshShell = CreateObject(""WScript.Shell"")
 WshShell.Run """"""{srcExe}"""""" & "" /scanbutton"" & BuildArgs(), 0, False
 
 Function BuildArgs()
@@ -80,8 +88,13 @@ Function BuildArgs()
     BuildArgs = args
 End Function
 ";
-            File.WriteAllText(vbsPath, vbsContent);
-            LogDiag($"  Created VBS launcher at {vbsPath}");
+                File.WriteAllText(vbsPath, vbsContent);
+                LogDiag($"  Generated fallback VBS launcher at {vbsPath}");
+            }
+            else
+            {
+                LogDiag($"  Using shipped VBS launcher at {vbsPath}");
+            }
 
             var cmdLine = $"wscript.exe \"{vbsPath}\" /StiDevice:%1 /StiEvent:%2";
 
