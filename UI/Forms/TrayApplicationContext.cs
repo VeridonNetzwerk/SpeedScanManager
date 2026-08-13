@@ -27,7 +27,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     private readonly NotifyIcon _notifyIcon;
     private ContextMenuStrip _contextMenu = null!;
     private ToolStripMenuItem _miScan = null!;
-    private ToolStripMenuItem _miFlatbedScan = null!;
     private ToolStripMenuItem _miSelectScanner = null!;
     private ToolStripMenuItem _miScanKeySettings = null!;
     private ToolStripMenuItem _miProfileManagement = null!;
@@ -124,7 +123,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         _contextMenu.Closed += OnContextMenuClosed;
 
         _miScan = new ToolStripMenuItem("Scan");
-        _miFlatbedScan = new ToolStripMenuItem("Flachbettscannen");
         _miSelectScanner = new ToolStripMenuItem("Scanner auswählen...");
         _miScanKeySettings = new ToolStripMenuItem("Einstellungen der SCAN Taste...");
         _miProfileManagement = new ToolStripMenuItem("Profilverwaltung...");
@@ -138,7 +136,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         var miPreferences = new ToolStripMenuItem("Präferenzen...");
 
         _miScan.Click += (s, e) => StartScan(ScanSide.Automatic);
-        _miFlatbedScan.Click += (s, e) => StartScan(ScanSide.Flatbed);
         _miSelectScanner.Click += (s, e) => ShowScannerSelectionDialog();
         _miScanKeySettings.Click += (s, e) => ShowMainForm();
         _miProfileManagement.Click += (s, e) => OpenProfileManagement();
@@ -159,7 +156,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         _contextMenu.Items.AddRange(new ToolStripItem[]
         {
             _miScan,
-            _miFlatbedScan,
             new ToolStripSeparator(),
             _miSelectScanner,
             _miScanKeySettings,
@@ -234,7 +230,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         }
 
         _miScan.Enabled = connected;
-        _miFlatbedScan.Enabled = connected && supportsFlatbed;
         _miScanKeySettings.Enabled = true;
         _miProfileManagement.Enabled = true;
         _miScanResult.Enabled = _lastScanFiles.Count > 0;
