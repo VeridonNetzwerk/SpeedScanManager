@@ -1260,7 +1260,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         }
         else
         {
-            connected = CheckScannerConnected(out scannerName);
+            connected = false;
             _lastScannerState = null;
         }
 
@@ -1524,74 +1524,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         if (_cachedDisconnectedIcon == null)
             _cachedDisconnectedIcon = TrayIcons.CreateDisconnectedIcon();
         return _cachedDisconnectedIcon;
-    }
-
-    /// <summary>
-    /// Checks whether a TWAIN scanner is actually connected and online.
-    /// Opens the default source and queries CapDeviceOnline to verify
-    /// the hardware is powered and connected (not just a registered driver).
-    /// </summary>
-    private bool CheckScannerConnected(out string scannerName)
-    {
-        scannerName = "";
-        if (!_twainInitialized || _twain == null)
-        {
-            LogDiag("CheckScannerConnected: TWAIN not initialized");
-            return false;
-        }
-
-        DataSource? source = null;
-        try
-        {
-            if (!_twain.IsDsmOpen)
-            {
-                var rc = _twain.Open(_msgLoop);
-                LogDiag($"CheckScannerConnected: DSM reopen rc={rc}");
-                if (rc != ReturnCode.Success)
-                    return false;
-            }
-
-            source = ScannerSelectionDialog.SelectBestSource(_twain, _appSettings.SelectedSourceName);
-            if (source == null)
-            {
-                LogDiag("CheckScannerConnected: no source found");
-                return false;
-            }
-
-            LogDiag($"CheckScannerConnected: opening source '{source.Name}'");
-            scannerName = source.Name;
-            var openRc = source.Open();
-            LogDiag($"CheckScannerConnected: source.Open rc={openRc}");
-            if (openRc != ReturnCode.Success)
-                return false;
-
-            try
-            {
-                var online = source.Capabilities.CapDeviceOnline.GetCurrent();
-                LogDiag($"CheckScannerConnected: CapDeviceOnline.GetCurrent={online}");
-                if (online == BoolType.False)
-                    return false;
-            }
-            catch (Exception ex)
-            {
-                LogDiag($"CheckScannerConnected: CapDeviceOnline not supported ({ex.Message}), assuming connected");
-            }
-
-            LogDiag("CheckScannerConnected: CONNECTED");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            LogDiag($"CheckScannerConnected: exception {ex.Message}");
-            return false;
-        }
-        finally
-        {
-            if (source != null && source.IsOpen)
-            {
-                try { source.Close(); } catch { }
-            }
-        }
     }
 
     protected override void Dispose(bool disposing)

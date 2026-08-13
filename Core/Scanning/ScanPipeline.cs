@@ -43,97 +43,17 @@ internal class ScanPipeline : IDisposable
     }
 
     /// <summary>
-    /// Selects a TWAIN data source using the saved preference, USB preference heuristic,
-    /// and falls back to a selection dialog if needed.
+    /// Selects a TWAIN data source using the centralized selection logic
+    /// (saved preference + USB/network prioritization).
     /// </summary>
     private DataSource? SelectSource()
     {
-        // Use the centralized selection logic
         var source = ScannerSelectionDialog.SelectBestSource(_twain, _preferredSourceName);
         if (source != null)
-        {
             LogDiag($"SelectSource: selected '{source.Name}' (preferred='{_preferredSourceName ?? "(auto)"}')");
-            return source;
-        }
-
-        // No source found via preference — fall back to dialog if multiple sources
-        var sources = _twain.GetSources().ToList();
-        if (sources.Count == 0)
-            return null;
-        if (sources.Count == 1)
-            return sources[0];
-
-        // Multiple sources: show selection dialog
-        string[] names = sources.Select(s => s.Name ?? "(unbenannt)").ToArray();
-        int selectedIdx = 0;
-
-        // Use a simple dialog on the UI thread
-        if (_hiddenWindow.InvokeRequired)
-        {
-            _hiddenWindow.Invoke(() =>
-            {
-                selectedIdx = ShowSourceSelection(names);
-            });
-        }
         else
-        {
-            selectedIdx = ShowSourceSelection(names);
-        }
-
-        return selectedIdx >= 0 ? sources[selectedIdx] : null;
-    }
-
-    private int ShowSourceSelection(string[] names)
-    {
-        using var dlg = new Form
-        {
-            Text = "SpeedScan Manager – Quelle wählen",
-            FormBorderStyle = FormBorderStyle.FixedDialog,
-            MaximizeBox = false,
-            MinimizeBox = false,
-            StartPosition = FormStartPosition.CenterScreen,
-            Width = 360,
-            Height = 200,
-            ShowInTaskbar = false
-        };
-
-        var lbl = new Label
-        {
-            Text = "Bitte wählen Sie eine TWAIN-Quelle:",
-            Location = new Point(12, 12),
-            AutoSize = true
-        };
-
-        var cb = new ComboBox
-        {
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(12, 36),
-            Size = new Size(320, 24)
-        };
-        cb.Items.AddRange(names);
-        cb.SelectedIndex = 0;
-
-        var btnOk = new Button
-        {
-            Text = "OK",
-            DialogResult = DialogResult.OK,
-            Location = new Point(170, 120),
-            Size = new Size(75, 28)
-        };
-
-        var btnCancel = new Button
-        {
-            Text = "Abbrechen",
-            DialogResult = DialogResult.Cancel,
-            Location = new Point(257, 120),
-            Size = new Size(75, 28)
-        };
-
-        dlg.Controls.AddRange(new Control[] { lbl, cb, btnOk, btnCancel });
-        dlg.AcceptButton = btnOk;
-        dlg.CancelButton = btnCancel;
-
-        return dlg.ShowDialog() == DialogResult.OK ? cb.SelectedIndex : -1;
+            LogDiag("SelectSource: no source found");
+        return source;
     }
 
     /// <summary>
