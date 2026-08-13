@@ -15,6 +15,7 @@ x64/
 publish/
 dist/
 dist-installer/
+release/
 
 # VS IDE
 .vs/
