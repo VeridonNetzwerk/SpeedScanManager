@@ -307,6 +307,32 @@ public partial class MainWindow : Window
             WriteRegistryEntries(targetDir);
             await Task.Delay(200);
 
+            // Scan button setup (WIA handler registration)
+            StatusText.Text = "Registriere Scan-Taste...";
+            InstallProgress.Value = 88;
+            try
+            {
+                var setupPsi = new ProcessStartInfo
+                {
+                    FileName = Path.Combine(targetDir, "SpeedScanManager.exe"),
+                    Arguments = "/setup",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    WindowStyle = ProcessWindowStyle.Hidden
+                };
+                var setupProc = Process.Start(setupPsi);
+                if (setupProc != null)
+                {
+                    await setupProc.WaitForExitAsync();
+                    Debug.WriteLine($"Scan button setup exit code: {setupProc.ExitCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Scan button setup failed: {ex.Message}");
+            }
+            await Task.Delay(200);
+
             // Shortcuts
             StatusText.Text = "Erstelle Verknüpfungen...";
             InstallProgress.Value = 90;

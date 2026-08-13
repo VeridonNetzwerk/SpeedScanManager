@@ -1121,9 +1121,63 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
     private static void LogDiag(string msg) => DiagLog.Write(msg);
 
+    /// <summary>
+    /// Checks if the scan button VBS script exists. If not, launches
+    /// SpeedScanManager.exe /setup as elevated to register the WIA handler.
+    /// This ensures portable and installer versions both get scan button support.
+    /// </summary>
+    private static void EnsureScanButtonSetup()
+    {
+        try
+        {
+            var vbsPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "SpeedScanManager", "scanbutton.vbs");
+
+            if (File.Exists(vbsPath))
+            {
+                LogDiag("EnsureScanButtonSetup: scanbutton.vbs already exists, skipping");
+                return;
+            }
+
+            var exePath = Environment.ProcessPath;
+            if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
+            {
+                LogDiag("EnsureScanButtonSetup: could not determine exe path");
+                return;
+            }
+
+            LogDiag("EnsureScanButtonSetup: scanbutton.vbs missing, launching /setup elevated");
+            var psi = new ProcessStartInfo
+            {
+                FileName = exePath,
+                Arguments = "/setup",
+                UseShellExecute = true,
+                Verb = "runas"
+            };
+            try
+            {
+                Process.Start(psi);
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                // User declined UAC — scan button won't work until manual /setup
+                LogDiag("EnsureScanButtonSetup: UAC declined, scan button setup skipped");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"EnsureScanButtonSetup exception: {ex.Message}");
+        }
+    }
+
     private void OnFirstIdle(object? sender, EventArgs e)
     {
         Application.Idle -= OnFirstIdle;
+
+        // Ensure scan button VBS script is installed (for portable and installer versions)
+        EnsureScanButtonSetup();
+
         InitializeTwain();
         // Query scanner state once after TWAIN init to detect connected scanners.
         // If the scanner is disconnected, source.Open() may show a driver dialog,
