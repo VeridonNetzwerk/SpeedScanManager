@@ -7,12 +7,10 @@ namespace SpeedScanManager;
 /// <summary>
 /// Main settings form with collapsed/expanded modes.
 /// Collapsed: header + quick-menu checkbox + preset buttons + action buttons.
-/// Expanded: additionally shows a TabControl with 5 empty tabs.
+/// Expanded: additionally shows a TabControl with 6 tabs.
 /// </summary>
 internal class MainForm : Form
 {
-    private readonly Panel _headerPanel;
-
     private readonly CheckBox _quickMenuCheckBox;
 
     private readonly Panel _presetPanel;
@@ -103,7 +101,7 @@ internal class MainForm : Form
         };
 
         // === White logo area ===
-        _headerPanel = new Panel
+        var headerPanel = new Panel
         {
             Location = new Point(0, 0),
             Size = new Size(ClientWidth, HeaderHeight),
@@ -121,8 +119,8 @@ internal class MainForm : Form
             Location = new Point(16, 9),
             Size = new Size(hdrTextW, hdrTextH)
         };
-        _headerPanel.Controls.Add(pbHeaderLogo);
-        _topPanel.Controls.Add(_headerPanel);
+        headerPanel.Controls.Add(pbHeaderLogo);
+        _topPanel.Controls.Add(headerPanel);
 
         // === Quick-Menü checkbox (in gray zone) ===
         _quickMenuCheckBox = new CheckBox
@@ -300,7 +298,7 @@ internal class MainForm : Form
         _applicationTabContent = new ApplicationTabContent(_scanSettings);
         WrapTabContent(_tabControl.TabPages[0], _applicationTabContent);
 
-        _saveTabContent = new SaveTabContent();
+        _saveTabContent = new SaveTabContent(_scanSettings);
         WrapTabContent(_tabControl.TabPages[1], _saveTabContent);
 
         _scanModeTabContent = new ScanModeTabContent(_scanSettings);
@@ -474,7 +472,7 @@ internal class MainForm : Form
             {
                 ApplyPreset(ImageQuality.Fine, 1);
             }
-            else if (btn == _btnCustom && !_expanded)
+            else if (btn == _btnCustom)
             {
                 ToggleExpanded();
             }
@@ -586,19 +584,19 @@ internal class MainForm : Form
     {
         profile.ApplyTo(_scanSettings);
 
-        // Restore save tab
+        // Restore save tab UI from settings
         _saveTabContent?.RestoreSaveConfig(
-            profile.FolderPath,
-            profile.FileNameFormat,
-            profile.CustomFileName,
-            profile.CounterDigits);
+            _scanSettings.FolderPath,
+            _scanSettings.FileNameFormat,
+            _scanSettings.CustomFileName,
+            _scanSettings.CounterDigits);
 
-        // Restore application tab
-        _applicationTabContent?.SetApplicationType(profile.ApplicationType);
+        // Restore application tab UI
+        _applicationTabContent?.SetApplicationType(_scanSettings.ApplicationType);
 
         // Update tab UIs
-        _scanModeTabContent?.ApplyPreset(profile.ImageQuality);
-        _fileSizeTabContent?.ApplyPreset(profile.CompressionRate);
+        _scanModeTabContent?.ApplyPreset(_scanSettings.ImageQuality);
+        _fileSizeTabContent?.ApplyPreset(_scanSettings.CompressionRate);
     }
 
     private void AddProfile()
@@ -606,13 +604,14 @@ internal class MainForm : Form
         string? name = ShowInputDialog("Profil hinzufügen", "Profilname:", "");
         if (string.IsNullOrWhiteSpace(name)) return;
 
-        // Capture current settings
-        var (folder, formatMode, customName, digits) = _saveTabContent?.GetSaveConfig()
-            ?? ("", FileNameFormatDialog.FormatMode.Timestamp, "unbenannt", 3);
-
+        // Capture current settings (save tab data is already in _scanSettings)
         var profile = ScanProfile.FromCurrent(
-            _scanSettings, folder, formatMode, customName, digits,
-            _applicationTabContent?.SelectedApplicationType ?? ApplicationType.ScanToFolder,
+            _scanSettings,
+            _scanSettings.FolderPath,
+            _scanSettings.FileNameFormat,
+            _scanSettings.CustomFileName,
+            _scanSettings.CounterDigits,
+            _scanSettings.ApplicationType,
             name.Trim(), isBuiltIn: false);
 
         _profileManager.AddProfile(profile);
@@ -704,7 +703,20 @@ internal class MainForm : Form
     {
         // Restore settings to the last applied state
         if (_snapshot != null)
+        {
             _scanSettings.RestoreFrom(_snapshot);
+
+            // Refresh tab UIs to reflect restored settings
+            _saveTabContent?.RestoreSaveConfig(
+                _scanSettings.FolderPath,
+                _scanSettings.FileNameFormat,
+                _scanSettings.CustomFileName,
+                _scanSettings.CounterDigits);
+            _applicationTabContent?.SetApplicationType(_scanSettings.ApplicationType);
+            _scanModeTabContent?.ApplyPreset(_scanSettings.ImageQuality);
+            _fileSizeTabContent?.ApplyPreset(_scanSettings.CompressionRate);
+        }
+        _quickMenuCheckBox.Checked = _quickMenuSnapshot;
     }
 
     private void OnSettingsChanged()
@@ -739,6 +751,9 @@ internal class MainForm : Form
                     break;
                 case NumericUpDown nud:
                     nud.ValueChanged += (s, e) => OnSettingsChanged();
+                    break;
+                case Button btn:
+                    btn.Click += (s, e) => OnSettingsChanged();
                     break;
             }
             // Recurse into children

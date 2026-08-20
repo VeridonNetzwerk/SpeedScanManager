@@ -125,10 +125,11 @@ internal class ProfileManagementDialog : Form
     {
         int idx = _listBox.SelectedIndex;
         bool hasSelection = idx >= 0;
+        bool isBuiltIn = hasSelection && idx < _manager.Profiles.Count && _manager.Profiles[idx].IsBuiltIn;
 
         _btnAdd.Enabled = true;
-        _btnRename.Enabled = hasSelection;
-        _btnDelete.Enabled = hasSelection;
+        _btnRename.Enabled = hasSelection && !isBuiltIn;
+        _btnDelete.Enabled = hasSelection && !isBuiltIn;
         _btnUp.Enabled = hasSelection && idx > 0;
         _btnDown.Enabled = hasSelection && idx < _manager.Profiles.Count - 1;
     }

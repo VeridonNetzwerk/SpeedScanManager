@@ -78,6 +78,15 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         {
             savedProfile.ApplyTo(_settings);
         }
+        else
+        {
+            // No saved profile — restore save tab data from app settings
+            _settings.FolderPath = _appSettings.FolderPath;
+            _settings.FileNameFormat = _appSettings.FileNameFormat;
+            _settings.CustomFileName = _appSettings.CustomFileName;
+            _settings.CounterDigits = _appSettings.CounterDigits;
+            _settings.ApplicationType = _appSettings.CurrentApplicationType;
+        }
 
         // Hidden window provides the HWND that TWAIN DSM requires.
         _hiddenWindow = new Form
@@ -449,25 +458,18 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     {
         if (_mainForm != null && !_mainForm.IsDisposed)
         {
-            // MainForm shares the same ScanSettings instance, so values are already synced
-            // But we need to ensure the save tab config is current
-            if (_mainForm.ApplicationTab != null)
-            {
-                _currentApplicationType = _mainForm.ApplicationTab.SelectedApplicationType;
-            }
+            // MainForm shares the same ScanSettings instance, so scan settings are already synced.
+            // Save tab data (folder, filename format) is also in _settings now.
+            _currentApplicationType = _settings.ApplicationType;
             _quickMenuScanTriggered = _mainForm.QuickMenuEnabled;
 
             // Persist settings
             _appSettings.QuickMenuEnabled = _quickMenuScanTriggered;
             _appSettings.CurrentApplicationType = _currentApplicationType;
-            if (_mainForm.SaveTab != null)
-            {
-                var (folder, formatMode, customName, digits) = _mainForm.SaveTab.GetSaveConfig();
-                _appSettings.FolderPath = folder;
-                _appSettings.FileNameFormat = formatMode;
-                _appSettings.CustomFileName = customName;
-                _appSettings.CounterDigits = digits;
-            }
+            _appSettings.FolderPath = _settings.FolderPath;
+            _appSettings.FileNameFormat = _settings.FileNameFormat;
+            _appSettings.CustomFileName = _settings.CustomFileName;
+            _appSettings.CounterDigits = _settings.CounterDigits;
             _appSettings.Save();
         }
     }

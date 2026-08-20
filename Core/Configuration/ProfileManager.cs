@@ -74,7 +74,7 @@ internal class ProfileManager
             Profiles.Add(new ScanProfile
             {
                 Name = appType.ToString(),
-                IsBuiltIn = false,
+                IsBuiltIn = true,
                 ApplicationType = appType,
                 FolderPath = defaultFolder,
                 FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp,

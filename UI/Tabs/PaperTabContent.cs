@@ -1,7 +1,5 @@
 using System.Drawing;
 using System.Windows.Forms;
-using NTwain;
-using NTwain.Data;
 
 namespace SpeedScanManager;
 
@@ -316,84 +314,6 @@ internal class PaperTabContent : Panel
         _lengthSupported = supportsLength;
         EnsureValidSelection();
         _cbMultiFeed.Invalidate();
-    }
-
-    /// <summary>
-    /// Legacy overload — queries TWAIN directly. Kept for compatibility.
-    /// </summary>
-    public void UpdateMultiFeedCapabilities(TwainSession? twain)
-    {
-        // Default: all options available
-        _ultrasoundSupported = true;
-        _lengthSupported = true;
-
-        if (twain == null || !twain.IsDsmOpen)
-        {
-            // No scanner – only "Off" is selectable
-            _ultrasoundSupported = false;
-            _lengthSupported = false;
-            EnsureValidSelection();
-            return;
-        }
-
-        try
-        {
-            // Get the default source to query capabilities
-            var sources = twain.GetSources();
-            var source = sources.FirstOrDefault();
-            if (source == null)
-            {
-                _ultrasoundSupported = false;
-                _lengthSupported = false;
-                EnsureValidSelection();
-                return;
-            }
-
-            // Open source temporarily to query capabilities
-            var openRc = source.Open();
-            if (openRc != ReturnCode.Success)
-            {
-                _ultrasoundSupported = false;
-                _lengthSupported = false;
-                EnsureValidSelection();
-                return;
-            }
-
-            try
-            {
-                // Query supported double-feed detection modes
-                var supportedModes = source.Capabilities.CapDoubleFeedDetection.GetValues();
-                if (supportedModes != null && supportedModes.Any())
-                {
-                    _ultrasoundSupported = supportedModes.Contains(DoubleFeedDetection.Ultrasonic);
-                    _lengthSupported = supportedModes.Contains(DoubleFeedDetection.ByLength);
-                }
-                else
-                {
-                    // Empty list — capability exists but driver doesn't report modes.
-                    // Assume both supported since source.Open() succeeded.
-                    _ultrasoundSupported = true;
-                    _lengthSupported = true;
-                }
-            }
-            catch
-            {
-                // If querying fails, assume supported since source.Open() succeeded
-                _ultrasoundSupported = true;
-                _lengthSupported = true;
-            }
-            finally
-            {
-                try { source.Close(); } catch { }
-            }
-        }
-        catch
-        {
-            _ultrasoundSupported = false;
-            _lengthSupported = false;
-        }
-
-        EnsureValidSelection();
     }
 
     private void EnsureValidSelection()

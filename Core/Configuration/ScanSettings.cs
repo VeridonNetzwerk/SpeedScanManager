@@ -57,6 +57,15 @@ internal class ScanSettings
     // File size tab
     public int CompressionRate { get; set; } = 3; // 1 (low/large file) to 5 (high/small file)
 
+    // Save tab (persisted alongside other settings so Apply/Cancel works)
+    public string FolderPath { get; set; } = "";
+    public FileNameFormatDialog.FormatMode FileNameFormat { get; set; } = FileNameFormatDialog.FormatMode.Timestamp;
+    public string CustomFileName { get; set; } = "unbenannt";
+    public int CounterDigits { get; set; } = 3;
+
+    // Application tab
+    public ApplicationType ApplicationType { get; set; } = ApplicationType.ScanToFolder;
+
     /// <summary>
     /// Compares all setting values with another instance.
     /// </summary>
@@ -93,6 +102,11 @@ internal class ScanSettings
         if (SelectedCustomSizeIndex != other.SelectedCustomSizeIndex) return false;
         if (MultiFeedDetection != other.MultiFeedDetection) return false;
         if (CompressionRate != other.CompressionRate) return false;
+        if (FolderPath != other.FolderPath) return false;
+        if (FileNameFormat != other.FileNameFormat) return false;
+        if (CustomFileName != other.CustomFileName) return false;
+        if (CounterDigits != other.CounterDigits) return false;
+        if (ApplicationType != other.ApplicationType) return false;
         if (CustomPaperSizes.Count != other.CustomPaperSizes.Count) return false;
         for (int i = 0; i < CustomPaperSizes.Count; i++)
         {
@@ -151,6 +165,11 @@ internal class ScanSettings
         SelectedCustomSizeIndex = snapshot.SelectedCustomSizeIndex;
         MultiFeedDetection = snapshot.MultiFeedDetection;
         CompressionRate = snapshot.CompressionRate;
+        FolderPath = snapshot.FolderPath;
+        FileNameFormat = snapshot.FileNameFormat;
+        CustomFileName = snapshot.CustomFileName;
+        CounterDigits = snapshot.CounterDigits;
+        ApplicationType = snapshot.ApplicationType;
     }
 }
 

@@ -88,7 +88,10 @@ internal class ApplicationTabContent : Panel
             int idx = _cbApplication.SelectedIndex;
             var allApps = GetAllApps();
             if (idx >= 0 && idx < allApps.Count)
+            {
                 SelectedApplication = allApps[idx];
+                _settings.ApplicationType = SelectedApplication.Type;
+            }
             UpdateEmailOptionsVisibility();
             UpdatePrintOptionsVisibility();
         };

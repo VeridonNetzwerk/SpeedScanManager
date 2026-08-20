@@ -159,5 +159,10 @@ internal class ScanProfile
         settings.MultiFeedDetection = MultiFeedDetection;
         settings.SelectedCustomSizeIndex = SelectedCustomSizeIndex;
         settings.CompressionRate = CompressionRate;
+        settings.FolderPath = FolderPath;
+        settings.FileNameFormat = FileNameFormat;
+        settings.CustomFileName = CustomFileName;
+        settings.CounterDigits = CounterDigits;
+        settings.ApplicationType = ApplicationType;
     }
 }

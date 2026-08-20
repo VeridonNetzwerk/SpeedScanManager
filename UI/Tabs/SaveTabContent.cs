@@ -14,37 +14,37 @@ internal class SaveTabContent : Panel
     private readonly Button _btnFileNameFormat;
     private readonly Label _lblFilePreview;
     private readonly CheckBox _chkRenameAfterScan;
+    private readonly ScanSettings _settings;
 
-    private FileNameFormatDialog.FormatMode _formatMode = FileNameFormatDialog.FormatMode.Timestamp;
-    private string _customFileName = "unbenannt";
-    private int _counterDigits = 3;
-
-    public string FolderPath { get; private set; }
-    public FileNameFormatDialog.FormatMode FormatMode => _formatMode;
-    public string CustomFileName => _customFileName;
-    public int CounterDigits => _counterDigits;
+    public string FolderPath => _settings.FolderPath;
+    public FileNameFormatDialog.FormatMode FormatMode => _settings.FileNameFormat;
+    public string CustomFileName => _settings.CustomFileName;
+    public int CounterDigits => _settings.CounterDigits;
 
     public (string folder, FileNameFormatDialog.FormatMode mode, string customName, int digits) GetSaveConfig()
-        => (FolderPath, _formatMode, _customFileName, _counterDigits);
+        => (_settings.FolderPath, _settings.FileNameFormat, _settings.CustomFileName, _settings.CounterDigits);
 
     public void RestoreSaveConfig(string folderPath, FileNameFormatDialog.FormatMode mode, string customName, int digits)
     {
-        FolderPath = folderPath;
-        _formatMode = mode;
-        _customFileName = customName;
-        _counterDigits = digits;
+        _settings.FolderPath = folderPath;
+        _settings.FileNameFormat = mode;
+        _settings.CustomFileName = customName;
+        _settings.CounterDigits = digits;
         _txtFolderPath.Text = folderPath;
         _lblFilePreview.Text = $"z.B.) {GenerateExampleFileName()}.pdf";
     }
 
-    public SaveTabContent()
+    public SaveTabContent(ScanSettings? settings = null)
     {
+        _settings = settings ?? new ScanSettings();
+
         // Default folder: Documents\SpeedScanManager in user profile
         string defaultFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             "SpeedScanManager");
         Directory.CreateDirectory(defaultFolder);
-        FolderPath = defaultFolder;
+        if (string.IsNullOrEmpty(_settings.FolderPath))
+            _settings.FolderPath = defaultFolder;
 
         var font = new Font("Microsoft Sans Serif", 8.25f);
         Dock = DockStyle.Fill;
@@ -71,7 +71,7 @@ internal class SaveTabContent : Panel
 
         _txtFolderPath = new TextBox
         {
-            Text = FolderPath,
+            Text = _settings.FolderPath,
             Location = new Point(176, 8),
             ReadOnly = true,
             Font = font,
@@ -147,8 +147,8 @@ internal class SaveTabContent : Panel
 
         if (dialog.ShowDialog() == DialogResult.OK)
         {
-            FolderPath = dialog.SelectedPath;
-            _txtFolderPath.Text = FolderPath;
+            _settings.FolderPath = dialog.SelectedPath;
+            _txtFolderPath.Text = _settings.FolderPath;
         }
     }
 
@@ -157,34 +157,23 @@ internal class SaveTabContent : Panel
         using var dialog = new FileNameFormatDialog();
 
         // Restore previous settings
-        switch (_formatMode)
-        {
-            case FileNameFormatDialog.FormatMode.OsDefault:
-                dialog.SelectedMode = FileNameFormatDialog.FormatMode.OsDefault;
-                break;
-            case FileNameFormatDialog.FormatMode.Timestamp:
-                dialog.SelectedMode = FileNameFormatDialog.FormatMode.Timestamp;
-                break;
-            case FileNameFormatDialog.FormatMode.Custom:
-                dialog.SelectedMode = FileNameFormatDialog.FormatMode.Custom;
-                break;
-        }
-        dialog.CustomFileName = _customFileName;
-        dialog.CounterDigits = _counterDigits;
+        dialog.SelectedMode = _settings.FileNameFormat;
+        dialog.CustomFileName = _settings.CustomFileName;
+        dialog.CounterDigits = _settings.CounterDigits;
 
         dialog.ApplyClicked += (s, e) =>
         {
-            _formatMode = dialog.SelectedMode;
-            _customFileName = dialog.CustomFileName;
-            _counterDigits = dialog.CounterDigits;
+            _settings.FileNameFormat = dialog.SelectedMode;
+            _settings.CustomFileName = dialog.CustomFileName;
+            _settings.CounterDigits = dialog.CounterDigits;
             _lblFilePreview.Text = $"z.B.) {GenerateExampleFileName()}.pdf";
         };
 
         if (dialog.ShowDialog() == DialogResult.OK)
         {
-            _formatMode = dialog.SelectedMode;
-            _customFileName = dialog.CustomFileName;
-            _counterDigits = dialog.CounterDigits;
+            _settings.FileNameFormat = dialog.SelectedMode;
+            _settings.CustomFileName = dialog.CustomFileName;
+            _settings.CounterDigits = dialog.CounterDigits;
 
             // Update preview in main tab
             _lblFilePreview.Text = $"z.B.) {GenerateExampleFileName()}.pdf";
@@ -196,11 +185,11 @@ internal class SaveTabContent : Panel
     /// </summary>
     public string GenerateExampleFileName()
     {
-        return _formatMode switch
+        return _settings.FileNameFormat switch
         {
             FileNameFormatDialog.FormatMode.OsDefault => DateTime.Now.ToString("yyyyMMdd_HHmmss"),
             FileNameFormatDialog.FormatMode.Timestamp => DateTime.Now.ToString("yyyyMMddHHmmss"),
-            FileNameFormatDialog.FormatMode.Custom => $"{_customFileName}_{new string('0', _counterDigits)}",
+            FileNameFormatDialog.FormatMode.Custom => $"{_settings.CustomFileName}_{new string('0', _settings.CounterDigits)}",
             _ => "unbenannt_000"
         };
     }
