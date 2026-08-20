@@ -36,7 +36,8 @@ internal sealed class WiaEventWatcher : IDisposable
     private static void LogDiag(string msg) => DiagLog.WriteWia(msg);
 
     /// <summary>
-    /// Checks if our handler is already registered (read-only, no admin needed).
+    /// Checks if our handler is already registered AND points to the VBS
+    /// next to the current exe (not a stale AppData path from an older version).
     /// </summary>
     internal static bool IsHandlerRegistered()
     {
@@ -45,7 +46,22 @@ internal sealed class WiaEventWatcher : IDisposable
             using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(ScanButtonGlobalKey, false);
             if (key == null) return false;
             using var ourKey = key.OpenSubKey(OurGuid, false);
-            return ourKey != null;
+            if (ourKey == null) return false;
+
+            // Check that the registered Cmdline points to the VBS next to our exe
+            var cmdLine = ourKey.GetValue("Cmdline") as string ?? "";
+            var exePath = Environment.ProcessPath ?? "";
+            var appDir = Path.GetDirectoryName(exePath) ?? "";
+            var expectedVbsPath = Path.Combine(appDir, "scanbutton.vbs");
+            var expectedCmdLine = $"wscript.exe \"{expectedVbsPath}\" /StiDevice:%1 /StiEvent:%2";
+
+            if (!string.Equals(cmdLine, expectedCmdLine, StringComparison.OrdinalIgnoreCase))
+            {
+                LogDiag($"IsHandlerRegistered: Cmdline mismatch. Registered: {cmdLine} | Expected: {expectedCmdLine}");
+                return false;
+            }
+
+            return true;
         }
         catch { return false; }
     }
@@ -70,14 +86,12 @@ internal sealed class WiaEventWatcher : IDisposable
 
             if (!File.Exists(vbsPath))
             {
-                // Fallback: generate VBS in LocalAppData (legacy behavior)
-                var localDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "SpeedScanManager");
-                Directory.CreateDirectory(localDir);
-                vbsPath = Path.Combine(localDir, "scanbutton.vbs");
+                // Generate VBS next to the exe so the registry entry always
+                // points to the correct location.
                 var vbsContent = $@"Set WshShell = CreateObject(""WScript.Shell"")
-WshShell.Run """"""{srcExe}"""""" & "" /scanbutton"" & BuildArgs(), 0, False
+Set fso = CreateObject(""Scripting.FileSystemObject"")
+exePath = fso.BuildPath(fso.GetParentFolderName(WScript.ScriptFullName), ""SpeedScanManager.exe"")
+WshShell.Run """""" & exePath & """""" & "" /scanbutton"" & BuildArgs(), 0, False
 
 Function BuildArgs()
     Dim args, i
@@ -89,7 +103,7 @@ Function BuildArgs()
 End Function
 ";
                 File.WriteAllText(vbsPath, vbsContent);
-                LogDiag($"  Generated fallback VBS launcher at {vbsPath}");
+                LogDiag($"  Generated VBS launcher at {vbsPath}");
             }
             else
             {
