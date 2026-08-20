@@ -280,6 +280,67 @@ internal class ScanPipeline : IDisposable
 
             // Duplex / Simplex — must be set even in long page mode
             ConfigureScanSide(effectiveSide);
+
+            // Color mode — must be set even in long page mode, otherwise the
+            // scanner uses its default (B/W) regardless of user settings.
+            try
+            {
+                var pixelType = _settings.ColorMode switch
+                {
+                    ColorMode.Color => PixelType.RGB,
+                    ColorMode.Grayscale => PixelType.Gray,
+                    ColorMode.BlackWhite => PixelType.BlackWhite,
+                    _ => PixelType.RGB // Automatic
+                };
+                _currentSource.Capabilities.ICapPixelType.SetValue(pixelType);
+                LogDiag($"Long page mode: PixelType set to {pixelType}");
+            }
+            catch (Exception ex)
+            {
+                LogDiag($"Long page mode: PixelType cap failed: {ex.Message}");
+            }
+
+            // Resolution based on image quality
+            try
+            {
+                var dpi = _settings.ImageQuality switch
+                {
+                    ImageQuality.Normal => 150,
+                    ImageQuality.Fine => 200,
+                    ImageQuality.Best => 300,
+                    ImageQuality.Excellent => 600,
+                    _ => 200 // Automatic
+                };
+                _currentSource.Capabilities.ICapXResolution.SetValue(dpi);
+                _currentSource.Capabilities.ICapYResolution.SetValue(dpi);
+                LogDiag($"Long page mode: Resolution set to {dpi} DPI");
+            }
+            catch (Exception ex)
+            {
+                LogDiag($"Long page mode: Resolution cap failed: {ex.Message}");
+            }
+
+            // Re-apply long page frame after capability changes, since the
+            // PaperStream IP driver may have reset it.
+            try
+            {
+                var longFrame = new TWFrame
+                {
+                    Left = 0,
+                    Right = 8.5f,
+                    Top = 0,
+                    Bottom = 125f
+                };
+                _currentSource.Capabilities.ICapFrames.SetValue(longFrame);
+                SetCustomCapFix32(40984, 125f);
+                SetCustomCapUInt16(41095, 3); // Long Page mode
+                LogDiag("Long page mode: re-applied frame after capability changes");
+            }
+            catch (Exception ex)
+            {
+                LogDiag($"Long page mode: re-apply frame failed: {ex.Message}");
+            }
+
             return;
         }
 
