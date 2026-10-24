@@ -227,6 +227,9 @@ internal static class HelpContent
             <li><b>Scan abbrechen</b> – Nur sichtbar, solange ein Scan läuft</li>
             <li><b>Scanner auswählen...</b> – Öffnet den Dialog zur Scanner-Auswahl</li>
             <li><b>Einstellungen der SCAN Taste...</b> – Öffnet das Einstellungsdialogfeld</li>
+            <li><b>Scan-Taste einrichten...</b> – Richtet die Scan-Taste am Scanner (erneut) ein, z. B. nach dem
+            Anschließen eines weiteren Scanners oder wenn die Administrator-Abfrage abgelehnt wurde
+            (siehe <a href='#scan-button'>Scan-Taste am Scanner</a>)</li>
             <li><b>Profilverwaltung...</b> – Verwaltung der Scan-Profile</li>
             <li><b>E-Mail-Einstellungen...</b> – Öffnet die <a href='#email-options'>Scan to E-Mail-Optionen</a>
             (auch bei aktivem Quick-Menü erreichbar)</li>
@@ -234,12 +237,14 @@ internal static class HelpContent
             <li><b>Scan-Ergebnis anzeigen</b> – Zeigt die zuletzt gespeicherte Datei im Explorer an
             (erst nach einem Scan verfügbar)</li>
             <li><b>Hilfe</b> – Untermenü mit <b>Hilfethemen</b> und <b>Versionsinformationen</b></li>
-            <li><b>Beenden</b> – Beendet SpeedScan Manager (bei laufendem Scan nach Rückfrage)</li>
+            <li><b>Beenden</b> – Beendet SpeedScan Manager (bei laufendem Scan nach Rückfrage; wird der Scan
+            gerade gespeichert, beendet sich das Programm erst danach)</li>
         </ul>
 
         <h2>Autostart</h2>
         <p>Im Einstellungsdialogfeld legt das Kontrollkästchen <b>SpeedScan Manager beim Anmelden starten</b>
-        fest, ob das Programm mit Windows startet. Die Option ist standardmäßig aktiviert.</p>
+        fest, ob das Programm mit Windows startet. Bei einer Neuinstallation ist die Option aktiviert;
+        nach einem Update von Version 0.1.x bleibt sie ausgeschaltet, bis Sie sie aktivieren.</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
@@ -416,9 +421,11 @@ internal static class HelpContent
 
         <h2>Einrichtung</h2>
         <p>Die Einrichtung erfordert Administratorrechte und erfolgt beim Start einmalig mit einer
-        UAC-Abfrage. Danach sind keine Administratorrechte mehr nötig. Wenn Sie die Abfrage ablehnen,
-        wird die Scan-Taste nicht eingerichtet und die Abfrage nicht erneut angezeigt; Sie können weiterhin
-        über das Tray-Menü scannen.</p>
+        UAC-Abfrage. Danach sind keine Administratorrechte mehr nötig. Wird später ein weiterer Scanner
+        angeschlossen, erscheint die Abfrage beim nächsten Start noch einmal, damit auch seine Taste eingerichtet wird.
+        Wenn Sie die Abfrage ablehnen, wird die Scan-Taste nicht eingerichtet und die Abfrage nicht erneut angezeigt;
+        Sie können weiterhin über das Tray-Menü scannen. Mit <b>Scan-Taste einrichten...</b> im Tray-Menü
+        starten Sie die Einrichtung jederzeit erneut (eine UAC-Abfrage).</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
@@ -464,8 +471,11 @@ internal static class HelpContent
         <h2>Scan abbrechen</h2>
         <p>Solange ein Scan läuft, steht im Tray-Menü der Eintrag <b>Scan abbrechen</b> zur Verfügung.
         Die bis dahin gescannten Seiten werden verworfen; es erscheint die Sprechblase „Scan abgebrochen“.
+        Das gilt auch, während die Meldung zum Mehrfacheinzug oder die Frage „Weitere Dokumente scannen?“ angezeigt wird.
         Wenn Sie <b>Beenden</b> wählen, während ein Scan läuft, werden Sie gefragt, ob der Scan abgebrochen
-        und das Programm beendet werden soll.</p>
+        und das Programm beendet werden soll. Wird der Scan bereits verarbeitet und gespeichert, beendet sich
+        SpeedScan Manager erst, wenn die Datei vollständig geschrieben ist; bereits gespeicherte Scans werden
+        beim Beenden (auch beim Abmelden von Windows) nie gelöscht.</p>
 
         <h2>Scanvorgang fortsetzen</h2>
         <p>Ist auf der [Scanmodus] Registerkarte das Kontrollkästchen
@@ -661,7 +671,9 @@ internal static class HelpContent
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
             <p>Die E-Mail- und Druckeinstellungen sind auch im Tray-Menü erreichbar
-            (<b>E-Mail-Einstellungen...</b>, <b>Druckeinstellungen...</b>), z. B. bei aktivem Quick-Menü.</p>
+            (<b>E-Mail-Einstellungen...</b>, <b>Druckeinstellungen...</b>), z. B. bei aktivem Quick-Menü.
+            Dort geänderte Werte gelten sofort und werden auch im aktiven eigenen Profil gespeichert
+            (Standardprofile bleiben unverändert).</p>
         </div>
 
         <div class='see-also'>Siehe auch:
@@ -801,13 +813,14 @@ internal static class HelpContent
         Unter <b>Zielmarkierung</b> wählen Sie, ob nur die erste oder alle markierten Stellen verwendet werden.</p>
 
         <p><b>[Sprache] Auswahlliste</b><br>
-        Die Liste enthält Automatische Erkennung, Deutsch, Japanisch, Englisch, Französisch, Italienisch,
-        Spanisch, Chinesisch (vereinfacht/traditionell), Koreanisch, Russisch, Portugiesisch und Arabisch.
-        Mitgeliefert sind nur die Sprachdaten für <b>Deutsch</b> und <b>Englisch</b>.
-        Für weitere Sprachen legen Sie die passende <code>.traineddata</code>-Datei
-        (z. B. <code>fra.traineddata</code>, <code>jpn.traineddata</code>, <code>chi_sim.traineddata</code>)
-        in den Ordner <code>tessdata</code> neben <code>SpeedScanManager.exe</code>. Fehlen die Daten der gewählten Sprache,
-        erscheint eine Sprechblase und es werden die vorhandenen Sprachen (bevorzugt Deutsch/Englisch) verwendet.
+        Die Liste enthält <b>Automatische Erkennung</b> und die installierten Sprachen.
+        Mitgeliefert sind die Sprachdaten für <b>Deutsch</b> und <b>Englisch</b>.
+        Weitere Sprachen (Japanisch, Französisch, Italienisch, Spanisch, Chinesisch vereinfacht/traditionell,
+        Koreanisch, Russisch, Portugiesisch, Arabisch) erscheinen in der Liste, sobald Sie die passende
+        <code>.traineddata</code>-Datei (z. B. <code>fra.traineddata</code>, <code>jpn.traineddata</code>,
+        <code>chi_sim.traineddata</code>) in den Ordner <code>tessdata</code> neben <code>SpeedScanManager.exe</code> legen.
+        Ist eine gespeicherte Sprache nicht mehr installiert, wird sie mit dem Zusatz „(nicht installiert)“ angezeigt;
+        beim Scannen erscheint dann eine Sprechblase und es werden die vorhandenen Sprachen (bevorzugt Deutsch/Englisch) verwendet.
         Bei <b>Automatische Erkennung</b> wird anhand der erkannten Schrift pro Seite die passende installierte Sprache
         gewählt, sonst Deutsch und Englisch.</p>
 
@@ -984,7 +997,9 @@ internal static class HelpContent
         <p><b>Kennwort / Bestätigen</b><br>
         Geben Sie das gewünschte Kennwort ein und bestätigen Sie es. Es wird für das Öffnen
         des Dokuments verwendet. Das Kennwort wird verschlüsselt (nur für Ihr Windows-Benutzerkonto lesbar)
-        in den Einstellungen gespeichert.</p>
+        in den Einstellungen gespeichert. Kann es nicht gelesen werden (z. B. Einstellungen von einem anderen
+        Benutzer oder PC), bleibt der Kennwortschutz eingeschaltet und SpeedScan Manager fragt vor dem nächsten
+        Scan nach; geben Sie das Kennwort dann hier neu ein.</p>
 
         <div class='see-also'>Siehe auch:
             <ul>
@@ -999,10 +1014,14 @@ internal static class HelpContent
         automatisch gespeichert werden. Unten wird ein Beispiel für den Dateinamen angezeigt.</p>
 
         <h2>Datum und Uhrzeit</h2>
-        <p><b>[Benutzen Sie die Einstellung Ihres Betriebssystems]</b> und <b>[JJJJMMTThhmmss]</b><br>
-        Beide Optionen erzeugen derzeit denselben Dateinamen aus Datum und Uhrzeit im Format
-        <code>JahrMonatTagStundeMinuteSekunde</code>, z. B. <code>20260412153045.pdf</code> (Grundeinstellung).
-        Bei einem bereits vorhandenen Namen wird <code>_1</code>, <code>_2</code> usw. angehängt.</p>
+        <p><b>[Benutzen Sie die Einstellung Ihres Betriebssystems]</b><br>
+        Der Dateiname besteht aus Datum und Uhrzeit im kurzen Datums- und im Zeitformat von Windows.
+        Zeichen, die in Dateinamen nicht erlaubt sind (z. B. <code>:</code> und <code>/</code>), werden durch
+        <code>-</code> ersetzt, z. B. <code>12.04.2026 15-30-45.pdf</code> bei deutschem Windows.</p>
+        <p><b>[JJJJMMTThhmmss]</b><br>
+        Der Dateiname besteht aus Datum und Uhrzeit im Format <code>JahrMonatTagStundeMinuteSekunde</code>,
+        z. B. <code>20260412153045.pdf</code> (Grundeinstellung).</p>
+        <p>Bei einem bereits vorhandenen Namen wird <code>_1</code>, <code>_2</code> usw. angehängt.</p>
 
         <h2>Benutzerdefinierter Dateiname</h2>
         <p><b>Dateiname</b> – Bis zu 30 Zeichen für den Anfang des Dateinamens (Grundeinstellung „unbenannt“).
@@ -1482,6 +1501,8 @@ internal static class HelpContent
             "Der Ordner \"...\" existiert nicht. (Scan-Ergebnis anzeigen)",
             "Es läuft gerade ein Scanvorgang. Scan abbrechen und SpeedScan Manager beenden?",
             "Der letzte Scan ist noch nicht abgeschlossen. SpeedScan Manager trotzdem beenden?",
+            "Das PDF-Passwort konnte nicht gelesen werden, bitte neu eingeben (Einstellungen > Dateiart > Option > Kennwort).",
+            "Die Einrichtung der Scan-Taste wurde abgebrochen. / Die Scan-Taste konnte nicht eingerichtet werden.",
             "Es können höchstens 20 Profile angelegt werden.",
             "Das Standardprofil \"...\" kann nicht geändert werden. Möchten Sie die geänderten Einstellungen als neues Profil speichern?",
             "In SpeedScan Manager ist ein unerwarteter Fehler aufgetreten. Das Programm läuft weiter. (Details stehen in %LocalAppData%\\SpeedScanManager\\crash.log.)",
@@ -1496,6 +1517,8 @@ internal static class HelpContent
             "Scan verworfen: Der Scan wurde gelöscht.",
             "Scan gespeichert: Dateiname und Ordner bzw. Anzahl der Dateien.",
             "Drucken: Das Dokument wurde an den Drucker gesendet.",
+            "Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet.",
+            "Die Scan-Taste ist eingerichtet. Ein Druck auf die Taste startet einen Scan.",
             "Hinweis zum Scan: Der Scanner hat nicht mehr reagiert. Der Scanvorgang wurde abgebrochen.",
             "Hinweis zum Scan: Eine oder mehrere Seiten konnten nicht übertragen werden.",
             "Hinweis zum Scan: Der Scanner unterstützt den Farbmodus nicht / kein Flachbett (der Einzug wird verwendet) / keinen Duplex-Scan (es wurde einseitig gescannt).",

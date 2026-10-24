@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Principal;
 using System.Windows.Forms;
 
 namespace SpeedScanManager;
@@ -18,11 +19,18 @@ namespace SpeedScanManager;
 ///                 Windows default handler. Exit code 0/1.
 ///
 /// Single instance: named mutex <see cref="MutexName"/> (per logon session).
-/// Pipe protocol: see <see cref="ScanButtonPipeServer"/>.
+/// Pipe protocol: see <see cref="ScanButtonPipeServer"/>; the pipe name contains the session
+/// id and the user SID (<see cref="PipeName"/>), so instances of other users or sessions
+/// (fast user switching, RDP) never receive each other's commands.
 /// </summary>
 internal static class Program
 {
-    internal const string PipeName = "SpeedScanManager_ScanButton";
+    /// <summary>
+    /// "SpeedScanManager_ScanButton_{session id}_{user SID}". The STI scan button handler
+    /// launches "/scanbutton" in the interactive user's session as that user, so the client
+    /// computes the same name as the tray instance it must reach.
+    /// </summary>
+    internal static string PipeName { get; } = BuildPipeName();
     internal const string MutexName = @"Local\SpeedScanManager_SingleInstance";
 
     /// <summary>
@@ -176,6 +184,25 @@ internal static class Program
             File.AppendAllText(CrashLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{source}] {ex}{Environment.NewLine}{Environment.NewLine}");
         }
         catch { }
+    }
+
+    private static string BuildPipeName()
+    {
+        int sessionId = 0;
+        string user = Environment.UserName;
+        try
+        {
+            using var process = Process.GetCurrentProcess();
+            sessionId = process.SessionId;
+        }
+        catch { }
+        try
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            user = identity.User?.Value ?? user;
+        }
+        catch { }
+        return $"SpeedScanManager_ScanButton_{sessionId}_{user}";
     }
 
     private static bool HasArg(string[] args, string name) =>

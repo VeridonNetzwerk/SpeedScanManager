@@ -46,6 +46,13 @@ internal class PostScanSaveDialog : Form
     /// </summary>
     public bool ConfirmDiscardOnCancel { get; set; } = true;
 
+    /// <summary>
+    /// True only when the user explicitly answered "Ja" to "Scan verwerfen?". Every other
+    /// way the dialog closes without OK (Windows logoff/shutdown, application exit, no
+    /// confirmation) must keep the already saved files.
+    /// </summary>
+    public bool DiscardConfirmed { get; private set; }
+
     public PostScanSaveDialog(IReadOnlyList<Bitmap> scanImages, ScanSettings settings, string defaultTitle, string defaultFolder)
     {
         _scanImages = scanImages;
@@ -374,6 +381,7 @@ internal class PostScanSaveDialog : Form
                 DialogResult = DialogResult.None;
                 return;
             }
+            DiscardConfirmed = true;
         }
         base.OnFormClosing(e);
     }

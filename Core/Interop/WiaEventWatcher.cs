@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.ServiceProcess;
 using Microsoft.Win32;
 
 namespace SpeedScanManager;
@@ -61,29 +62,51 @@ internal static class WiaEventWatcher
     }
 
     /// <summary>
-    /// Cheap check (one registry read, no elevation): is our handler registered and does
-    /// its command line point to the current exe?
+    /// Cheap check (registry reads only, no elevation): is our handler registered with the
+    /// current exe in the global ScanButton key and in the ScanButton event key of every
+    /// installed imaging device? A scanner installed after the setup has its own event key
+    /// without our handler, so the setup has to run again for it.
     /// </summary>
     internal static bool IsHandlerRegistered()
     {
         try
         {
-            using var key = Registry.LocalMachine.OpenSubKey(ScanButtonGlobalKey, false);
-            if (key == null) return false;
-            using var ourKey = key.OpenSubKey(OurGuid, false);
-            if (ourKey == null) return false;
-
-            var cmdLine = ourKey.GetValue("Cmdline") as string ?? "";
-            var expected = ExpectedCmdLine;
-            if (!string.Equals(cmdLine.Trim(), expected, StringComparison.OrdinalIgnoreCase))
-            {
-                LogDiag($"IsHandlerRegistered: Cmdline mismatch. Registered: {cmdLine} | Expected: {expected}");
+            if (!IsHandlerRegisteredIn(ScanButtonGlobalKey))
                 return false;
-            }
 
+            foreach (var evtPath in EnumerateDeviceEventKeys(scanButtonOnly: true))
+            {
+                if (!IsHandlerRegisteredIn(evtPath))
+                    return false;
+            }
             return true;
         }
         catch { return false; }
+    }
+
+    private static bool IsHandlerRegisteredIn(string keyPath)
+    {
+        using var key = Registry.LocalMachine.OpenSubKey(keyPath, false);
+        if (key == null)
+        {
+            LogDiag($"IsHandlerRegistered: key not found: {keyPath}");
+            return false;
+        }
+        using var ourKey = key.OpenSubKey(OurGuid, false);
+        if (ourKey == null)
+        {
+            LogDiag($"IsHandlerRegistered: no handler in {keyPath}");
+            return false;
+        }
+
+        var cmdLine = ourKey.GetValue("Cmdline") as string ?? "";
+        var expected = ExpectedCmdLine;
+        if (!string.Equals(cmdLine.Trim(), expected, StringComparison.OrdinalIgnoreCase))
+        {
+            LogDiag($"IsHandlerRegistered: Cmdline mismatch in {keyPath}. Registered: {cmdLine} | Expected: {expected}");
+            return false;
+        }
+        return true;
     }
 
     // ───────────────────────── Elevation (called by the tray) ─────────────────────────
@@ -92,8 +115,10 @@ internal static class WiaEventWatcher
     /// Ensures the scan button handler is registered. Call once at startup.
     /// Never blocks the calling thread: the registry check is cheap and the elevated
     /// "/setup" helper is launched on a worker thread. Elevation is attempted at most
-    /// once per session, and not at all if the user declined the UAC prompt before
-    /// (persisted in HKCU, see <see cref="ResetSetupDeclined"/>).
+    /// once per session, not at all if the user declined the UAC prompt before
+    /// (persisted in HKCU, see <see cref="ResetSetupDeclined"/>), and not again for the
+    /// same exe and device set after a setup ran (so a key the setup cannot write doesn't
+    /// cause a UAC prompt at every start; a newly installed scanner changes the set).
     /// Returns true if the handler is registered afterwards.
     /// </summary>
     public static Task<bool> EnsureScanButtonHandlerAsync()
@@ -110,50 +135,104 @@ internal static class WiaEventWatcher
             return Task.FromResult(false);
         }
 
+        if (string.Equals(ReadSetupFingerprint(), ComputeSetupFingerprint(), StringComparison.OrdinalIgnoreCase))
+        {
+            LogDiag("EnsureScanButtonHandler: setup already ran for this exe and these devices, skipping");
+            return Task.FromResult(false);
+        }
+
         if (Interlocked.Exchange(ref _elevationAttempted, 1) == 1)
         {
             LogDiag("EnsureScanButtonHandler: elevation already attempted in this session");
             return Task.FromResult(false);
         }
 
-        return Task.Run(() =>
-        {
-            try
-            {
-                LogDiag("EnsureScanButtonHandler: launching elevated /setup");
-                var psi = new ProcessStartInfo
-                {
-                    FileName = ExePath,
-                    Arguments = "/setup",
-                    Verb = "runas",
-                    UseShellExecute = true
-                };
-                using var proc = Process.Start(psi);
-                if (proc != null)
-                {
-                    if (proc.WaitForExit(60000))
-                        LogDiag($"EnsureScanButtonHandler: setup exited with {proc.ExitCode}");
-                    else
-                        LogDiag("EnsureScanButtonHandler: setup still running after 60 s");
-                }
-            }
-            catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
-            {
-                // ERROR_CANCELLED: the user declined the UAC prompt — don't ask again.
-                LogDiag("EnsureScanButtonHandler: UAC declined, persisting decision");
-                SetSetupDeclined(true);
-                return false;
-            }
-            catch (Exception ex)
-            {
-                LogDiag($"EnsureScanButtonHandler: failed to launch setup: {ex.Message}");
-                return false;
-            }
+        return Task.Run(RunElevatedSetup);
+    }
 
-            var ok = IsHandlerRegistered();
-            LogDiag($"EnsureScanButtonHandler: registered={ok}");
-            return ok;
-        });
+    /// <summary>
+    /// "Scan-Taste einrichten…" (tray menu): clears the "declined" flag and always runs the
+    /// elevated setup (one UAC prompt), also to repair an existing registration.
+    /// Returns true if the handler is registered afterwards.
+    /// </summary>
+    public static Task<bool> SetupScanButtonInteractiveAsync()
+    {
+        ResetSetupDeclined();
+        Interlocked.Exchange(ref _elevationAttempted, 1);
+        return Task.Run(RunElevatedSetup);
+    }
+
+    private static bool RunElevatedSetup()
+    {
+        try
+        {
+            LogDiag("ScanButtonSetup: launching elevated /setup");
+            var psi = new ProcessStartInfo
+            {
+                FileName = ExePath,
+                Arguments = "/setup",
+                Verb = "runas",
+                UseShellExecute = true
+            };
+            using var proc = Process.Start(psi);
+            if (proc != null)
+            {
+                if (proc.WaitForExit(60000))
+                    LogDiag($"ScanButtonSetup: setup exited with {proc.ExitCode}");
+                else
+                    LogDiag("ScanButtonSetup: setup still running after 60 s");
+            }
+            WriteSetupFingerprint(ComputeSetupFingerprint());
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            // ERROR_CANCELLED: the user declined the UAC prompt — don't ask again.
+            LogDiag("ScanButtonSetup: UAC declined, persisting decision");
+            SetSetupDeclined(true);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"ScanButtonSetup: failed to launch setup: {ex.Message}");
+            return false;
+        }
+
+        var ok = IsHandlerRegistered();
+        LogDiag($"ScanButtonSetup: registered={ok}");
+        return ok;
+    }
+
+    private const string SetupFingerprintValueName = "ScanButtonSetupFingerprint";
+
+    /// <summary>Exe path + the ScanButton event keys of the installed imaging devices.</summary>
+    private static string ComputeSetupFingerprint()
+    {
+        var keys = EnumerateDeviceEventKeys(scanButtonOnly: true)
+            .OrderBy(k => k, StringComparer.OrdinalIgnoreCase);
+        return ExePath + "|" + string.Join(";", keys);
+    }
+
+    private static string? ReadSetupFingerprint()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(AppRegKey, false);
+            return key?.GetValue(SetupFingerprintValueName) as string;
+        }
+        catch { return null; }
+    }
+
+    private static void WriteSetupFingerprint(string fingerprint)
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(AppRegKey, true);
+            key.SetValue(SetupFingerprintValueName, fingerprint, RegistryValueKind.String);
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"WriteSetupFingerprint failed: {ex.Message}");
+        }
     }
 
     /// <summary>True if the user declined the UAC prompt for the scan button setup.</summary>
@@ -167,7 +246,7 @@ internal static class WiaEventWatcher
         catch { return false; }
     }
 
-    /// <summary>Clears the persisted "declined" flag (e.g. from a settings button "Scan-Taste einrichten").</summary>
+    /// <summary>Clears the persisted "declined" flag (used by <see cref="SetupScanButtonInteractiveAsync"/>).</summary>
     public static void ResetSetupDeclined()
     {
         SetSetupDeclined(false);
@@ -583,40 +662,65 @@ internal static class WiaEventWatcher
         return ok;
     }
 
+    private static readonly TimeSpan ServiceTimeout = TimeSpan.FromSeconds(20);
+
+    /// <summary>
+    /// Restarts the WIA service (stisvc) so it re-reads the event handlers. The start is
+    /// always attempted (finally), so a failed or timed-out stop never leaves the service
+    /// stopped — without it no scanner works.
+    /// </summary>
     private static void RestartWiaService()
     {
+        ServiceController? service = null;
         try
         {
             LogDiag("  Restarting WIA service (stisvc)...");
-            var psi = new ProcessStartInfo
+            service = new ServiceController("stisvc");
+            service.Refresh();
+            if (service.Status is ServiceControllerStatus.Running or ServiceControllerStatus.StartPending
+                                  or ServiceControllerStatus.Paused)
             {
-                FileName = "net.exe",
-                Arguments = "stop stisvc",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            };
-            using var stopProc = Process.Start(psi);
-            if (stopProc != null)
-            {
-                stopProc.WaitForExit(10000);
-                LogDiag($"  net stop stisvc: exit={stopProc.ExitCode}");
+                if (service.CanStop)
+                {
+                    service.Stop();
+                    service.WaitForStatus(ServiceControllerStatus.Stopped, ServiceTimeout);
+                    LogDiag("  stisvc stopped");
+                }
+                else
+                {
+                    LogDiag("  stisvc cannot be stopped right now, not restarting");
+                }
             }
-            Thread.Sleep(1000);
-            psi.Arguments = "start stisvc";
-            using var startProc = Process.Start(psi);
-            if (startProc != null)
-            {
-                startProc.WaitForExit(10000);
-                LogDiag($"  net start stisvc: exit={startProc.ExitCode}");
-            }
-            Thread.Sleep(2000);
-            LogDiag("  WIA service restarted");
         }
         catch (Exception ex)
         {
-            LogDiag($"  RestartWiaService failed: {ex.Message}");
+            LogDiag($"  Stopping stisvc failed: {ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            try
+            {
+                service ??= new ServiceController("stisvc");
+                service.Refresh();
+                if (service.Status == ServiceControllerStatus.StopPending)
+                    service.WaitForStatus(ServiceControllerStatus.Stopped, ServiceTimeout);
+                service.Refresh();
+                if (service.Status == ServiceControllerStatus.Stopped)
+                {
+                    service.Start();
+                    service.WaitForStatus(ServiceControllerStatus.Running, ServiceTimeout);
+                }
+                service.Refresh();
+                LogDiag($"  stisvc status: {service.Status}");
+            }
+            catch (Exception ex)
+            {
+                LogDiag($"  Starting stisvc failed: {ex.GetType().Name}: {ex.Message}");
+            }
+            finally
+            {
+                service?.Dispose();
+            }
         }
     }
 }

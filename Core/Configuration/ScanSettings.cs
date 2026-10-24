@@ -39,6 +39,14 @@ internal class ScanSettings
     [JsonIgnore]
     public string PdfPassword { get; set; } = "";
 
+    /// <summary>
+    /// Password protection is on but no password is available, e.g. the stored DPAPI value
+    /// could not be decrypted (settings copied from another user or PC). The scan flow must
+    /// ask for a new password instead of silently writing an unprotected PDF.
+    /// </summary>
+    [JsonIgnore]
+    public bool PdfPasswordMissing => PdfUsePassword && string.IsNullOrEmpty(PdfPassword);
+
     /// <summary>DPAPI-protected (CurrentUser) form of <see cref="PdfPassword"/>, used for persistence.</summary>
     [DerivedSetting]
     public string PdfPasswordProtected
@@ -114,6 +122,22 @@ internal class ScanSettings
         .ToArray();
 
     /// <summary>
+    /// Names of the settings whose values differ from <paramref name="other"/>
+    /// ("CustomPaperSizes" for the paper size list).
+    /// </summary>
+    public HashSet<string> DifferingSettings(ScanSettings other)
+    {
+        var result = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var p in ValueProperties)
+        {
+            if (!Equals(p.GetValue(this), p.GetValue(other))) result.Add(p.Name);
+        }
+        if (!CustomPaperSizes.SequenceEqual(other.CustomPaperSizes))
+            result.Add(nameof(CustomPaperSizes));
+        return result;
+    }
+
+    /// <summary>
     /// Compares all setting values with another instance (custom paper sizes element-wise).
     /// </summary>
     public bool SettingsEqual(ScanSettings other)
@@ -155,19 +179,12 @@ internal class ScanSettings
     /// </summary>
     public void Normalize()
     {
-        ImageQuality = Defined(ImageQuality, ImageQuality.Automatic);
-        ColorMode = Defined(ColorMode, ColorMode.Color);
-        ScanSide = Defined(ScanSide, ScanSide.Automatic);
-        FileFormat = Defined(FileFormat, FileFormat.Pdf);
-        PdfSplitMode = Defined(PdfSplitMode, PdfSplitMode.MultiPage);
-        OcrLanguage = Defined(OcrLanguage, OcrLanguage.Automatisch);
-        OcrTargetPages = Defined(OcrTargetPages, OcrTargetPages.AllPages);
-        KeywordTarget = Defined(KeywordTarget, KeywordTarget.FirstMarkedSection);
-        CarrierSheetOutputSize = Defined(CarrierSheetOutputSize, CarrierSheetOutputSize.Automatic);
-        PaperSize = Defined(PaperSize, PaperSizeMode.Automatic);
-        MultiFeedDetection = Defined(MultiFeedDetection, MultiFeedDetection.Off);
-        FileNameFormat = Defined(FileNameFormat, FileNameFormatDialog.FormatMode.Timestamp);
-        ApplicationType = Defined(ApplicationType, ApplicationType.ScanToFolder);
+        // Undefined enum values fall back to the property's initializer default.
+        foreach (var p in EnumProperties)
+        {
+            if (!Enum.IsDefined(p.PropertyType, p.GetValue(this)!))
+                p.SetValue(this, p.GetValue(Defaults));
+        }
 
         Brightness = Math.Clamp(Brightness, -3, 3);
         CompressionRate = Math.Clamp(CompressionRate, 1, 5);
@@ -188,8 +205,8 @@ internal class ScanSettings
             FolderPath = DefaultFolderPath;
         if (FileNamePattern.ValidateCustomName(CustomFileName) != null)
             CustomFileName = FileNamePattern.DefaultCustomName;
-        if (PdfUsePassword && string.IsNullOrEmpty(PdfPassword))
-            PdfUsePassword = false;
+        // PdfUsePassword with an empty password is kept on purpose (see PdfPasswordMissing):
+        // turning protection off here would make the next scan write an unprotected PDF.
 
         // Custom paper sizes: drop invalid entries, enforce limits
         var sizes = CustomPaperSizes
@@ -232,8 +249,13 @@ internal class ScanSettings
             ApplicationType = ApplicationType.ScanToFolder;
     }
 
-    private static T Defined<T>(T value, T fallback) where T : struct, Enum
-        => Enum.IsDefined(value) ? value : fallback;
+    private static readonly PropertyInfo[] EnumProperties = ValueProperties
+        .Where(p => p.PropertyType.IsEnum)
+        .ToArray();
+
+    /// <summary>Freshly constructed instance: the initializer defaults of every property.</summary>
+    private static ScanSettings Defaults => _defaults ??= new ScanSettings();
+    private static ScanSettings? _defaults;
 }
 
 /// <summary>

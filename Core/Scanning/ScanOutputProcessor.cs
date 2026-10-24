@@ -261,6 +261,9 @@ internal class ScanOutputProcessor
         }
         catch
         {
+            // Don't leave a partial result behind (e.g. the first PDF of a split scan, or
+            // files of a run that the caller retries in the fallback folder).
+            DeleteCreatedFiles(result.Files);
             result.Dispose();
             throw;
         }
@@ -270,6 +273,26 @@ internal class ScanOutputProcessor
                 if (page.Owned) page.Bmp.Dispose();
             osd?.Dispose();
         }
+    }
+
+    private static void DeleteCreatedFiles(List<string> files)
+    {
+        foreach (var file in files)
+        {
+            try
+            {
+                if (File.Exists(file))
+                {
+                    File.Delete(file);
+                    LogDiag($"Process: removed partial output {file}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogDiag($"Process: could not remove partial output {file}: {ex.Message}");
+            }
+        }
+        files.Clear();
     }
 
     private static void AddWarning(ScanOutputResult result, string warning)
@@ -483,8 +506,11 @@ internal class ScanOutputProcessor
         var doc = new PdfDocument();
         try
         {
-            // Set password if configured
-            if (_settings.PdfUsePassword && !string.IsNullOrEmpty(_settings.PdfPassword))
+            // Set password if configured. A missing password (PdfPasswordMissing) is caught
+            // by the scan flow before scanning; never fall back to an unprotected file here.
+            if (_settings.PdfPasswordMissing)
+                throw new InvalidOperationException("Das PDF-Passwort konnte nicht gelesen werden. Bitte geben Sie es in den Einstellungen neu ein.");
+            if (_settings.PdfUsePassword)
             {
                 doc.SecuritySettings.UserPassword = _settings.PdfPassword;
                 doc.SecuritySettings.OwnerPassword = _settings.PdfPassword;
@@ -664,7 +690,8 @@ internal class ScanOutputProcessor
 
     /// <summary>
     /// Generates a file name with full format options from SaveTabContent (without folder
-    /// check; for display). Timestamp and OS default use "yyyyMMddHHmmss"; custom names get
+    /// check; for display). Timestamp uses "yyyyMMddHHmmss", OS default the Windows date/time
+    /// format (<see cref="FileNamePattern.FormatTimestamp"/>); custom names get
     /// the first counter value. Use <see cref="GenerateFileName(FileNameFormatDialog.FormatMode, string, int, string, string)"/>
     /// for a name that is unique in a folder.
     /// </summary>
@@ -676,7 +703,7 @@ internal class ScanOutputProcessor
         int digits = Math.Clamp(counterDigits, 1, 9);
         return formatMode == FileNameFormatDialog.FormatMode.Custom
             ? $"{SanitizeFileName(customFileName)}_{1.ToString("D" + digits, CultureInfo.InvariantCulture)}"
-            : DateTime.Now.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
+            : FileNamePattern.FormatTimestamp(formatMode, DateTime.Now);
     }
 
     /// <summary>
@@ -730,7 +757,7 @@ internal class ScanOutputProcessor
 
         var baseName = options.BaseName != null
             ? SanitizeFileName(options.BaseName)
-            : DateTime.Now.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
+            : FileNamePattern.FormatTimestamp(options.FormatMode, DateTime.Now);
         for (int k = 0; ; k++)
         {
             var paths = Build(k == 0 ? baseName : $"{baseName}_{k}");

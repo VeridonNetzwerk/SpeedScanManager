@@ -113,6 +113,7 @@ internal class ScanPipeline : IDisposable
     private volatile bool _discardImages;
     private volatile bool _modalOpen;
     private bool _multiFeedDialogQueued;
+    private MultiFeedWarningDialog? _multiFeedDialog; // UI thread only
     private bool _ignoreMultiFeed;
     private bool _subscribed;
 
@@ -159,6 +160,27 @@ internal class ScanPipeline : IDisposable
     {
         LogDiag("RequestCancel: cancellation requested");
         _cancelRequested = true;
+
+        // An open multi-feed dialog would otherwise keep the scan waiting: close it
+        // (closing means "discard", the same as the cancel request).
+        try
+        {
+            if (!_hiddenWindow.IsDisposed && _hiddenWindow.IsHandleCreated)
+                _hiddenWindow.BeginInvoke(CloseMultiFeedDialog);
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"RequestCancel: could not close the multi-feed dialog: {ex.Message}");
+        }
+    }
+
+    private void CloseMultiFeedDialog()
+    {
+        var dlg = _multiFeedDialog;
+        if (dlg == null || dlg.IsDisposed) return;
+        LogDiag("RequestCancel: closing the multi-feed dialog");
+        dlg.DialogResult = DialogResult.Cancel;
+        dlg.Close();
     }
 
     /// <summary>
@@ -278,15 +300,10 @@ internal class ScanPipeline : IDisposable
                 break;
             }
 
-            // A modal dialog (multi-feed) is waiting for the user: never time out meanwhile.
-            if (_modalOpen)
-            {
-                Interlocked.Exchange(ref _lastActivityTimestamp, Stopwatch.GetTimestamp());
-                continue;
-            }
-
             // User cancel or multi-feed "Wiederholen": give the driver a moment to stop
-            // at the next TransferReady (CancelAll), then force the step-down.
+            // at the next TransferReady (CancelAll), then force the step-down. Checked
+            // before the modal state: a cancel request also applies while the multi-feed
+            // dialog is open (RequestCancel closes it).
             if (_cancelRequested || _cancelAllPending)
             {
                 cancelWatch ??= Stopwatch.StartNew();
@@ -295,6 +312,14 @@ internal class ScanPipeline : IDisposable
                     LogDiag("Scan: driver did not stop after cancel request, forcing step-down");
                     break;
                 }
+                continue;
+            }
+
+            // A modal dialog (multi-feed) is waiting for the user: never time out meanwhile.
+            if (_modalOpen)
+            {
+                Interlocked.Exchange(ref _lastActivityTimestamp, Stopwatch.GetTimestamp());
+                continue;
             }
 
             var limit = _anyEventSeen ? InactivityTimeout : InitialTimeout;
@@ -1089,14 +1114,27 @@ internal class ScanPipeline : IDisposable
     private void HandleMultiFeedDialog(Bitmap? currentPage, Bitmap? previousPage)
     {
         var action = MultiFeedWarningDialog.MultiFeedAction.Rescan;
+        if (_cancelRequested)
+        {
+            // Cancelled before the posted dialog came up: don't show it at all.
+            _multiFeedDialogQueued = false;
+            _modalOpen = false;
+            Touch();
+            return;
+        }
         try
         {
             using var dlg = new MultiFeedWarningDialog(currentPage, previousPage);
+            _multiFeedDialog = dlg;
             action = dlg.ShowDialog(_hiddenWindow) == DialogResult.OK ? dlg.Action : MultiFeedWarningDialog.MultiFeedAction.Rescan;
         }
         catch (Exception ex)
         {
             LogDiag($"Multi-feed dialog failed: {ex.Message}");
+        }
+        finally
+        {
+            _multiFeedDialog = null;
         }
 
         LogDiag($"Multi-feed: user chose {action}");

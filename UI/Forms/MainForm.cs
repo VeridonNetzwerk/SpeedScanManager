@@ -41,6 +41,11 @@ internal class MainForm : Form
     private readonly ScanSettings _liveSettings;
     /// <summary>Working copy edited by all tabs.</summary>
     private readonly ScanSettings _working;
+    /// <summary>
+    /// The working copy as it was when this editing session started (window opened, OK/
+    /// Übernehmen, Abbrechen). Fields that differ from it were edited by the user here.
+    /// </summary>
+    private readonly ScanSettings _sessionBaseline;
     private readonly AppSettings _appSettings;
     private readonly ProfileManager _profileManager;
     private ScanProfile? _activeProfile;
@@ -96,6 +101,7 @@ internal class MainForm : Form
         _liveSettings = liveSettings;
         _liveSettings.Normalize();
         _working = liveSettings.Clone();
+        _sessionBaseline = _working.Clone();
         _profileManager = profileManager;
         _appSettings = appSettings;
         _activeProfile = _profileManager.GetByName(_appSettings.SelectedProfileName);
@@ -785,6 +791,31 @@ internal class MainForm : Form
     }
 
     /// <summary>
+    /// A setting was changed outside this window (tray menu E-Mail-/Druckeinstellungen):
+    /// apply it to the working copy and to the session baseline, so it is neither reverted
+    /// by OK/Übernehmen nor treated as an edit of the user in this window.
+    /// </summary>
+    public void ApplyExternalChange(Action<ScanSettings> change)
+    {
+        change(_working);
+        change(_sessionBaseline);
+        LoadAllTabs();
+        UpdateApplyButton();
+    }
+
+    /// <summary>
+    /// True if the working copy differs from <paramref name="profile"/> in a setting the user
+    /// changed in this window (differences that already existed when the window was opened,
+    /// e.g. e-mail settings changed from the tray, don't count).
+    /// </summary>
+    private bool HasUserChangesAgainst(ScanProfile profile)
+    {
+        var edited = _working.DifferingSettings(_sessionBaseline);
+        if (edited.Count == 0) return false;
+        return _working.DifferingSettings(profile.Settings).Overlaps(edited);
+    }
+
+    /// <summary>
     /// Copies the working copy into the live settings (OK/Übernehmen).
     /// Returns false when the user cancelled a follow-up question.
     /// </summary>
@@ -794,7 +825,8 @@ internal class MainForm : Form
         LoadAllTabs();
 
         // Profile handling (profiles are only active when the Quick-Menü is off)
-        if (!_quickMenuCheckBox.Checked && _activeProfile != null && !_working.SettingsEqual(_activeProfile.Settings))
+        if (!_quickMenuCheckBox.Checked && _activeProfile != null && !_working.SettingsEqual(_activeProfile.Settings)
+            && (!_activeProfile.IsBuiltIn || HasUserChangesAgainst(_activeProfile)))
         {
             if (!_activeProfile.IsBuiltIn)
             {
@@ -835,6 +867,7 @@ internal class MainForm : Form
         _appSettings.QuickMenuEnabled = _quickMenuCheckBox.Checked;
         _appSettings.AutoStart = _autoStartCheckBox.Checked;
         _appSettings.SelectedProfileName = _activeProfile?.Name ?? "";
+        _sessionBaseline.RestoreFrom(_working);
 
         SettingsApplied?.Invoke(this, EventArgs.Empty);
         UpdateApplyButton();
@@ -847,6 +880,7 @@ internal class MainForm : Form
     private void CancelSettings()
     {
         _working.RestoreFrom(_liveSettings);
+        _sessionBaseline.RestoreFrom(_working);
         _activeProfile = _profileManager.GetByName(_appSettings.SelectedProfileName);
         _quickMenuCheckBox.Checked = _appSettings.QuickMenuEnabled;
         _autoStartCheckBox.Checked = _appSettings.AutoStart;

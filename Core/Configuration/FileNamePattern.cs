@@ -1,10 +1,15 @@
+using System.Globalization;
+using System.Text;
+
 namespace SpeedScanManager;
 
 /// <summary>
 /// Single source of truth for output file names. Used by the previews in the settings UI
 /// and intended for the scan output so that preview and real file names always match.
-/// OsDefault and Timestamp both produce "yyyyMMddHHmmss"; Custom produces
-/// "{name}_{counter:D<digits>}" with the counter starting at 1.
+/// Timestamp produces "yyyyMMddHHmmss"; OsDefault uses the Windows short date and long time
+/// format with characters that are invalid in file names replaced by "-" (German Windows:
+/// "24.10.2026 14-30-05"); Custom produces "{name}_{counter:D<digits>}" with the counter
+/// starting at 1.
 /// </summary>
 internal static class FileNamePattern
 {
@@ -32,7 +37,42 @@ internal static class FileNamePattern
             int digits = NormalizeCounterDigits(counterDigits);
             return $"{name}_{Math.Max(0, counter).ToString("D" + digits)}";
         }
-        return time.ToString(TimestampFormat);
+        return FormatTimestamp(mode, time);
+    }
+
+    /// <summary>
+    /// Date/time part of a file name: the Windows date/time format for
+    /// <see cref="FileNameFormatDialog.FormatMode.OsDefault"/>, otherwise "yyyyMMddHHmmss".
+    /// </summary>
+    public static string FormatTimestamp(FileNameFormatDialog.FormatMode mode, DateTime time)
+        => mode == FileNameFormatDialog.FormatMode.OsDefault
+            ? FormatOsDefault(time)
+            : time.ToString(TimestampFormat, CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Short date + long time in the current Windows format, made safe for file names:
+    /// invalid characters (":" "/" "\" ...) become "-", trailing dots/spaces are removed.
+    /// </summary>
+    public static string FormatOsDefault(DateTime time)
+    {
+        var culture = CultureInfo.CurrentCulture;
+        var dtf = culture.DateTimeFormat;
+        string text;
+        try
+        {
+            text = time.ToString(dtf.ShortDatePattern + " " + dtf.LongTimePattern, culture);
+        }
+        catch (FormatException)
+        {
+            text = time.ToString(culture);
+        }
+
+        var invalid = Path.GetInvalidFileNameChars();
+        var sb = new StringBuilder(text.Length);
+        foreach (var c in text)
+            sb.Append(Array.IndexOf(invalid, c) >= 0 ? '-' : c);
+        var result = sb.ToString().Trim().TrimEnd('.', ' ');
+        return result.Length > 0 ? result : time.ToString(TimestampFormat, CultureInfo.InvariantCulture);
     }
 
     /// <summary>

@@ -86,6 +86,7 @@ internal class TrayApplicationContext : ApplicationContext
     private ToolStripMenuItem _miCancelScan = null!;
     private ToolStripMenuItem _miSelectScanner = null!;
     private ToolStripMenuItem _miScanKeySettings = null!;
+    private ToolStripMenuItem _miSetupScanButton = null!;
     private ToolStripMenuItem _miProfileManagement = null!;
     private ToolStripMenuItem _miEmailSettings = null!;
     private ToolStripMenuItem _miPrintSettings = null!;
@@ -119,6 +120,9 @@ internal class TrayApplicationContext : ApplicationContext
     private int _pagesInEarlierBatches;
     private bool _cancelRequestedByUser;
     private bool _exitRequested;
+    /// <summary>Worker tasks of the scan flow that write files (processing, Office export, ...).</summary>
+    private int _fileWorkers;
+    private ContinueScanDialog? _continueDialog;
     private bool _pendingButtonScan;
     private DateTime _lastButtonScanUtc = DateTime.MinValue;
     private List<string> _lastScanFiles = new();
@@ -144,6 +148,17 @@ internal class TrayApplicationContext : ApplicationContext
         // settings (old files are migrated on first load).
         _appSettings = AppSettings.Load();
         _settings = _appSettings.EnsureScanSettings(_profileManager);
+
+        // Keep the active profile name in sync with Profilverwaltung (rename/delete).
+        if (!string.IsNullOrEmpty(_appSettings.SelectedProfileName)
+            && _profileManager.GetByName(_appSettings.SelectedProfileName) == null)
+        {
+            LogDiag($"Selected profile '{_appSettings.SelectedProfileName}' no longer exists, clearing");
+            _appSettings.SelectedProfileName = "";
+            _appSettings.Save();
+        }
+        _profileManager.ProfileRenamed += OnProfileRenamed;
+        _profileManager.ProfileRemoved += OnProfileRemoved;
 
         _hiddenWindow = new TrayHiddenWindow();
         _hiddenWindow.DeviceChanged += OnDeviceChanged;
@@ -204,6 +219,7 @@ internal class TrayApplicationContext : ApplicationContext
         _miCancelScan = new ToolStripMenuItem("Scan abbrechen") { Visible = false };
         _miSelectScanner = new ToolStripMenuItem("Scanner auswählen...");
         _miScanKeySettings = new ToolStripMenuItem("Einstellungen der SCAN Taste...");
+        _miSetupScanButton = new ToolStripMenuItem("Scan-Taste einrichten...");
         _miProfileManagement = new ToolStripMenuItem("Profilverwaltung...");
         _miEmailSettings = new ToolStripMenuItem("E-Mail-Einstellungen...");
         _miPrintSettings = new ToolStripMenuItem("Druckeinstellungen...");
@@ -218,6 +234,7 @@ internal class TrayApplicationContext : ApplicationContext
         _miCancelScan.Click += (_, _) => CancelRunningScan();
         _miSelectScanner.Click += (_, _) => ShowScannerSelectionDialog();
         _miScanKeySettings.Click += (_, _) => ShowMainForm();
+        _miSetupScanButton.Click += (_, _) => SetupScanButton();
         _miProfileManagement.Click += (_, _) => OpenProfileManagement();
         _miEmailSettings.Click += (_, _) => ShowEmailSettings();
         _miPrintSettings.Click += (_, _) => ShowPrintSettings();
@@ -235,6 +252,7 @@ internal class TrayApplicationContext : ApplicationContext
             new ToolStripSeparator(),
             _miSelectScanner,
             _miScanKeySettings,
+            _miSetupScanButton,
             _miProfileManagement,
             _miEmailSettings,
             _miPrintSettings,
@@ -338,6 +356,16 @@ internal class TrayApplicationContext : ApplicationContext
         LogDiag("Tray: user requested scan cancel");
         _cancelRequestedByUser = true;
         _activePipeline.RequestCancel();
+        CloseContinueDialog();
+    }
+
+    /// <summary>Closes an open "Weitere Dokumente scannen?" dialog (as "Scan beenden").</summary>
+    private void CloseContinueDialog()
+    {
+        var dlg = _continueDialog;
+        if (dlg == null || dlg.IsDisposed) return;
+        dlg.DialogResult = DialogResult.Cancel;
+        dlg.Close();
     }
 
     private async void StartScan(ScanTrigger trigger)
@@ -368,16 +396,33 @@ internal class TrayApplicationContext : ApplicationContext
             return;
         }
 
+        // Snapshot for the whole flow: settings applied meanwhile don't change this scan.
+        var settings = _settings.Clone();
+        bool quickMenu = _appSettings.QuickMenuEnabled;
+
+        // The stored PDF password could not be decrypted (e.g. settings of another user/PC):
+        // never write an unprotected PDF without telling the user.
+        if (settings.FileFormat == FileFormat.Pdf && settings.PdfPasswordMissing)
+        {
+            LogDiag("StartScan: PDF password protection is on but the password could not be read");
+            if (!TrayMessageBox.AskYesNo(_hiddenWindow,
+                    "Das PDF-Passwort konnte nicht gelesen werden, bitte neu eingeben " +
+                    "(Einstellungen > Dateiart > Option > Kennwort).\n\n" +
+                    "Ja: Diesen Scan ohne Kennwortschutz speichern\n" +
+                    "Nein: Abbrechen und die Einstellungen öffnen", defaultNo: true))
+            {
+                ShowMainForm();
+                return;
+            }
+            settings.PdfUsePassword = false;
+        }
+
         _busy = true;
         _cancelRequestedByUser = false;
         UpdateTrayVisuals();
         ScanResult? scan = null;
         try
         {
-            // Snapshot for the whole flow: settings applied meanwhile don't change this scan.
-            var settings = _settings.Clone();
-            bool quickMenu = _appSettings.QuickMenuEnabled;
-
             scan = await AcquireAsync(settings);
             if (scan != null && !_exitRequested)
                 await PostScanAsync(scan, settings, quickMenu);
@@ -464,7 +509,16 @@ internal class TrayApplicationContext : ApplicationContext
                     if (!settings.ContinueScanning || _exitRequested)
                         break;
                     if (!AskContinueScanning(total?.Images.Count ?? 0))
+                    {
+                        if (_cancelRequestedByUser || _exitRequested)
+                        {
+                            // "Scan abbrechen" / Beenden while the question was open.
+                            total?.DisposeImages();
+                            ShowBalloon("Scan abgebrochen", "Der Scanvorgang wurde abgebrochen.", ToolTipIcon.Info);
+                            return null;
+                        }
                         break;
+                    }
                 }
             }
             catch
@@ -507,7 +561,16 @@ internal class TrayApplicationContext : ApplicationContext
     private bool AskContinueScanning(int pagesSoFar)
     {
         using var dlg = new ContinueScanDialog(pagesSoFar);
-        return dlg.ShowDialog(_hiddenWindow) == DialogResult.OK;
+        _continueDialog = dlg;
+        try
+        {
+            return dlg.ShowDialog(_hiddenWindow) == DialogResult.OK
+                   && !_cancelRequestedByUser && !_exitRequested;
+        }
+        finally
+        {
+            _continueDialog = null;
+        }
     }
 
     private void ReportScanProblems(ScanResult batch)
@@ -542,7 +605,7 @@ internal class TrayApplicationContext : ApplicationContext
         ProcessOutcome outcome;
         try
         {
-            outcome = await Task.Run(() => ProcessWithFallback(scan.Images, folder, settings, options));
+            outcome = await RunFileWorkerAsync(() => ProcessWithFallback(scan.Images, folder, settings, options));
         }
         catch (Exception ex)
         {
@@ -558,6 +621,13 @@ internal class TrayApplicationContext : ApplicationContext
         }
 
         using var output = outcome.Output;
+        if (_exitRequested)
+        {
+            // Beenden was chosen while saving: the files are complete now, skip the dialogs.
+            _lastScanFiles = new List<string>(output.Files);
+            LogDiag($"Exit requested during processing: scan saved ({output.Files.Count} file(s)), exiting");
+            return;
+        }
         if (outcome.FallbackMessage != null)
             TrayMessageBox.Warning(_hiddenWindow, outcome.FallbackMessage);
 
@@ -604,6 +674,26 @@ internal class TrayApplicationContext : ApplicationContext
 
         await RunApplicationAsync(appType, output, files, settings);
     }
+
+    /// <summary>
+    /// Runs file-writing work of the scan flow on a worker thread. While it runs, Beenden is
+    /// deferred until it finished (see <see cref="ExitApplication"/>), so no file is cut off.
+    /// </summary>
+    private async Task<T> RunFileWorkerAsync<T>(Func<T> work)
+    {
+        _fileWorkers++;
+        try
+        {
+            return await Task.Run(work);
+        }
+        finally
+        {
+            _fileWorkers--;
+        }
+    }
+
+    private Task RunFileWorkerAsync(Action work)
+        => RunFileWorkerAsync(() => { work(); return true; });
 
     /// <summary>Worker thread: Process() into the folder, or into Documents\SpeedScanManager if that fails.</summary>
     private static ProcessOutcome ProcessWithFallback(IReadOnlyList<Bitmap> images, string folder, ScanSettings settings, ScanOutputOptions options)
@@ -684,8 +774,9 @@ internal class TrayApplicationContext : ApplicationContext
 
     /// <summary>
     /// "In Ordner speichern" / rename dialog for files that are already saved. OK moves or
-    /// renames them (never overwriting); cancel asks "Scan verwerfen?" and deletes them on
-    /// "Ja". Returns the final file list, or null if the scan was discarded.
+    /// renames them (never overwriting); cancel asks "Scan verwerfen?" and deletes them only
+    /// on "Ja" (closing for any other reason keeps them). Returns the final file list, or
+    /// null if the scan was discarded or the flow should end here.
     /// </summary>
     private List<string>? ShowSaveDialog(ScanOutputResult output, List<string> files, ScanSettings settings)
     {
@@ -697,6 +788,15 @@ internal class TrayApplicationContext : ApplicationContext
         {
             if (dlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
             {
+                if (!dlg.DiscardConfirmed)
+                {
+                    // Closed by Windows (logoff/shutdown) or by Beenden: never delete the
+                    // saved scan without the explicit "Scan verwerfen?" confirmation.
+                    LogDiag("Save dialog closed without discard confirmation: keeping the saved scan");
+                    if (!_exiting)
+                        ShowSavedBalloon(files);
+                    return null;
+                }
                 DeleteFiles(files);
                 _lastScanFiles = _lastScanFiles.Except(files, StringComparer.OrdinalIgnoreCase).ToList();
                 ShowBalloon("Scan verworfen", "Der Scan wurde gelöscht.", ToolTipIcon.Info);
@@ -900,7 +1000,7 @@ internal class TrayApplicationContext : ApplicationContext
         try
         {
             SetTrayText($"{AppTitle}\nErstellt {appName}-Datei…");
-            await Task.Run(() => create(path));
+            await RunFileWorkerAsync(() => create(path));
         }
         catch (Exception ex)
         {
@@ -911,6 +1011,8 @@ internal class TrayApplicationContext : ApplicationContext
         }
 
         _lastScanFiles = _lastScanFiles.Append(path).ToList();
+        if (_exitRequested)
+            return;
         try
         {
             Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
@@ -930,7 +1032,7 @@ internal class TrayApplicationContext : ApplicationContext
         List<string> images;
         try
         {
-            images = await Task.Run(() => OfficeExportHelper.SaveImages(pages, folder, string.IsNullOrEmpty(baseName) ? "Scan" : baseName, jpegQuality));
+            images = await RunFileWorkerAsync(() => OfficeExportHelper.SaveImages(pages, folder, string.IsNullOrEmpty(baseName) ? "Scan" : baseName, jpegQuality));
         }
         catch (Exception ex)
         {
@@ -942,7 +1044,8 @@ internal class TrayApplicationContext : ApplicationContext
         if (images.Count > 0)
         {
             _lastScanFiles = _lastScanFiles.Concat(images).ToList();
-            RevealInExplorer(images[0]);
+            if (!_exitRequested)
+                RevealInExplorer(images[0]);
         }
     }
 
@@ -1087,12 +1190,12 @@ internal class TrayApplicationContext : ApplicationContext
         if (dlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
             return;
 
-        foreach (var s in SettingsTargets())
+        string recipient = dlg.Recipient, subject = dlg.SubjectTemplate;
+        ApplyTraySettingChange(s =>
         {
-            s.EmailRecipient = dlg.Recipient;
-            s.EmailSubjectTemplate = dlg.SubjectTemplate;
-        }
-        _appSettings.Save();
+            s.EmailRecipient = recipient;
+            s.EmailSubjectTemplate = subject;
+        });
     }
 
     private void ShowPrintSettings()
@@ -1106,16 +1209,77 @@ internal class TrayApplicationContext : ApplicationContext
         if (dlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
             return;
 
-        foreach (var s in SettingsTargets())
-            s.PrinterName = dlg.SelectedPrinterName;
+        string printer = dlg.SelectedPrinterName;
+        ApplyTraySettingChange(s => s.PrinterName = printer);
+    }
+
+    /// <summary>
+    /// Applies an e-mail/print setting changed from the tray menu to the applied settings,
+    /// to an open settings window (working copy and its change baseline, so it is not seen
+    /// as an unapplied user edit) and to the active user profile (built-in profiles can't be
+    /// changed; for them only the applied settings change).
+    /// </summary>
+    private void ApplyTraySettingChange(Action<ScanSettings> change)
+    {
+        change(_settings);
+        if (_mainForm != null && !_mainForm.IsDisposed && !ReferenceEquals(_mainForm.Settings, _settings))
+            _mainForm.ApplyExternalChange(change);
+
+        if (!_appSettings.QuickMenuEnabled)
+        {
+            var profile = _profileManager.GetByName(_appSettings.SelectedProfileName);
+            if (profile != null && !profile.IsBuiltIn)
+            {
+                change(profile.Settings);
+                _profileManager.Save();
+            }
+        }
         _appSettings.Save();
     }
 
-    private IEnumerable<ScanSettings> SettingsTargets()
+    private void OnProfileRenamed(string oldName, string newName)
     {
-        yield return _settings;
-        if (_mainForm != null && !_mainForm.IsDisposed && !ReferenceEquals(_mainForm.Settings, _settings))
-            yield return _mainForm.Settings;
+        if (!string.Equals(_appSettings.SelectedProfileName, oldName, StringComparison.OrdinalIgnoreCase))
+            return;
+        _appSettings.SelectedProfileName = newName;
+        _appSettings.Save();
+    }
+
+    private void OnProfileRemoved(string name)
+    {
+        if (!string.Equals(_appSettings.SelectedProfileName, name, StringComparison.OrdinalIgnoreCase))
+            return;
+        _appSettings.SelectedProfileName = "";
+        _appSettings.Save();
+    }
+
+    /// <summary>"Scan-Taste einrichten...": runs the scan button setup again (one UAC prompt).</summary>
+    private async void SetupScanButton()
+    {
+        _miSetupScanButton.Enabled = false;
+        try
+        {
+            bool ok = await WiaEventWatcher.SetupScanButtonInteractiveAsync();
+            if (_disposed) return;
+            if (ok)
+                ShowBalloon(AppTitle, "Die Scan-Taste ist eingerichtet. Ein Druck auf die Taste startet einen Scan.", ToolTipIcon.Info);
+            else if (WiaEventWatcher.IsSetupDeclined())
+                TrayMessageBox.Info(_hiddenWindow,
+                    "Die Einrichtung der Scan-Taste wurde abgebrochen.\n\nSie können weiterhin über das Tray-Menü scannen.");
+            else
+                TrayMessageBox.Warning(_hiddenWindow,
+                    "Die Scan-Taste konnte nicht eingerichtet werden.\n\nDetails stehen im Diagnoseprotokoll " +
+                    "(%LocalAppData%\\SpeedScanManager).");
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"SetupScanButton failed: {ex}");
+        }
+        finally
+        {
+            if (!_disposed)
+                _miSetupScanButton.Enabled = true;
+        }
     }
 
     private void ShowMainForm()
@@ -1243,6 +1407,7 @@ internal class TrayApplicationContext : ApplicationContext
                 _exitRequested = true;
                 _cancelRequestedByUser = true;
                 _activePipeline.RequestCancel();
+                CloseContinueDialog(); // the flow ends right away, no need to wait
                 var exitTimer = new System.Windows.Forms.Timer { Interval = ExitCancelTimeoutMs };
                 exitTimer.Tick += (_, _) =>
                 {
@@ -1255,9 +1420,28 @@ internal class TrayApplicationContext : ApplicationContext
                 return;
             }
 
+            if (_fileWorkers > 0)
+            {
+                // A worker is writing the scan: exiting now would leave a truncated file.
+                // The scan flow calls DoExit when it is done.
+                _exitRequested = true;
+                LogDiag("Exit: deferred until the scan is saved");
+                ShowBalloon(AppTitle, "Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet.", ToolTipIcon.Info);
+                UpdateBusyText();
+                return;
+            }
+
             if (!TrayMessageBox.AskYesNo(_hiddenWindow,
                     "Der letzte Scan ist noch nicht abgeschlossen.\n\nSpeedScan Manager trotzdem beenden?", defaultNo: true))
                 return;
+            if (_fileWorkers > 0)
+            {
+                // The flow started writing while the question was open.
+                _exitRequested = true;
+                ShowBalloon(AppTitle, "Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet.", ToolTipIcon.Info);
+                UpdateBusyText();
+                return;
+            }
         }
 
         DoExit();
@@ -1481,6 +1665,10 @@ internal class TrayApplicationContext : ApplicationContext
                 ? $"{AppTitle}\nScannt… ({pages} {(pages == 1 ? "Seite" : "Seiten")})"
                 : $"{AppTitle}\nScannt…");
         }
+        else if (_exitRequested)
+        {
+            SetTrayText($"{AppTitle}\nWird nach dem Speichern beendet…");
+        }
         else
         {
             SetTrayText($"{AppTitle}\nScan wird bearbeitet…");
@@ -1522,6 +1710,8 @@ internal class TrayApplicationContext : ApplicationContext
         {
             _disposed = true;
             ScanButtonPipeServer.Shared.CommandReceived -= OnPipeCommand;
+            _profileManager.ProfileRenamed -= OnProfileRenamed;
+            _profileManager.ProfileRemoved -= OnProfileRemoved;
             Application.Idle -= OnFirstIdle;
 
             _pollTimer.Stop();

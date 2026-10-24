@@ -7,7 +7,8 @@ namespace SpeedScanManager;
 /// Named pipe server that receives commands from secondary process instances.
 /// Runs for the whole application lifetime, independent of scanner/WIA state.
 ///
-/// PROTOCOL (pipe name <see cref="Program.PipeName"/>, local machine, byte mode):
+/// PROTOCOL (pipe name <see cref="Program.PipeName"/> = per session and user, local machine,
+/// byte mode, <see cref="PipeOptions.CurrentUserOnly"/> on both ends):
 ///   The client connects, writes exactly one UTF-8 text line and disconnects.
 ///   Commands (case-insensitive, surrounding whitespace ignored):
 ///     "SCAN" – the scanner button was pressed (sent by "SpeedScanManager.exe /scanbutton",
@@ -17,6 +18,8 @@ namespace SpeedScanManager;
 ///
 /// THREADING: <see cref="CommandReceived"/> is raised on a thread-pool thread.
 /// Handlers must marshal to the UI thread themselves (e.g. Control.BeginInvoke).
+/// Commands that arrive before a handler subscribed (the server starts before the tray) are
+/// queued and delivered to the first subscriber.
 /// </summary>
 internal sealed class ScanButtonPipeServer : IDisposable
 {
@@ -26,15 +29,46 @@ internal sealed class ScanButtonPipeServer : IDisposable
     private static readonly object SharedSync = new();
     private static ScanButtonPipeServer? _shared;
 
+    private const int MaxQueuedCommands = 10;
+    private static readonly TimeSpan QueuedCommandLifetime = TimeSpan.FromMinutes(2);
+
     private readonly object _sync = new();
     private CancellationTokenSource? _cts;
     private Task? _loop;
 
+    private readonly object _handlerSync = new();
+    private Action<string>? _commandReceived;
+    private readonly Queue<(string Command, DateTime ReceivedUtc)> _pending = new();
+
     /// <summary>
     /// Raised for every received command (upper-cased, e.g. "SCAN", "SHOW").
-    /// Raised on a thread-pool thread.
+    /// Raised on a thread-pool thread (queued commands: on the subscribing thread).
     /// </summary>
-    public event Action<string>? CommandReceived;
+    public event Action<string>? CommandReceived
+    {
+        add
+        {
+            if (value == null) return;
+            List<string> queued;
+            lock (_handlerSync)
+            {
+                _commandReceived += value;
+                var now = DateTime.UtcNow;
+                queued = _pending.Where(p => now - p.ReceivedUtc <= QueuedCommandLifetime)
+                    .Select(p => p.Command).ToList();
+                _pending.Clear();
+            }
+            foreach (var command in queued)
+            {
+                LogDiag($"PipeServer: delivering queued '{command}'");
+                Invoke(value, command);
+            }
+        }
+        remove
+        {
+            lock (_handlerSync) _commandReceived -= value;
+        }
+    }
 
     /// <summary>
     /// App-wide instance. Program.Main creates and starts it before the tray starts,
@@ -105,7 +139,7 @@ internal sealed class ScanButtonPipeServer : IDisposable
                     PipeDirection.In,
                     1,
                     PipeTransmissionMode.Byte,
-                    PipeOptions.Asynchronous);
+                    PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
 
                 await server.WaitForConnectionAsync(ct).ConfigureAwait(false);
 
@@ -140,13 +174,25 @@ internal sealed class ScanButtonPipeServer : IDisposable
 
     private void RaiseCommand(string command)
     {
-        var handlers = CommandReceived;
-        if (handlers == null)
+        Action<string>? handlers;
+        lock (_handlerSync)
         {
-            LogDiag($"PipeServer: no handler for '{command}'");
-            return;
+            handlers = _commandReceived;
+            if (handlers == null)
+            {
+                // The tray is not subscribed yet: keep the command for it.
+                if (_pending.Count >= MaxQueuedCommands)
+                    _pending.Dequeue();
+                _pending.Enqueue((command, DateTime.UtcNow));
+                LogDiag($"PipeServer: no handler yet, queued '{command}'");
+                return;
+            }
         }
+        Invoke(handlers, command);
+    }
 
+    private static void Invoke(Action<string> handlers, string command)
+    {
         foreach (Action<string> handler in handlers.GetInvocationList())
         {
             try { handler(command); }
@@ -162,7 +208,7 @@ internal sealed class ScanButtonPipeServer : IDisposable
     {
         try
         {
-            using var client = new NamedPipeClientStream(".", Program.PipeName, PipeDirection.Out);
+            using var client = new NamedPipeClientStream(".", Program.PipeName, PipeDirection.Out, PipeOptions.CurrentUserOnly);
             client.Connect(timeoutMs);
             using var writer = new StreamWriter(client, new UTF8Encoding(false));
             writer.WriteLine(command);

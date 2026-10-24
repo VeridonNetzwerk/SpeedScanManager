@@ -50,16 +50,45 @@ internal class AppSettings
 
     public static AppSettings Load()
     {
-        var settings = SettingsStorage.LoadWithFallback(SettingsPath,
-            json => JsonSerializer.Deserialize<AppSettings>(json, SettingsStorage.JsonOptions));
-        settings ??= new AppSettings();
+        bool fileExisted = File.Exists(SettingsPath) || File.Exists(SettingsPath + ".bak");
+        bool hasAutoStart = false;
+        bool plaintextSecret = false;
+        var settings = SettingsStorage.LoadWithFallback(SettingsPath, json =>
+        {
+            var parsed = JsonSerializer.Deserialize<AppSettings>(json, SettingsStorage.ReadOptions);
+            hasAutoStart = SettingsStorage.HasTopLevelProperty(json, nameof(AutoStart));
+            plaintextSecret = SettingsStorage.ContainsPlaintextSecret(json);
+            return parsed;
+        });
 
+        // AutoStart defaults to true only for a fresh install. Files of version 0.1.x have
+        // no AutoStart value (those versions never started with Windows): keep it off.
+        if (settings == null)
+            settings = new AppSettings { AutoStart = !fileExisted };
+        else if (!hasAutoStart)
+            settings.AutoStart = false;
+
+        if (!Enum.IsDefined(settings.CurrentApplicationType))
+            settings.CurrentApplicationType = ApplicationType.ScanToFolder;
+        if (!Enum.IsDefined(settings.FileNameFormat))
+            settings.FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp;
+        settings.FolderPath ??= "";
+        settings.CustomFileName ??= FileNamePattern.DefaultCustomName;
         settings.SelectedProfileName ??= "";
         settings.CustomApplications = (settings.CustomApplications ?? new())
             .Where(a => a != null && !string.IsNullOrWhiteSpace(a.Name) && !string.IsNullOrWhiteSpace(a.ExePath))
             .Take(MaxCustomApplications)
             .Select(a => { a.Arguments ??= ""; return a; })
             .ToList();
+
+        // A plain-text password must not stay on disk: rewrite the file (the password is
+        // only written DPAPI-protected) and replace the .bak copy that still holds it.
+        if (plaintextSecret || SettingsStorage.FileContainsPlaintextSecret(SettingsPath + ".bak"))
+        {
+            DiagLog.Write("[Settings] settings.json contained a plain-text password, rewriting");
+            settings.Save();
+            SettingsStorage.ScrubBackup(SettingsPath);
+        }
         return settings;
     }
 

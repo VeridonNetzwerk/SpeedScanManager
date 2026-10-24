@@ -16,6 +16,12 @@ internal class ProfileManager
 
     public List<ScanProfile> Profiles { get; } = new();
 
+    /// <summary>A user profile was renamed (old name, new name).</summary>
+    public event Action<string, string>? ProfileRenamed;
+
+    /// <summary>A user profile was deleted (its name).</summary>
+    public event Action<string>? ProfileRemoved;
+
     public ProfileManager()
     {
         Load();
@@ -23,10 +29,24 @@ internal class ProfileManager
 
     private void Load()
     {
-        var loaded = SettingsStorage.LoadWithFallback(ProfilePath, ParseProfiles);
+        bool plaintextSecret = false;
+        var loaded = SettingsStorage.LoadWithFallback(ProfilePath, json =>
+        {
+            plaintextSecret = SettingsStorage.ContainsPlaintextSecret(json);
+            return ParseProfiles(json);
+        });
         if (loaded != null && loaded.Count > 0)
         {
             Profiles.AddRange(loaded.Take(MaxProfiles));
+
+            // Legacy profiles stored the PDF password in plain text: rewrite the file right
+            // away (DPAPI-protected) and replace the .bak copy that still contains it.
+            if (plaintextSecret || SettingsStorage.FileContainsPlaintextSecret(ProfilePath + ".bak"))
+            {
+                DiagLog.Write("[Settings] profiles.json contained a plain-text password, rewriting");
+                Save();
+                SettingsStorage.ScrubBackup(ProfilePath);
+            }
             return;
         }
 
@@ -61,12 +81,12 @@ internal class ProfileManager
             ScanSettings settings;
             if (TryGetProperty(element, "Settings", out var settingsElement) && settingsElement.ValueKind == JsonValueKind.Object)
             {
-                settings = settingsElement.Deserialize<ScanSettings>(SettingsStorage.JsonOptions) ?? new ScanSettings();
+                settings = settingsElement.Deserialize<ScanSettings>(SettingsStorage.ReadOptions) ?? new ScanSettings();
             }
             else
             {
                 // Legacy flat profile: setting names match ScanSettings properties
-                settings = element.Deserialize<ScanSettings>(SettingsStorage.JsonOptions) ?? new ScanSettings();
+                settings = element.Deserialize<ScanSettings>(SettingsStorage.ReadOptions) ?? new ScanSettings();
                 string? legacyPassword = GetString(element, "PdfPassword");
                 if (!string.IsNullOrEmpty(legacyPassword))
                     settings.PdfPassword = legacyPassword;
@@ -196,8 +216,10 @@ internal class ProfileManager
     {
         if (index >= 0 && index < Profiles.Count && !Profiles[index].IsBuiltIn)
         {
+            string name = Profiles[index].Name;
             Profiles.RemoveAt(index);
             Save();
+            ProfileRemoved?.Invoke(name);
         }
     }
 
@@ -205,8 +227,10 @@ internal class ProfileManager
     {
         if (index >= 0 && index < Profiles.Count && !Profiles[index].IsBuiltIn)
         {
+            string oldName = Profiles[index].Name;
             Profiles[index].Name = newName.Trim();
             Save();
+            ProfileRenamed?.Invoke(oldName, Profiles[index].Name);
         }
     }
 

@@ -249,27 +249,12 @@ internal class FileTypeTabContent : Panel
             DrawMode = DrawMode.OwnerDrawFixed,
             ItemHeight = 18
         };
-        _cbOcrLanguage.Items.AddRange(new object[]
-        {
-            "Automatische Erkennung",
-            "Deutsch",
-            "Japanisch",
-            "Englisch",
-            "Französisch",
-            "Italienisch",
-            "Spanisch",
-            "Chinesisch (vereinfacht)",
-            "Chinesisch (traditionell)",
-            "Koreanisch",
-            "Russisch",
-            "Portugiesisch",
-            "Arabisch"
-        });
+        // Items (installed languages only) are filled in LoadFromSettings.
         _cbOcrLanguage.DrawItem += (s, e) => DrawOcrLanguageItem(e);
         _cbOcrLanguage.SelectedIndexChanged += (s, e) =>
         {
-            if (!_loading && _cbOcrLanguage.SelectedIndex >= 0)
-                _settings.OcrLanguage = (OcrLanguage)_cbOcrLanguage.SelectedIndex;
+            if (!_loading && _cbOcrLanguage.SelectedItem is OcrLanguageItem item)
+                _settings.OcrLanguage = item.Language;
         };
 
         _lblOcrTarget = new Label
@@ -362,7 +347,7 @@ internal class FileTypeTabContent : Panel
             _rbFirstSection.Checked = _settings.KeywordTarget == KeywordTarget.FirstMarkedSection;
             _rbAllSections.Checked = _settings.KeywordTarget == KeywordTarget.AllMarkedSections;
             _chkOcr.Checked = _settings.OcrEnabled;
-            _cbOcrLanguage.SelectedIndex = Math.Clamp((int)_settings.OcrLanguage, 0, _cbOcrLanguage.Items.Count - 1);
+            PopulateOcrLanguages(_settings.OcrLanguage);
             _rbFirstPage.Checked = _settings.OcrTargetPages == OcrTargetPages.FirstPage;
             _rbAllPages.Checked = _settings.OcrTargetPages == OcrTargetPages.AllPages;
         }
@@ -444,6 +429,64 @@ internal class FileTypeTabContent : Panel
         e.DrawFocusRectangle();
     }
 
+    /// <summary>Entry of the OCR language list.</summary>
+    private sealed record OcrLanguageItem(OcrLanguage Language, string Text)
+    {
+        public override string ToString() => Text;
+    }
+
+    private static string GetOcrLanguageName(OcrLanguage language) => language switch
+    {
+        OcrLanguage.Automatisch => "Automatische Erkennung",
+        OcrLanguage.Deutsch => "Deutsch",
+        OcrLanguage.Japanisch => "Japanisch",
+        OcrLanguage.English => "Englisch",
+        OcrLanguage.Franzoesisch => "Französisch",
+        OcrLanguage.Italienisch => "Italienisch",
+        OcrLanguage.Spanisch => "Spanisch",
+        OcrLanguage.ChinesischVereinfacht => "Chinesisch (vereinfacht)",
+        OcrLanguage.ChinesischTraditionell => "Chinesisch (traditionell)",
+        OcrLanguage.Koreanisch => "Koreanisch",
+        OcrLanguage.Russisch => "Russisch",
+        OcrLanguage.Portugiesisch => "Portugiesisch",
+        OcrLanguage.Arabisch => "Arabisch",
+        _ => language.ToString()
+    };
+
+    /// <summary>
+    /// Fills the language list with "Automatische Erkennung" and the languages whose
+    /// traineddata is installed. A saved language that is not installed stays visible
+    /// (marked "(nicht installiert)") so the setting is not changed silently.
+    /// </summary>
+    private void PopulateOcrLanguages(OcrLanguage selected)
+    {
+        var installed = OcrProcessor.GetInstalledLanguages();
+        _cbOcrLanguage.BeginUpdate();
+        try
+        {
+            _cbOcrLanguage.Items.Clear();
+            OcrLanguageItem? selectedItem = null;
+            foreach (OcrLanguage language in Enum.GetValues<OcrLanguage>())
+            {
+                bool available = language == OcrLanguage.Automatisch
+                    || OcrProcessor.GetLanguageCode(language).Split('+')
+                        .All(c => installed.Contains(c, StringComparer.OrdinalIgnoreCase));
+                if (!available && language != selected)
+                    continue;
+
+                var item = new OcrLanguageItem(language,
+                    available ? GetOcrLanguageName(language) : $"{GetOcrLanguageName(language)} (nicht installiert)");
+                _cbOcrLanguage.Items.Add(item);
+                if (language == selected) selectedItem = item;
+            }
+            _cbOcrLanguage.SelectedItem = selectedItem ?? _cbOcrLanguage.Items[0];
+        }
+        finally
+        {
+            _cbOcrLanguage.EndUpdate();
+        }
+    }
+
     private static readonly Image?[] OcrLanguageFlags = LoadOcrLanguageFlags();
 
     private static Image?[] LoadOcrLanguageFlags()
@@ -472,12 +515,14 @@ internal class FileTypeTabContent : Panel
 
         if (e.Index < 0) return;
 
-        string text = _cbOcrLanguage.Items[e.Index]!.ToString()!;
+        var entry = _cbOcrLanguage.Items[e.Index];
+        string text = entry?.ToString() ?? "";
         bool enabled = _cbOcrLanguage.Enabled;
 
         var color = enabled ? SystemColors.ControlText : SystemColors.GrayText;
 
-        var flag = e.Index >= 0 && e.Index < OcrLanguageFlags.Length ? OcrLanguageFlags[e.Index] : null;
+        int flagIndex = entry is OcrLanguageItem item ? (int)item.Language : -1;
+        var flag = flagIndex >= 0 && flagIndex < OcrLanguageFlags.Length ? OcrLanguageFlags[flagIndex] : null;
         var textBounds = e.Bounds;
         if (flag != null)
         {
