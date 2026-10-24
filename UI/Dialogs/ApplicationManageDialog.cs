@@ -15,25 +15,27 @@ internal class ApplicationManageDialog : Form
     private readonly Button _btnEdit;
     private readonly Button _btnClose;
 
-    private const int MaxEntries = 10;
+    private const int MaxEntries = AppSettings.MaxCustomApplications;
 
-    public List<ApplicationEntry> CustomApps { get; } = new();
+    public List<CustomApplication> CustomApps { get; } = new();
 
-    public ApplicationManageDialog(List<ApplicationEntry> existingApps)
+    public ApplicationManageDialog(IEnumerable<CustomApplication> existingApps)
     {
-        CustomApps.AddRange(existingApps);
+        CustomApps.AddRange(existingApps.Select(a => a.Clone()));
 
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Installieren/Deinstallieren";
         Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(590, 200);
+        ClientSize = new Size(600, 206);
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Font = font;
 
         // === List ===
@@ -53,6 +55,7 @@ internal class ApplicationManageDialog : Form
             IntegralHeight = false
         };
         _listBox.SelectedIndexChanged += (s, e) => UpdateButtonStates();
+        _listBox.DoubleClick += (s, e) => EditEntry();
 
         // === Buttons (right column, stacked) ===
         _btnAdd = new Button
@@ -91,7 +94,7 @@ internal class ApplicationManageDialog : Form
             Size = new Size(120, 28),
             Font = font
         };
-        btnHelp.Click += (s, e) => { using var h = new HelpForm("app-add-remove"); h.ShowDialog(this); };
+        btnHelp.Click += (s, e) => { using var h = new HelpForm("app-manage"); h.ShowDialog(this); };
 
         _btnClose = new Button
         {
@@ -104,8 +107,8 @@ internal class ApplicationManageDialog : Form
 
         var lblHint = new Label
         {
-            Text = "Bis zu 10 Anwendungen können hinzugefügt werden.",
-            Location = new Point(12, 174),
+            Text = $"Bis zu {MaxEntries} Anwendungen können hinzugefügt werden.",
+            Location = new Point(12, 178),
             AutoSize = true,
             Font = font,
             ForeColor = SystemColors.GrayText
@@ -125,6 +128,8 @@ internal class ApplicationManageDialog : Form
         CancelButton = _btnClose;
 
         RefreshList();
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     private void RefreshList()
@@ -132,7 +137,7 @@ internal class ApplicationManageDialog : Form
         _listBox.Items.Clear();
         foreach (var app in CustomApps)
         {
-            _listBox.Items.Add(app.Name);
+            _listBox.Items.Add($"{app.Name}  ({app.ExePath})");
         }
         UpdateButtonStates();
     }
@@ -142,6 +147,17 @@ internal class ApplicationManageDialog : Form
         bool hasSelection = _listBox.SelectedIndex >= 0;
         _btnRemove.Enabled = hasSelection;
         _btnEdit.Enabled = hasSelection;
+        _btnAdd.Enabled = CustomApps.Count < MaxEntries;
+    }
+
+    private string? ValidateName(string name, int exceptIndex)
+    {
+        for (int i = 0; i < CustomApps.Count; i++)
+        {
+            if (i != exceptIndex && string.Equals(CustomApps[i].Name, name, StringComparison.OrdinalIgnoreCase))
+                return $"Eine Anwendung mit dem Namen \"{name}\" existiert bereits.";
+        }
+        return null;
     }
 
     private void AddEntry()
@@ -153,10 +169,10 @@ internal class ApplicationManageDialog : Form
             return;
         }
 
-        using var dlg = new ApplicationEditDialog();
+        using var dlg = new ApplicationEditDialog(name => ValidateName(name, -1)) { Text = "Anwendung hinzufügen" };
         if (dlg.ShowDialog(this) == DialogResult.OK)
         {
-            CustomApps.Add(new ApplicationEntry(dlg.EntryName, dlg.EntryType));
+            CustomApps.Add(new CustomApplication { Name = dlg.EntryName, ExePath = dlg.ExePath, Arguments = dlg.Arguments });
             RefreshList();
             _listBox.SelectedIndex = CustomApps.Count - 1;
         }
@@ -178,15 +194,17 @@ internal class ApplicationManageDialog : Form
         if (idx < 0 || idx >= CustomApps.Count) return;
 
         var existing = CustomApps[idx];
-        using var dlg = new ApplicationEditDialog
+        using var dlg = new ApplicationEditDialog(name => ValidateName(name, idx))
         {
+            Text = "Anwendung ändern",
             EntryName = existing.Name,
-            EntryType = existing.Type
+            ExePath = existing.ExePath,
+            Arguments = existing.Arguments
         };
 
         if (dlg.ShowDialog(this) == DialogResult.OK)
         {
-            CustomApps[idx] = new ApplicationEntry(dlg.EntryName, dlg.EntryType);
+            CustomApps[idx] = new CustomApplication { Name = dlg.EntryName, ExePath = dlg.ExePath, Arguments = dlg.Arguments };
             RefreshList();
             _listBox.SelectedIndex = idx;
         }
@@ -194,69 +212,92 @@ internal class ApplicationManageDialog : Form
 }
 
 /// <summary>
-/// Simple input dialog for a custom application entry: name + type.
+/// Input dialog for a custom application entry: name, program (.exe) and optional arguments.
 /// </summary>
 internal class ApplicationEditDialog : Form
 {
     private readonly TextBox _txtName;
-    private readonly ComboBox _cbType;
-    private readonly Button _btnOk;
-    private readonly Button _btnCancel;
+    private readonly TextBox _txtPath;
+    private readonly TextBox _txtArgs;
+    private readonly Func<string, string?> _validateName;
 
     public string EntryName { get; set; } = "";
-    public ApplicationType EntryType { get; set; } = ApplicationType.ScanToFolder;
+    public string ExePath { get; set; } = "";
+    public string Arguments { get; set; } = "";
 
-    public ApplicationEditDialog()
+    public ApplicationEditDialog(Func<string, string?> validateName)
     {
+        _validateName = validateName;
+
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Anwendung hinzufügen";
         Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(340, 180);
+        ClientSize = new Size(440, 176);
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Font = font;
 
         var lblName = new Label { Text = "Name:", Location = new Point(12, 16), AutoSize = true, Font = font };
-        _txtName = new TextBox { Location = new Point(100, 13), Size = new Size(210, 24), Font = font };
+        _txtName = new TextBox { Location = new Point(100, 13), Size = new Size(326, 24), Font = font, MaxLength = 64 };
 
-        var lblType = new Label { Text = "Typ:", Location = new Point(12, 48), AutoSize = true, Font = font };
-        _cbType = new ComboBox
+        var lblPath = new Label { Text = "Programm:", Location = new Point(12, 48), AutoSize = true, Font = font };
+        _txtPath = new TextBox { Location = new Point(100, 45), Size = new Size(236, 24), Font = font };
+        var btnBrowse = new Button { Text = "Durchsuchen...", Location = new Point(342, 43), Size = new Size(84, 26), Font = font };
+        btnBrowse.Click += (s, e) => BrowseExe();
+
+        var lblArgs = new Label { Text = "Argumente:", Location = new Point(12, 80), AutoSize = true, Font = font };
+        _txtArgs = new TextBox { Location = new Point(100, 77), Size = new Size(326, 24), Font = font };
+        var lblArgsHint = new Label
         {
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(100, 45),
-            Size = new Size(210, 24),
-            Font = font
+            Text = "Optional. Die gescannten Dateien werden danach angehängt.",
+            Location = new Point(100, 103),
+            AutoSize = true,
+            Font = font,
+            ForeColor = SystemColors.GrayText
         };
-        _cbType.Items.AddRange(new object[]
+
+        var btnOk = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(266, 136), Size = new Size(75, 28), Font = font };
+        var btnCancel = new Button { Text = "Abbrechen", DialogResult = DialogResult.Cancel, Location = new Point(351, 136), Size = new Size(75, 28), Font = font };
+
+        Controls.AddRange(new Control[] { lblName, _txtName, lblPath, _txtPath, btnBrowse, lblArgs, _txtArgs, lblArgsHint, btnOk, btnCancel });
+        AcceptButton = btnOk;
+        CancelButton = btnCancel;
+        ResumeLayout(false);
+        PerformLayout();
+    }
+
+    private void BrowseExe()
+    {
+        using var dlg = new OpenFileDialog
         {
-            "Scan to Folder",
-            "Scan to E-Mail",
-            "Scan to Print",
-            "Scan to Word",
-            "Scan to Excel",
-            "Scan to PowerPoint",
-            "Scan Picture Folder",
-            "Edit with PDF"
-        });
-        _cbType.SelectedIndex = 0;
-
-        _btnOk = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(150, 104), Size = new Size(75, 28), Font = font };
-        _btnCancel = new Button { Text = "Abbrechen", DialogResult = DialogResult.Cancel, Location = new Point(235, 104), Size = new Size(75, 28), Font = font };
-
-        Controls.AddRange(new Control[] { lblName, _txtName, lblType, _cbType, _btnOk, _btnCancel });
-        AcceptButton = _btnOk;
-        CancelButton = _btnCancel;
+            Title = "Anwendung auswählen",
+            Filter = "Programme (*.exe)|*.exe",
+            CheckFileExists = true
+        };
+        if (!string.IsNullOrEmpty(_txtPath.Text))
+        {
+            try { dlg.InitialDirectory = Path.GetDirectoryName(_txtPath.Text); } catch { }
+        }
+        if (dlg.ShowDialog(this) == DialogResult.OK)
+        {
+            _txtPath.Text = dlg.FileName;
+            if (string.IsNullOrWhiteSpace(_txtName.Text))
+                _txtName.Text = Path.GetFileNameWithoutExtension(dlg.FileName);
+        }
     }
 
     protected override void OnShown(EventArgs e)
     {
         _txtName.Text = EntryName;
-        _cbType.SelectedIndex = (int)EntryType;
+        _txtPath.Text = ExePath;
+        _txtArgs.Text = Arguments;
         base.OnShown(e);
     }
 
@@ -264,14 +305,20 @@ internal class ApplicationEditDialog : Form
     {
         if (DialogResult == DialogResult.OK)
         {
-            if (string.IsNullOrWhiteSpace(_txtName.Text))
+            string name = _txtName.Text.Trim();
+            string path = _txtPath.Text.Trim().Trim('"');
+            string? error = string.IsNullOrWhiteSpace(name) ? "Bitte einen Namen eingeben." : _validateName(name);
+            if (error == null && (string.IsNullOrWhiteSpace(path) || !File.Exists(path)))
+                error = "Bitte wählen Sie eine vorhandene Programmdatei (*.exe) aus.";
+            if (error != null)
             {
-                MessageBox.Show("Bitte einen Namen eingeben.", "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 e.Cancel = true;
                 return;
             }
-            EntryName = _txtName.Text.Trim();
-            EntryType = (ApplicationType)_cbType.SelectedIndex;
+            EntryName = name;
+            ExePath = path;
+            Arguments = _txtArgs.Text.Trim();
         }
         base.OnFormClosing(e);
     }

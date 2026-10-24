@@ -15,6 +15,7 @@ internal class SaveTabContent : Panel
     private readonly Label _lblFilePreview;
     private readonly CheckBox _chkRenameAfterScan;
     private readonly ScanSettings _settings;
+    private bool _loading;
 
     public string FolderPath => _settings.FolderPath;
     public FileNameFormatDialog.FormatMode FormatMode => _settings.FileNameFormat;
@@ -30,23 +31,17 @@ internal class SaveTabContent : Panel
         _settings.FileNameFormat = mode;
         _settings.CustomFileName = customName;
         _settings.CounterDigits = digits;
-        _txtFolderPath.Text = folderPath;
-        _lblFilePreview.Text = $"z.B.) {GenerateExampleFileName()}.pdf";
+        LoadFromSettings();
     }
 
-    public SaveTabContent(ScanSettings? settings = null)
+    public SaveTabContent(ScanSettings settings)
     {
-        _settings = settings ?? new ScanSettings();
+        _settings = settings;
 
-        // Default folder: Documents\SpeedScanManager in user profile
-        string defaultFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "SpeedScanManager");
-        Directory.CreateDirectory(defaultFolder);
         if (string.IsNullOrEmpty(_settings.FolderPath))
-            _settings.FolderPath = defaultFolder;
+            _settings.FolderPath = ScanSettings.DefaultFolderPath;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Dock = DockStyle.Fill;
         BackColor = Color.White;
 
@@ -95,7 +90,7 @@ internal class SaveTabContent : Panel
         // === File name format ===
         _btnFileNameFormat = new Button
         {
-            Text = "Dateiname-Format...",
+            Text = "Dateinamenformat...",
             FlatStyle = FlatStyle.Standard,
             UseVisualStyleBackColor = true,
             Location = new Point(176, 79),
@@ -107,21 +102,25 @@ internal class SaveTabContent : Panel
         // Preview label directly under the button
         _lblFilePreview = new Label
         {
-            Text = $"z.B.) {GenerateExampleFileName()}.pdf",
+            Text = "",
             Location = new Point(176, 116),
             AutoSize = true,
             Font = font,
             ForeColor = SystemColors.ControlText
         };
 
-        // === Rename checkbox (initially disabled) ===
+        // === Rename checkbox ===
         _chkRenameAfterScan = new CheckBox
         {
             Text = "Datei nach Scan umbenennen",
             Location = new Point(176, 141),
             AutoSize = true,
-            Font = font,
-            Enabled = false
+            Font = font
+        };
+        _chkRenameAfterScan.CheckedChanged += (s, e) =>
+        {
+            if (!_loading)
+                _settings.RenameAfterScan = _chkRenameAfterScan.Checked;
         };
 
         contentPanel.Controls.AddRange(new Control[]
@@ -135,6 +134,33 @@ internal class SaveTabContent : Panel
         });
 
         Controls.AddRange(new Control[] { contentPanel, infoBar });
+        LoadFromSettings();
+    }
+
+    /// <summary>
+    /// Refreshes all controls from the settings without raising change notifications.
+    /// </summary>
+    public void LoadFromSettings()
+    {
+        _loading = true;
+        try
+        {
+            _txtFolderPath.Text = _settings.FolderPath;
+            _chkRenameAfterScan.Checked = _settings.RenameAfterScan;
+            UpdatePreview();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    /// <summary>
+    /// Updates the example file name (also called when the file format changes).
+    /// </summary>
+    public void UpdatePreview()
+    {
+        _lblFilePreview.Text = $"z. B. {GenerateExampleFileName()}{FileNamePattern.GetExtension(_settings.FileFormat)}";
     }
 
     private void BrowseFolder()
@@ -145,7 +171,7 @@ internal class SaveTabContent : Panel
             Description = "Speicherordner für gescannte Dokumente wählen"
         };
 
-        if (dialog.ShowDialog() == DialogResult.OK)
+        if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
         {
             _settings.FolderPath = dialog.SelectedPath;
             _txtFolderPath.Text = _settings.FolderPath;
@@ -154,43 +180,35 @@ internal class SaveTabContent : Panel
 
     private void OpenFileNameFormatDialog()
     {
-        using var dialog = new FileNameFormatDialog();
-
-        // Restore previous settings
-        dialog.SelectedMode = _settings.FileNameFormat;
-        dialog.CustomFileName = _settings.CustomFileName;
-        dialog.CounterDigits = _settings.CounterDigits;
+        using var dialog = new FileNameFormatDialog
+        {
+            // Restore previous settings
+            SelectedMode = _settings.FileNameFormat,
+            CustomFileName = _settings.CustomFileName,
+            CounterDigits = _settings.CounterDigits,
+            PreviewFormat = _settings.FileFormat
+        };
 
         dialog.ApplyClicked += (s, e) =>
         {
             _settings.FileNameFormat = dialog.SelectedMode;
             _settings.CustomFileName = dialog.CustomFileName;
             _settings.CounterDigits = dialog.CounterDigits;
-            _lblFilePreview.Text = $"z.B.) {GenerateExampleFileName()}.pdf";
+            UpdatePreview();
         };
 
-        if (dialog.ShowDialog() == DialogResult.OK)
+        if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
         {
             _settings.FileNameFormat = dialog.SelectedMode;
             _settings.CustomFileName = dialog.CustomFileName;
             _settings.CounterDigits = dialog.CounterDigits;
-
-            // Update preview in main tab
-            _lblFilePreview.Text = $"z.B.) {GenerateExampleFileName()}.pdf";
+            UpdatePreview();
         }
     }
 
     /// <summary>
-    /// Generates an example file name based on the current format settings.
+    /// Generates an example file name (without extension) based on the current format settings.
     /// </summary>
     public string GenerateExampleFileName()
-    {
-        return _settings.FileNameFormat switch
-        {
-            FileNameFormatDialog.FormatMode.OsDefault => DateTime.Now.ToString("yyyyMMdd_HHmmss"),
-            FileNameFormatDialog.FormatMode.Timestamp => DateTime.Now.ToString("yyyyMMddHHmmss"),
-            FileNameFormatDialog.FormatMode.Custom => $"{_settings.CustomFileName}_{new string('0', _settings.CounterDigits)}",
-            _ => "unbenannt_000"
-        };
-    }
+        => FileNamePattern.BuildBaseName(_settings, DateTime.Now, 1);
 }

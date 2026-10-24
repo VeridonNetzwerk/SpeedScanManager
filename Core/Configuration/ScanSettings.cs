@@ -1,7 +1,14 @@
+using System.Reflection;
+using System.Text.Json.Serialization;
+
 namespace SpeedScanManager;
 
 /// <summary>
-/// Holds all scan-related settings that will eventually be applied to TWAIN in Phase 8.
+/// Holds all scan-related settings (all tabs of the settings window).
+/// This is the full persisted payload: AppSettings.ScanSettings stores the current
+/// settings and every ScanProfile stores its own copy.
+/// Copy/compare logic is reflection based, so a newly added property is automatically
+/// included in Clone/RestoreFrom/SettingsEqual and in profiles.
 /// </summary>
 internal class ScanSettings
 {
@@ -9,10 +16,13 @@ internal class ScanSettings
     public ImageQuality ImageQuality { get; set; } = ImageQuality.Automatic;
     public ColorMode ColorMode { get; set; } = ColorMode.Color;
     public ScanSide ScanSide { get; set; } = ScanSide.Automatic;
+    /// <summary>After a scan, ask whether to continue scanning (pages are appended).</summary>
     public bool ContinueScanning { get; set; }
 
     // Scan mode options dialog
-    public int Brightness { get; set; } // -3 to +3, 0 = normal
+    /// <summary>-3 (dunkel) to +3 (hell), 0 = normal. Only used for ColorMode.BlackWhite.
+    /// Sign follows TWAIN ICAP_BRIGHTNESS: negative = darker.</summary>
+    public int Brightness { get; set; }
     public bool TextOnlySettings { get; set; }
     public bool AllowDeleteBlankPages { get; set; } = true;
     public bool AllowDeskew { get; set; }
@@ -24,7 +34,18 @@ internal class ScanSettings
     public PdfSplitMode PdfSplitMode { get; set; } = PdfSplitMode.MultiPage;
     public int PdfSplitPages { get; set; } = 1;
     public bool PdfUsePassword { get; set; }
+
+    /// <summary>Plain-text PDF password, in memory only (never written to disk).</summary>
+    [JsonIgnore]
     public string PdfPassword { get; set; } = "";
+
+    /// <summary>DPAPI-protected (CurrentUser) form of <see cref="PdfPassword"/>, used for persistence.</summary>
+    [DerivedSetting]
+    public string PdfPasswordProtected
+    {
+        get => SecretProtector.Protect(PdfPassword);
+        set => PdfPassword = SecretProtector.Unprotect(value);
+    }
 
     // OCR settings (Phase 11)
     public bool OcrEnabled { get; set; }
@@ -45,133 +66,181 @@ internal class ScanSettings
     // Carrier sheet settings (Phase 14)
     public bool CarrierSheetEnabled { get; set; }
     public CarrierSheetOutputSize CarrierSheetOutputSize { get; set; } = CarrierSheetOutputSize.Automatic;
-    public int CarrierSheetCustomWidth { get; set; } = 297;  // mm
+    public int CarrierSheetCustomWidth { get; set; } = 297;  // mm, used when CarrierSheetOutputSize == Custom
     public int CarrierSheetCustomHeight { get; set; } = 420; // mm
 
     // Paper tab
     public PaperSizeMode PaperSize { get; set; } = PaperSizeMode.Automatic;
+    /// <summary>User-defined paper sizes (max <see cref="MaxCustomPaperSizes"/>), width/length in mm.</summary>
+    [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
     public List<CustomPaperSize> CustomPaperSizes { get; } = new();
+    /// <summary>Index into <see cref="CustomPaperSizes"/>; valid when PaperSize == Custom, otherwise -1.</summary>
     public int SelectedCustomSizeIndex { get; set; } = -1;
     public MultiFeedDetection MultiFeedDetection { get; set; } = MultiFeedDetection.Off;
 
     // File size tab
     public int CompressionRate { get; set; } = 3; // 1 (low/large file) to 5 (high/small file)
 
-    // Save tab (persisted alongside other settings so Apply/Cancel works)
+    // Save tab
     public string FolderPath { get; set; } = "";
     public FileNameFormatDialog.FormatMode FileNameFormat { get; set; } = FileNameFormatDialog.FormatMode.Timestamp;
-    public string CustomFileName { get; set; } = "unbenannt";
+    public string CustomFileName { get; set; } = FileNamePattern.DefaultCustomName;
     public int CounterDigits { get; set; } = 3;
+    /// <summary>Show the rename/save dialog after each scan (Scan to Folder).</summary>
+    public bool RenameAfterScan { get; set; }
 
     // Application tab
     public ApplicationType ApplicationType { get; set; } = ApplicationType.ScanToFolder;
+    /// <summary>When ApplicationType == Custom: display name of the user-added application.</summary>
+    public string CustomApplicationName { get; set; } = "";
+    /// <summary>When ApplicationType == Custom: full path of the executable to launch.</summary>
+    public string CustomApplicationPath { get; set; } = "";
+    /// <summary>When ApplicationType == Custom: optional extra arguments (placed before the file paths).</summary>
+    public string CustomApplicationArguments { get; set; } = "";
+
+    public const int MaxCustomPaperSizes = 10;
+    public const int MaxCustomPaperSizeNameLength = 62;
+    public const int MinCarrierSheetSizeMm = 50;
+    public const int MaxCarrierSheetSizeMm = 2000;
+
+    public static string DefaultFolderPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SpeedScanManager");
+
+    /// <summary>All copyable scalar settings (read/write, not derived).</summary>
+    private static readonly PropertyInfo[] ValueProperties = typeof(ScanSettings)
+        .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+        .Where(p => p.CanRead && p.CanWrite && p.GetSetMethod() != null
+                    && p.GetCustomAttribute<DerivedSettingAttribute>() == null)
+        .ToArray();
 
     /// <summary>
-    /// Compares all setting values with another instance.
+    /// Compares all setting values with another instance (custom paper sizes element-wise).
     /// </summary>
     public bool SettingsEqual(ScanSettings other)
     {
-        if (ImageQuality != other.ImageQuality) return false;
-        if (ColorMode != other.ColorMode) return false;
-        if (ScanSide != other.ScanSide) return false;
-        if (ContinueScanning != other.ContinueScanning) return false;
-        if (Brightness != other.Brightness) return false;
-        if (TextOnlySettings != other.TextOnlySettings) return false;
-        if (AllowDeleteBlankPages != other.AllowDeleteBlankPages) return false;
-        if (AllowDeskew != other.AllowDeskew) return false;
-        if (AllowAutoRotate != other.AllowAutoRotate) return false;
-        if (FaceUpFeeding != other.FaceUpFeeding) return false;
-        if (FileFormat != other.FileFormat) return false;
-        if (PdfSplitMode != other.PdfSplitMode) return false;
-        if (PdfSplitPages != other.PdfSplitPages) return false;
-        if (PdfUsePassword != other.PdfUsePassword) return false;
-        if (PdfPassword != other.PdfPassword) return false;
-        if (OcrEnabled != other.OcrEnabled) return false;
-        if (OcrLanguage != other.OcrLanguage) return false;
-        if (OcrTargetPages != other.OcrTargetPages) return false;
-        if (AddKeywordToPdf != other.AddKeywordToPdf) return false;
-        if (KeywordTarget != other.KeywordTarget) return false;
-        if (EmailRecipient != other.EmailRecipient) return false;
-        if (EmailSubjectTemplate != other.EmailSubjectTemplate) return false;
-        if (PrinterName != other.PrinterName) return false;
-        if (CarrierSheetEnabled != other.CarrierSheetEnabled) return false;
-        if (CarrierSheetOutputSize != other.CarrierSheetOutputSize) return false;
-        if (CarrierSheetCustomWidth != other.CarrierSheetCustomWidth) return false;
-        if (CarrierSheetCustomHeight != other.CarrierSheetCustomHeight) return false;
-        if (PaperSize != other.PaperSize) return false;
-        if (SelectedCustomSizeIndex != other.SelectedCustomSizeIndex) return false;
-        if (MultiFeedDetection != other.MultiFeedDetection) return false;
-        if (CompressionRate != other.CompressionRate) return false;
-        if (FolderPath != other.FolderPath) return false;
-        if (FileNameFormat != other.FileNameFormat) return false;
-        if (CustomFileName != other.CustomFileName) return false;
-        if (CounterDigits != other.CounterDigits) return false;
-        if (ApplicationType != other.ApplicationType) return false;
-        if (CustomPaperSizes.Count != other.CustomPaperSizes.Count) return false;
-        for (int i = 0; i < CustomPaperSizes.Count; i++)
+        foreach (var p in ValueProperties)
         {
-            if (CustomPaperSizes[i] != other.CustomPaperSizes[i]) return false;
+            if (!Equals(p.GetValue(this), p.GetValue(other))) return false;
         }
-        return true;
+        return CustomPaperSizes.SequenceEqual(other.CustomPaperSizes);
     }
 
     /// <summary>
-    /// Creates a deep copy of the current settings for snapshot/restore.
+    /// Creates a deep copy of the current settings.
     /// </summary>
     public ScanSettings Clone()
     {
-        var clone = (ScanSettings)MemberwiseClone();
-        var paperSizes = new List<CustomPaperSize>(CustomPaperSizes);
-        clone.CustomPaperSizes.Clear();
-        clone.CustomPaperSizes.AddRange(paperSizes);
+        var clone = new ScanSettings();
+        clone.RestoreFrom(this);
         return clone;
     }
 
     /// <summary>
-    /// Restores all values from a snapshot.
+    /// Copies all values from <paramref name="snapshot"/> into this instance (deep copy of lists).
     /// </summary>
     public void RestoreFrom(ScanSettings snapshot)
     {
-        ImageQuality = snapshot.ImageQuality;
-        ColorMode = snapshot.ColorMode;
-        ScanSide = snapshot.ScanSide;
-        ContinueScanning = snapshot.ContinueScanning;
-        Brightness = snapshot.Brightness;
-        TextOnlySettings = snapshot.TextOnlySettings;
-        AllowDeleteBlankPages = snapshot.AllowDeleteBlankPages;
-        AllowDeskew = snapshot.AllowDeskew;
-        AllowAutoRotate = snapshot.AllowAutoRotate;
-        FaceUpFeeding = snapshot.FaceUpFeeding;
-        FileFormat = snapshot.FileFormat;
-        PdfSplitMode = snapshot.PdfSplitMode;
-        PdfSplitPages = snapshot.PdfSplitPages;
-        PdfUsePassword = snapshot.PdfUsePassword;
-        PdfPassword = snapshot.PdfPassword;
-        OcrEnabled = snapshot.OcrEnabled;
-        OcrLanguage = snapshot.OcrLanguage;
-        OcrTargetPages = snapshot.OcrTargetPages;
-        AddKeywordToPdf = snapshot.AddKeywordToPdf;
-        KeywordTarget = snapshot.KeywordTarget;
-        EmailRecipient = snapshot.EmailRecipient;
-        EmailSubjectTemplate = snapshot.EmailSubjectTemplate;
-        PrinterName = snapshot.PrinterName;
-        CarrierSheetEnabled = snapshot.CarrierSheetEnabled;
-        CarrierSheetOutputSize = snapshot.CarrierSheetOutputSize;
-        CarrierSheetCustomWidth = snapshot.CarrierSheetCustomWidth;
-        CarrierSheetCustomHeight = snapshot.CarrierSheetCustomHeight;
-        PaperSize = snapshot.PaperSize;
+        if (ReferenceEquals(this, snapshot)) return;
+        foreach (var p in ValueProperties)
+            p.SetValue(this, p.GetValue(snapshot));
+
+        var sizes = snapshot.CustomPaperSizes.Select(s => s with { }).ToList();
         CustomPaperSizes.Clear();
-        CustomPaperSizes.AddRange(snapshot.CustomPaperSizes);
-        SelectedCustomSizeIndex = snapshot.SelectedCustomSizeIndex;
-        MultiFeedDetection = snapshot.MultiFeedDetection;
-        CompressionRate = snapshot.CompressionRate;
-        FolderPath = snapshot.FolderPath;
-        FileNameFormat = snapshot.FileNameFormat;
-        CustomFileName = snapshot.CustomFileName;
-        CounterDigits = snapshot.CounterDigits;
-        ApplicationType = snapshot.ApplicationType;
+        CustomPaperSizes.AddRange(sizes);
     }
+
+    /// <summary>
+    /// Clamps every value to its valid range and resolves contradictory combinations.
+    /// Call after loading from disk and before binding to UI controls.
+    /// </summary>
+    public void Normalize()
+    {
+        ImageQuality = Defined(ImageQuality, ImageQuality.Automatic);
+        ColorMode = Defined(ColorMode, ColorMode.Color);
+        ScanSide = Defined(ScanSide, ScanSide.Automatic);
+        FileFormat = Defined(FileFormat, FileFormat.Pdf);
+        PdfSplitMode = Defined(PdfSplitMode, PdfSplitMode.MultiPage);
+        OcrLanguage = Defined(OcrLanguage, OcrLanguage.Automatisch);
+        OcrTargetPages = Defined(OcrTargetPages, OcrTargetPages.AllPages);
+        KeywordTarget = Defined(KeywordTarget, KeywordTarget.FirstMarkedSection);
+        CarrierSheetOutputSize = Defined(CarrierSheetOutputSize, CarrierSheetOutputSize.Automatic);
+        PaperSize = Defined(PaperSize, PaperSizeMode.Automatic);
+        MultiFeedDetection = Defined(MultiFeedDetection, MultiFeedDetection.Off);
+        FileNameFormat = Defined(FileNameFormat, FileNameFormatDialog.FormatMode.Timestamp);
+        ApplicationType = Defined(ApplicationType, ApplicationType.ScanToFolder);
+
+        Brightness = Math.Clamp(Brightness, -3, 3);
+        CompressionRate = Math.Clamp(CompressionRate, 1, 5);
+        PdfSplitPages = Math.Clamp(PdfSplitPages, 1, 999);
+        CarrierSheetCustomWidth = Math.Clamp(CarrierSheetCustomWidth, MinCarrierSheetSizeMm, MaxCarrierSheetSizeMm);
+        CarrierSheetCustomHeight = Math.Clamp(CarrierSheetCustomHeight, MinCarrierSheetSizeMm, MaxCarrierSheetSizeMm);
+        CounterDigits = FileNamePattern.NormalizeCounterDigits(CounterDigits);
+
+        PdfPassword ??= "";
+        EmailRecipient ??= "";
+        EmailSubjectTemplate ??= "";
+        PrinterName ??= "";
+        CustomApplicationName ??= "";
+        CustomApplicationPath ??= "";
+        CustomApplicationArguments ??= "";
+
+        if (string.IsNullOrWhiteSpace(FolderPath))
+            FolderPath = DefaultFolderPath;
+        if (FileNamePattern.ValidateCustomName(CustomFileName) != null)
+            CustomFileName = FileNamePattern.DefaultCustomName;
+        if (PdfUsePassword && string.IsNullOrEmpty(PdfPassword))
+            PdfUsePassword = false;
+
+        // Custom paper sizes: drop invalid entries, enforce limits
+        var sizes = CustomPaperSizes
+            .Where(s => s != null && !string.IsNullOrWhiteSpace(s.Name))
+            .Take(MaxCustomPaperSizes)
+            .Select(s => new CustomPaperSize(
+                s.Name.Trim().Length > MaxCustomPaperSizeNameLength ? s.Name.Trim()[..MaxCustomPaperSizeNameLength] : s.Name.Trim(),
+                Math.Clamp(s.WidthMm, 1, 9999),
+                Math.Clamp(s.LengthMm, 1, 9999)))
+            .ToList();
+        CustomPaperSizes.Clear();
+        CustomPaperSizes.AddRange(sizes);
+
+        if (PaperSize == PaperSizeMode.Custom)
+        {
+            if (CustomPaperSizes.Count == 0)
+            {
+                PaperSize = PaperSizeMode.Automatic;
+                SelectedCustomSizeIndex = -1;
+            }
+            else if (SelectedCustomSizeIndex < 0 || SelectedCustomSizeIndex >= CustomPaperSizes.Count)
+            {
+                SelectedCustomSizeIndex = 0;
+            }
+        }
+        else
+        {
+            SelectedCustomSizeIndex = -1;
+        }
+
+        // Automatic paper size detection is not available for flatbed scanning
+        if (ScanSide == ScanSide.Flatbed && PaperSize == PaperSizeMode.Automatic)
+            PaperSize = PaperSizeMode.A4;
+
+        // JPEG cannot hold black & white images (ScanSnap disables JPEG for B/W)
+        if (ColorMode == ColorMode.BlackWhite && FileFormat == FileFormat.Jpeg)
+            FileFormat = FileFormat.Pdf;
+
+        if (ApplicationType == ApplicationType.Custom && string.IsNullOrWhiteSpace(CustomApplicationPath))
+            ApplicationType = ApplicationType.ScanToFolder;
+    }
+
+    private static T Defined<T>(T value, T fallback) where T : struct, Enum
+        => Enum.IsDefined(value) ? value : fallback;
 }
+
+/// <summary>
+/// Marks a property that is computed from other settings (not copied or compared).
+/// </summary>
+[AttributeUsage(AttributeTargets.Property)]
+internal sealed class DerivedSettingAttribute : Attribute { }
 
 internal enum PaperSizeMode
 {
@@ -199,7 +268,14 @@ internal enum MultiFeedDetection
     Both
 }
 
-internal record CustomPaperSize(string Name, int WidthMm, int LengthMm);
+/// <summary>
+/// User-defined paper size. WidthMm and LengthMm are whole millimetres.
+/// </summary>
+internal record CustomPaperSize(string Name, int WidthMm, int LengthMm)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string DisplayText => $"{Name} ({WidthMm} x {LengthMm} mm)";
+}
 
 internal enum FileFormat
 {
@@ -268,8 +344,24 @@ internal enum KeywordTarget
     AllMarkedSections
 }
 
+/// <summary>
+/// Output image size for carrier sheet scans. Existing values keep their numbers
+/// (Automatic = 0, Custom = 1); fixed sizes were appended. All sizes in mm (width x height).
+/// </summary>
 internal enum CarrierSheetOutputSize
 {
     Automatic,
-    Custom
+    Custom,          // CarrierSheetCustomWidth x CarrierSheetCustomHeight
+    A3,              // 297 x 420
+    A4,              // 210 x 297
+    A5,              // 148 x 210
+    A6,              // 105 x 148
+    B4,              // 257 x 364 (JIS)
+    B5,              // 182 x 257 (JIS)
+    B6,              // 128 x 182 (JIS)
+    Letter,          // 216 x 279.4
+    DoubleLetter,    // 279.4 x 431.8
+    Postcard,        // 100 x 148
+    BusinessCard,    // 55 x 91
+    CarrierSheet     // 220 x 297 (size of the carrier sheet itself)
 }

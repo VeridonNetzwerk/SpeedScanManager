@@ -12,11 +12,14 @@ internal sealed class PaperSizeItem
 {
     public string DisplayText { get; }
     public PaperSizeMode Value { get; }
+    /// <summary>Index into ScanSettings.CustomPaperSizes for Value == Custom, otherwise -1.</summary>
+    public int CustomIndex { get; }
 
-    public PaperSizeItem(string displayText, PaperSizeMode value)
+    public PaperSizeItem(string displayText, PaperSizeMode value, int customIndex = -1)
     {
         DisplayText = displayText;
         Value = value;
+        CustomIndex = customIndex;
     }
 
     public override string ToString() => DisplayText;
@@ -29,14 +32,33 @@ internal class PaperTabContent : Panel
     private readonly Button _btnCarrierSheet;
     private readonly ComboBox _cbMultiFeed;
     private readonly ScanSettings _settings;
+    private readonly Label _lblFlatbedHint;
     private bool _ultrasoundSupported = true;
     private bool _lengthSupported = true;
+    private bool _loading;
+
+    private static readonly PaperSizeItem[] FixedSizes =
+    {
+        new("Automatische Erkennung", PaperSizeMode.Automatic),
+        new("A3 (297 x 420 mm)", PaperSizeMode.A3),
+        new("A4 (210 x 297 mm)", PaperSizeMode.A4),
+        new("A5 (148 x 210 mm)", PaperSizeMode.A5),
+        new("A6 (105 x 148 mm)", PaperSizeMode.A6),
+        new("B4(JIS) (257 x 364 mm)", PaperSizeMode.B4Jis),
+        new("B5(JIS) (182 x 257 mm)", PaperSizeMode.B5Jis),
+        new("B6(JIS) (128 x 182 mm)", PaperSizeMode.B6Jis),
+        new("Postkarte (100 x 148 mm)", PaperSizeMode.Postcard),
+        new("Visitenkarte (55 x 91 mm)", PaperSizeMode.BusinessCard),
+        new("Letter (8,5 x 11 in. (216 x 279,4 mm))", PaperSizeMode.Letter),
+        new("Double Letter (11 x 17 in. (279,4 x 431,8 mm))", PaperSizeMode.DoubleLetter),
+        new("Legal (8,5 x 14 in. (216 x 355,6 mm))", PaperSizeMode.Legal)
+    };
 
     public PaperTabContent(ScanSettings settings)
     {
         _settings = settings;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Dock = DockStyle.Fill;
         BackColor = Color.White;
 
@@ -61,26 +83,9 @@ internal class PaperTabContent : Panel
             Anchor = AnchorStyles.Left | AnchorStyles.Right,
             Margin = Padding.Empty,
             DropDownWidth = 450,
-            MaxDropDownItems = 13,
+            MaxDropDownItems = 16,
             IntegralHeight = false
         };
-        _cbPaperSize.Items.AddRange(new object[]
-        {
-            new PaperSizeItem("Automatische Erkennung", PaperSizeMode.Automatic),
-            new PaperSizeItem("A3 (297 x 420 mm)", PaperSizeMode.A3),
-            new PaperSizeItem("A4 (210 x 297 mm)", PaperSizeMode.A4),
-            new PaperSizeItem("A5 (148 x 210 mm)", PaperSizeMode.A5),
-            new PaperSizeItem("A6 (105 x 148 mm)", PaperSizeMode.A6),
-            new PaperSizeItem("B4(JIS) (257 x 364 mm)", PaperSizeMode.B4Jis),
-            new PaperSizeItem("B5(JIS) (182 x 257 mm)", PaperSizeMode.B5Jis),
-            new PaperSizeItem("B6(JIS) (128 x 182 mm)", PaperSizeMode.B6Jis),
-            new PaperSizeItem("Postkarte (100 x 148 mm)", PaperSizeMode.Postcard),
-            new PaperSizeItem("Visitenkarte (55 x 91 mm)", PaperSizeMode.BusinessCard),
-            new PaperSizeItem("Letter (8,5 x 11 in. (216 x 279,4 mm))", PaperSizeMode.Letter),
-            new PaperSizeItem("Double Letter (11 x 17 in. (279,4 x 431,8 mm))", PaperSizeMode.DoubleLetter),
-            new PaperSizeItem("Legal (8,5 x 14 in. (216 x 355,6 mm))", PaperSizeMode.Legal)
-        });
-        _cbPaperSize.SelectedIndex = 0;
         _cbPaperSize.SelectedIndexChanged += (s, e) => OnPaperSizeChanged();
 
         var paperSizeContainer = new Panel
@@ -195,10 +200,9 @@ internal class PaperTabContent : Panel
             "Überprüfung der Länge",
             "Überprüfung von Überlappung und Länge"
         });
-        _cbMultiFeed.SelectedIndex = (int)MultiFeedDetection.Off;
         _cbMultiFeed.SelectedIndexChanged += (s, e) =>
         {
-            if (_cbMultiFeed.SelectedIndex < 0) return;
+            if (_loading || _cbMultiFeed.SelectedIndex < 0) return;
             var selected = (MultiFeedDetection)_cbMultiFeed.SelectedIndex;
             if (!IsMultiFeedModeSupported(selected))
             {
@@ -255,7 +259,7 @@ internal class PaperTabContent : Panel
             BackColor = Color.White
         };
 
-        var lblHint = new Label
+        var lblHint = _lblFlatbedHint = new Label
         {
             Text = "Die automatische Papiergrößenerkennung steht für das Flachbettscannen nicht zur Verfügung.",
             Font = font,
@@ -274,14 +278,99 @@ internal class PaperTabContent : Panel
         mainTable.Controls.Add(new Panel { Dock = DockStyle.Fill, BackColor = Color.White }, 0, 5);
 
         Controls.Add(mainTable);
+        LoadFromSettings();
+    }
+
+    /// <summary>
+    /// Refreshes all controls from the settings without raising change notifications.
+    /// </summary>
+    public void LoadFromSettings()
+    {
+        _loading = true;
+        try
+        {
+            RefreshPaperSizeList();
+            SelectCurrentPaperSize();
+            _cbMultiFeed.SelectedIndex = Math.Clamp((int)_settings.MultiFeedDetection, 0, _cbMultiFeed.Items.Count - 1);
+        }
+        finally
+        {
+            _loading = false;
+        }
+        UpdateFlatbedHint();
+    }
+
+    /// <summary>
+    /// Fixed sizes followed by the user-defined sizes (name + mm).
+    /// </summary>
+    private void RefreshPaperSizeList()
+    {
+        _cbPaperSize.BeginUpdate();
+        _cbPaperSize.Items.Clear();
+        _cbPaperSize.Items.AddRange(FixedSizes);
+        for (int i = 0; i < _settings.CustomPaperSizes.Count; i++)
+        {
+            _cbPaperSize.Items.Add(new PaperSizeItem(
+                _settings.CustomPaperSizes[i].DisplayText, PaperSizeMode.Custom, i));
+        }
+        _cbPaperSize.EndUpdate();
+    }
+
+    private void SelectCurrentPaperSize()
+    {
+        for (int i = 0; i < _cbPaperSize.Items.Count; i++)
+        {
+            var item = (PaperSizeItem)_cbPaperSize.Items[i]!;
+            if (item.Value == _settings.PaperSize
+                && (item.Value != PaperSizeMode.Custom || item.CustomIndex == _settings.SelectedCustomSizeIndex))
+            {
+                _cbPaperSize.SelectedIndex = i;
+                return;
+            }
+        }
+        _cbPaperSize.SelectedIndex = 0;
     }
 
     private void OnPaperSizeChanged()
     {
+        if (_loading) return;
         if (_cbPaperSize.SelectedItem is PaperSizeItem item)
         {
+            if (item.Value == PaperSizeMode.Automatic && _settings.ScanSide == ScanSide.Flatbed)
+            {
+                // Automatic detection is not available for flatbed scanning
+                _loading = true;
+                try { SelectCurrentPaperSize(); }
+                finally { _loading = false; }
+                UpdateFlatbedHint();
+                return;
+            }
             _settings.PaperSize = item.Value;
+            _settings.SelectedCustomSizeIndex = item.CustomIndex;
         }
+    }
+
+    /// <summary>
+    /// Called by MainForm when the scan side changes. Flatbed cannot use automatic
+    /// paper size detection, so a fixed size (A4) is forced.
+    /// </summary>
+    public void OnScanSideChanged(ScanSide side)
+    {
+        if (side == ScanSide.Flatbed && _settings.PaperSize == PaperSizeMode.Automatic)
+        {
+            _settings.PaperSize = PaperSizeMode.A4;
+            _settings.SelectedCustomSizeIndex = -1;
+            _loading = true;
+            try { SelectCurrentPaperSize(); }
+            finally { _loading = false; }
+        }
+        UpdateFlatbedHint();
+    }
+
+    private void UpdateFlatbedHint()
+    {
+        bool flatbed = _settings.ScanSide == ScanSide.Flatbed;
+        _lblFlatbedHint.ForeColor = flatbed ? Color.FromArgb(180, 60, 40) : Color.FromArgb(90, 90, 90);
     }
 
     private void OpenCustomSizeDialog()
@@ -290,18 +379,33 @@ internal class PaperTabContent : Panel
 
         if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
         {
-            _settings.CustomPaperSizes.Clear();
-            _settings.CustomPaperSizes.AddRange(dialog.CustomSizes);
+            // Keep the selected custom size if it still exists (matched by value)
+            CustomPaperSize? selected = _settings.PaperSize == PaperSizeMode.Custom
+                && _settings.SelectedCustomSizeIndex >= 0
+                && _settings.SelectedCustomSizeIndex < _settings.CustomPaperSizes.Count
+                    ? _settings.CustomPaperSizes[_settings.SelectedCustomSizeIndex]
+                    : null;
 
-            if (_settings.CustomPaperSizes.Count > 0)
+            _settings.CustomPaperSizes.Clear();
+            _settings.CustomPaperSizes.AddRange(dialog.CustomSizes.Take(ScanSettings.MaxCustomPaperSizes));
+
+            if (_settings.PaperSize == PaperSizeMode.Custom)
             {
-                _settings.PaperSize = PaperSizeMode.Custom;
+                int idx = selected == null ? -1 : _settings.CustomPaperSizes.IndexOf(selected);
+                if (idx < 0 && selected != null)
+                    idx = _settings.CustomPaperSizes.FindIndex(c => c.Name == selected.Name);
+                if (idx >= 0)
+                {
+                    _settings.SelectedCustomSizeIndex = idx;
+                }
+                else
+                {
+                    _settings.PaperSize = _settings.ScanSide == ScanSide.Flatbed ? PaperSizeMode.A4 : PaperSizeMode.Automatic;
+                    _settings.SelectedCustomSizeIndex = -1;
+                }
             }
-            else
-            {
-                _settings.PaperSize = PaperSizeMode.Automatic;
-                _cbPaperSize.SelectedIndex = 0;
-            }
+
+            LoadFromSettings();
         }
     }
 

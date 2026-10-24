@@ -19,6 +19,8 @@ internal class FileNameFormatDialog : Form
     public FormatMode SelectedMode { get; set; } = FormatMode.Timestamp;
     public string CustomFileName { get; set; } = "unbenannt";
     public int CounterDigits { get; set; } = 3;
+    /// <summary>File format used for the extension in the preview.</summary>
+    public FileFormat PreviewFormat { get; set; } = FileFormat.Pdf;
 
     public event EventHandler? ApplyClicked;
 
@@ -32,6 +34,9 @@ internal class FileNameFormatDialog : Form
 
     public FileNameFormatDialog()
     {
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -40,9 +45,8 @@ internal class FileNameFormatDialog : Form
         Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(550, 270);
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Font = font;
 
         // === Root layout with real padding ===
@@ -103,7 +107,7 @@ internal class FileNameFormatDialog : Form
 
         _rbTimestamp = new RadioButton
         {
-            Text = "jjjjMMddTTmmss",
+            Text = "JJJJMMTThhmmss",
             Font = font,
             AutoSize = true,
             Dock = DockStyle.Fill,
@@ -131,8 +135,9 @@ internal class FileNameFormatDialog : Form
 
         _txtCustomName = new TextBox
         {
-            Text = "unbenannt",
+            Text = FileNamePattern.DefaultCustomName,
             Font = font,
+            MaxLength = FileNamePattern.MaxCustomNameLength,
             Size = new Size(200, 22),
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
@@ -290,6 +295,8 @@ internal class FileNameFormatDialog : Form
         _cbCounterDigits.SelectedIndexChanged += (s, e) => { UpdatePreview(); UpdateApplyButton(); };
 
         UpdatePreview();
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     protected override void OnShown(EventArgs e)
@@ -321,108 +328,70 @@ internal class FileNameFormatDialog : Form
         UpdatePreview();
     }
 
+    private FormatMode CurrentMode => _rbOsDefault.Checked ? FormatMode.OsDefault
+        : _rbTimestamp.Checked ? FormatMode.Timestamp
+        : FormatMode.Custom;
+
+    private string CurrentName => string.IsNullOrWhiteSpace(_txtCustomName.Text)
+        ? FileNamePattern.DefaultCustomName
+        : _txtCustomName.Text.Trim();
+
+    private int CurrentDigits => _cbCounterDigits.SelectedIndex switch { 1 => 4, 2 => 5, _ => 3 };
+
     private void UpdatePreview()
     {
-        string example = GenerateExample();
-        _lblPreview.Text = $"Beispiel: {example}.pdf";
-    }
-
-    private string GenerateExample()
-    {
-        if (_rbOsDefault.Checked)
-        {
-            return DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        }
-        else if (_rbTimestamp.Checked)
-        {
-            return DateTime.Now.ToString("yyyyMMddHHmmss");
-        }
-        else if (_rbCustom.Checked)
-        {
-            string name = string.IsNullOrWhiteSpace(_txtCustomName.Text) ? "unbenannt" : _txtCustomName.Text;
-            int digits = _cbCounterDigits.SelectedIndex switch
-            {
-                0 => 3,
-                1 => 4,
-                2 => 5,
-                _ => 3
-            };
-            return $"{name}_{new string('0', digits)}";
-        }
-        return "unbenannt_000";
+        _lblPreview.Text = $"Beispiel: {GetExampleFileName()}{FileNamePattern.GetExtension(PreviewFormat)}";
     }
 
     /// <summary>
-    /// Generates a file name example based on the current dialog selections.
-    /// Called externally to show preview in the main tab.
+    /// Generates a file name example (without extension) based on the current dialog selections.
     /// </summary>
     public string GetExampleFileName()
-    {
-        if (_rbOsDefault.Checked)
-            return DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        else if (_rbTimestamp.Checked)
-            return DateTime.Now.ToString("yyyyMMddHHmmss");
-        else
-        {
-            string name = string.IsNullOrWhiteSpace(_txtCustomName.Text) ? "unbenannt" : _txtCustomName.Text;
-            int digits = _cbCounterDigits.SelectedIndex switch
-            {
-                0 => 3,
-                1 => 4,
-                2 => 5,
-                _ => 3
-            };
-            return $"{name}_{new string('0', digits)}";
-        }
-    }
+        => FileNamePattern.BuildBaseName(CurrentMode, CurrentName, CurrentDigits, DateTime.Now, 1);
 
     private bool HasUnsavedChanges()
-    {
-        var currentMode = _rbOsDefault.Checked ? FormatMode.OsDefault :
-                          _rbTimestamp.Checked ? FormatMode.Timestamp :
-                          FormatMode.Custom;
-        if (currentMode != SelectedMode) return true;
-
-        var currentName = string.IsNullOrWhiteSpace(_txtCustomName.Text) ? "unbenannt" : _txtCustomName.Text;
-        if (currentName != CustomFileName) return true;
-
-        var currentDigits = _cbCounterDigits.SelectedIndex switch { 0 => 3, 1 => 4, 2 => 5, _ => 3 };
-        if (currentDigits != CounterDigits) return true;
-
-        return false;
-    }
+        => CurrentMode != SelectedMode || CurrentName != CustomFileName || CurrentDigits != CounterDigits;
 
     private void UpdateApplyButton()
     {
         _btnApply.Enabled = HasUnsavedChanges();
     }
 
-    private void ApplySettings()
+    /// <summary>
+    /// Validates the custom name (only when the custom mode is selected). Shows a message on error.
+    /// </summary>
+    private bool ValidateInput()
     {
-        if (_rbOsDefault.Checked)
-            SelectedMode = FormatMode.OsDefault;
-        else if (_rbTimestamp.Checked)
-            SelectedMode = FormatMode.Timestamp;
-        else
-            SelectedMode = FormatMode.Custom;
+        if (CurrentMode != FormatMode.Custom)
+            return true;
+        string? error = FileNamePattern.ValidateCustomName(CurrentName);
+        if (error == null)
+            return true;
+        MessageBox.Show(this, error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        _txtCustomName.Focus();
+        _txtCustomName.SelectAll();
+        return false;
+    }
 
-        CustomFileName = string.IsNullOrWhiteSpace(_txtCustomName.Text) ? "unbenannt" : _txtCustomName.Text;
-        CounterDigits = _cbCounterDigits.SelectedIndex switch
-        {
-            0 => 3,
-            1 => 4,
-            2 => 5,
-            _ => 3
-        };
+    private bool ApplySettings()
+    {
+        if (!ValidateInput())
+            return false;
+
+        SelectedMode = CurrentMode;
+        CustomFileName = CurrentName;
+        CounterDigits = CurrentDigits;
         UpdateApplyButton();
         ApplyClicked?.Invoke(this, EventArgs.Empty);
+        return true;
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        if (DialogResult == DialogResult.OK)
+        if (DialogResult == DialogResult.OK && !ApplySettings())
         {
-            ApplySettings();
+            e.Cancel = true;
+            return;
         }
         base.OnFormClosing(e);
     }

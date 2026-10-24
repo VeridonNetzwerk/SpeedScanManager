@@ -8,10 +8,14 @@ namespace SpeedScanManager;
 /// Main settings form with collapsed/expanded modes.
 /// Collapsed: header + quick-menu checkbox + preset buttons + action buttons.
 /// Expanded: additionally shows a TabControl with 6 tabs.
+/// All tabs edit a cloned working copy of the settings; only OK/Übernehmen copy it into
+/// the live settings and raise <see cref="SettingsApplied"/>. Abbrechen, Esc and the
+/// window's close button discard unapplied changes.
 /// </summary>
 internal class MainForm : Form
 {
     private readonly CheckBox _quickMenuCheckBox;
+    private readonly CheckBox _autoStartCheckBox;
 
     private readonly Panel _presetPanel;
     private readonly Button _btnRecommended;
@@ -24,35 +28,55 @@ internal class MainForm : Form
     private readonly Panel _profileSelectorPanel;
 
     private readonly TabControl _tabControl;
-    private ImageList? _tabImageList;
-    private SaveTabContent? _saveTabContent;
-    private ApplicationTabContent? _applicationTabContent;
-    private readonly ScanSettings _scanSettings;
+    private readonly ImageList _tabImageList;
+    private readonly List<Image> _ownedImages = new();
+    private readonly SaveTabContent _saveTabContent;
+    private readonly ApplicationTabContent _applicationTabContent;
+    private readonly ScanModeTabContent _scanModeTabContent;
+    private readonly FileTypeTabContent _fileTypeTabContent;
+    private readonly PaperTabContent _paperTabContent;
+    private readonly FileSizeTabContent _fileSizeTabContent;
 
-    public ScanSettings Settings => _scanSettings;
+    /// <summary>Live settings owned by the tray (only written on OK/Übernehmen).</summary>
+    private readonly ScanSettings _liveSettings;
+    /// <summary>Working copy edited by all tabs.</summary>
+    private readonly ScanSettings _working;
+    private readonly AppSettings _appSettings;
+    private readonly ProfileManager _profileManager;
+    private ScanProfile? _activeProfile;
+
+    /// <summary>Working copy of the settings being edited (not yet applied).</summary>
+    public ScanSettings Settings => _working;
     public SaveTabContent? SaveTab => _saveTabContent;
     public ApplicationTabContent? ApplicationTab => _applicationTabContent;
     public PaperTabContent? PaperTab => _paperTabContent;
     public bool QuickMenuEnabled => _quickMenuCheckBox.Checked;
-    private ScanModeTabContent? _scanModeTabContent;
-    private FileTypeTabContent? _fileTypeTabContent;
-    private PaperTabContent? _paperTabContent;
-    private FileSizeTabContent? _fileSizeTabContent;
+
+    /// <summary>
+    /// Raised after OK/Übernehmen copied the working copy into the live ScanSettings and
+    /// updated AppSettings (QuickMenuEnabled, AutoStart, SelectedProfileName). The handler
+    /// is expected to persist (AppSettings.Save()).
+    /// </summary>
+    public event EventHandler? SettingsApplied;
+
+    /// <summary>
+    /// Raised when the list of custom applications changed (persist immediately, independent
+    /// of OK/Abbrechen like ScanSnap).
+    /// </summary>
+    public event EventHandler? CustomApplicationsChanged;
 
     private readonly Button _detailButton;
     private readonly Button _okButton;
     private readonly Button _cancelButton;
     private readonly Button _applyButton;
-    private Image? _downArrowIcon;
-    private Image? _upArrowIcon;
+    private readonly Image _downArrowIcon;
+    private readonly Image _upArrowIcon;
 
     private bool _expanded;
-    private Button? _activePreset;
-    private readonly ProfileManager _profileManager;
-    private ScanSettings? _snapshot;
-    private bool _quickMenuSnapshot;
+    private bool _suppressChange;
+    private bool _suppressProfileEvent;
 
-    // Layout constants
+    // Layout constants (96 dpi; use Px() for values applied after construction)
     private const int ClientWidth = 686;
     private const int ExpandedClientHeight = 463;
     private const int CollapsedClientHeight = 173; // 133 top + 40 footer
@@ -67,11 +91,18 @@ internal class MainForm : Form
     private readonly Panel _separatorPanel;
     private readonly Panel _bottomPanel;
 
-    public MainForm(ScanSettings? settings = null, ProfileManager? profileManager = null)
+    public MainForm(ScanSettings liveSettings, ProfileManager profileManager, AppSettings appSettings)
     {
-        _scanSettings = settings ?? new ScanSettings();
-        _profileManager = profileManager ?? new ProfileManager();
-        AutoScaleMode = AutoScaleMode.None;
+        _liveSettings = liveSettings;
+        _liveSettings.Normalize();
+        _working = liveSettings.Clone();
+        _profileManager = profileManager;
+        _appSettings = appSettings;
+        _activeProfile = _profileManager.GetByName(_appSettings.SelectedProfileName);
+
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -87,10 +118,10 @@ internal class MainForm : Form
         Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(ClientWidth, CollapsedClientHeight);
         ShowInTaskbar = true;
-        Font = new Font("Microsoft Sans Serif", 8.25f);
+        Font = UiFonts.Default;
 
-        var contentFont = new Font("Microsoft Sans Serif", 8.25f);
-        var presetFont = new Font("Microsoft Sans Serif", 8.25f);
+        var contentFont = UiFonts.Default;
+        var presetFont = UiFonts.Default;
 
         // === Top panel (gray control zone, contains white header + checkbox + presets + separator) ===
         _topPanel = new Panel
@@ -126,12 +157,23 @@ internal class MainForm : Form
         _quickMenuCheckBox = new CheckBox
         {
             Text = "Quick-Menü verwenden",
-            Checked = true,
+            Checked = _appSettings.QuickMenuEnabled,
             Location = new Point(18, 56), // 44px header + 12px into gray zone
             AutoSize = true,
             Font = contentFont
         };
         _topPanel.Controls.Add(_quickMenuCheckBox);
+
+        // === Autostart checkbox (same row) ===
+        _autoStartCheckBox = new CheckBox
+        {
+            Text = "SpeedScan Manager beim Anmelden starten",
+            Checked = _appSettings.AutoStart,
+            Location = new Point(200, 56),
+            AutoSize = true,
+            Font = contentFont
+        };
+        _topPanel.Controls.Add(_autoStartCheckBox);
 
         // === Preset buttons (TableLayoutPanel for equal width/spacing) ===
         _presetPanel = new TableLayoutPanel
@@ -181,9 +223,6 @@ internal class MainForm : Form
         }
         _topPanel.Controls.Add(_presetPanel);
 
-        // Default selection: Benutzerdefiniert
-        SetActivePreset(_btnCustom);
-
         // === Separator line under preset buttons ===
         _separatorPanel = new Panel
         {
@@ -207,7 +246,8 @@ internal class MainForm : Form
             DropDownStyle = ComboBoxStyle.DropDownList,
             Font = contentFont,
             Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-            Visible = false
+            Visible = false,
+            DropDownWidth = 220
         };
 
         _profileSelectorPanel = new Panel
@@ -231,9 +271,10 @@ internal class MainForm : Form
                 var widths = ((TableLayoutPanel)_presetPanel).GetColumnWidths();
                 int x = 0;
                 for (int i = 0; i < 7; i++) x += widths[i];
-                int colWidth = widths.Length > 7 ? widths[7] : 100;
-                _profileLabel.Location = new Point(x, 86 - 13);
-                _profileDropdown.Location = new Point(x, 86 + 2);
+                int colWidth = widths.Length > 7 ? widths[7] : Px(100);
+                int presetTop = _presetPanel.Top;
+                _profileLabel.Location = new Point(x, presetTop - Px(13));
+                _profileDropdown.Location = new Point(x, presetTop + Px(2));
                 _profileDropdown.Width = colWidth;
                 _profileDropdown.BringToFront();
                 _profileLabel.BringToFront();
@@ -267,12 +308,12 @@ internal class MainForm : Form
             ImageSize = new Size(16, 16),
             ColorDepth = ColorDepth.Depth32Bit
         };
-        _tabImageList.Images.Add("app", TabIcons.CreateAppIcon());
-        _tabImageList.Images.Add("save", TabIcons.CreateSaveIcon());
-        _tabImageList.Images.Add("scan", TabIcons.CreateScanIcon());
-        _tabImageList.Images.Add("file", TabIcons.CreateFileIcon());
-        _tabImageList.Images.Add("paper", TabIcons.CreatePaperIcon());
-        _tabImageList.Images.Add("size", TabIcons.CreateSizeIcon());
+        AddTabIcon("app", TabIcons.CreateAppIcon());
+        AddTabIcon("save", TabIcons.CreateSaveIcon());
+        AddTabIcon("scan", TabIcons.CreateScanIcon());
+        AddTabIcon("file", TabIcons.CreateFileIcon());
+        AddTabIcon("paper", TabIcons.CreatePaperIcon());
+        AddTabIcon("size", TabIcons.CreateSizeIcon());
         _tabControl.ImageList = _tabImageList;
 
         var tabDefs = new[]
@@ -295,26 +336,37 @@ internal class MainForm : Form
         }
 
         // Populate each tab with content wrapped in an inner panel
-        _applicationTabContent = new ApplicationTabContent(_scanSettings);
+        _applicationTabContent = new ApplicationTabContent(_working, _appSettings.CustomApplications);
         WrapTabContent(_tabControl.TabPages[0], _applicationTabContent);
+        _applicationTabContent.CustomApplicationsChanged += (s, e) => CustomApplicationsChanged?.Invoke(this, EventArgs.Empty);
 
-        _saveTabContent = new SaveTabContent(_scanSettings);
+        _saveTabContent = new SaveTabContent(_working);
         WrapTabContent(_tabControl.TabPages[1], _saveTabContent);
 
-        _scanModeTabContent = new ScanModeTabContent(_scanSettings);
+        _scanModeTabContent = new ScanModeTabContent(_working);
         WrapTabContent(_tabControl.TabPages[2], _scanModeTabContent);
 
-        _fileTypeTabContent = new FileTypeTabContent(_scanSettings);
+        _fileTypeTabContent = new FileTypeTabContent(_working);
         WrapTabContent(_tabControl.TabPages[3], _fileTypeTabContent);
 
-        // Connect color mode changes to file type tab (JPEG availability)
-        _scanModeTabContent.ColorModeChanged += (mode) => _fileTypeTabContent.OnColorModeChanged(mode);
-
-        _paperTabContent = new PaperTabContent(_scanSettings);
+        _paperTabContent = new PaperTabContent(_working);
         WrapTabContent(_tabControl.TabPages[4], _paperTabContent);
 
-        _fileSizeTabContent = new FileSizeTabContent(_scanSettings);
+        _fileSizeTabContent = new FileSizeTabContent(_working);
         WrapTabContent(_tabControl.TabPages[5], _fileSizeTabContent);
+
+        // Cross-tab dependencies
+        _scanModeTabContent.ColorModeChanged += (mode) =>
+        {
+            _fileTypeTabContent.OnColorModeChanged(mode);
+            _fileSizeTabContent.UpdateEnabledState();
+        };
+        _scanModeTabContent.ScanSideChanged += (side) => _paperTabContent.OnScanSideChanged(side);
+        _fileTypeTabContent.FileFormatChanged += (fmt) =>
+        {
+            _fileSizeTabContent.UpdateEnabledState();
+            _saveTabContent.UpdatePreview();
+        };
 
         // === Bottom bar ===
         _bottomPanel = new Panel
@@ -361,7 +413,7 @@ internal class MainForm : Form
             Dock = DockStyle.Fill,
             Margin = new Padding(0, 9, 0, 9)
         };
-        _okButton.Click += (s, e) => { ApplySettings(); Close(); };
+        _okButton.Click += (s, e) => { if (ApplySettings()) Close(); };
 
         _cancelButton = new Button
         {
@@ -393,10 +445,6 @@ internal class MainForm : Form
             Margin = new Padding(0, 9, 18, 9)
         };
         _applyButton.Click += (s, e) => ApplySettings();
-
-        // Take initial snapshot for Cancel restore
-        _snapshot = _scanSettings.Clone();
-        _quickMenuSnapshot = _quickMenuCheckBox.Checked;
 
         // Wire tab content changes to enable Apply button
         WireTabContentChanges();
@@ -437,9 +485,30 @@ internal class MainForm : Form
             _bottomPanel,
             _topPanel
         });
+
+        AcceptButton = _okButton;
+        CancelButton = _cancelButton; // Esc = Abbrechen
+
+        LoadAllTabs();
+        OnQuickMenuToggled();
+        UpdateApplyButton();
+
+        ResumeLayout(false);
+        PerformLayout();
     }
 
-    private Button CreatePresetButton(string text, int x, int width, Font font)
+    /// <summary>
+    /// Converts a 96-dpi layout value to device pixels (for values applied after construction).
+    /// </summary>
+    private int Px(int value) => (int)Math.Round(value * DeviceDpi / 96f);
+
+    private void AddTabIcon(string key, Image image)
+    {
+        _ownedImages.Add(image);
+        _tabImageList.Images.Add(key, image);
+    }
+
+    private static Button CreatePresetButton(string text, int x, int width, Font font)
     {
         return new Button
         {
@@ -458,8 +527,6 @@ internal class MainForm : Form
     {
         if (sender is Button btn)
         {
-            SetActivePreset(btn);
-
             if (btn == _btnRecommended)
             {
                 ApplyPreset(ImageQuality.Automatic, 3);
@@ -474,36 +541,52 @@ internal class MainForm : Form
             }
             else if (btn == _btnCustom)
             {
-                ToggleExpanded();
+                if (!_expanded)
+                    ToggleExpanded();
             }
+            UpdatePresetHighlight();
         }
     }
 
     private void ApplyPreset(ImageQuality quality, int compression)
     {
-        _scanSettings.ImageQuality = quality;
-        _scanSettings.CompressionRate = compression;
+        _working.ImageQuality = quality;
+        _working.CompressionRate = compression;
 
-        // Update UI in tabs if they exist
-        _scanModeTabContent?.ApplyPreset(quality);
-        _fileSizeTabContent?.ApplyPreset(compression);
+        _suppressChange = true;
+        try
+        {
+            _scanModeTabContent.ApplyPreset(quality);
+            _fileSizeTabContent.ApplyPreset(compression);
+        }
+        finally
+        {
+            _suppressChange = false;
+        }
     }
 
-    private void SetActivePreset(Button btn)
+    /// <summary>
+    /// Highlights the preset button that matches the current settings
+    /// (Benutzerdefiniert when no preset matches).
+    /// </summary>
+    private void UpdatePresetHighlight()
     {
-        // Reset all preset buttons to normal style
-        foreach (Control c in _presetPanel.Controls)
+        Button? active = (_working.ImageQuality, _working.CompressionRate) switch
         {
-            if (c is Button b)
-            {
-                b.BackColor = SystemColors.Control;
-                b.ForeColor = SystemColors.ControlText;
-            }
+            (ImageQuality.Automatic, 3) => _btnRecommended,
+            (ImageQuality.Normal, 5) => _btnSmallFile,
+            (ImageQuality.Fine, 1) => _btnHighQuality,
+            _ => _btnCustom
+        };
+
+        foreach (var b in new[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom })
+        {
+            b.BackColor = SystemColors.Control;
+            b.ForeColor = SystemColors.ControlText;
         }
 
         // Highlight active button with subtle blue tint
-        btn.BackColor = Color.FromArgb(220, 230, 245);
-        _activePreset = btn;
+        active.BackColor = Color.FromArgb(220, 230, 245);
     }
 
     private void OnQuickMenuToggled()
@@ -520,7 +603,7 @@ internal class MainForm : Form
         _profileDropdown.Visible = !useQuick;
 
         // Disable Anwendung tab when Quick-Menü is on
-        _applicationTabContent!.Enabled = !useQuick;
+        _applicationTabContent.Enabled = !useQuick;
         _tabControl.Invalidate();
 
         // If Anwendung tab is selected while Quick-Menü turns on, switch to Speichern
@@ -528,94 +611,109 @@ internal class MainForm : Form
             _tabControl.SelectedIndex = 1;
     }
 
+    /// <summary>
+    /// Rebuilds the profile dropdown and selects the active profile (no profile is loaded).
+    /// </summary>
     public void RefreshProfileDropdown()
     {
-        _profileDropdown.Items.Clear();
-        foreach (var profile in _profileManager.Profiles)
+        if (_activeProfile != null && !_profileManager.Profiles.Contains(_activeProfile))
+            _activeProfile = null; // deleted in Profilverwaltung
+
+        _suppressProfileEvent = true;
+        try
         {
-            _profileDropdown.Items.Add(profile.Name);
+            _profileDropdown.Items.Clear();
+            foreach (var profile in _profileManager.Profiles)
+            {
+                _profileDropdown.Items.Add(profile.DisplayName);
+            }
+            // Add separator items
+            _profileDropdown.Items.Add("-");
+            _profileDropdown.Items.Add("Profil hinzufügen...");
+            _profileDropdown.Items.Add("Profilverwaltung...");
+            RestoreProfileSelection();
         }
-        // Add separator items
-        _profileDropdown.Items.Add("-");
-        _profileDropdown.Items.Add("Profil hinzufügen...");
-        _profileDropdown.Items.Add("Profilverwaltung...");
-        _profileDropdown.SelectedIndex = 0;
+        finally
+        {
+            _suppressProfileEvent = false;
+        }
+    }
+
+    private void RestoreProfileSelection()
+    {
+        bool previous = _suppressProfileEvent;
+        _suppressProfileEvent = true;
+        try
+        {
+            _profileDropdown.SelectedIndex = _activeProfile == null ? -1 : _profileManager.Profiles.IndexOf(_activeProfile);
+        }
+        finally
+        {
+            _suppressProfileEvent = previous;
+        }
     }
 
     private void OnProfileSelected()
     {
+        if (_suppressProfileEvent) return;
         int idx = _profileDropdown.SelectedIndex;
         if (idx < 0) return;
 
         int profileCount = _profileManager.Profiles.Count;
 
-        // Check if it's a special entry
         if (idx == profileCount + 1) // "Profil hinzufügen..."
         {
-            AddProfile();
-            // Revert selection to first profile
-            _profileDropdown.SelectedIndex = 0;
+            // Defer so the dropdown has closed before the dialog opens
+            BeginInvoke(() => { RestoreProfileSelection(); AddProfile(); });
             return;
         }
 
         if (idx == profileCount + 2) // "Profilverwaltung..."
         {
-            OpenProfileManagement();
-            // Revert selection to first profile
-            _profileDropdown.SelectedIndex = 0;
+            BeginInvoke(() => { RestoreProfileSelection(); OpenProfileManagement(); });
             return;
         }
 
-        // Skip separator
-        if (idx == profileCount)
+        if (idx == profileCount) // separator
         {
-            _profileDropdown.SelectedIndex = 0;
+            RestoreProfileSelection();
             return;
         }
 
-        // Load selected profile
-        if (idx < profileCount)
-        {
-            LoadProfile(_profileManager.Profiles[idx]);
-        }
+        var profile = _profileManager.Profiles[idx];
+        if (!ReferenceEquals(profile, _activeProfile))
+            LoadProfile(profile);
     }
 
     private void LoadProfile(ScanProfile profile)
     {
-        profile.ApplyTo(_scanSettings);
-
-        // Restore save tab UI from settings
-        _saveTabContent?.RestoreSaveConfig(
-            _scanSettings.FolderPath,
-            _scanSettings.FileNameFormat,
-            _scanSettings.CustomFileName,
-            _scanSettings.CounterDigits);
-
-        // Restore application tab UI
-        _applicationTabContent?.SetApplicationType(_scanSettings.ApplicationType);
-
-        // Update tab UIs
-        _scanModeTabContent?.ApplyPreset(_scanSettings.ImageQuality);
-        _fileSizeTabContent?.ApplyPreset(_scanSettings.CompressionRate);
+        profile.ApplyTo(_working);
+        _working.Normalize();
+        _activeProfile = profile;
+        LoadAllTabs();
+        RestoreProfileSelection();
+        UpdateApplyButton();
     }
 
     private void AddProfile()
     {
-        string? name = ShowInputDialog("Profil hinzufügen", "Profilname:", "");
-        if (string.IsNullOrWhiteSpace(name)) return;
+        if (!_profileManager.CanAddProfile)
+        {
+            MessageBox.Show(this, $"Es können höchstens {ProfileManager.MaxProfiles} Profile angelegt werden.",
+                "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
 
-        // Capture current settings (save tab data is already in _scanSettings)
-        var profile = ScanProfile.FromCurrent(
-            _scanSettings,
-            _scanSettings.FolderPath,
-            _scanSettings.FileNameFormat,
-            _scanSettings.CustomFileName,
-            _scanSettings.CounterDigits,
-            _scanSettings.ApplicationType,
-            name.Trim(), isBuiltIn: false);
+        string? name = ProfileNameInput.Show(this, _profileManager, "Neues Profil hinzufügen", "Profilname:", "", null);
+        if (name == null) return;
 
+        // New profile = current (working) settings
+        _working.Normalize();
+        var profile = ScanProfile.FromCurrent(_working, name, isBuiltIn: false);
         _profileManager.AddProfile(profile);
+        _activeProfile = profile;
         RefreshProfileDropdown();
+        UpdateApplyButton();
     }
 
     private void OpenProfileManagement()
@@ -623,33 +721,7 @@ internal class MainForm : Form
         using var dlg = new ProfileManagementDialog(_profileManager);
         dlg.ShowDialog(this);
         RefreshProfileDropdown();
-    }
-
-    private string? ShowInputDialog(string title, string label, string defaultValue)
-    {
-        using var dlg = new Form
-        {
-            Text = title,
-            FormBorderStyle = FormBorderStyle.FixedDialog,
-            MaximizeBox = false,
-            MinimizeBox = false,
-            StartPosition = FormStartPosition.CenterParent,
-            ClientSize = new Size(320, 140),
-            ShowInTaskbar = false,
-            AutoScaleMode = AutoScaleMode.None
-        };
-
-        var dlgFont = new Font("Microsoft Sans Serif", 8.25f);
-        var lbl = new Label { Text = label, Location = new Point(12, 12), AutoSize = true, Font = dlgFont };
-        var txt = new TextBox { Text = defaultValue, Location = new Point(12, 34), Size = new Size(280, 24), Font = dlgFont };
-        var btnOk = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(130, 68), Size = new Size(75, 28), Font = dlgFont };
-        var btnCancel = new Button { Text = "Abbrechen", DialogResult = DialogResult.Cancel, Location = new Point(217, 68), Size = new Size(75, 28), Font = dlgFont };
-
-        dlg.Controls.AddRange(new Control[] { lbl, txt, btnOk, btnCancel });
-        dlg.AcceptButton = btnOk;
-        dlg.CancelButton = btnCancel;
-
-        return dlg.ShowDialog(this) == DialogResult.OK ? txt.Text : null;
+        UpdateApplyButton();
     }
 
     private void ToggleExpanded()
@@ -658,7 +730,7 @@ internal class MainForm : Form
 
         if (_expanded)
         {
-            ClientSize = new Size(ClientWidth, ExpandedClientHeight);
+            ClientSize = new Size(Px(ClientWidth), Px(ExpandedClientHeight));
             _detailButton.Text = "Ausblenden";
             _detailButton.Image = _upArrowIcon;
             _tabControl.Visible = true;
@@ -669,14 +741,14 @@ internal class MainForm : Form
         }
         else
         {
-            ClientSize = new Size(ClientWidth, CollapsedClientHeight);
+            ClientSize = new Size(Px(ClientWidth), Px(CollapsedClientHeight));
             _detailButton.Text = "Detail";
             _detailButton.Image = _downArrowIcon;
             _tabControl.Visible = false;
         }
     }
 
-    private void WrapTabContent(TabPage page, Control content)
+    private static void WrapTabContent(TabPage page, Control content)
     {
         var innerPanel = new Panel
         {
@@ -690,40 +762,115 @@ internal class MainForm : Form
         page.Controls.Add(innerPanel);
     }
 
-    private void ApplySettings()
+    /// <summary>
+    /// Refreshes every tab from the working copy without triggering change handling.
+    /// </summary>
+    private void LoadAllTabs()
     {
-        // Settings are already live in _scanSettings via direct modification.
-        // Take a new snapshot so Cancel won't revert past this point.
-        _snapshot = _scanSettings.Clone();
-        _quickMenuSnapshot = _quickMenuCheckBox.Checked;
-        _applyButton.Enabled = false;
+        _suppressChange = true;
+        try
+        {
+            _applicationTabContent.LoadFromSettings();
+            _saveTabContent.LoadFromSettings();
+            _scanModeTabContent.LoadFromSettings();
+            _fileTypeTabContent.LoadFromSettings();
+            _paperTabContent.LoadFromSettings();
+            _fileSizeTabContent.LoadFromSettings();
+        }
+        finally
+        {
+            _suppressChange = false;
+        }
+        UpdatePresetHighlight();
     }
 
+    /// <summary>
+    /// Copies the working copy into the live settings (OK/Übernehmen).
+    /// Returns false when the user cancelled a follow-up question.
+    /// </summary>
+    private bool ApplySettings()
+    {
+        _working.Normalize();
+        LoadAllTabs();
+
+        // Profile handling (profiles are only active when the Quick-Menü is off)
+        if (!_quickMenuCheckBox.Checked && _activeProfile != null && !_working.SettingsEqual(_activeProfile.Settings))
+        {
+            if (!_activeProfile.IsBuiltIn)
+            {
+                // Changes to a user profile are saved into it (ScanSnap behaviour)
+                _activeProfile.UpdateFrom(_working);
+                _profileManager.Save();
+            }
+            else
+            {
+                var answer = MessageBox.Show(this,
+                    $"Das Standardprofil \"{_activeProfile.DisplayName}\" kann nicht geändert werden.\n\n" +
+                    "Möchten Sie die geänderten Einstellungen als neues Profil speichern?\n\n" +
+                    "Ja: Als neues Profil speichern\n" +
+                    "Nein: Nur als aktuelle Einstellungen übernehmen",
+                    "SpeedScan Manager", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+                if (answer == DialogResult.Cancel)
+                    return false;
+                if (answer == DialogResult.Yes)
+                {
+                    if (!_profileManager.CanAddProfile)
+                    {
+                        MessageBox.Show(this, $"Es können höchstens {ProfileManager.MaxProfiles} Profile angelegt werden.",
+                            "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return false;
+                    }
+                    string? name = ProfileNameInput.Show(this, _profileManager, "Neues Profil hinzufügen", "Profilname:", "", null);
+                    if (name == null)
+                        return false;
+                    var profile = ScanProfile.FromCurrent(_working, name, isBuiltIn: false);
+                    _profileManager.AddProfile(profile);
+                    _activeProfile = profile;
+                    RefreshProfileDropdown();
+                }
+            }
+        }
+
+        _liveSettings.RestoreFrom(_working);
+        _appSettings.QuickMenuEnabled = _quickMenuCheckBox.Checked;
+        _appSettings.AutoStart = _autoStartCheckBox.Checked;
+        _appSettings.SelectedProfileName = _activeProfile?.Name ?? "";
+
+        SettingsApplied?.Invoke(this, EventArgs.Empty);
+        UpdateApplyButton();
+        return true;
+    }
+
+    /// <summary>
+    /// Discards unapplied edits and reloads all tabs from the live settings.
+    /// </summary>
     private void CancelSettings()
     {
-        // Restore settings to the last applied state
-        if (_snapshot != null)
-        {
-            _scanSettings.RestoreFrom(_snapshot);
+        _working.RestoreFrom(_liveSettings);
+        _activeProfile = _profileManager.GetByName(_appSettings.SelectedProfileName);
+        _quickMenuCheckBox.Checked = _appSettings.QuickMenuEnabled;
+        _autoStartCheckBox.Checked = _appSettings.AutoStart;
+        LoadAllTabs();
+        RefreshProfileDropdown();
+        UpdateApplyButton();
+    }
 
-            // Refresh tab UIs to reflect restored settings
-            _saveTabContent?.RestoreSaveConfig(
-                _scanSettings.FolderPath,
-                _scanSettings.FileNameFormat,
-                _scanSettings.CustomFileName,
-                _scanSettings.CounterDigits);
-            _applicationTabContent?.SetApplicationType(_scanSettings.ApplicationType);
-            _scanModeTabContent?.ApplyPreset(_scanSettings.ImageQuality);
-            _fileSizeTabContent?.ApplyPreset(_scanSettings.CompressionRate);
-        }
-        _quickMenuCheckBox.Checked = _quickMenuSnapshot;
+    private bool HasUnappliedChanges()
+        => !_working.SettingsEqual(_liveSettings)
+           || _quickMenuCheckBox.Checked != _appSettings.QuickMenuEnabled
+           || _autoStartCheckBox.Checked != _appSettings.AutoStart
+           || (_activeProfile?.Name ?? "") != _appSettings.SelectedProfileName;
+
+    private void UpdateApplyButton()
+    {
+        _applyButton.Enabled = HasUnappliedChanges();
     }
 
     private void OnSettingsChanged()
     {
-        bool settingsChanged = !_scanSettings.SettingsEqual(_snapshot!);
-        bool quickMenuChanged = _quickMenuCheckBox.Checked != _quickMenuSnapshot;
-        _applyButton.Enabled = settingsChanged || quickMenuChanged;
+        if (_suppressChange) return;
+        UpdatePresetHighlight();
+        UpdateApplyButton();
     }
 
     /// <summary>
@@ -763,8 +910,9 @@ internal class MainForm : Form
 
     private void WireTabContentChanges()
     {
-        // Wire quick-menu checkbox
+        // Wire quick-menu and autostart checkboxes
         _quickMenuCheckBox.CheckedChanged += (s, e) => { OnQuickMenuToggled(); OnSettingsChanged(); };
+        _autoStartCheckBox.CheckedChanged += (s, e) => OnSettingsChanged();
 
         // Wire all tab pages
         foreach (TabPage page in _tabControl.TabPages)
@@ -811,35 +959,29 @@ internal class MainForm : Form
             e.Graphics.DrawLine(pen, tabRect.Left, tabRect.Top, tabRect.Right, tabRect.Top);
         }
 
-        // Icon
-        if (_tabImageList != null && e.Index < _tabImageList.Images.Count)
+        // Icon (ImageList.Draw avoids creating a new Bitmap on every paint)
+        int iconSize = Px(16);
+        if (e.Index < _tabImageList.Images.Count)
         {
-            var icon = _tabImageList.Images[e.Index];
-            int iconY = tabRect.Y + (tabRect.Height - 16) / 2;
-            e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-            e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-            e.Graphics.DrawImage(icon, tabRect.X + 6, iconY, 16, 16);
-            e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Default;
-            e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Default;
+            int iconY = tabRect.Y + (tabRect.Height - iconSize) / 2;
+            _tabImageList.Draw(e.Graphics, tabRect.X + Px(6), iconY, iconSize, iconSize, e.Index);
         }
 
         // Text — gray out Anwendung tab when Quick-Menü is on
         bool isDisabled = (e.Index == 0 && _quickMenuCheckBox.Checked);
         Color textColor = isDisabled ? Color.FromArgb(160, 160, 160)
                        : isSelected ? Color.Black : Color.FromArgb(90, 95, 105);
-        // Use the same regular font as TabControl.Font. This is also the font
-        // WinForms uses when calculating variable tab widths in Normal mode.
-        using var textFont = new Font(_tabControl.Font, FontStyle.Regular);
         // Icon at x+6 (16px wide), text starts at x+25, right padding 5px.
         // Keep the text rectangle inside the actual, individually sized tab.
-        int textLeft = tabRect.Left + 25;
-        int textRightPadding = 5;
+        int textLeft = tabRect.Left + Px(25);
+        int textRightPadding = Px(5);
         var textRect = new Rectangle(
             textLeft,
             tabRect.Top,
             Math.Max(0, tabRect.Right - textLeft - textRightPadding),
             tabRect.Height);
-        TextRenderer.DrawText(e.Graphics, page.Text, textFont, textRect, textColor,
+        // Same font as TabControl.Font, which WinForms uses to size the tabs
+        TextRenderer.DrawText(e.Graphics, page.Text, _tabControl.Font, textRect, textColor,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
     }
 
@@ -847,9 +989,11 @@ internal class MainForm : Form
     {
         if (disposing)
         {
-            _tabImageList?.Dispose();
-            _downArrowIcon?.Dispose();
-            _upArrowIcon?.Dispose();
+            _tabImageList.Dispose();
+            foreach (var img in _ownedImages)
+                img.Dispose();
+            _downArrowIcon.Dispose();
+            _upArrowIcon.Dispose();
             _okButton.Image?.Dispose();
             _cancelButton.Image?.Dispose();
             _applyButton.Image?.Dispose();
@@ -859,13 +1003,22 @@ internal class MainForm : Form
 }
 
 /// <summary>
+/// Shared fonts for all settings UI (created once instead of per control).
+/// </summary>
+internal static class UiFonts
+{
+    public static readonly Font Default = new("Microsoft Sans Serif", 8.25f);
+    public static readonly Font Bold = new("Microsoft Sans Serif", 8.25f, FontStyle.Bold);
+    public static readonly Font Large = new("Microsoft Sans Serif", 14f, FontStyle.Regular);
+}
+
+/// <summary>
 /// Reusable gradient info bar for tab content panels.
 /// Paints a blue gradient from (80,110,160) to (140,165,200) with white bold text.
 /// </summary>
 internal class GradientInfoBar : Panel
 {
     private readonly string _text;
-    private static readonly Font InfoFont = new("Microsoft Sans Serif", 8.25f, FontStyle.Bold);
 
     public GradientInfoBar(string text)
     {
@@ -885,7 +1038,7 @@ internal class GradientInfoBar : Panel
         e.Graphics.FillRectangle(brush, rect);
 
         var textRect = new Rectangle(7, 0, Width - 10, Height);
-        TextRenderer.DrawText(e.Graphics, _text, InfoFont, textRect, Color.White,
+        TextRenderer.DrawText(e.Graphics, _text, UiFonts.Bold, textRect, Color.White,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
     }
 }

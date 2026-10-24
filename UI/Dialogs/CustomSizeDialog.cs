@@ -17,14 +17,17 @@ internal class CustomSizeDialog : Form
     private readonly TextBox _txtWidth;
     private readonly TextBox _txtLength;
 
-    private const int MaxEntries = 10;
+    private const int MaxEntries = ScanSettings.MaxCustomPaperSizes;
 
     public List<CustomPaperSize> CustomSizes { get; } = new();
 
-    public CustomSizeDialog(List<CustomPaperSize> existingSizes)
+    public CustomSizeDialog(IEnumerable<CustomPaperSize> existingSizes)
     {
-        CustomSizes.AddRange(existingSizes);
+        CustomSizes.AddRange(existingSizes.Select(s => s with { }).Take(MaxEntries));
 
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -33,9 +36,8 @@ internal class CustomSizeDialog : Form
         Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(600, 340);
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Font = font;
 
         // === List ===
@@ -148,7 +150,8 @@ internal class CustomSizeDialog : Form
             Size = new Size(70, 22),
             Font = font,
             Margin = Padding.Empty,
-            TextAlign = HorizontalAlignment.Center
+            TextAlign = HorizontalAlignment.Center,
+            ReadOnly = true // display only; values are edited via "Ändern..."
         };
 
         _txtLength = new TextBox
@@ -156,7 +159,8 @@ internal class CustomSizeDialog : Form
             Size = new Size(70, 22),
             Font = font,
             Margin = Padding.Empty,
-            TextAlign = HorizontalAlignment.Center
+            TextAlign = HorizontalAlignment.Center,
+            ReadOnly = true // display only; values are edited via "Ändern..."
         };
 
         // Labels above text fields: clean 6-column layout, labels directly above textboxes
@@ -227,7 +231,7 @@ internal class CustomSizeDialog : Form
         // === Hint label ===
         var hintLabel = new Label
         {
-            Text = "Bis zu 10 benutzerdefinierte Dokumente können hinzugefügt werden.",
+            Text = $"Bis zu {MaxEntries} benutzerdefinierte Größen können hinzugefügt werden.",
             Font = font,
             AutoSize = true,
             Margin = Padding.Empty
@@ -262,6 +266,8 @@ internal class CustomSizeDialog : Form
         CancelButton = _btnClose;
 
         RefreshList();
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     private void RefreshList()
@@ -269,8 +275,9 @@ internal class CustomSizeDialog : Form
         _listBox.Items.Clear();
         foreach (var size in CustomSizes)
         {
-            _listBox.Items.Add($"{size.Name}  ({size.WidthMm} x {size.LengthMm} mm)");
+            _listBox.Items.Add(size.DisplayText);
         }
+        _btnAdd.Enabled = CustomSizes.Count < MaxEntries;
     }
 
     private void OnSelectionChanged()
@@ -363,6 +370,9 @@ internal class CustomSizeEditDialog : Form
 
     public CustomSizeEditDialog()
     {
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -371,9 +381,8 @@ internal class CustomSizeEditDialog : Form
         Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(300, 185);
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Font = font;
 
         var lblName = new Label
@@ -387,6 +396,7 @@ internal class CustomSizeEditDialog : Form
         };
         _txtName = new TextBox
         {
+            MaxLength = ScanSettings.MaxCustomPaperSizeNameLength,
             Size = new Size(170, 22),
             Font = font,
             Dock = DockStyle.Fill,
@@ -495,6 +505,8 @@ internal class CustomSizeEditDialog : Form
 
         AcceptButton = _btnOk;
         CancelButton = _btnCancel;
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     protected override void OnShown(EventArgs e)
@@ -513,6 +525,13 @@ internal class CustomSizeEditDialog : Form
             {
                 MessageBox.Show("Bitte einen Namen eingeben.", "SpeedScan Manager",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                e.Cancel = true;
+                return;
+            }
+            if (_txtName.Text.Trim().Length > ScanSettings.MaxCustomPaperSizeNameLength)
+            {
+                MessageBox.Show($"Der Name darf höchstens {ScanSettings.MaxCustomPaperSizeNameLength} Zeichen lang sein.",
+                    "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 e.Cancel = true;
                 return;
             }

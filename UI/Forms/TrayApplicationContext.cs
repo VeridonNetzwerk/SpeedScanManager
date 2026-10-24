@@ -39,7 +39,7 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     private ScannerStateService? _scannerStateService;
     private bool _twainInitialized;
     private MainForm? _mainForm;
-    private readonly ScanSettings _settings = new();
+    private readonly ScanSettings _settings;
     private readonly ProfileManager _profileManager = new();
     private readonly AppSettings _appSettings;
     private ScanPipeline? _scanPipeline;
@@ -67,26 +67,12 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     private int _wiaPollSkip;
     public TrayApplicationContext()
     {
-        // Load persisted app settings
+        // Load persisted app settings. AppSettings.ScanSettings is the single source of
+        // truth for the current scan settings (old files are migrated on first load).
         _appSettings = AppSettings.Load();
+        _settings = _appSettings.EnsureScanSettings(_profileManager);
         _quickMenuScanTriggered = _appSettings.QuickMenuEnabled;
-        _currentApplicationType = _appSettings.CurrentApplicationType;
-
-        // Apply saved profile to settings if it exists
-        var savedProfile = _profileManager.GetByName(_appSettings.SelectedProfileName);
-        if (savedProfile != null)
-        {
-            savedProfile.ApplyTo(_settings);
-        }
-        else
-        {
-            // No saved profile — restore save tab data from app settings
-            _settings.FolderPath = _appSettings.FolderPath;
-            _settings.FileNameFormat = _appSettings.FileNameFormat;
-            _settings.CustomFileName = _appSettings.CustomFileName;
-            _settings.CounterDigits = _appSettings.CounterDigits;
-            _settings.ApplicationType = _appSettings.CurrentApplicationType;
-        }
+        _currentApplicationType = _settings.ApplicationType;
 
         // Hidden window provides the HWND that TWAIN DSM requires.
         _hiddenWindow = new Form
@@ -454,38 +440,33 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         });
     }
 
+    /// <summary>
+    /// Refreshes cached flags from the applied settings. The settings window edits a
+    /// working copy, so unapplied edits in an open MainForm are intentionally ignored.
+    /// </summary>
     private void SyncSettingsFromMainForm()
     {
-        if (_mainForm != null && !_mainForm.IsDisposed)
-        {
-            // MainForm shares the same ScanSettings instance, so scan settings are already synced.
-            // Save tab data (folder, filename format) is also in _settings now.
-            _currentApplicationType = _settings.ApplicationType;
-            _quickMenuScanTriggered = _mainForm.QuickMenuEnabled;
+        _currentApplicationType = _settings.ApplicationType;
+        _quickMenuScanTriggered = _appSettings.QuickMenuEnabled;
+    }
 
-            // Persist settings
-            _appSettings.QuickMenuEnabled = _quickMenuScanTriggered;
-            _appSettings.CurrentApplicationType = _currentApplicationType;
-            _appSettings.FolderPath = _settings.FolderPath;
-            _appSettings.FileNameFormat = _settings.FileNameFormat;
-            _appSettings.CustomFileName = _settings.CustomFileName;
-            _appSettings.CounterDigits = _settings.CounterDigits;
-            _appSettings.Save();
-        }
+    /// <summary>
+    /// Called when OK/Übernehmen was pressed in the settings window: _settings already
+    /// holds the applied values; persist everything.
+    /// </summary>
+    private void OnSettingsApplied()
+    {
+        SyncSettingsFromMainForm();
+        _appSettings.Save();
     }
 
     private (string folder, FileNameFormatDialog.FormatMode mode, string customName, int digits) GetSaveConfig()
     {
-        if (_mainForm != null && !_mainForm.IsDisposed && _mainForm.SaveTab != null)
-        {
-            return _mainForm.SaveTab.GetSaveConfig();
-        }
-
-        // Use persisted settings when MainForm isn't open
-        string folder = !string.IsNullOrEmpty(_appSettings.FolderPath)
-            ? _appSettings.FolderPath
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SpeedScanManager");
-        return (folder, _appSettings.FileNameFormat, _appSettings.CustomFileName, _appSettings.CounterDigits);
+        // Always the applied settings (single source of truth)
+        string folder = !string.IsNullOrEmpty(_settings.FolderPath)
+            ? _settings.FolderPath
+            : ScanSettings.DefaultFolderPath;
+        return (folder, _settings.FileNameFormat, _settings.CustomFileName, _settings.CounterDigits);
     }
 
     private static string GenerateDefaultFileName(FileNameFormatDialog.FormatMode mode, string customName)
@@ -982,12 +963,10 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
     {
         if (_mainForm == null || _mainForm.IsDisposed)
         {
-            _mainForm = new MainForm(_settings, _profileManager);
-            _mainForm.FormClosed += (s, e) =>
-            {
-                SyncSettingsFromMainForm();
-                _mainForm = null;
-            };
+            _mainForm = new MainForm(_settings, _profileManager, _appSettings);
+            _mainForm.SettingsApplied += (s, e) => OnSettingsApplied();
+            _mainForm.CustomApplicationsChanged += (s, e) => _appSettings.Save();
+            _mainForm.FormClosed += (s, e) => _mainForm = null;
         }
         if (!_mainForm.Visible)
         {
@@ -1537,8 +1516,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
             _scanPipeline?.Dispose();
 
             // Persist settings on exit
-            _appSettings.QuickMenuEnabled = _quickMenuScanTriggered;
-            _appSettings.CurrentApplicationType = _currentApplicationType;
             _appSettings.Save();
         }
 

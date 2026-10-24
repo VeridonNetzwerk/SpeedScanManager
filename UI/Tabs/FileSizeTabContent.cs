@@ -21,6 +21,8 @@ internal class FileSizeTabContent : Panel
     private readonly Panel _numBox;
     private readonly Panel _separatorLine;
     private readonly Label _numDisplay;
+    private readonly Label _lblDisabledHint;
+    private bool _loading;
 
     // Layout constants — exact pixel positions per ScanSnap reference
     private const int GroupWidth = 530;
@@ -63,18 +65,53 @@ internal class FileSizeTabContent : Panel
 
     public void ApplyPreset(int compression)
     {
-        _settings.CompressionRate = compression;
-        _slider.Value = compression;
-        _numValue.Value = compression;
+        _settings.CompressionRate = Math.Clamp(compression, 1, 5);
+        LoadFromSettings();
+    }
+
+    /// <summary>
+    /// Refreshes all controls from the settings without raising change notifications.
+    /// </summary>
+    public void LoadFromSettings()
+    {
+        _loading = true;
+        try
+        {
+            int value = Math.Clamp(_settings.CompressionRate, 1, 5);
+            _slider.Value = value;
+            _numValue.Value = value;
+            _numDisplay.Text = value.ToString();
+        }
+        finally
+        {
+            _loading = false;
+        }
+        UpdateEnabledState();
+    }
+
+    /// <summary>
+    /// The compression rate only affects color/gray JPEG data: disabled for
+    /// black and white scans and for PNG (lossless) output.
+    /// </summary>
+    public void UpdateEnabledState()
+    {
+        string? reason = _settings.ColorMode == ColorMode.BlackWhite
+            ? "Für Schwarzweiß-Scans wird die Komprimierungsrate für Schwarzweißbilder übernommen."
+            : _settings.FileFormat == FileFormat.Png
+                ? "PNG-Dateien werden verlustfrei gespeichert; die Komprimierungsrate wird nicht verwendet."
+                : null;
+        _centerPanel.Enabled = reason == null;
+        _lblDisabledHint.Text = reason ?? "";
+        _lblDisabledHint.Visible = reason != null;
     }
 
     public FileSizeTabContent(ScanSettings settings)
     {
         _settings = settings;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
-        var smallFont = new Font("Microsoft Sans Serif", 8.25f);
-        var boldFont = new Font("Microsoft Sans Serif", 8.25f, FontStyle.Bold);
+        var font = UiFonts.Default;
+        var smallFont = UiFonts.Default;
+        var boldFont = UiFonts.Bold;
         Dock = DockStyle.Fill;
         BackColor = Color.White;
 
@@ -168,7 +205,7 @@ internal class FileSizeTabContent : Panel
             Size = new Size(SliderWidth, SliderHeight),
             Minimum = 1,
             Maximum = 5,
-            Value = Math.Clamp(_settings.CompressionRate, 1, 5),
+            Value = 3,
             TickFrequency = 1,
             SmallChange = 1,
             LargeChange = 1,
@@ -209,8 +246,8 @@ internal class FileSizeTabContent : Panel
         _numDisplay = new Label
         {
             Dock = DockStyle.Fill,
-            Text = _settings.CompressionRate.ToString(),
-            Font = new Font("Microsoft Sans Serif", 14f, FontStyle.Regular),
+            Text = "3",
+            Font = UiFonts.Large,
             ForeColor = Color.FromArgb(35, 35, 35),
             TextAlign = ContentAlignment.MiddleCenter,
             BackColor = Color.White,
@@ -227,7 +264,7 @@ internal class FileSizeTabContent : Panel
             Font = font,
             Minimum = 1,
             Maximum = 5,
-            Value = _settings.CompressionRate,
+            Value = 3,
             Visible = false
         };
         _centerPanel.Controls.Add(_numValue);
@@ -236,7 +273,8 @@ internal class FileSizeTabContent : Panel
         _slider.ValueChanged += (s, e) =>
         {
             int value = _slider.Value;
-            _settings.CompressionRate = value;
+            if (!_loading)
+                _settings.CompressionRate = value;
             if (_numValue.Value != value)
                 _numValue.Value = value;
             _numDisplay.Text = value.ToString();
@@ -246,7 +284,8 @@ internal class FileSizeTabContent : Panel
         {
             if (_slider.Value != (int)_numValue.Value)
                 _slider.Value = (int)_numValue.Value;
-            _settings.CompressionRate = (int)_numValue.Value;
+            if (!_loading)
+                _settings.CompressionRate = (int)_numValue.Value;
             _numDisplay.Text = ((int)_numValue.Value).ToString();
         };
 
@@ -299,7 +338,7 @@ internal class FileSizeTabContent : Panel
         {
             Text = "Normal",
             AutoSize = true,
-            Font = new Font("Microsoft Sans Serif", 8.25f, FontStyle.Regular),
+            Font = UiFonts.Default,
             ForeColor = Color.FromArgb(35, 35, 35),
             BackColor = Color.Transparent,
             Margin = Padding.Empty,
@@ -310,7 +349,17 @@ internal class FileSizeTabContent : Panel
             NormalY);
         _centerPanel.Controls.Add(lblNormal);
 
-        Controls.AddRange(new Control[] { infoBar, _centerPanel });
+        _lblDisabledHint = new Label
+        {
+            AutoSize = false,
+            Size = new Size(GroupWidth, 30),
+            Font = font,
+            ForeColor = Color.FromArgb(180, 60, 40),
+            BackColor = Color.White,
+            Visible = false
+        };
+
+        Controls.AddRange(new Control[] { infoBar, _centerPanel, _lblDisabledHint });
 
         // Ensure slider and number box are always on top of decorative panels
         _slider.BringToFront();
@@ -319,6 +368,7 @@ internal class FileSizeTabContent : Panel
         Dock = DockStyle.Fill;
         Resize += (s, e) => CenterPanel();
         HandleCreated += (s, e) => CenterPanel();
+        LoadFromSettings();
     }
 
     private void CenterPanel()
@@ -326,6 +376,7 @@ internal class FileSizeTabContent : Panel
         int x = (ClientSize.Width - _centerPanel.Width) / 2;
         int y = 28;
         _centerPanel.Location = new Point(Math.Max(0, x), y);
+        _lblDisabledHint.Location = new Point(Math.Max(0, x), _centerPanel.Bottom + 6);
     }
 
     /// <summary>

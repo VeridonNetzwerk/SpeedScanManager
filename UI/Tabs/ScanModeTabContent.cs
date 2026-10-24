@@ -36,6 +36,7 @@ internal class ScanModeTabContent : Panel
     private readonly Button _btnOptions;
 
     private readonly ScanSettings _settings;
+    private bool _loading;
 
     // Cached icon lists (avoid recreating on each draw)
     private static readonly List<ComboItem> QualityItems;
@@ -57,7 +58,7 @@ internal class ScanModeTabContent : Panel
         {
             new("Automatische Farberkennung", ColorMode.Automatic, TabIcons.CreateColorAutoIcon()),
             new("Farbe", ColorMode.Color, TabIcons.CreateColorColorIcon()),
-            new("Grau (umgekehrt)", ColorMode.Grayscale, TabIcons.CreateColorGrayIcon()),
+            new("Grau", ColorMode.Grayscale, TabIcons.CreateColorGrayIcon()),
             new("Schwarzweiß", ColorMode.BlackWhite, TabIcons.CreateColorBWIcon())
         };
 
@@ -72,23 +73,45 @@ internal class ScanModeTabContent : Panel
 
     public ScanSettings Settings => _settings;
     public event Action<ColorMode>? ColorModeChanged;
+    public event Action<ScanSide>? ScanSideChanged;
 
     public void ApplyPreset(ImageQuality quality)
     {
         _settings.ImageQuality = quality;
-        SelectComboItem(_cbImageQuality, QualityItems, quality);
+        _loading = true;
+        try { SelectComboItem(_cbImageQuality, QualityItems, quality); }
+        finally { _loading = false; }
+    }
+
+    /// <summary>
+    /// Refreshes all controls from the settings without raising change notifications.
+    /// </summary>
+    public void LoadFromSettings()
+    {
+        _loading = true;
+        try
+        {
+            SelectComboItem(_cbImageQuality, QualityItems, _settings.ImageQuality);
+            SelectComboItem(_cbColorMode, ColorItems, _settings.ColorMode);
+            SelectComboItem(_cbScanSide, ScanSideItems, _settings.ScanSide);
+            _chkContinueScanning.Checked = _settings.ContinueScanning;
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     public ScanModeTabContent(ScanSettings settings)
     {
         _settings = settings;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Dock = DockStyle.Fill;
         BackColor = Color.White;
 
         // === Info bar ===
-        var infoBar = new GradientInfoBar("Wählen Sie den gewünschten Scan-Modus.");
+        var infoBar = new GradientInfoBar("Wählen Sie den gewünschten Scanmodus.");
 
         // === Image Quality ===
         var lblImageQuality = new Label
@@ -100,9 +123,9 @@ internal class ScanModeTabContent : Panel
         };
 
         _cbImageQuality = CreateIconComboBox(QualityItems, new Point(176, 27));
-        SelectComboItem(_cbImageQuality, QualityItems, _settings.ImageQuality);
         _cbImageQuality.SelectedIndexChanged += (s, e) =>
         {
+            if (_loading) return;
             if (_cbImageQuality.SelectedIndex >= 0 && _cbImageQuality.SelectedIndex < QualityItems.Count)
                 _settings.ImageQuality = (ImageQuality)QualityItems[_cbImageQuality.SelectedIndex].Value;
         };
@@ -117,9 +140,9 @@ internal class ScanModeTabContent : Panel
         };
 
         _cbColorMode = CreateIconComboBox(ColorItems, new Point(176, 59));
-        SelectComboItem(_cbColorMode, ColorItems, _settings.ColorMode);
         _cbColorMode.SelectedIndexChanged += (s, e) =>
         {
+            if (_loading) return;
             if (_cbColorMode.SelectedIndex >= 0 && _cbColorMode.SelectedIndex < ColorItems.Count)
             {
                 _settings.ColorMode = (ColorMode)ColorItems[_cbColorMode.SelectedIndex].Value;
@@ -137,11 +160,14 @@ internal class ScanModeTabContent : Panel
         };
 
         _cbScanSide = CreateIconComboBox(ScanSideItems, new Point(176, 91));
-        SelectComboItem(_cbScanSide, ScanSideItems, _settings.ScanSide);
         _cbScanSide.SelectedIndexChanged += (s, e) =>
         {
+            if (_loading) return;
             if (_cbScanSide.SelectedIndex >= 0 && _cbScanSide.SelectedIndex < ScanSideItems.Count)
+            {
                 _settings.ScanSide = (ScanSide)ScanSideItems[_cbScanSide.SelectedIndex].Value;
+                ScanSideChanged?.Invoke(_settings.ScanSide);
+            }
         };
 
         // === Hint label under Scan-Seite ===
@@ -164,7 +190,10 @@ internal class ScanModeTabContent : Panel
             Font = font
         };
         _chkContinueScanning.CheckedChanged += (s, e) =>
-            _settings.ContinueScanning = _chkContinueScanning.Checked;
+        {
+            if (!_loading)
+                _settings.ContinueScanning = _chkContinueScanning.Checked;
+        };
 
         // === Options button (right-aligned) ===
         _btnOptions = new Button
@@ -188,6 +217,8 @@ internal class ScanModeTabContent : Panel
             _chkContinueScanning,
             _btnOptions
         });
+
+        LoadFromSettings();
     }
 
     private static ComboBox CreateIconComboBox(List<ComboItem> items, Point location)
@@ -202,7 +233,7 @@ internal class ScanModeTabContent : Panel
             Location = location,
             Size = new Size(420, 24),
             DropDownWidth = 420,
-            Font = new Font("Microsoft Sans Serif", 8.25f)
+            Font = UiFonts.Default
         };
 
         foreach (var item in items)
@@ -261,7 +292,7 @@ internal class ScanModeTabContent : Panel
             FaceUpFeeding = _settings.FaceUpFeeding
         };
 
-        if (dialog.ShowDialog() == DialogResult.OK)
+        if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
         {
             _settings.Brightness = dialog.Brightness;
             _settings.TextOnlySettings = dialog.TextOnlySettings;

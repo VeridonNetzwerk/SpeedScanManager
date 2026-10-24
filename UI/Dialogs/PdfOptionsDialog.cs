@@ -22,18 +22,20 @@ internal class PdfOptionsDialog : Form
 
     public PdfOptionsDialog()
     {
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        Text = "PDF-Dateiformat Option";
+        Text = "PDF-Dateiformat-Optionen";
         Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(400, 300);
         ShowInTaskbar = false;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Font = font;
-        AutoScaleMode = AutoScaleMode.None;
 
         // === Page split group ===
         var grpSplit = new GroupBox
@@ -172,6 +174,8 @@ internal class PdfOptionsDialog : Form
         Controls.AddRange(new Control[] { grpSplit, grpPassword, btnOk, btnCancel });
         AcceptButton = btnOk;
         CancelButton = btnCancel;
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     protected override void OnShown(EventArgs e)
@@ -194,19 +198,28 @@ internal class PdfOptionsDialog : Form
     {
         if (DialogResult == DialogResult.OK)
         {
+            if (_chkUsePassword.Checked)
+            {
+                string? error = string.IsNullOrEmpty(_txtPassword.Text)
+                    ? "Bitte geben Sie ein Kennwort ein."
+                    : _txtPassword.Text != _txtConfirmPassword.Text
+                        ? "Die eingegebenen Kennwörter stimmen nicht überein."
+                        : null;
+                if (error != null)
+                {
+                    MessageBox.Show(this, error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    _txtPassword.Focus();
+                    e.Cancel = true;
+                    return;
+                }
+            }
+
             SplitMode = _rbSplitByPages.Checked ? PdfSplitMode.SplitByPageCount : PdfSplitMode.MultiPage;
             SplitPages = (int)_numSplitPages.Value;
             UsePassword = _chkUsePassword.Checked;
 
             if (UsePassword)
             {
-                if (_txtPassword.Text != _txtConfirmPassword.Text)
-                {
-                    MessageBox.Show("Die eingegebenen Kennwörter stimmen nicht überein.",
-                        "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    e.Cancel = true;
-                    return;
-                }
                 Password = _txtPassword.Text;
             }
             else

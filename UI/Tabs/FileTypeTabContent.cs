@@ -13,8 +13,12 @@ internal class FileTypeTabContent : Panel
     private readonly ComboBox _cbFileFormat;
     private readonly Button _btnOptions;
     private readonly ScanSettings _settings;
-    private bool _jpegAvailable;
+    private bool _jpegAvailable = true;
+    private bool _loading;
     private readonly Label _lblJpegHint;
+
+    /// <summary>Raised when the user picks another file format.</summary>
+    public event Action<FileFormat>? FileFormatChanged;
 
     // Cached Windows file type icons for PDF, JPEG, PNG
     private static readonly Image?[] FileTypeIcons = LoadFileTypeIcons();
@@ -87,7 +91,7 @@ internal class FileTypeTabContent : Panel
     {
         _settings = settings;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Dock = DockStyle.Fill;
         BackColor = Color.White;
 
@@ -112,25 +116,26 @@ internal class FileTypeTabContent : Panel
             DrawMode = DrawMode.OwnerDrawFixed
         };
         _cbFileFormat.Items.AddRange(new object[] { "PDF (*.pdf)", "JPEG (*.jpg)", "PNG (*.png)" });
-        _cbFileFormat.SelectedIndex = (int)FileFormat.Pdf;
         _cbFileFormat.DrawItem += (s, e) => DrawFileFormatItem(e);
         _cbFileFormat.SelectedIndexChanged += (s, e) =>
         {
+            if (_loading || _cbFileFormat.SelectedIndex < 0) return;
             var fmt = (FileFormat)_cbFileFormat.SelectedIndex;
-            if ((fmt == FileFormat.Jpeg || fmt == FileFormat.Png) && !_jpegAvailable)
+            if (fmt == FileFormat.Jpeg && !_jpegAvailable)
             {
-                _cbFileFormat.SelectedIndex = (int)FileFormat.Pdf;
+                _cbFileFormat.SelectedIndex = (int)_settings.FileFormat;
                 return;
             }
             _settings.FileFormat = fmt;
             UpdateOptionsButtonState();
             UpdateOcrControlsVisibility();
+            FileFormatChanged?.Invoke(fmt);
         };
 
         // === JPEG hint text ===
         _lblJpegHint = new Label
         {
-            Text = "JPEG und PNG stehen nur zur Verfügung, wenn \"Farbe\" oder \"Grau\" unter [Farbmodus]\ngewählt wurde.",
+            Text = "JPEG steht nicht zur Verfügung, wenn \"Schwarzweiß\" unter [Farbmodus]\ngewählt wurde.",
             Location = new Point(176, 48),
             Size = new Size(420, 26),
             AutoSize = false,
@@ -153,11 +158,14 @@ internal class FileTypeTabContent : Panel
             Text = "Markierten Text als Schlüsselwort der PDF-Datei hinzufügen",
             Location = new Point(10, 14),
             AutoSize = true,
-            Font = font,
-            Checked = _settings.AddKeywordToPdf
+            Font = font
         };
         _chkAddKeyword.CheckedChanged += (s, e) =>
-            _settings.AddKeywordToPdf = _chkAddKeyword.Checked;
+        {
+            if (!_loading)
+                _settings.AddKeywordToPdf = _chkAddKeyword.Checked;
+            UpdateKeywordControlsEnabled();
+        };
 
         _lblKeywordTarget = new Label
         {
@@ -172,12 +180,11 @@ internal class FileTypeTabContent : Panel
             Text = "Erste markierte Sektion",
             Location = new Point(110, 36),
             AutoSize = true,
-            Font = font,
-            Checked = _settings.KeywordTarget == KeywordTarget.FirstMarkedSection
+            Font = font
         };
         _rbFirstSection.CheckedChanged += (s, e) =>
         {
-            if (_rbFirstSection.Checked)
+            if (!_loading && _rbFirstSection.Checked)
                 _settings.KeywordTarget = KeywordTarget.FirstMarkedSection;
         };
 
@@ -186,12 +193,11 @@ internal class FileTypeTabContent : Panel
             Text = "Alle markierten Sektionen",
             Location = new Point(270, 36),
             AutoSize = true,
-            Font = font,
-            Checked = _settings.KeywordTarget == KeywordTarget.AllMarkedSections
+            Font = font
         };
         _rbAllSections.CheckedChanged += (s, e) =>
         {
-            if (_rbAllSections.Checked)
+            if (!_loading && _rbAllSections.Checked)
                 _settings.KeywordTarget = KeywordTarget.AllMarkedSections;
         };
 
@@ -200,12 +206,12 @@ internal class FileTypeTabContent : Panel
             Text = "In durchsuchbare PDF konvertieren",
             Location = new Point(10, 52),
             AutoSize = true,
-            Font = font,
-            Checked = _settings.OcrEnabled
+            Font = font
         };
         _chkOcr.CheckedChanged += (s, e) =>
         {
-            _settings.OcrEnabled = _chkOcr.Checked;
+            if (!_loading)
+                _settings.OcrEnabled = _chkOcr.Checked;
             UpdateOcrSubControlsEnabled();
         };
 
@@ -259,10 +265,12 @@ internal class FileTypeTabContent : Panel
             "Portugiesisch",
             "Arabisch"
         });
-        _cbOcrLanguage.SelectedIndex = (int)_settings.OcrLanguage;
         _cbOcrLanguage.DrawItem += (s, e) => DrawOcrLanguageItem(e);
         _cbOcrLanguage.SelectedIndexChanged += (s, e) =>
-            _settings.OcrLanguage = (OcrLanguage)_cbOcrLanguage.SelectedIndex;
+        {
+            if (!_loading && _cbOcrLanguage.SelectedIndex >= 0)
+                _settings.OcrLanguage = (OcrLanguage)_cbOcrLanguage.SelectedIndex;
+        };
 
         _lblOcrTarget = new Label
         {
@@ -277,12 +285,11 @@ internal class FileTypeTabContent : Panel
             Text = "Erste Seite",
             Location = new Point(100, 40),
             AutoSize = true,
-            Font = font,
-            Checked = _settings.OcrTargetPages == OcrTargetPages.FirstPage
+            Font = font
         };
         _rbFirstPage.CheckedChanged += (s, e) =>
         {
-            if (_rbFirstPage.Checked)
+            if (!_loading && _rbFirstPage.Checked)
                 _settings.OcrTargetPages = OcrTargetPages.FirstPage;
         };
 
@@ -291,12 +298,11 @@ internal class FileTypeTabContent : Panel
             Text = "Alle Seiten",
             Location = new Point(200, 40),
             AutoSize = true,
-            Font = font,
-            Checked = _settings.OcrTargetPages == OcrTargetPages.AllPages
+            Font = font
         };
         _rbAllPages.CheckedChanged += (s, e) =>
         {
-            if (_rbAllPages.Checked)
+            if (!_loading && _rbAllPages.Checked)
                 _settings.OcrTargetPages = OcrTargetPages.AllPages;
         };
 
@@ -339,6 +345,31 @@ internal class FileTypeTabContent : Panel
             _btnOptions
         });
 
+        LoadFromSettings();
+    }
+
+    /// <summary>
+    /// Refreshes all controls from the settings without raising change notifications.
+    /// </summary>
+    public void LoadFromSettings()
+    {
+        _loading = true;
+        try
+        {
+            _jpegAvailable = _settings.ColorMode != ColorMode.BlackWhite;
+            _cbFileFormat.SelectedIndex = Math.Clamp((int)_settings.FileFormat, 0, _cbFileFormat.Items.Count - 1);
+            _chkAddKeyword.Checked = _settings.AddKeywordToPdf;
+            _rbFirstSection.Checked = _settings.KeywordTarget == KeywordTarget.FirstMarkedSection;
+            _rbAllSections.Checked = _settings.KeywordTarget == KeywordTarget.AllMarkedSections;
+            _chkOcr.Checked = _settings.OcrEnabled;
+            _cbOcrLanguage.SelectedIndex = Math.Clamp((int)_settings.OcrLanguage, 0, _cbOcrLanguage.Items.Count - 1);
+            _rbFirstPage.Checked = _settings.OcrTargetPages == OcrTargetPages.FirstPage;
+            _rbAllPages.Checked = _settings.OcrTargetPages == OcrTargetPages.AllPages;
+        }
+        finally
+        {
+            _loading = false;
+        }
         UpdateJpegAvailability();
         UpdateOptionsButtonState();
         UpdateOcrControlsVisibility();
@@ -346,7 +377,8 @@ internal class FileTypeTabContent : Panel
 
     /// <summary>
     /// Called by MainForm when the color mode in the Scanmodus tab changes.
-    /// JPEG is only available for Color or Grayscale.
+    /// JPEG is not available for black and white output (ScanSnap behaviour);
+    /// with automatic color detection JPEG is allowed.
     /// </summary>
     public void OnColorModeChanged(ColorMode newMode)
     {
@@ -356,15 +388,18 @@ internal class FileTypeTabContent : Panel
     private void UpdateJpegAvailability(ColorMode? mode = null)
     {
         ColorMode cm = mode ?? _settings.ColorMode;
-        _jpegAvailable = cm is ColorMode.Color or ColorMode.Grayscale;
+        _jpegAvailable = cm != ColorMode.BlackWhite;
+        _lblJpegHint.ForeColor = _jpegAvailable ? Color.FromArgb(70, 70, 70) : Color.FromArgb(180, 60, 40);
 
-        if (!_jpegAvailable && (_cbFileFormat.SelectedIndex == (int)FileFormat.Jpeg ||
-                                _cbFileFormat.SelectedIndex == (int)FileFormat.Png))
+        if (!_jpegAvailable && _cbFileFormat.SelectedIndex == (int)FileFormat.Jpeg)
         {
-            _cbFileFormat.SelectedIndex = (int)FileFormat.Pdf;
+            _loading = true;
+            try { _cbFileFormat.SelectedIndex = (int)FileFormat.Pdf; }
+            finally { _loading = false; }
             _settings.FileFormat = FileFormat.Pdf;
             UpdateOptionsButtonState();
             UpdateOcrControlsVisibility();
+            FileFormatChanged?.Invoke(FileFormat.Pdf);
         }
         _cbFileFormat.Invalidate();
     }
@@ -377,8 +412,7 @@ internal class FileTypeTabContent : Panel
 
         string text = _cbFileFormat.Items[e.Index]!.ToString()!;
         bool isJpeg = e.Index == (int)FileFormat.Jpeg;
-        bool isPng = e.Index == (int)FileFormat.Png;
-        bool disabled = (isJpeg || isPng) && !_jpegAvailable;
+        bool disabled = isJpeg && !_jpegAvailable;
 
         var color = disabled ? SystemColors.GrayText : SystemColors.ControlText;
 
@@ -388,7 +422,7 @@ internal class FileTypeTabContent : Panel
         if (icon != null)
         {
             var iconRect = new Rectangle(e.Bounds.X + 1, e.Bounds.Y + (e.Bounds.Height - 16) / 2, 16, 16);
-            var ia = new System.Drawing.Imaging.ImageAttributes();
+            using var ia = new System.Drawing.Imaging.ImageAttributes();
             if (disabled)
             {
                 var cm = new System.Drawing.Imaging.ColorMatrix
@@ -450,7 +484,7 @@ internal class FileTypeTabContent : Panel
             var iconRect = new Rectangle(e.Bounds.X + 1, e.Bounds.Y + (e.Bounds.Height - 16) / 2, 16, 16);
             if (!enabled)
             {
-                var ia = new System.Drawing.Imaging.ImageAttributes();
+                using var ia = new System.Drawing.Imaging.ImageAttributes();
                 var cm = new System.Drawing.Imaging.ColorMatrix
                 {
                     Matrix00 = 0.3f, Matrix11 = 0.3f, Matrix22 = 0.3f, Matrix33 = 1f, Matrix44 = 1f
@@ -484,11 +518,17 @@ internal class FileTypeTabContent : Panel
         bool isPdf = _cbFileFormat.SelectedIndex == (int)FileFormat.Pdf;
         _chkOcr.Enabled = isPdf;
         _chkAddKeyword.Enabled = isPdf;
-        _lblKeywordTarget.Enabled = isPdf;
-        _rbFirstSection.Enabled = isPdf;
-        _rbAllSections.Enabled = isPdf;
         _grpOcrOptions.Enabled = isPdf;
+        UpdateKeywordControlsEnabled();
         UpdateOcrSubControlsEnabled();
+    }
+
+    private void UpdateKeywordControlsEnabled()
+    {
+        bool on = _cbFileFormat.SelectedIndex == (int)FileFormat.Pdf && _chkAddKeyword.Checked;
+        _lblKeywordTarget.Enabled = on;
+        _rbFirstSection.Enabled = on;
+        _rbAllSections.Enabled = on;
     }
 
     private void UpdateOcrSubControlsEnabled()
@@ -512,7 +552,7 @@ internal class FileTypeTabContent : Panel
             Password = _settings.PdfPassword
         };
 
-        if (dialog.ShowDialog() == DialogResult.OK)
+        if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
         {
             _settings.PdfSplitMode = dialog.SplitMode;
             _settings.PdfSplitPages = dialog.SplitPages;

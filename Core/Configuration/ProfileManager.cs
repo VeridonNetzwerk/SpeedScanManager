@@ -4,21 +4,15 @@ namespace SpeedScanManager;
 
 /// <summary>
 /// Manages scan profiles: loading, saving, creating defaults.
-/// Persists to %AppData%\SpeedScanManager\profiles.json
+/// Persists to %AppData%\SpeedScanManager\profiles.json (atomic write, .bak kept,
+/// unreadable files are quarantined instead of being overwritten).
 /// </summary>
 internal class ProfileManager
 {
-    private static readonly string ProfileDir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "SpeedScanManager");
+    public const int MaxProfiles = 20;
+    public const int MaxNameLength = 64;
 
-    private static readonly string ProfilePath = Path.Combine(ProfileDir, "profiles.json");
-
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        WriteIndented = true,
-        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
-    };
+    private static readonly string ProfilePath = Path.Combine(SettingsStorage.SettingsDir, "profiles.json");
 
     public List<ScanProfile> Profiles { get; } = new();
 
@@ -29,34 +23,86 @@ internal class ProfileManager
 
     private void Load()
     {
-        try
+        var loaded = SettingsStorage.LoadWithFallback(ProfilePath, ParseProfiles);
+        if (loaded != null && loaded.Count > 0)
         {
-            if (File.Exists(ProfilePath))
-            {
-                var json = File.ReadAllText(ProfilePath);
-                var loaded = JsonSerializer.Deserialize<List<ScanProfile>>(json, JsonOpts);
-                if (loaded != null)
-                {
-                    Profiles.AddRange(loaded);
-                    return;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Profile load failed: {ex.Message}");
+            Profiles.AddRange(loaded.Take(MaxProfiles));
+            return;
         }
 
-        // First start: create default profiles
+        // First start (or nothing usable on disk): create default profiles
         CreateDefaultProfiles();
     }
 
+    /// <summary>
+    /// Parses profiles.json. Supports the current format ({ Name, IsBuiltIn, Settings })
+    /// and the legacy flat format where all settings were stored on the profile itself.
+    /// </summary>
+    private static List<ScanProfile>? ParseProfiles(string json)
+    {
+        using var doc = JsonDocument.Parse(json, new JsonDocumentOptions
+        {
+            AllowTrailingCommas = true,
+            CommentHandling = JsonCommentHandling.Skip
+        });
+        if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            throw new JsonException("profiles.json is not an array");
+
+        var result = new List<ScanProfile>();
+        foreach (var element in doc.RootElement.EnumerateArray())
+        {
+            if (element.ValueKind != JsonValueKind.Object)
+                continue;
+
+            string name = GetString(element, "Name") ?? "";
+            if (string.IsNullOrWhiteSpace(name))
+                continue;
+
+            ScanSettings settings;
+            if (TryGetProperty(element, "Settings", out var settingsElement) && settingsElement.ValueKind == JsonValueKind.Object)
+            {
+                settings = settingsElement.Deserialize<ScanSettings>(SettingsStorage.JsonOptions) ?? new ScanSettings();
+            }
+            else
+            {
+                // Legacy flat profile: setting names match ScanSettings properties
+                settings = element.Deserialize<ScanSettings>(SettingsStorage.JsonOptions) ?? new ScanSettings();
+                string? legacyPassword = GetString(element, "PdfPassword");
+                if (!string.IsNullOrEmpty(legacyPassword))
+                    settings.PdfPassword = legacyPassword;
+            }
+            settings.Normalize();
+
+            bool isBuiltIn = TryGetProperty(element, "IsBuiltIn", out var b)
+                             && (b.ValueKind == JsonValueKind.True);
+
+            if (result.Any(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)))
+                continue; // drop duplicates
+
+            result.Add(new ScanProfile { Name = name.Trim(), IsBuiltIn = isBuiltIn, Settings = settings });
+        }
+        return result;
+    }
+
+    private static bool TryGetProperty(JsonElement element, string name, out JsonElement value)
+    {
+        foreach (var prop in element.EnumerateObject())
+        {
+            if (string.Equals(prop.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                value = prop.Value;
+                return true;
+            }
+        }
+        value = default;
+        return false;
+    }
+
+    private static string? GetString(JsonElement element, string name)
+        => TryGetProperty(element, name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
     private void CreateDefaultProfiles()
     {
-        var defaultFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "SpeedScanManager");
-
         var appTypes = new[]
         {
             ApplicationType.ScanToFolder,
@@ -71,15 +117,17 @@ internal class ProfileManager
 
         foreach (var appType in appTypes)
         {
+            var settings = new ScanSettings
+            {
+                ApplicationType = appType,
+                FolderPath = ScanSettings.DefaultFolderPath
+            };
+            settings.Normalize();
             Profiles.Add(new ScanProfile
             {
                 Name = appType.ToString(),
                 IsBuiltIn = true,
-                ApplicationType = appType,
-                FolderPath = defaultFolder,
-                FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp,
-                CustomFileName = "unbenannt",
-                CounterDigits = 3
+                Settings = settings
             });
         }
 
@@ -90,30 +138,63 @@ internal class ProfileManager
     {
         try
         {
-            Directory.CreateDirectory(ProfileDir);
-            var json = JsonSerializer.Serialize(Profiles, JsonOpts);
-            File.WriteAllText(ProfilePath, json);
+            var json = JsonSerializer.Serialize(Profiles, SettingsStorage.JsonOptions);
+            SettingsStorage.WriteAtomic(ProfilePath, json);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Profile save failed: {ex.Message}");
+            DiagLog.Write($"[Settings] Profile save failed: {ex.Message}");
         }
     }
 
-    public ScanProfile? GetByName(string name)
+    public ScanProfile? GetByName(string? name)
     {
-        return Profiles.FirstOrDefault(p => p.Name == name);
+        if (string.IsNullOrEmpty(name)) return null;
+        return Profiles.FirstOrDefault(p => p.Name == name)
+               ?? Profiles.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public int IndexOf(string? name)
+    {
+        var profile = GetByName(name);
+        return profile == null ? -1 : Profiles.IndexOf(profile);
+    }
+
+    public bool CanAddProfile => Profiles.Count < MaxProfiles;
+
+    /// <summary>
+    /// Checks a new or changed profile name (case-insensitive unique against names and
+    /// display names). Returns a German error message, or null when valid.
+    /// </summary>
+    public string? ValidateName(string? name, ScanProfile? except = null)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Bitte geben Sie einen Profilnamen ein.";
+        name = name.Trim();
+        if (name.Length > MaxNameLength)
+            return $"Der Profilname darf höchstens {MaxNameLength} Zeichen lang sein.";
+        if (name == "-")
+            return "Dieser Profilname ist nicht zulässig.";
+        foreach (var p in Profiles)
+        {
+            if (ReferenceEquals(p, except)) continue;
+            if (string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(p.DisplayName, name, StringComparison.OrdinalIgnoreCase))
+                return $"Ein Profil mit dem Namen \"{name}\" existiert bereits.";
+        }
+        return null;
     }
 
     public void AddProfile(ScanProfile profile)
     {
+        if (!CanAddProfile) return;
         Profiles.Add(profile);
         Save();
     }
 
     public void RemoveProfile(int index)
     {
-        if (index >= 0 && index < Profiles.Count)
+        if (index >= 0 && index < Profiles.Count && !Profiles[index].IsBuiltIn)
         {
             Profiles.RemoveAt(index);
             Save();
@@ -122,9 +203,9 @@ internal class ProfileManager
 
     public void RenameProfile(int index, string newName)
     {
-        if (index >= 0 && index < Profiles.Count)
+        if (index >= 0 && index < Profiles.Count && !Profiles[index].IsBuiltIn)
         {
-            Profiles[index].Name = newName;
+            Profiles[index].Name = newName.Trim();
             Save();
         }
     }

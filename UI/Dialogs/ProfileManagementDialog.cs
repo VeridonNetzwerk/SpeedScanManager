@@ -21,17 +21,19 @@ internal class ProfileManagementDialog : Form
     {
         _manager = manager;
 
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        Text = "SpeedScanManager – Profilverwaltung";
+        Text = "SpeedScan Manager – Profilverwaltung";
         Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(420, 370);
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Font = font;
 
         // === List ===
@@ -73,7 +75,7 @@ internal class ProfileManagementDialog : Form
 
         _btnUp = new Button
         {
-            Text = "Oben",
+            Text = "Nach oben",
             Location = new Point(299, 114),
             Size = new Size(100, 28),
             Font = font
@@ -82,7 +84,7 @@ internal class ProfileManagementDialog : Form
 
         _btnDown = new Button
         {
-            Text = "Unten",
+            Text = "Nach unten",
             Location = new Point(299, 148),
             Size = new Size(100, 28),
             Font = font
@@ -109,6 +111,8 @@ internal class ProfileManagementDialog : Form
         CancelButton = _btnClose;
 
         RefreshList();
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     private void RefreshList()
@@ -116,7 +120,7 @@ internal class ProfileManagementDialog : Form
         _listBox.Items.Clear();
         foreach (var profile in _manager.Profiles)
         {
-            _listBox.Items.Add(profile.Name);
+            _listBox.Items.Add(profile.DisplayName);
         }
         UpdateButtonStates();
     }
@@ -127,7 +131,7 @@ internal class ProfileManagementDialog : Form
         bool hasSelection = idx >= 0;
         bool isBuiltIn = hasSelection && idx < _manager.Profiles.Count && _manager.Profiles[idx].IsBuiltIn;
 
-        _btnAdd.Enabled = true;
+        _btnAdd.Enabled = _manager.CanAddProfile;
         _btnRename.Enabled = hasSelection && !isBuiltIn;
         _btnDelete.Enabled = hasSelection && !isBuiltIn;
         _btnUp.Enabled = hasSelection && idx > 0;
@@ -136,34 +140,20 @@ internal class ProfileManagementDialog : Form
 
     private void AddProfile()
     {
-        string? name = ShowInputDialog("Neues Profil", "Name des neuen Profils:", "Neues Profil");
-
-        if (string.IsNullOrWhiteSpace(name))
-            return;
-
-        name = name.Trim();
-
-        // Ensure unique name
-        if (_manager.GetByName(name) != null)
+        if (!_manager.CanAddProfile)
         {
-            MessageBox.Show($"Ein Profil mit dem Namen \"{name}\" existiert bereits.",
-                "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show($"Es können höchstens {ProfileManager.MaxProfiles} Profile angelegt werden.",
+                "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
-        var defaultFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "SpeedScanManager");
+        string? name = ShowInputDialog("Neues Profil", "Name des neuen Profils:", "Neues Profil", null);
+        if (name == null)
+            return;
 
-        var profile = ScanProfile.FromCurrent(
-            new ScanSettings(),
-            defaultFolder,
-            FileNameFormatDialog.FormatMode.Timestamp,
-            "unbenannt",
-            3,
-            ApplicationType.ScanToFolder,
-            name,
-            isBuiltIn: false);
+        var settings = new ScanSettings();
+        settings.Normalize();
+        var profile = ScanProfile.FromCurrent(settings, name, isBuiltIn: false);
 
         _manager.AddProfile(profile);
         RefreshList();
@@ -175,12 +165,14 @@ internal class ProfileManagementDialog : Form
         int idx = _listBox.SelectedIndex;
         if (idx < 0 || idx >= _manager.Profiles.Count) return;
 
-        string currentName = _manager.Profiles[idx].Name;
-        string? newName = ShowInputDialog("Profil umbenennen", "Neuer Name:", currentName);
+        var profile = _manager.Profiles[idx];
+        if (profile.IsBuiltIn) return;
+        string currentName = profile.Name;
+        string? newName = ShowInputDialog("Profil umbenennen", "Neuer Name:", currentName, profile);
 
-        if (!string.IsNullOrWhiteSpace(newName) && newName != currentName)
+        if (newName != null && newName != currentName)
         {
-            _manager.RenameProfile(idx, newName.Trim());
+            _manager.RenameProfile(idx, newName);
             RefreshList();
             _listBox.SelectedIndex = idx;
         }
@@ -189,10 +181,10 @@ internal class ProfileManagementDialog : Form
     private void DeleteProfile()
     {
         int idx = _listBox.SelectedIndex;
-        if (idx < 0 || idx >= _manager.Profiles.Count) return;
+        if (idx < 0 || idx >= _manager.Profiles.Count || _manager.Profiles[idx].IsBuiltIn) return;
 
         var result = MessageBox.Show(
-            $"Profil \"{_manager.Profiles[idx].Name}\" wirklich löschen?",
+            $"Profil \"{_manager.Profiles[idx].DisplayName}\" wirklich löschen?",
             "SpeedScan Manager", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
         if (result == DialogResult.Yes)
@@ -218,7 +210,21 @@ internal class ProfileManagementDialog : Form
         if (idx + 1 < _manager.Profiles.Count) _listBox.SelectedIndex = idx + 1;
     }
 
-    private string? ShowInputDialog(string title, string label, string defaultValue)
+    /// <summary>
+    /// Asks for a profile name; validates it (unique, case-insensitive) before closing.
+    /// Returns the trimmed name, or null when cancelled.
+    /// </summary>
+    private string? ShowInputDialog(string title, string label, string defaultValue, ScanProfile? except)
+        => ProfileNameInput.Show(this, _manager, title, label, defaultValue, except);
+}
+
+/// <summary>
+/// Small modal input box for profile names (shared by MainForm and ProfileManagementDialog).
+/// </summary>
+internal static class ProfileNameInput
+{
+    public static string? Show(IWin32Window owner, ProfileManager manager, string title, string label,
+        string defaultValue, ScanProfile? except)
     {
         using var dlg = new Form
         {
@@ -227,21 +233,36 @@ internal class ProfileManagementDialog : Form
             MaximizeBox = false,
             MinimizeBox = false,
             StartPosition = FormStartPosition.CenterParent,
-            ClientSize = new Size(320, 140),
-            ShowInTaskbar = false,
-            AutoScaleMode = AutoScaleMode.None
+            ShowInTaskbar = false
         };
+        dlg.SuspendLayout();
+        dlg.AutoScaleDimensions = new SizeF(96F, 96F);
+        dlg.AutoScaleMode = AutoScaleMode.Dpi;
+        dlg.ClientSize = new Size(320, 110);
 
-        var dlgFont = new Font("Microsoft Sans Serif", 8.25f);
+        var dlgFont = UiFonts.Default;
+        dlg.Font = dlgFont;
         var lbl = new Label { Text = label, Location = new Point(12, 12), AutoSize = true, Font = dlgFont };
-        var txt = new TextBox { Text = defaultValue, Location = new Point(12, 34), Size = new Size(280, 24), Font = dlgFont };
+        var txt = new TextBox { Text = defaultValue, Location = new Point(12, 34), Size = new Size(280, 24), Font = dlgFont, MaxLength = ProfileManager.MaxNameLength };
         var btnOk = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(130, 68), Size = new Size(75, 28), Font = dlgFont };
         var btnCancel = new Button { Text = "Abbrechen", DialogResult = DialogResult.Cancel, Location = new Point(217, 68), Size = new Size(75, 28), Font = dlgFont };
 
         dlg.Controls.AddRange(new Control[] { lbl, txt, btnOk, btnCancel });
         dlg.AcceptButton = btnOk;
         dlg.CancelButton = btnCancel;
+        dlg.FormClosing += (s, e) =>
+        {
+            if (dlg.DialogResult != DialogResult.OK) return;
+            string? error = manager.ValidateName(txt.Text, except);
+            if (error != null)
+            {
+                MessageBox.Show(dlg, error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                e.Cancel = true;
+            }
+        };
+        dlg.ResumeLayout(false);
+        dlg.PerformLayout();
 
-        return dlg.ShowDialog(this) == DialogResult.OK ? txt.Text : null;
+        return dlg.ShowDialog(owner) == DialogResult.OK ? txt.Text.Trim() : null;
     }
 }

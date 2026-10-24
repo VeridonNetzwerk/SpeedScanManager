@@ -18,6 +18,8 @@ internal class ScanModeOptionsDialog : Form
     private readonly CheckBox _chkFaceUp;
 
     private readonly ColorMode _colorMode;
+    private readonly Image _leftIcon;
+    private readonly Image _rightIcon;
 
     public int Brightness { get; set; }
     public bool TextOnlySettings { get; set; }
@@ -31,22 +33,27 @@ internal class ScanModeOptionsDialog : Form
     {
         _colorMode = colorMode;
 
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        Text = "Scanmodus Option";
+        Text = "Scanmodus-Optionen";
         Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(400, 360);
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
+        Font = font;
+        _leftIcon = TabIcons.CreateScanIcon();
+        _rightIcon = TabIcons.CreatePaperIcon();
 
         // === Brightness group ===
         var grpBrightness = new GroupBox
         {
-            Text = "Helligkeit (nur Schwarz und Weiß-Scan)",
+            Text = "Helligkeit (nur Schwarzweiß-Scan)",
             Location = new Point(12, 12),
             Size = new Size(372, 80),
             Font = font
@@ -54,31 +61,32 @@ internal class ScanModeOptionsDialog : Form
 
         var picLeftIcon = new PictureBox
         {
-            Image = TabIcons.CreateScanIcon(),
+            Image = _leftIcon,
             SizeMode = PictureBoxSizeMode.AutoSize,
             Location = new Point(16, 28),
             Margin = Padding.Empty
         };
 
-        var lblBright = new Label
+        // Slider: negative values (left) = darker, positive (right) = lighter (TWAIN brightness)
+        var lblDark = new Label
         {
-            Text = "Hell",
-            Location = new Point(38, 32),
+            Text = "Dunkel",
+            Location = new Point(30, 32),
             AutoSize = true,
             Font = font
         };
 
-        var lblDark = new Label
+        var lblBright = new Label
         {
-            Text = "Dunkel",
-            Location = new Point(320, 32),
+            Text = "Hell",
+            Location = new Point(322, 32),
             AutoSize = true,
             Font = font
         };
 
         var picRightIcon = new PictureBox
         {
-            Image = TabIcons.CreatePaperIcon(),
+            Image = _rightIcon,
             SizeMode = PictureBoxSizeMode.AutoSize,
             Location = new Point(348, 28),
             Margin = Padding.Empty
@@ -103,12 +111,12 @@ internal class ScanModeOptionsDialog : Form
             Text = "Normal",
             Location = new Point(160, 52),
             AutoSize = true,
-            Font = new Font("Microsoft Sans Serif", 8.25f, FontStyle.Bold),
+            Font = UiFonts.Bold,
             ForeColor = Color.FromArgb(45, 90, 170),
             TextAlign = ContentAlignment.MiddleCenter
         };
 
-        grpBrightness.Controls.AddRange(new Control[] { picLeftIcon, lblBright, lblDark, picRightIcon, _brightnessSlider, _lblBrightnessValue });
+        grpBrightness.Controls.AddRange(new Control[] { picLeftIcon, lblDark, lblBright, picRightIcon, _brightnessSlider, _lblBrightnessValue });
 
         // === Checkboxes ===
         int cbY = 104;
@@ -133,7 +141,7 @@ internal class ScanModeOptionsDialog : Form
 
         _chkDeskew = new CheckBox
         {
-            Text = "Automatische Korrektur schiefer Zeichen zulassen",
+            Text = "Schräglauf automatisch korrigieren",
             Location = new Point(16, cbY + cbSpacing * 2),
             AutoSize = true,
             Font = font
@@ -226,6 +234,8 @@ internal class ScanModeOptionsDialog : Form
 
         AcceptButton = btnOk;
         CancelButton = btnCancel;
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     private void UpdateBrightnessLabel()
@@ -234,8 +244,8 @@ internal class ScanModeOptionsDialog : Form
         _lblBrightnessValue.Text = val switch
         {
             0 => "Normal",
-            _ when val < 0 => $"Hell {val}",
-            _ => $"Dunkel +{val}"
+            _ when val < 0 => $"Dunkler {val}",
+            _ => $"Heller +{val}"
         };
     }
 
@@ -265,5 +275,15 @@ internal class ScanModeOptionsDialog : Form
             FaceUpFeeding = _chkFaceUp.Checked;
         }
         base.OnFormClosing(e);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _leftIcon.Dispose();
+            _rightIcon.Dispose();
+        }
+        base.Dispose(disposing);
     }
 }

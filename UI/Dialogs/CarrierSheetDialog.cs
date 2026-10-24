@@ -25,20 +25,44 @@ internal class CarrierSheetDialog : Form
     public int CustomWidth { get; set; } = 297;
     public int CustomHeight { get; set; } = 420;
 
+    /// <summary>Output sizes in display order (help: [Ausgabebildgröße] Auswahlliste).</summary>
+    private static readonly (string Text, CarrierSheetOutputSize Value)[] OutputSizes =
+    {
+        ("Automatische Erkennung", CarrierSheetOutputSize.Automatic),
+        ("A3 (297 x 420 mm)", CarrierSheetOutputSize.A3),
+        ("A4 (210 x 297 mm)", CarrierSheetOutputSize.A4),
+        ("A5 (148 x 210 mm)", CarrierSheetOutputSize.A5),
+        ("A6 (105 x 148 mm)", CarrierSheetOutputSize.A6),
+        ("B4(JIS) (257 x 364 mm)", CarrierSheetOutputSize.B4),
+        ("B5(JIS) (182 x 257 mm)", CarrierSheetOutputSize.B5),
+        ("B6(JIS) (128 x 182 mm)", CarrierSheetOutputSize.B6),
+        ("Letter (216 x 279,4 mm)", CarrierSheetOutputSize.Letter),
+        ("Double Letter (279,4 x 431,8 mm)", CarrierSheetOutputSize.DoubleLetter),
+        ("Postkarte (100 x 148 mm)", CarrierSheetOutputSize.Postcard),
+        ("Visitenkarte (55 x 91 mm)", CarrierSheetOutputSize.BusinessCard),
+        ("Trägerblattgröße (220 x 297 mm)", CarrierSheetOutputSize.CarrierSheet),
+        ("Benutzerdefiniert...", CarrierSheetOutputSize.Custom)
+    };
+
+    private static int IndexOfSize(CarrierSheetOutputSize value)
+        => Math.Max(0, Array.FindIndex(OutputSizes, o => o.Value == value));
+
     public CarrierSheetDialog()
     {
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        Text = "Trägerblatt Einstellungen";
+        Text = "Trägerblatteinstellungen";
         Icon = TrayIcons.GetAppIcon();
         ClientSize = new Size(480, 520);
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
-        var smallFont = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
+        var smallFont = UiFonts.Default;
         Font = font;
 
         // === Enable checkbox ===
@@ -83,11 +107,13 @@ internal class CarrierSheetDialog : Form
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             Location = new Point(140, 73),
-            Size = new Size(180, 24),
+            Size = new Size(240, 24),
             Font = font,
-            Enabled = false
+            Enabled = false,
+            MaxDropDownItems = OutputSizes.Length
         };
-        _cbOutputSize.Items.AddRange(new object[] { "Automatische Erkennung", "Benutzerdefiniert..." });
+        foreach (var (text, _) in OutputSizes)
+            _cbOutputSize.Items.Add(text);
         _cbOutputSize.SelectedIndex = 0;
         _cbOutputSize.SelectedIndexChanged += (s, e) => UpdateCustomSizeVisibility();
 
@@ -106,8 +132,8 @@ internal class CarrierSheetDialog : Form
             Location = new Point(220, 105),
             Size = new Size(60, 24),
             Font = font,
-            Minimum = 50,
-            Maximum = 2000,
+            Minimum = ScanSettings.MinCarrierSheetSizeMm,
+            Maximum = ScanSettings.MaxCarrierSheetSizeMm,
             Value = 297,
             Visible = false
         };
@@ -126,8 +152,8 @@ internal class CarrierSheetDialog : Form
             Location = new Point(370, 105),
             Size = new Size(60, 24),
             Font = font,
-            Minimum = 50,
-            Maximum = 2000,
+            Minimum = ScanSettings.MinCarrierSheetSizeMm,
+            Maximum = ScanSettings.MaxCarrierSheetSizeMm,
             Value = 420,
             Visible = false
         };
@@ -200,6 +226,8 @@ internal class CarrierSheetDialog : Form
 
         AcceptButton = _btnOk;
         CancelButton = _btnCancel;
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     private void UpdateEnabledState()
@@ -212,7 +240,8 @@ internal class CarrierSheetDialog : Form
 
     private void UpdateCustomSizeVisibility()
     {
-        bool showCustom = _chkEnabled.Checked && _cbOutputSize.SelectedIndex == 1;
+        bool showCustom = _chkEnabled.Checked && _cbOutputSize.SelectedIndex >= 0
+                          && OutputSizes[_cbOutputSize.SelectedIndex].Value == CarrierSheetOutputSize.Custom;
         _lblCustomWidth.Visible = showCustom;
         _numCustomWidth.Visible = showCustom;
         _lblCustomHeight.Visible = showCustom;
@@ -233,7 +262,7 @@ internal class CarrierSheetDialog : Form
         using var fillBrush = new SolidBrush(Color.FromArgb(230, 240, 250));
         using var docBrush = new SolidBrush(Color.FromArgb(255, 245, 220));
         using var arrowPen = new Pen(Color.DarkGray, 2);
-        using var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
 
         // === Illustration 1: Folded document ===
         int x1 = 20;
@@ -283,9 +312,9 @@ internal class CarrierSheetDialog : Form
     protected override void OnShown(EventArgs e)
     {
         _chkEnabled.Checked = CarrierSheetEnabled;
-        _cbOutputSize.SelectedIndex = (int)OutputSize;
-        _numCustomWidth.Value = CustomWidth;
-        _numCustomHeight.Value = CustomHeight;
+        _cbOutputSize.SelectedIndex = IndexOfSize(OutputSize);
+        _numCustomWidth.Value = Math.Clamp(CustomWidth, ScanSettings.MinCarrierSheetSizeMm, ScanSettings.MaxCarrierSheetSizeMm);
+        _numCustomHeight.Value = Math.Clamp(CustomHeight, ScanSettings.MinCarrierSheetSizeMm, ScanSettings.MaxCarrierSheetSizeMm);
         UpdateEnabledState();
         base.OnShown(e);
     }
@@ -295,7 +324,7 @@ internal class CarrierSheetDialog : Form
         if (DialogResult == DialogResult.OK)
         {
             CarrierSheetEnabled = _chkEnabled.Checked;
-            OutputSize = (CarrierSheetOutputSize)_cbOutputSize.SelectedIndex;
+            OutputSize = OutputSizes[Math.Max(0, _cbOutputSize.SelectedIndex)].Value;
             CustomWidth = (int)_numCustomWidth.Value;
             CustomHeight = (int)_numCustomHeight.Value;
         }

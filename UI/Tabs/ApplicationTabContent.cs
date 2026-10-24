@@ -5,7 +5,7 @@ namespace SpeedScanManager;
 
 /// <summary>
 /// Represents a scan application type (e.g. Scan to Folder, Scan to E-Mail, Scan to Print).
-/// Extensible for future phases.
+/// Custom = a user-added program (see ScanSettings.CustomApplicationName/Path/Arguments).
 /// </summary>
 internal enum ApplicationType
 {
@@ -16,13 +16,15 @@ internal enum ApplicationType
     ScanToExcel,
     ScanToPowerPoint,
     ScanPictureFolder,
-    EditWithPdf
+    EditWithPdf,
+    Custom
 }
 
 /// <summary>
-/// Represents a user-configured application entry.
+/// Represents an entry of the application dropdown. For Type == Custom, ExePath and
+/// Arguments describe the program to launch.
 /// </summary>
-internal record ApplicationEntry(string Name, ApplicationType Type);
+internal record ApplicationEntry(string Name, ApplicationType Type, string? ExePath = null, string? Arguments = null);
 
 /// <summary>
 /// Content panel for the "Anwendung" tab.
@@ -35,11 +37,16 @@ internal class ApplicationTabContent : Panel
     private readonly Button _btnEmailOptions;
     private readonly Button _btnPrintOptions;
     private readonly ScanSettings _settings;
+    private readonly List<CustomApplication> _customApps;
+    private bool _loading;
 
     public ApplicationEntry SelectedApplication { get; private set; }
     public ApplicationType SelectedApplicationType => SelectedApplication.Type;
 
-    private readonly List<ApplicationEntry> _builtInApps = new()
+    /// <summary>Raised when the list of custom applications was changed by the user.</summary>
+    public event EventHandler? CustomApplicationsChanged;
+
+    private static readonly List<ApplicationEntry> BuiltInApps = new()
     {
         new ApplicationEntry("Scan to Folder", ApplicationType.ScanToFolder),
         new ApplicationEntry("Scan to E-Mail", ApplicationType.ScanToEmail),
@@ -51,14 +58,15 @@ internal class ApplicationTabContent : Panel
         new ApplicationEntry("Edit with PDF", ApplicationType.EditWithPdf)
     };
 
-    private readonly List<ApplicationEntry> _customApps = new();
-
-    public ApplicationTabContent(ScanSettings? settings = null)
+    /// <param name="settings">Working copy of the scan settings.</param>
+    /// <param name="customApps">Working copy of the user-added applications (edited in place).</param>
+    public ApplicationTabContent(ScanSettings settings, List<CustomApplication> customApps)
     {
-        _settings = settings ?? new ScanSettings();
-        SelectedApplication = _builtInApps[0];
+        _settings = settings;
+        _customApps = customApps;
+        SelectedApplication = BuiltInApps[0];
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Dock = DockStyle.Fill;
         BackColor = Color.White;
 
@@ -81,8 +89,6 @@ internal class ApplicationTabContent : Panel
             Size = new Size(435, 24),
             Font = font
         };
-        RefreshApplicationList();
-        _cbApplication.SelectedIndex = 0;
         _cbApplication.SelectedIndexChanged += (s, e) =>
         {
             int idx = _cbApplication.SelectedIndex;
@@ -90,7 +96,8 @@ internal class ApplicationTabContent : Panel
             if (idx >= 0 && idx < allApps.Count)
             {
                 SelectedApplication = allApps[idx];
-                _settings.ApplicationType = SelectedApplication.Type;
+                if (!_loading)
+                    WriteSelectionToSettings();
             }
             UpdateEmailOptionsVisibility();
             UpdatePrintOptionsVisibility();
@@ -148,9 +155,12 @@ internal class ApplicationTabContent : Panel
         });
 
         Dock = DockStyle.Fill;
+        LoadFromSettings();
     }
 
-    private List<ApplicationEntry> GetAllApps() => _builtInApps.Concat(_customApps).ToList();
+    private List<ApplicationEntry> GetAllApps() => BuiltInApps
+        .Concat(_customApps.Select(a => new ApplicationEntry(a.Name, ApplicationType.Custom, a.ExePath, a.Arguments)))
+        .ToList();
 
     private void RefreshApplicationList()
     {
@@ -161,18 +171,85 @@ internal class ApplicationTabContent : Panel
         }
     }
 
+    private void WriteSelectionToSettings()
+    {
+        _settings.ApplicationType = SelectedApplication.Type;
+        if (SelectedApplication.Type == ApplicationType.Custom)
+        {
+            _settings.CustomApplicationName = SelectedApplication.Name;
+            _settings.CustomApplicationPath = SelectedApplication.ExePath ?? "";
+            _settings.CustomApplicationArguments = SelectedApplication.Arguments ?? "";
+        }
+        else
+        {
+            _settings.CustomApplicationName = "";
+            _settings.CustomApplicationPath = "";
+            _settings.CustomApplicationArguments = "";
+        }
+    }
+
+    /// <summary>
+    /// Index of the entry matching the settings (custom apps matched by name), or -1.
+    /// </summary>
+    private int FindIndex(ApplicationType type, string customName)
+    {
+        var allApps = GetAllApps();
+        for (int i = 0; i < allApps.Count; i++)
+        {
+            if (allApps[i].Type != type) continue;
+            if (type != ApplicationType.Custom || allApps[i].Name == customName)
+                return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// Refreshes all controls from the settings without raising change notifications.
+    /// </summary>
+    public void LoadFromSettings()
+    {
+        _loading = true;
+        try
+        {
+            RefreshApplicationList();
+            int idx = FindIndex(_settings.ApplicationType, _settings.CustomApplicationName);
+            _cbApplication.SelectedIndex = idx >= 0 ? idx : 0;
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        // Settings referenced an application that no longer exists -> fall back to Scan to Folder
+        if (FindIndex(_settings.ApplicationType, _settings.CustomApplicationName) < 0)
+            WriteSelectionToSettings();
+        else if (SelectedApplication.Type == ApplicationType.Custom)
+            WriteSelectionToSettings(); // pick up a changed path/arguments
+    }
+
     private void OpenManageDialog()
     {
+        var previous = SelectedApplication;
         using var dialog = new ApplicationManageDialog(_customApps);
         if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
         {
             _customApps.Clear();
-            _customApps.AddRange(dialog.CustomApps);
-            RefreshApplicationList();
+            _customApps.AddRange(dialog.CustomApps.Select(a => a.Clone()));
 
-            // Keep selection valid
-            if (_cbApplication.SelectedIndex < 0 || _cbApplication.SelectedIndex >= GetAllApps().Count)
-                _cbApplication.SelectedIndex = 0;
+            _loading = true;
+            try
+            {
+                RefreshApplicationList();
+                // Keep previous selection if it still exists
+                int idx = FindIndex(previous.Type, previous.Name);
+                _cbApplication.SelectedIndex = idx >= 0 ? idx : 0;
+            }
+            finally
+            {
+                _loading = false;
+            }
+            WriteSelectionToSettings();
+            CustomApplicationsChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -188,15 +265,9 @@ internal class ApplicationTabContent : Panel
 
     public void SetApplicationType(ApplicationType type)
     {
-        var allApps = GetAllApps();
-        for (int i = 0; i < allApps.Count; i++)
-        {
-            if (allApps[i].Type == type)
-            {
-                _cbApplication.SelectedIndex = i;
-                return;
-            }
-        }
+        int idx = FindIndex(type, _settings.CustomApplicationName);
+        if (idx >= 0)
+            _cbApplication.SelectedIndex = idx;
     }
 
     private void OpenEmailOptionsDialog()
