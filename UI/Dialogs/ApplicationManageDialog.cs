@@ -167,7 +167,7 @@ internal class ApplicationManageDialog : Form
     {
         if (CustomApps.Count >= MaxEntries)
         {
-            MessageBox.Show($"Maximal {MaxEntries} Einträge sind erlaubt.",
+            TrayMessageBox.Show(this, $"Maximal {MaxEntries} Einträge sind erlaubt.",
                 "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -317,7 +317,7 @@ internal class ApplicationEditDialog : Form
                 error = "Bitte wählen Sie eine vorhandene Programmdatei (*.exe) aus.";
             if (error != null)
             {
-                MessageBox.Show(error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                TrayMessageBox.Show(this, error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 e.Cancel = true;
                 return;
             }

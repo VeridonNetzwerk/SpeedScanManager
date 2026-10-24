@@ -369,7 +369,7 @@ internal class FileNameFormatDialog : Form
         string? error = FileNamePattern.ValidateCustomName(CurrentName);
         if (error == null)
             return true;
-        MessageBox.Show(this, error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        TrayMessageBox.Show(this, error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         _txtCustomName.Focus();
         _txtCustomName.SelectAll();
         return false;

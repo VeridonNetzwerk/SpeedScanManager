@@ -209,7 +209,7 @@ internal class PdfOptionsDialog : Form
                         : null;
                 if (error != null)
                 {
-                    MessageBox.Show(this, error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    TrayMessageBox.Show(this, error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     _txtPassword.Focus();
                     e.Cancel = true;
                     return;

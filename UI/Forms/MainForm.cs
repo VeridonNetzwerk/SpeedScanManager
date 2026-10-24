@@ -762,7 +762,7 @@ internal class MainForm : Form
     {
         if (!_profileManager.CanAddProfile)
         {
-            MessageBox.Show(this, $"Es können höchstens {ProfileManager.MaxProfiles} Profile angelegt werden.",
+            TrayMessageBox.Show(this, $"Es können höchstens {ProfileManager.MaxProfiles} Profile angelegt werden.",
                 "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -891,7 +891,7 @@ internal class MainForm : Form
             }
             else
             {
-                var answer = MessageBox.Show(this,
+                var answer = TrayMessageBox.Show(this,
                     $"Das Standardprofil \"{_activeProfile.DisplayName}\" kann nicht geändert werden.\n\n" +
                     "Möchten Sie die geänderten Einstellungen als neues Profil speichern?\n\n" +
                     "Ja: Als neues Profil speichern\n" +
@@ -903,7 +903,7 @@ internal class MainForm : Form
                 {
                     if (!_profileManager.CanAddProfile)
                     {
-                        MessageBox.Show(this, $"Es können höchstens {ProfileManager.MaxProfiles} Profile angelegt werden.",
+                        TrayMessageBox.Show(this, $"Es können höchstens {ProfileManager.MaxProfiles} Profile angelegt werden.",
                             "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         return false;
                     }

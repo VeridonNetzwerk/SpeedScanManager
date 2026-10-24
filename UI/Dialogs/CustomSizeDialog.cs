@@ -305,7 +305,7 @@ internal class CustomSizeDialog : Form
     {
         if (CustomSizes.Count >= MaxEntries)
         {
-            MessageBox.Show($"Maximal {MaxEntries} Einträge sind erlaubt.",
+            TrayMessageBox.Show(this, $"Maximal {MaxEntries} Einträge sind erlaubt.",
                 "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -527,14 +527,14 @@ internal class CustomSizeEditDialog : Form
         {
             if (string.IsNullOrWhiteSpace(_txtName.Text))
             {
-                MessageBox.Show("Bitte einen Namen eingeben.", "SpeedScan Manager",
+                TrayMessageBox.Show(this, "Bitte einen Namen eingeben.", "SpeedScan Manager",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 e.Cancel = true;
                 return;
             }
             if (_txtName.Text.Trim().Length > ScanSettings.MaxCustomPaperSizeNameLength)
             {
-                MessageBox.Show($"Der Name darf höchstens {ScanSettings.MaxCustomPaperSizeNameLength} Zeichen lang sein.",
+                TrayMessageBox.Show(this, $"Der Name darf höchstens {ScanSettings.MaxCustomPaperSizeNameLength} Zeichen lang sein.",
                     "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 e.Cancel = true;
                 return;

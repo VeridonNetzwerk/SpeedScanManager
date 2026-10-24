@@ -84,7 +84,7 @@ internal static class TrayMessageBox
         bool defaultSecondButton = false)
     {
         if (string.IsNullOrEmpty(caption)) caption = Caption;
-        if (Application.MessageLoop && buttons is MessageBoxButtons.OK or MessageBoxButtons.YesNo)
+        if (Application.MessageLoop && buttons is MessageBoxButtons.OK or MessageBoxButtons.YesNo or MessageBoxButtons.YesNoCancel)
         {
             try
             {
@@ -239,7 +239,19 @@ internal sealed class TrayPromptForm : Form
         };
 
         Button first, second;
-        if (buttons == MessageBoxButtons.YesNo)
+        Button? third = null;
+        if (buttons == MessageBoxButtons.YesNoCancel)
+        {
+            first = MakeButton("&Ja", DialogResult.Yes);
+            second = MakeButton("&Nein", DialogResult.No);
+            third = MakeButton("Abbrechen", DialogResult.Cancel);
+            buttonPanel.Controls.Add(third);
+            buttonPanel.Controls.Add(second);
+            buttonPanel.Controls.Add(first);
+            CancelButton = third;
+            ThemeManager.SetRole(third, ThemeRole.Secondary);
+        }
+        else if (buttons == MessageBoxButtons.YesNo)
         {
             first = MakeButton("&Ja", DialogResult.Yes);
             second = MakeButton("&Nein", DialogResult.No);

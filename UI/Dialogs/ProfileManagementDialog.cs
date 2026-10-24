@@ -145,7 +145,7 @@ internal class ProfileManagementDialog : Form
     {
         if (!_manager.CanAddProfile)
         {
-            MessageBox.Show($"Es können höchstens {ProfileManager.MaxProfiles} Profile angelegt werden.",
+            TrayMessageBox.Show(this, $"Es können höchstens {ProfileManager.MaxProfiles} Profile angelegt werden.",
                 "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -186,7 +186,7 @@ internal class ProfileManagementDialog : Form
         int idx = _listBox.SelectedIndex;
         if (idx < 0 || idx >= _manager.Profiles.Count || _manager.Profiles[idx].IsBuiltIn) return;
 
-        var result = MessageBox.Show(
+        var result = TrayMessageBox.Show(this,
             $"Profil \"{_manager.Profiles[idx].DisplayName}\" wirklich löschen?",
             "SpeedScan Manager", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
@@ -259,7 +259,7 @@ internal static class ProfileNameInput
             string? error = manager.ValidateName(txt.Text, except);
             if (error != null)
             {
-                MessageBox.Show(dlg, error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                TrayMessageBox.Show(dlg, error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 e.Cancel = true;
             }
         };
