@@ -27,22 +27,38 @@ Open-Source TWAIN-Scanning-Software.
 ## Anforderungen
 
 - 🪟 Windows 10/11
-- 📦 .NET 8.0 Runtime (x86) — oder self-contained Build
-- 🖨️ TWAIN-kompatibler Scanner ([getestete Scanner]())
+- 📦 Keine separate .NET-Installation nötig (Releases sind self-contained)
+- 🖨️ TWAIN-kompatibler Scanner (Erfahrungen mit weiteren Modellen gerne als [Issue](https://github.com/VeridonNetzwerk/SpeedScanManager/issues))
 
 ## Installation
 
-### 📥 Release herunterladen
+### 📥 Installer (empfohlen)
 
-1. ZIP von [Releases](https://github.com/VeridonNetzwerk/SpeedScanManager/releases) entpacken
+1. `SpeedScanManager-<Version>-Setup-win-x86.exe` von [Releases](https://github.com/VeridonNetzwerk/SpeedScanManager/releases) herunterladen
+2. Setup starten (Administrator-Rechte erforderlich) — installiert nach `C:\Program Files (x86)\SpeedScanManager`, legt Startmenü- und Desktop-Verknüpfung an
+3. Deinstallation über *Einstellungen → Apps* oder die Startmenü-Verknüpfung „Deinstallieren"
+
+### 📦 Portable
+
+1. `SpeedScanManager-<Version>-portable-win-x86.zip` von [Releases](https://github.com/VeridonNetzwerk/SpeedScanManager/releases) entpacken
 2. `SpeedScanManager.exe` starten — Tray-Icon erscheint
+
+### 🖲️ Scan-Taste am Scanner
+
+SpeedScan Manager registriert sich als Programm für die Scan-Taste des Scanners (Registry unter HKLM, dafür erscheint einmalig eine Administrator-Abfrage). Der Deinstaller bzw. `SpeedScanManager.exe /unregister` entfernt die Registrierung wieder und stellt die Windows-Standardaktion her.
 
 ### 🔨 Selber bauen
 
-```bash
+```powershell
 git clone https://github.com/VeridonNetzwerk/SpeedScanManager.git
 cd SpeedScanManager
-dotnet publish -c Release -r win-x86 --self-contained true -p:PublishSingleFile=true -o dist
+.\build-release.ps1
+```
+
+Erzeugt in `release\v<Version>\` das portable ZIP und den Installer (mit eingebetteter App). Nur die App ohne Installer:
+
+```powershell
+dotnet publish SpeedScanManager.csproj -c Release -r win-x86 --self-contained true -o dist
 ```
 
 ## Tech Stack

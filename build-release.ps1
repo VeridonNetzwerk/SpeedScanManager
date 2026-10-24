@@ -1,17 +1,21 @@
 <#
 .SYNOPSIS
-    Builds SpeedScan Manager as a portable ZIP and as an installer, and packs both into a release folder.
+    Builds SpeedScan Manager as a portable ZIP and as a self-contained installer.
 
 .DESCRIPTION
-    1. Publishes SpeedScanManager.csproj as a self-contained single-file win-x86 build,
-       and zips it as a portable release.
-    2. Publishes installer/SpeedScanInstaller.csproj as a self-contained single-file win-x86 build,
-       and copies the installer + its dependencies into the release folder.
-    3. Both artifacts end up in ./release/vX.X.X/
+    1. Publishes SpeedScanManager.csproj (self-contained, win-x86) into ./dist.
+    2. Zips ./dist as the portable release. The same zip is the installer's app payload.
+    3. Publishes installer/SpeedScanInstaller.csproj as a single-file exe with that zip
+       embedded (-p:AppPayloadZip=...), so the setup is one self-contained file.
+    4. Both artifacts end up in ./release/vX.X.X/:
+         SpeedScanManager-X.X.X-portable-win-x86.zip
+         SpeedScanManager-X.X.X-Setup-win-x86.exe
+
+    App and installer get the same version (-p:Version=...).
 
 .PARAMETER Version
-    Optional override for the version used in artifact filenames. If omitted, the version is
-    read from SpeedScanManager.csproj (<Version> property).
+    Optional override for the version. If omitted, it is read from SpeedScanManager.csproj
+    (<Version> property).
 #>
 param(
     [string]$Version
@@ -23,9 +27,15 @@ $root = $PSScriptRoot
 function Get-ProjectVersion {
     $csproj = Join-Path $root "SpeedScanManager.csproj"
     [xml]$xml = Get-Content $csproj
-    $ver = $xml.Project.PropertyGroup.Version | Select-Object -First 1
-    if (-not $ver) { $ver = "0.0.0" }
-    return $ver
+    $ver = $xml.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+    if (-not $ver) { throw "No <Version> found in $csproj." }
+    return $ver.Trim()
+}
+
+function Invoke-Checked {
+    param([string]$What, [scriptblock]$Command)
+    & $Command
+    if ($LASTEXITCODE -ne 0) { throw "$What failed (exit code $LASTEXITCODE)." }
 }
 
 if (-not $Version) {
@@ -37,8 +47,6 @@ Write-Host "=== SpeedScan Manager Release Build v$Version ===" -ForegroundColor 
 $distDir      = Join-Path $root "dist"
 $distInstDir  = Join-Path $root "dist-installer"
 $releaseDir   = Join-Path $root "release\v$Version"
-$portableZip  = Join-Path $releaseDir "SpeedScanManager-$Version-portable-win-x86.zip"
-$installerDir = Join-Path $releaseDir "SpeedScanManager-$Version-installer-win-x86"
 
 # --- Clean previous outputs ---
 foreach ($dir in @($distDir, $distInstDir)) {
@@ -51,39 +59,57 @@ if (Test-Path $releaseDir) {
         Write-Host "Warning: Could not fully clean $releaseDir (admin-created?). Using timestamped folder." -ForegroundColor DarkYellow
         $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
         $releaseDir = Join-Path $root "release\v$Version-$stamp"
-        $portableZip  = Join-Path $releaseDir "SpeedScanManager-$Version-portable-win-x86.zip"
-        $installerDir = Join-Path $releaseDir "SpeedScanManager-$Version-installer-win-x86"
     }
 }
 New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
 
-# --- 1) Build portable app ---
-Write-Host "`n[1/4] Publishing portable app..." -ForegroundColor Yellow
-dotnet publish (Join-Path $root "SpeedScanManager.csproj") `
-    -c Release -r win-x86 --self-contained true `
-    -o $distDir
-if ($LASTEXITCODE -ne 0) { throw "App build failed." }
+$portableZip   = Join-Path $releaseDir "SpeedScanManager-$Version-portable-win-x86.zip"
+$installerExe  = Join-Path $releaseDir "SpeedScanManager-$Version-Setup-win-x86.exe"
 
-Write-Host "[2/4] Zipping portable app -> $portableZip" -ForegroundColor Yellow
+# Common publish properties. %3B is the MSBuild escape for ';' (a literal ';' would split the property).
+$commonProps = @(
+    "-p:Version=$Version",
+    "-p:SatelliteResourceLanguages=de%3Ben"
+)
+
+# --- 1) Publish app ---
+Write-Host "`n[1/3] Publishing app..." -ForegroundColor Yellow
+Invoke-Checked "App publish" {
+    dotnet publish (Join-Path $root "SpeedScanManager.csproj") `
+        -c Release -r win-x86 --self-contained true `
+        @commonProps `
+        -o $distDir
+}
+if (-not (Test-Path (Join-Path $distDir "SpeedScanManager.exe"))) {
+    throw "SpeedScanManager.exe missing in $distDir."
+}
+
+# --- 2) Zip app (portable release + installer payload) ---
+Write-Host "[2/3] Zipping app -> $portableZip" -ForegroundColor Yellow
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 if (Test-Path $portableZip) { Remove-Item $portableZip -Force }
-Compress-Archive -Path (Join-Path $distDir "*") -DestinationPath $portableZip -Force
+[System.IO.Compression.ZipFile]::CreateFromDirectory(
+    $distDir, $portableZip, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 
-# --- 2) Build installer ---
-Write-Host "`n[3/4] Publishing installer..." -ForegroundColor Yellow
-dotnet publish (Join-Path $root "installer\SpeedScanInstaller.csproj") `
-    -c Release -r win-x86 --self-contained true `
-    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
-    -o $distInstDir
-if ($LASTEXITCODE -ne 0) { throw "Installer build failed." }
-
-Write-Host "[4/4] Copying installer -> $installerDir" -ForegroundColor Yellow
-New-Item -ItemType Directory -Path $installerDir -Force | Out-Null
-Copy-Item -Path (Join-Path $distInstDir "*") -Destination $installerDir -Recurse -Force
+# --- 3) Publish installer with embedded payload ---
+Write-Host "`n[3/3] Publishing installer (payload embedded)..." -ForegroundColor Yellow
+Invoke-Checked "Installer publish" {
+    dotnet publish (Join-Path $root "installer\SpeedScanInstaller.csproj") `
+        -c Release -r win-x86 --self-contained true `
+        -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+        -p:EnableCompressionInSingleFile=true `
+        "-p:AppPayloadZip=$portableZip" `
+        @commonProps `
+        -o $distInstDir
+}
+$builtInstaller = Join-Path $distInstDir "SpeedScanInstaller.exe"
+if (-not (Test-Path $builtInstaller)) { throw "SpeedScanInstaller.exe missing in $distInstDir." }
+Copy-Item -Path $builtInstaller -Destination $installerExe -Force
 
 # --- Summary ---
 Write-Host "`n=== Done ===" -ForegroundColor Green
 Write-Host "Release folder: $releaseDir"
-Get-ChildItem $releaseDir -Recurse -File | Where-Object { $_.DirectoryName -eq $releaseDir -or $_.Extension -eq ".exe" } | ForEach-Object {
+Get-ChildItem $releaseDir -File | ForEach-Object {
     $sizeMB = [math]::Round($_.Length / 1MB, 1)
-    Write-Host " - $($_.FullName.Substring($releaseDir.Length + 1)) ($sizeMB MB)"
+    Write-Host " - $($_.Name) ($sizeMB MB)"
 }

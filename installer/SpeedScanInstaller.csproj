@@ -7,16 +7,15 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>0.1.0</Version>
-    <FileVersion>0.1.0.0</FileVersion>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <!-- Overridden by build-release.ps1 / CI with -p:Version=<SpeedScanManager.csproj Version> -->
+    <Version>0.1.2</Version>
     <AssemblyName>SpeedScanInstaller</AssemblyName>
     <RootNamespace>SpeedScanInstaller</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>..\assets\SpeedScanManager.ico</ApplicationIcon>
     <Company>VeridonNetzwerk</Company>
     <Product>SpeedScan Manager Installer</Product>
-    <Copyright>Copyright © 2024 VeridonNetzwerk</Copyright>
+    <Copyright>Copyright © 2026 VeridonNetzwerk</Copyright>
     <Description>Installer for SpeedScan Manager document scanning application</Description>
   </PropertyGroup>
 
@@ -29,5 +28,20 @@
     <Resource Include="..\assets\SpeedScanManager_Text.png" Link="Assets\SpeedScanManager_Text.png" />
     <Resource Include="..\assets\SpeedScanManager_Logo.png" Link="Assets\SpeedScanManager_Logo.png" />
   </ItemGroup>
+
+  <!--
+    App payload: the published SpeedScanManager (zipped) is embedded into the installer.
+    build-release.ps1 / CI pass -p:AppPayloadZip=<path to zip>. Without it (plain dev build)
+    the installer falls back to a "dist" folder next to the exe or the repo's dist folder.
+  -->
+  <ItemGroup Condition="'$(AppPayloadZip)' != '' And Exists('$(AppPayloadZip)')">
+    <EmbeddedResource Include="$(AppPayloadZip)" LogicalName="AppPayload.zip" Link="Payload\AppPayload.zip" />
+  </ItemGroup>
+
+  <Target Name="ReportAppPayload" BeforeTargets="CoreCompile">
+    <Error Condition="'$(AppPayloadZip)' != '' And !Exists('$(AppPayloadZip)')" Text="AppPayloadZip not found: $(AppPayloadZip)" />
+    <Message Importance="high" Condition="'$(AppPayloadZip)' != ''" Text="SpeedScanInstaller: embedding app payload $(AppPayloadZip)" />
+    <Message Importance="high" Condition="'$(AppPayloadZip)' == ''" Text="SpeedScanInstaller: no app payload embedded (dev build, uses dist folder)" />
+  </Target>
 
 </Project>

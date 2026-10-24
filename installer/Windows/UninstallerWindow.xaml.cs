@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using Microsoft.Win32;
 using System.Windows;
 using System.Windows.Input;
@@ -12,8 +13,7 @@ namespace SpeedScanInstaller;
 
 public partial class UninstallerWindow : Window
 {
-    private const string ProductName = "SpeedScan Manager";
-    private const string Publisher = "VeridonNetzwerk";
+    private const string ProductName = InstallerCore.ProductName;
     private const string ProductUrl = "https://github.com/VeridonNetzwerk/SpeedScanManager";
     private const string DiscordFeedbackUrl = "https://discord.gg/VHh3u746fA";
     private const string DiscordUrl = "https://discord.gg/P2RQNYjWbp";
@@ -84,29 +84,30 @@ public partial class UninstallerWindow : Window
 
         try
         {
-            // Find install directory from registry
-            string? targetDir = null;
-            using (var key = Registry.LocalMachine.OpenSubKey(
-                @"Software\Microsoft\Windows\CurrentVersion\Uninstall\SpeedScanManager"))
-            {
-                targetDir = key?.GetValue("InstallLocation") as string;
-            }
-
-            // If not found, use the directory the uninstaller is in
-            targetDir ??= Path.GetDirectoryName(Environment.ProcessPath);
+            // Install directory comes only from the registry — never from the uninstaller's own location
+            var targetDir = InstallerCore.GetExistingInstallLocation();
+            string? filesError = null;
+            if (targetDir == null)
+                filesError = "Der Installationsordner ist nicht in der Registry eingetragen.";
+            else if (!InstallerCore.IsSafeAppDirectory(targetDir, out var dirError))
+                filesError = dirError;
+            else if (!File.Exists(Path.Combine(targetDir, InstallerCore.AppExeName)))
+                filesError = $"Im Ordner \"{targetDir}\" wurde keine {InstallerCore.AppExeName} gefunden.";
+            var canRemoveFiles = filesError == null;
 
             // Kill running processes
             StatusText.Text = "Beende laufende Prozesse...";
             UninstallProgress.Value = 10;
-            foreach (var proc in Process.GetProcessesByName("SpeedScanManager"))
+            await Task.Run(InstallerCore.KillRunningApp);
+
+            // Remove scanner button handler and restore the Windows default (needs admin; we are elevated)
+            if (canRemoveFiles)
             {
-                try { proc.Kill(); proc.WaitForExit(3000); } catch { }
+                StatusText.Text = "Entferne Scan-Tasten-Registrierung...";
+                UninstallProgress.Value = 18;
+                var exit = await InstallerCore.RunAppHelperAsync(targetDir!, "/unregister", TimeSpan.FromSeconds(30));
+                Debug.WriteLine($"/unregister exit code: {exit?.ToString() ?? "n/a"}");
             }
-            foreach (var proc in Process.GetProcessesByName("SpeedScanManagerTray"))
-            {
-                try { proc.Kill(); proc.WaitForExit(3000); } catch { }
-            }
-            await Task.Delay(500);
 
             // Remove shortcuts
             StatusText.Text = "Entferne Verknüpfungen...";
@@ -114,10 +115,16 @@ public partial class UninstallerWindow : Window
             var startMenuDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms),
                 ProductName);
-            if (Directory.Exists(startMenuDir))
+            foreach (var lnk in new[] { $"{ProductName}.lnk", "Deinstallieren.lnk" })
             {
-                try { Directory.Delete(startMenuDir, true); } catch { }
+                try { File.Delete(Path.Combine(startMenuDir, lnk)); } catch { }
             }
+            try
+            {
+                if (Directory.Exists(startMenuDir) && !Directory.EnumerateFileSystemEntries(startMenuDir).Any())
+                    Directory.Delete(startMenuDir);
+            }
+            catch { }
 
             var desktopPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory),
@@ -131,16 +138,26 @@ public partial class UninstallerWindow : Window
             // Remove registry entries
             StatusText.Text = "Entferne Registry-Einträge...";
             UninstallProgress.Value = 40;
+            try { Registry.LocalMachine.DeleteSubKeyTree(InstallerCore.UninstallKeyPath, false); } catch { }
+            try { Registry.LocalMachine.DeleteSubKeyTree(InstallerCore.AppKeyPath, false); } catch { }
             try
             {
-                Registry.LocalMachine.DeleteSubKeyTree(
-                    @"Software\Microsoft\Windows\CurrentVersion\Uninstall\SpeedScanManager", false);
-            } catch { }
+                bool publisherKeyEmpty;
+                using (var pubKey = Registry.LocalMachine.OpenSubKey(InstallerCore.PublisherKeyPath))
+                    publisherKeyEmpty = pubKey != null && pubKey.SubKeyCount == 0 && pubKey.ValueCount == 0;
+                if (publisherKeyEmpty)
+                    Registry.LocalMachine.DeleteSubKey(InstallerCore.PublisherKeyPath, false);
+            }
+            catch { }
+
+            // Autostart entry. Note: this is the HKCU of the account the (elevated) uninstaller
+            // runs as — if elevation used a different admin account, that user's entry stays.
             try
             {
-                Registry.LocalMachine.DeleteSubKeyTree(
-                    $@"Software\{Publisher}\SpeedScanManager", false);
-            } catch { }
+                using var runKey = Registry.CurrentUser.OpenSubKey(InstallerCore.RunKeyPath, writable: true);
+                runKey?.DeleteValue(InstallerCore.RunValueName, false);
+            }
+            catch { }
             await Task.Delay(200);
 
             // Remove settings if requested
@@ -148,53 +165,23 @@ public partial class UninstallerWindow : Window
             {
                 StatusText.Text = "Entferne Einstellungen und Profildaten...";
                 UninstallProgress.Value = 55;
-                var appDataDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    ProductName);
-                if (Directory.Exists(appDataDir))
+                foreach (var root in new[] { Environment.SpecialFolder.ApplicationData, Environment.SpecialFolder.LocalApplicationData })
                 {
-                    try { Directory.Delete(appDataDir, true); } catch { }
-                }
-
-                var localAppDataDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    ProductName);
-                if (Directory.Exists(localAppDataDir))
-                {
-                    try { Directory.Delete(localAppDataDir, true); } catch { }
+                    var dataDir = Path.Combine(Environment.GetFolderPath(root), InstallerCore.AppFolderName);
+                    if (Directory.Exists(dataDir))
+                    {
+                        try { Directory.Delete(dataDir, true); } catch { }
+                    }
                 }
                 await Task.Delay(200);
             }
 
-            // Remove program files
+            // Remove program files (only those listed in the install manifest)
             StatusText.Text = "Entferne Programmdateien...";
             UninstallProgress.Value = 70;
-            if (targetDir != null && Directory.Exists(targetDir))
+            if (canRemoveFiles)
             {
-                // Delete everything except the uninstaller itself (we need it to finish)
-                var uninstallerPath = Environment.ProcessPath;
-                foreach (var file in Directory.GetFiles(targetDir, "*", SearchOption.AllDirectories))
-                {
-                    if (uninstallerPath != null &&
-                        string.Equals(file, uninstallerPath, StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    try { File.Delete(file); } catch { }
-                }
-
-                // Schedule self-deletion + folder cleanup
-                var cleanupBat = Path.Combine(Path.GetTempPath(), "ssm_cleanup.bat");
-                File.WriteAllText(cleanupBat, $@"@echo off
-timeout /t 2 /nobreak >nul
-del /q ""{uninstallerPath}""
-rd /s /q ""{targetDir}""
-del ""{cleanupBat}""
-");
-                Process.Start(new ProcessStartInfo(cleanupBat)
-                {
-                    CreateNoWindow = true,
-                    UseShellExecute = false,
-                    WindowStyle = ProcessWindowStyle.Hidden
-                });
+                await Task.Run(() => RemoveProgramFiles(targetDir!));
             }
             await Task.Delay(300);
 
@@ -203,10 +190,21 @@ del ""{cleanupBat}""
 
             await Task.Delay(800);
 
-            MessageBox.Show(
-                "SpeedScan Manager wurde erfolgreich deinstalliert.",
-                "Deinstallation abgeschlossen",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            if (canRemoveFiles)
+            {
+                MessageBox.Show(
+                    "SpeedScan Manager wurde erfolgreich deinstalliert.",
+                    "Deinstallation abgeschlossen",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show(
+                    "SpeedScan Manager wurde aus Windows entfernt, die Programmdateien konnten aber nicht automatisch gelöscht werden:\n\n" +
+                    filesError + "\n\nBitte löschen Sie den Programmordner bei Bedarf manuell.",
+                    "Deinstallation abgeschlossen",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
 
             Close();
         }
@@ -220,5 +218,86 @@ del ""{cleanupBat}""
             BtnCancel.IsEnabled = true;
             ChkRemoveSettings.IsEnabled = true;
         }
+    }
+
+    /// <summary>
+    /// Deletes the files listed in the install manifest (or the legacy file set of installs
+    /// without manifest), then empty folders. The running uninstaller and the install folder
+    /// itself are removed by a cleanup script after this process has exited.
+    /// </summary>
+    private static void RemoveProgramFiles(string targetDir)
+    {
+        var uninstallerPath = Environment.ProcessPath != null ? Path.GetFullPath(Environment.ProcessPath) : null;
+        var files = InstallerCore.ReadManifest(targetDir) ?? InstallerCore.GetLegacyFileList(targetDir);
+        files.Add(InstallerCore.ManifestFileName);
+        files.Add("scanbutton.vbs");
+
+        foreach (var rel in files)
+        {
+            try
+            {
+                var path = InstallerCore.ResolveInside(targetDir, rel);
+                if (uninstallerPath != null && string.Equals(path, uninstallerPath, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (File.Exists(path)) File.Delete(path);
+            }
+            catch { }
+        }
+        InstallerCore.RemoveEmptySubdirectories(targetDir);
+
+        var normalizedTarget = Path.GetFullPath(targetDir).TrimEnd(Path.DirectorySeparatorChar);
+        var uninstallerInTarget = uninstallerPath != null &&
+            string.Equals(Path.GetDirectoryName(uninstallerPath), normalizedTarget, StringComparison.OrdinalIgnoreCase);
+        if (!uninstallerInTarget)
+        {
+            try
+            {
+                if (Directory.Exists(normalizedTarget) && !Directory.EnumerateFileSystemEntries(normalizedTarget).Any())
+                    Directory.Delete(normalizedTarget);
+            }
+            catch { }
+            return;
+        }
+
+        ScheduleSelfDelete(uninstallerPath!, normalizedTarget);
+    }
+
+    /// <summary>
+    /// Starts a hidden batch file that waits until this uninstaller has exited, deletes it and
+    /// removes the install folder if it is empty. Uses ping as delay because "timeout" fails
+    /// without a console.
+    /// </summary>
+    private static void ScheduleSelfDelete(string uninstallerPath, string targetDir)
+    {
+        static string Esc(string p) => p.Replace("%", "%%");
+        var exe = Esc(uninstallerPath);
+        var dir = Esc(targetDir);
+
+        var cleanupBat = Path.Combine(Path.GetTempPath(), $"ssm_cleanup_{Environment.ProcessId}.bat");
+        var script = string.Join("\r\n",
+            "@echo off",
+            "chcp 65001 >nul",
+            "set /a tries=0",
+            ":retry",
+            $"del /f /q \"{exe}\" >nul 2>&1",
+            $"if not exist \"{exe}\" goto cleanup",
+            "set /a tries+=1",
+            "if %tries% geq 30 goto cleanup",
+            "ping -n 3 127.0.0.1 >nul",
+            "goto retry",
+            ":cleanup",
+            $"rd \"{dir}\" >nul 2>&1",
+            "(goto) 2>nul & del \"%~f0\"",
+            "");
+        File.WriteAllText(cleanupBat, script, new UTF8Encoding(false));
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe"),
+            Arguments = $"/d /c \"\"{cleanupBat}\"\"",
+            CreateNoWindow = true,
+            UseShellExecute = false,
+            WindowStyle = ProcessWindowStyle.Hidden,
+        });
     }
 }

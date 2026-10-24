@@ -1,8 +1,7 @@
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Net.Http;
-using System.Runtime.InteropServices;
-using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
@@ -20,23 +19,33 @@ namespace SpeedScanInstaller;
 
 public partial class MainWindow : Window
 {
-    private const string ProductName = "SpeedScan Manager";
-    private const string Publisher = "VeridonNetzwerk";
+    private const string ProductName = InstallerCore.ProductName;
+    private const string Publisher = InstallerCore.Publisher;
     private const string ProductUrl = "https://github.com/VeridonNetzwerk/SpeedScanManager";
     private const string DiscordUrl = "https://discord.gg/P2RQNYjWbp";
     private const string DiscordFaqUrl = "https://discord.gg/eJ7tJqVAZA";
     private const string DiscordFeedbackUrl = "https://discord.gg/VHh3u746fA";
     private const string ReadmeUrl = "https://raw.githubusercontent.com/VeridonNetzwerk/SpeedScanManager/refs/heads/main/README.md";
 
-    private static readonly string DistDir = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "dist"));
-
     private bool _readmeLoaded = false;
     private bool _webViewReady = false;
+    private bool _allowNextNavigation = false;
 
     public MainWindow()
     {
         InitializeComponent();
-        TxtInstallPath.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "SpeedScanManager");
+        // Default to an existing installation (upgrade), otherwise Program Files (x86)
+        var existing = InstallerCore.GetExistingInstallLocation();
+        if (existing != null && InstallerCore.IsSafeAppDirectory(existing, out _) &&
+            File.Exists(Path.Combine(existing, InstallerCore.AppExeName)))
+        {
+            TxtInstallPath.Text = existing;
+            BtnStartInstall.Content = "Aktualisieren";
+        }
+        else
+        {
+            TxtInstallPath.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), InstallerCore.AppFolderName);
+        }
         UpdateActiveTab("install");
         _ = InitWebViewAsync();
     }
@@ -54,7 +63,14 @@ public partial class MainWindow : Window
         {
             ReadmeBrowser.DefaultBackgroundColor = System.Drawing.Color.White;
             await ReadmeBrowser.EnsureCoreWebView2Async();
+            var settings = ReadmeBrowser.CoreWebView2.Settings;
+            settings.IsScriptEnabled = false;
+            settings.IsWebMessageEnabled = false;
+            settings.AreDevToolsEnabled = false;
+            settings.AreHostObjectsAllowed = false;
+            settings.IsStatusBarEnabled = false;
             ReadmeBrowser.NavigationStarting += OnWebViewNavigationStarting;
+            ReadmeBrowser.CoreWebView2.NewWindowRequested += OnWebViewNewWindowRequested;
             _webViewReady = true;
         }
         catch
@@ -65,19 +81,30 @@ public partial class MainWindow : Window
 
     private void OnWebViewNavigationStarting(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs e)
     {
-        if (e.Uri != null && e.Uri.StartsWith("http"))
+        // Only the README rendered via NavigateToString may load inside the WebView;
+        // links open in the default browser, everything else is blocked.
+        if (_allowNextNavigation)
         {
-            Process.Start(new ProcessStartInfo(e.Uri) { UseShellExecute = true });
-            e.Cancel = true;
+            _allowNextNavigation = false;
+            return;
         }
+        e.Cancel = true;
+        OpenExternalLink(e.Uri);
     }
 
-    // ===== Admin check =====
-    private static bool IsUserAdmin()
+    private void OnWebViewNewWindowRequested(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NewWindowRequestedEventArgs e)
     {
-        using var identity = WindowsIdentity.GetCurrent();
-        var principal = new WindowsPrincipal(identity);
-        return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        e.Handled = true;
+        OpenExternalLink(e.Uri);
+    }
+
+    private static void OpenExternalLink(string? uri)
+    {
+        if (Uri.TryCreate(uri, UriKind.Absolute, out var parsed) &&
+            (parsed.Scheme == Uri.UriSchemeHttps || parsed.Scheme == Uri.UriSchemeHttp))
+        {
+            try { Process.Start(new ProcessStartInfo(parsed.AbsoluteUri) { UseShellExecute = true }); } catch { }
+        }
     }
 
     // ===== Window drag =====
@@ -105,17 +132,7 @@ public partial class MainWindow : Window
 
     private void OnStartInstallClick(object sender, RoutedEventArgs e)
     {
-        if (!IsUserAdmin())
-        {
-            var result = MessageBox.Show(
-                "Für die Installation werden Administrator-Rechte benötigt.\n\nMöchten Sie das Setup als Administrator neu starten?",
-                "Administrator-Rechte erforderlich",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (result == MessageBoxResult.Yes)
-                RestartAsAdmin();
-            return;
-        }
-
+        // app.manifest requires administrator rights, so the setup is always elevated here
         _ = DoInstallAsync();
     }
 
@@ -146,6 +163,7 @@ public partial class MainWindow : Window
             var html = MarkdownToHtml(markdown);
             var fullHtml = WrapHtml(html);
 
+            _allowNextNavigation = true;
             ReadmeBrowser.NavigateToString(fullHtml);
 
             _readmeLoaded = true;
@@ -166,7 +184,12 @@ public partial class MainWindow : Window
             Description = "Zielordner wählen (SpeedScanManager wird automatisch als Unterordner erstellt)"
         };
         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            TxtInstallPath.Text = Path.Combine(dialog.SelectedPath, "SpeedScanManager");
+        {
+            var selected = dialog.SelectedPath.TrimEnd(Path.DirectorySeparatorChar);
+            TxtInstallPath.Text = string.Equals(Path.GetFileName(selected), InstallerCore.AppFolderName, StringComparison.OrdinalIgnoreCase)
+                ? selected
+                : Path.Combine(selected, InstallerCore.AppFolderName);
+        }
     }
 
     private void OnSupportClick(object sender, RoutedEventArgs e)
@@ -216,28 +239,57 @@ public partial class MainWindow : Window
     // ===== Installation logic =====
     private async Task DoInstallAsync()
     {
-        var targetDir = TxtInstallPath.Text;
-
-        // Validate path
-        if (string.IsNullOrWhiteSpace(targetDir))
+        var targetDir = InstallerCore.ValidateInstallPath(TxtInstallPath.Text, out var pathError);
+        if (targetDir == null)
         {
-            MessageBox.Show("Bitte geben Sie einen gültigen Installationspfad an.", "Fehler",
+            MessageBox.Show(pathError, "Ungültiger Installationspfad",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
+        TxtInstallPath.Text = targetDir;
 
-        // Check dist directory exists
-        if (!Directory.Exists(DistDir))
+        InstallerCore.Payload payload;
+        try
         {
-            MessageBox.Show($"Der dist-Ordner wurde nicht gefunden:\n{DistDir}\n\nBitte führen Sie zuerst 'dotnet publish' aus.",
+            payload = InstallerCore.Payload.Open();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        using var _ = payload;
+
+        if (!payload.Files.Any(f => string.Equals(f.RelativePath, InstallerCore.AppExeName, StringComparison.OrdinalIgnoreCase)))
+        {
+            MessageBox.Show($"Das Installationspaket ({payload.Source}) enthält keine {InstallerCore.AppExeName}.",
                 "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
+        }
+
+        // Running instance must be closed before files can be replaced
+        if (InstallerCore.GetRunningAppProcesses().Length > 0)
+        {
+            var answer = MessageBox.Show(
+                "SpeedScan Manager läuft gerade und wird beendet.\n\nFortfahren?",
+                "SpeedScan Manager läuft",
+                MessageBoxButton.OKCancel, MessageBoxImage.Information);
+            if (answer != MessageBoxResult.OK)
+                return;
+            if (!InstallerCore.KillRunningApp())
+            {
+                MessageBox.Show("SpeedScan Manager konnte nicht beendet werden. Bitte beenden Sie das Programm manuell und versuchen Sie es erneut.",
+                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
         }
 
         // Disable buttons
         BtnInstall.IsEnabled = false;
         BtnStartInstall.IsEnabled = false;
         BtnBrowse.IsEnabled = false;
+        TxtInstallPath.IsEnabled = false;
 
         // Show progress
         ProgressPanel.Visibility = Visibility.Visible;
@@ -252,98 +304,79 @@ public partial class MainWindow : Window
             Directory.CreateDirectory(targetDir);
             await Task.Delay(100);
 
-            // Collect files to copy
-            var filesToCopy = new List<string>();
-            var dirsToCreate = new List<(string relDir, string absTarget)>();
-
-            // Core files
-            foreach (var file in Directory.GetFiles(DistDir, "*.*", SearchOption.TopDirectoryOnly))
-            {
-                var ext = Path.GetExtension(file).ToLowerInvariant();
-                if (ext is ".exe" or ".dll" or ".pdb")
-                    filesToCopy.Add(file);
-            }
-
-            // x86 native libs
-            var x86Dir = Path.Combine(DistDir, "x86");
-            if (Directory.Exists(x86Dir))
-                dirsToCreate.Add(("x86", Path.Combine(targetDir, "x86")));
-
-            // x64 native libs
-            var x64Dir = Path.Combine(DistDir, "x64");
-            if (Directory.Exists(x64Dir))
-                dirsToCreate.Add(("x64", Path.Combine(targetDir, "x64")));
-
-            // Create subdirectories
-            foreach (var (relDir, absTarget) in dirsToCreate)
-            {
-                StatusText.Text = $"Erstelle Ordner: {relDir}\\...";
-                Directory.CreateDirectory(absTarget);
-                foreach (var file in Directory.GetFiles(Path.Combine(DistDir, relDir)))
-                    filesToCopy.Add(file);
-            }
-            InstallProgress.Value = 10;
-            await Task.Delay(100);
+            // Files of a previous installation in this folder (for upgrade cleanup)
+            var oldFiles = InstallerCore.ReadManifest(targetDir)
+                ?? (File.Exists(Path.Combine(targetDir, InstallerCore.AppExeName))
+                    ? InstallerCore.GetLegacyFileList(targetDir)
+                    : new List<string>());
 
             // Copy files
-            var totalFiles = filesToCopy.Count;
+            var installed = new List<string>();
+            var totalFiles = payload.Files.Count;
             for (int i = 0; i < totalFiles; i++)
             {
-                var srcFile = filesToCopy[i];
-                var relPath = Path.GetRelativePath(DistDir, srcFile);
-                var dstFile = Path.Combine(targetDir, relPath);
+                var file = payload.Files[i];
+                var dstFile = InstallerCore.ResolveInside(targetDir, file.RelativePath);
 
-                StatusText.Text = $"Kopiere: {Path.GetFileName(srcFile)}  ({i + 1}/{totalFiles})";
+                StatusText.Text = $"Kopiere: {Path.GetFileName(file.RelativePath)}  ({i + 1}/{totalFiles})";
                 Directory.CreateDirectory(Path.GetDirectoryName(dstFile)!);
-                File.Copy(srcFile, dstFile, overwrite: true);
+                await Task.Run(() =>
+                {
+                    using var src = file.Open();
+                    using var dst = new FileStream(dstFile, FileMode.Create, FileAccess.Write, FileShare.None);
+                    src.CopyTo(dst);
+                });
+                installed.Add(file.RelativePath);
 
                 InstallProgress.Value = 10 + (int)((double)(i + 1) / totalFiles * 70);
-                await Task.Delay(10);
             }
+
+            // Uninstaller (copy of this setup, started with --uninstall)
+            StatusText.Text = "Erstelle Deinstallationsprogramm...";
+            InstallProgress.Value = 82;
+            var uninstallPath = Path.Combine(targetDir, InstallerCore.UninstallerExeName);
+            var installerPath = Environment.ProcessPath;
+            if (installerPath != null &&
+                !string.Equals(Path.GetFullPath(installerPath), uninstallPath, StringComparison.OrdinalIgnoreCase))
+            {
+                await Task.Run(() => File.Copy(installerPath, uninstallPath, overwrite: true));
+            }
+            installed.Add(InstallerCore.UninstallerExeName);
+
+            // Remove files of the previous version that are no longer part of the payload
+            StatusText.Text = "Entferne veraltete Dateien...";
+            InstallProgress.Value = 84;
+            var keep = new HashSet<string>(installed, StringComparer.OrdinalIgnoreCase);
+            foreach (var rel in oldFiles.Append("scanbutton.vbs"))
+            {
+                if (keep.Contains(rel)) continue;
+                try
+                {
+                    var path = InstallerCore.ResolveInside(targetDir, rel);
+                    if (File.Exists(path)) File.Delete(path);
+                }
+                catch { }
+            }
+            InstallerCore.RemoveEmptySubdirectories(targetDir);
+            InstallerCore.WriteManifest(targetDir, installed);
 
             // Registry entries
             StatusText.Text = "Schreibe Registry-Einträge...";
-            InstallProgress.Value = 85;
+            InstallProgress.Value = 86;
             WriteRegistryEntries(targetDir);
-            await Task.Delay(200);
+            await Task.Delay(100);
 
-            // Scan button setup (WIA handler registration)
+            // Scan button setup (WIA handler registration) — the setup already runs elevated
             StatusText.Text = "Registriere Scan-Taste...";
             InstallProgress.Value = 88;
-            try
-            {
-                var setupPsi = new ProcessStartInfo
-                {
-                    FileName = Path.Combine(targetDir, "SpeedScanManager.exe"),
-                    Arguments = "/setup",
-                    UseShellExecute = true,
-                    Verb = "runas",
-                    WindowStyle = ProcessWindowStyle.Hidden
-                };
-                var setupProc = Process.Start(setupPsi);
-                if (setupProc != null)
-                {
-                    await setupProc.WaitForExitAsync();
-                    Debug.WriteLine($"Scan button setup exit code: {setupProc.ExitCode}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Scan button setup failed: {ex.Message}");
-            }
-            await Task.Delay(200);
+            var setupExit = await InstallerCore.RunAppHelperAsync(targetDir, "/setup", TimeSpan.FromSeconds(30));
+            Debug.WriteLine($"Scan button setup exit code: {setupExit?.ToString() ?? "n/a"}");
 
             // Shortcuts
             StatusText.Text = "Erstelle Verknüpfungen...";
-            InstallProgress.Value = 90;
+            InstallProgress.Value = 94;
             CreateShortcuts(targetDir);
-            await Task.Delay(200);
-
-            // Uninstaller
-            StatusText.Text = "Erstelle Deinstallations-Eintrag...";
-            InstallProgress.Value = 95;
-            CreateUninstaller(targetDir);
-            await Task.Delay(200);
+            await Task.Delay(100);
 
             // Done
             InstallProgress.Value = 100;
@@ -358,10 +391,8 @@ public partial class MainWindow : Window
 
             if (launch == MessageBoxResult.Yes)
             {
-                Process.Start(new ProcessStartInfo(Path.Combine(targetDir, "SpeedScanManager.exe"))
-                {
-                    UseShellExecute = true
-                });
+                // The setup runs elevated; start the app with normal user rights
+                InstallerCore.StartDeElevated(Path.Combine(targetDir, InstallerCore.AppExeName));
             }
 
             Close();
@@ -376,33 +407,40 @@ public partial class MainWindow : Window
             BtnInstall.IsEnabled = true;
             BtnStartInstall.IsEnabled = true;
             BtnBrowse.IsEnabled = true;
+            TxtInstallPath.IsEnabled = true;
         }
     }
 
     private static void WriteRegistryEntries(string targetDir)
     {
-        var uninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\SpeedScanManager";
-        using var key = Registry.LocalMachine.CreateSubKey(uninstallKey);
-        if (key == null) return;
+        var exePath = Path.Combine(targetDir, InstallerCore.AppExeName);
+        var uninstallPath = Path.Combine(targetDir, InstallerCore.UninstallerExeName);
 
-        key.SetValue("DisplayName", ProductName);
-        key.SetValue("UninstallString", Path.Combine(targetDir, "uninstall.exe"));
-        key.SetValue("DisplayIcon", Path.Combine(targetDir, "SpeedScanManager.exe"));
-        key.SetValue("Publisher", Publisher);
-        key.SetValue("DisplayVersion", "0.1.0");
-        key.SetValue("URLInfoAbout", ProductUrl);
-        key.SetValue("NoModify", 1, RegistryValueKind.DWord);
-        key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
-        key.SetValue("InstallLocation", targetDir);
+        using (var key = Registry.LocalMachine.CreateSubKey(InstallerCore.UninstallKeyPath))
+        {
+            key.SetValue("DisplayName", ProductName);
+            key.SetValue("DisplayVersion", InstallerCore.GetAppVersion(targetDir));
+            key.SetValue("Publisher", Publisher);
+            key.SetValue("DisplayIcon", $"\"{exePath}\",0");
+            key.SetValue("UninstallString", $"\"{uninstallPath}\" --uninstall");
+            key.SetValue("QuietUninstallString", $"\"{uninstallPath}\" --uninstall");
+            key.SetValue("InstallLocation", targetDir);
+            key.SetValue("InstallDate", DateTime.Now.ToString("yyyyMMdd"));
+            key.SetValue("EstimatedSize", (int)Math.Min(int.MaxValue, InstallerCore.GetDirectorySizeKb(targetDir)), RegistryValueKind.DWord);
+            key.SetValue("URLInfoAbout", ProductUrl);
+            key.SetValue("HelpLink", ProductUrl + "/issues");
+            key.SetValue("NoModify", 1, RegistryValueKind.DWord);
+            key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
+        }
 
         // Also store install dir for app lookup
-        using var appKey = Registry.LocalMachine.CreateSubKey($@"Software\{Publisher}\SpeedScanManager");
-        appKey?.SetValue("InstallDir", targetDir);
+        using var appKey = Registry.LocalMachine.CreateSubKey(InstallerCore.AppKeyPath);
+        appKey.SetValue("InstallDir", targetDir);
     }
 
     private static void CreateShortcuts(string targetDir)
     {
-        var exePath = Path.Combine(targetDir, "SpeedScanManager.exe");
+        var exePath = Path.Combine(targetDir, InstallerCore.AppExeName);
         var startMenuDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms),
             ProductName);
@@ -414,7 +452,7 @@ public partial class MainWindow : Window
 
         // Uninstall shortcut
         var uninstallPath = Path.Combine(startMenuDir, "Deinstallieren.lnk");
-        CreateShortcut(uninstallPath, Path.Combine(targetDir, "uninstall.exe"), targetDir, "--uninstall");
+        CreateShortcut(uninstallPath, Path.Combine(targetDir, InstallerCore.UninstallerExeName), targetDir, "--uninstall");
 
         // Desktop shortcut
         var desktopPath = Path.Combine(
@@ -434,44 +472,6 @@ public partial class MainWindow : Window
         if (arguments != null)
             shortcut.Arguments = arguments;
         shortcut.Save();
-    }
-
-    private static void CreateUninstaller(string targetDir)
-    {
-        // Copy the installer exe as uninstall.exe — it launches in uninstall mode with --uninstall arg
-        var installerPath = Environment.ProcessPath;
-        if (installerPath == null) return;
-
-        var uninstallPath = Path.Combine(targetDir, "uninstall.exe");
-        File.Copy(installerPath, uninstallPath, overwrite: true);
-
-        // Update registry to call uninstall.exe with --uninstall arg
-        using var key = Registry.LocalMachine.OpenSubKey(
-            @"Software\Microsoft\Windows\CurrentVersion\Uninstall\SpeedScanManager", writable: true);
-        key?.SetValue("UninstallString", $"\"{uninstallPath}\" --uninstall");
-    }
-
-    // ===== Restart as admin =====
-    private static void RestartAsAdmin()
-    {
-        var exePath = Environment.ProcessPath;
-        if (exePath == null) return;
-
-        try
-        {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = exePath,
-                UseShellExecute = true,
-                Verb = "runas"
-            };
-            Process.Start(startInfo);
-            Environment.Exit(0);
-        }
-        catch
-        {
-            // User declined UAC
-        }
     }
 
     // ===== Markdown to HTML =====
@@ -606,7 +606,7 @@ public partial class MainWindow : Window
                     i++;
                 }
                 if (i < lines.Length) i++; // skip closing ```
-                sb.AppendLine($"<pre><code>{code.ToString().TrimEnd()}</code></pre>");
+                sb.AppendLine($"<pre><code>{WebUtility.HtmlEncode(code.ToString().TrimEnd())}</code></pre>");
                 continue;
             }
 
@@ -720,12 +720,17 @@ public partial class MainWindow : Window
 
     private static string ProcessInline(string text)
     {
+        // Encode first so README text can't inject markup; the replacements below only
+        // add the tags they generate themselves.
+        text = WebUtility.HtmlEncode(text);
+
         // Images ![alt](url)
         text = Regex.Replace(text, @"!\[([^\]]*)\]\(([^)]+)\)", m =>
-            $"<img src=\"{FixImageUrl(m.Groups[2].Value)}\" alt=\"{m.Groups[1].Value}\"/>");
+            $"<img src=\"{SafeUrl(FixImageUrl(WebUtility.HtmlDecode(m.Groups[2].Value)))}\" alt=\"{m.Groups[1].Value}\"/>");
 
         // Links [text](url)
-        text = Regex.Replace(text, @"\[([^\]]+)\]\(([^)]+)\)", "<a href=\"$2\">$1</a>");
+        text = Regex.Replace(text, @"\[([^\]]+)\]\(([^)]+)\)", m =>
+            $"<a href=\"{SafeUrl(WebUtility.HtmlDecode(m.Groups[2].Value))}\">{m.Groups[1].Value}</a>");
 
         // Bold + italic ***text***
         text = Regex.Replace(text, @"\*\*\*(.+?)\*\*\*", "<strong><em>$1</em></strong>");
@@ -742,14 +747,25 @@ public partial class MainWindow : Window
         return text;
     }
 
+    /// <summary>Allows only http(s), mailto and in-page anchors; returns an attribute-safe value.</summary>
+    private static string SafeUrl(string url)
+    {
+        url = url.Trim();
+        var ok = url.StartsWith('#') ||
+                 url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                 url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                 url.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase);
+        return ok ? WebUtility.HtmlEncode(url) : "#";
+    }
+
     private static string FixImgTag(string tag)
     {
         var srcMatch = Regex.Match(tag, @"src=""([^""]+)""");
         if (!srcMatch.Success) return tag;
-        var src = FixImageUrl(srcMatch.Groups[1].Value);
+        var src = SafeUrl(FixImageUrl(srcMatch.Groups[1].Value));
         var altMatch = Regex.Match(tag, @"alt=""([^""]*)""");
         var heightMatch = Regex.Match(tag, @"height=""(\d+)""");
-        var alt = altMatch.Success ? altMatch.Groups[1].Value : "";
+        var alt = altMatch.Success ? WebUtility.HtmlEncode(altMatch.Groups[1].Value) : "";
         var heightAttr = heightMatch.Success ? $" height=\"{heightMatch.Groups[1].Value}\"" : "";
         return $"<img src=\"{src}\" alt=\"{alt}\"{heightAttr}/>";
     }
