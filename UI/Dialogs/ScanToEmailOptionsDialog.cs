@@ -9,27 +9,31 @@ namespace SpeedScanManager;
 /// </summary>
 internal class ScanToEmailOptionsDialog : Form
 {
+    public const string DefaultSubject = "Gescanntes Dokument";
+
     private readonly TextBox _txtRecipient;
     private readonly TextBox _txtSubject;
     private readonly Button _btnOk;
     private readonly Button _btnCancel;
 
     public string Recipient { get; set; } = "";
-    public string SubjectTemplate { get; set; } = "Gescanntes Dokument";
+    public string SubjectTemplate { get; set; } = DefaultSubject;
 
     public ScanToEmailOptionsDialog()
     {
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Scan to E-Mail – Optionen";
         Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(380, 180);
+        ClientSize = new Size(380, 150);
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Font = font;
 
         var lblRecipient = new Label
@@ -89,6 +93,7 @@ internal class ScanToEmailOptionsDialog : Form
 
         AcceptButton = _btnOk;
         CancelButton = _btnCancel;
+        ResumeLayout(false);
     }
 
     protected override void OnShown(EventArgs e)
@@ -104,7 +109,7 @@ internal class ScanToEmailOptionsDialog : Form
         {
             Recipient = _txtRecipient.Text.Trim();
             SubjectTemplate = string.IsNullOrWhiteSpace(_txtSubject.Text)
-                ? "Gescanntes Dokument"
+                ? DefaultSubject
                 : _txtSubject.Text.Trim();
         }
         base.OnFormClosing(e);

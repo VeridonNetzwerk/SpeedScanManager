@@ -1,108 +1,194 @@
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
+using System.Reflection;
 using System.Windows.Forms;
-using DocumentFormat.OpenXml;
-using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Presentation;
-using DocumentFormat.OpenXml.Spreadsheet;
-using DocumentFormat.OpenXml.Wordprocessing;
+using Microsoft.Win32;
 using NTwain;
 using NTwain.Data;
-using A = DocumentFormat.OpenXml.Drawing;
-using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
-using Xdr = DocumentFormat.OpenXml.Drawing.Spreadsheet;
-using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 
 namespace SpeedScanManager;
 
-internal enum ScannerStatus { Unknown, Connected, Disconnected, Scanning }
+internal enum ScannerStatus { Unknown, Connected, Disconnected }
+
+/// <summary>Where a scan request came from.</summary>
+internal enum ScanTrigger
+{
+    /// <summary>Tray menu: the user gets feedback such as "Scan läuft bereits".</summary>
+    Menu,
+    /// <summary>Scanner button (pipe "SCAN" / start with /scanbutton): ignored silently while busy, debounced.</summary>
+    Button
+}
+
+/// <summary>
+/// Invisible top-level window of the tray app. Provides the HWND required by the TWAIN DSM,
+/// owns the post-scan dialogs and reports WM_DEVICECHANGE (sent to all top-level windows).
+/// </summary>
+internal sealed class TrayHiddenWindow : Form
+{
+    private const int WM_DEVICECHANGE = 0x0219;
+
+    /// <summary>A device was added/removed (raised on the UI thread, may fire in bursts).</summary>
+    public event EventHandler? DeviceChanged;
+
+    public TrayHiddenWindow()
+    {
+        Text = "SpeedScan Manager";
+        ShowInTaskbar = false;
+        FormBorderStyle = FormBorderStyle.FixedToolWindow;
+        StartPosition = FormStartPosition.Manual;
+        Location = new Point(-32000, -32000);
+        Size = new Size(1, 1);
+        WindowState = FormWindowState.Minimized;
+        Opacity = 0;
+    }
+
+    protected override void WndProc(ref System.Windows.Forms.Message m)
+    {
+        if (m.Msg == WM_DEVICECHANGE)
+        {
+            try { DeviceChanged?.Invoke(this, EventArgs.Empty); }
+            catch (Exception ex) { DiagLog.Write($"DeviceChanged handler failed: {ex.Message}"); }
+        }
+        base.WndProc(ref m);
+    }
+}
 
 /// <summary>
 /// ApplicationContext that runs the app as a tray-only application.
-/// Polls TWAIN every 3 seconds and updates the tray icon accordingly.
+///
+/// Scanner state: <see cref="ScannerStateService"/> caches the state and only opens the
+/// TWAIN source when the set of imaging devices changed. The tray asks it every
+/// <see cref="PollIntervalMs"/> (cheap) and after WM_DEVICECHANGE (debounced); the
+/// context menu only reads <see cref="ScannerStateService.LastState"/>.
+///
+/// Scan flow (one at a time, <see cref="_busy"/> covers the whole flow including all
+/// post-scan dialogs): acquire on a worker thread (<see cref="ScanPipeline.Scan"/>) →
+/// optional "Weitere Dokumente scannen?" → process and save on a worker thread
+/// (<see cref="ScanOutputProcessor.Process"/>) → Quick-Menü or the configured application.
+/// Dialogs run on the UI thread; problems are shown as balloon (info/warnings) or
+/// message box (errors).
 /// </summary>
-internal class TrayApplicationContext : ApplicationContext, IMessageFilter
+internal class TrayApplicationContext : ApplicationContext
 {
+    private const int PollIntervalMs = 10000;
+    private const int DeviceChangeDebounceMs = 1500;
+    private const int DisconnectConfirmThreshold = 2;
+    private const int ExitCancelTimeoutMs = 8000;
+    private static readonly TimeSpan ButtonDebounce = TimeSpan.FromSeconds(1.5);
+    private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    private const string RunValueName = "SpeedScanManager";
+    private const string AppTitle = "SpeedScan Manager";
+
     private readonly NotifyIcon _notifyIcon;
     private ContextMenuStrip _contextMenu = null!;
     private ToolStripMenuItem _miScan = null!;
+    private ToolStripMenuItem _miCancelScan = null!;
     private ToolStripMenuItem _miSelectScanner = null!;
     private ToolStripMenuItem _miScanKeySettings = null!;
     private ToolStripMenuItem _miProfileManagement = null!;
+    private ToolStripMenuItem _miEmailSettings = null!;
+    private ToolStripMenuItem _miPrintSettings = null!;
     private ToolStripMenuItem _miScanResult = null!;
     private ToolStripMenuItem _miHelp = null!;
     private ToolStripMenuItem _miExit = null!;
+
     private readonly System.Windows.Forms.Timer _pollTimer;
-    private readonly Form _hiddenWindow;
+    private readonly System.Windows.Forms.Timer _deviceChangeTimer;
+    private readonly System.Windows.Forms.Timer _progressTimer;
+    private readonly System.Windows.Forms.Timer _leftClickTimer;
+    private readonly TrayHiddenWindow _hiddenWindow;
+
     private TwainSession? _twain;
     private WindowsFormsMessageLoopHook? _msgLoop;
     private ScannerStateService? _scannerStateService;
     private bool _twainInitialized;
+    private bool _initialized;
+    private bool _disposed;
+
     private MainForm? _mainForm;
+    private HelpForm? _helpForm;
     private readonly ScanSettings _settings;
     private readonly ProfileManager _profileManager = new();
     private readonly AppSettings _appSettings;
-    private ScanPipeline? _scanPipeline;
-    private bool _isScanning;
-    private ApplicationType _currentApplicationType = ApplicationType.ScanToFolder;
-    private List<string> _lastScanFiles = new();
-    private ScannerState? _lastScannerState;
-    private DataSource? _persistentSource;
-    private bool _deviceEventSubscribed;
-    private WiaEventWatcher? _wiaWatcher;
-    private bool _quickMenuScanTriggered;
 
-    // State machine for scanner connection
+    // Scan flow state (UI thread only)
+    private bool _busy;
+    private ScanPipeline? _activePipeline;
+    private bool _batchRunning;
+    private int _pagesInEarlierBatches;
+    private bool _cancelRequestedByUser;
+    private bool _exitRequested;
+    private bool _pendingButtonScan;
+    private DateTime _lastButtonScanUtc = DateTime.MinValue;
+    private List<string> _lastScanFiles = new();
+
+    // Scanner connection state machine
     private ScannerStatus _scannerStatus = ScannerStatus.Unknown;
     private string _currentScannerName = "";
     private int _pendingDisconnectCount;
-    private const int DisconnectConfirmThreshold = 2;
+    private bool _disconnectBalloonShown;
+    private bool _isUpdatingConnection;
 
-    // Cached icons (avoid recreating GDI handles on every poll)
+    // Cached icons (avoid recreating GDI handles)
     private Icon? _cachedConnectedIcon;
     private Icon? _cachedDisconnectedIcon;
+    private Icon? _cachedScanningIcon;
 
-    private const int PollIntervalMs = 3000;
-    private const int SlowPollIntervalMs = 5000;
-    private int _wiaPollSkip;
+    private static readonly MethodInfo? ShowContextMenuMethod =
+        typeof(NotifyIcon).GetMethod("ShowContextMenu", BindingFlags.Instance | BindingFlags.NonPublic);
+
     public TrayApplicationContext()
     {
-        // Load persisted app settings. AppSettings.ScanSettings is the single source of
-        // truth for the current scan settings (old files are migrated on first load).
+        // AppSettings.ScanSettings is the single source of truth for the current scan
+        // settings (old files are migrated on first load).
         _appSettings = AppSettings.Load();
         _settings = _appSettings.EnsureScanSettings(_profileManager);
-        _quickMenuScanTriggered = _appSettings.QuickMenuEnabled;
-        _currentApplicationType = _settings.ApplicationType;
 
-        // Hidden window provides the HWND that TWAIN DSM requires.
-        _hiddenWindow = new Form
-        {
-            ShowInTaskbar = false,
-            WindowState = FormWindowState.Minimized,
-            Opacity = 0
-        };
+        _hiddenWindow = new TrayHiddenWindow();
+        _hiddenWindow.DeviceChanged += OnDeviceChanged;
+        // Create the handle now so commands from the pipe server can be marshalled
+        // (BeginInvoke) even before the TWAIN initialisation ran.
+        _ = _hiddenWindow.Handle;
 
         _notifyIcon = new NotifyIcon
         {
             Icon = GetDisconnectedIcon(),
-            Visible = true,
-            Text = "SpeedScan Manager"
+            Visible = true
         };
+        SetTrayText(AppTitle);
 
         BuildContextMenu();
         _notifyIcon.ContextMenuStrip = _contextMenu;
+        _notifyIcon.MouseUp += OnTrayMouseUp;
         _notifyIcon.DoubleClick += OnTrayDoubleClick;
 
-        // Defer TWAIN init until the message loop is running (WindowsFormsMessageLoopHook requires UI thread)
-        Application.Idle += OnFirstIdle;
-
-        _pollTimer = new System.Windows.Forms.Timer
-        {
-            Interval = PollIntervalMs
-        };
+        _pollTimer = new System.Windows.Forms.Timer { Interval = PollIntervalMs };
         _pollTimer.Tick += OnPollTick;
-        _pollTimer.Start();
+
+        _deviceChangeTimer = new System.Windows.Forms.Timer { Interval = DeviceChangeDebounceMs };
+        _deviceChangeTimer.Tick += OnDeviceChangeTimerTick;
+
+        _progressTimer = new System.Windows.Forms.Timer { Interval = 500 };
+        _progressTimer.Tick += (_, _) => UpdateBusyText();
+
+        _leftClickTimer = new System.Windows.Forms.Timer { Interval = Math.Max(200, SystemInformation.DoubleClickTime) };
+        _leftClickTimer.Tick += (_, _) =>
+        {
+            _leftClickTimer.Stop();
+            ShowTrayContextMenu();
+        };
+
+        // Scan button / second instance commands (raised on a thread-pool thread).
+        ScanButtonPipeServer.Shared.CommandReceived += OnPipeCommand;
+
+        ApplyAutoStart();
+
+        // Defer TWAIN init until the message loop is running (WindowsFormsMessageLoopHook requires it).
+        Application.Idle += OnFirstIdle;
     }
+
+    // ───────────────────────── Menu ─────────────────────────
 
     private void BuildContextMenu()
     {
@@ -113,41 +199,45 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
             ShowImageMargin = false
         };
         _contextMenu.Opening += OnContextMenuOpening;
-        _contextMenu.Closed += OnContextMenuClosed;
 
         _miScan = new ToolStripMenuItem("Scan");
+        _miCancelScan = new ToolStripMenuItem("Scan abbrechen") { Visible = false };
         _miSelectScanner = new ToolStripMenuItem("Scanner auswählen...");
         _miScanKeySettings = new ToolStripMenuItem("Einstellungen der SCAN Taste...");
         _miProfileManagement = new ToolStripMenuItem("Profilverwaltung...");
+        _miEmailSettings = new ToolStripMenuItem("E-Mail-Einstellungen...");
+        _miPrintSettings = new ToolStripMenuItem("Druckeinstellungen...");
         _miScanResult = new ToolStripMenuItem("Scan-Ergebnis anzeigen");
         _miHelp = new ToolStripMenuItem("Hilfe");
         _miExit = new ToolStripMenuItem("Beenden");
 
-        // Help submenu items
         var miHelpTopics = new ToolStripMenuItem("Hilfethemen");
         var miVersionInfo = new ToolStripMenuItem("Versionsinformationen");
-        _miScan.Click += (s, e) => StartScan(ScanSide.Automatic);
-        _miSelectScanner.Click += (s, e) => ShowScannerSelectionDialog();
-        _miScanKeySettings.Click += (s, e) => ShowMainForm();
-        _miProfileManagement.Click += (s, e) => OpenProfileManagement();
-        _miScanResult.Click += (s, e) => OpenScanResultFolder();
-        miHelpTopics.Click += (s, e) => ShowHelpDialog();
-        miVersionInfo.Click += (s, e) => ShowVersionInfo();
-        _miExit.Click += (s, e) => ExitApplication();
 
-        _miHelp.DropDownItems.AddRange(new ToolStripItem[]
-        {
-            miHelpTopics,
-            miVersionInfo
-        });
+        _miScan.Click += (_, _) => StartScan(ScanTrigger.Menu);
+        _miCancelScan.Click += (_, _) => CancelRunningScan();
+        _miSelectScanner.Click += (_, _) => ShowScannerSelectionDialog();
+        _miScanKeySettings.Click += (_, _) => ShowMainForm();
+        _miProfileManagement.Click += (_, _) => OpenProfileManagement();
+        _miEmailSettings.Click += (_, _) => ShowEmailSettings();
+        _miPrintSettings.Click += (_, _) => ShowPrintSettings();
+        _miScanResult.Click += (_, _) => OpenScanResult();
+        miHelpTopics.Click += (_, _) => ShowHelpDialog();
+        miVersionInfo.Click += (_, _) => ShowVersionInfo();
+        _miExit.Click += (_, _) => ExitApplication();
+
+        _miHelp.DropDownItems.AddRange(new ToolStripItem[] { miHelpTopics, miVersionInfo });
 
         _contextMenu.Items.AddRange(new ToolStripItem[]
         {
             _miScan,
+            _miCancelScan,
             new ToolStripSeparator(),
             _miSelectScanner,
             _miScanKeySettings,
             _miProfileManagement,
+            _miEmailSettings,
+            _miPrintSettings,
             new ToolStripSeparator(),
             _miScanResult,
             new ToolStripSeparator(),
@@ -158,805 +248,874 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
     private void OnContextMenuOpening(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        // Never open the TWAIN source here: only the cached state is used.
+        try { UpdateMenuItems(); }
+        catch (Exception ex) { LogDiag($"OnContextMenuOpening exception: {ex.Message}"); }
+    }
+
+    private void UpdateMenuItems()
+    {
+        bool scannerUsable = _twainInitialized && _scannerStatus != ScannerStatus.Disconnected;
+        _miScan.Enabled = !_busy && scannerUsable;
+        _miCancelScan.Visible = _busy && _activePipeline != null;
+        _miSelectScanner.Enabled = !_busy && _twainInitialized;
+        _miScanResult.Enabled = _lastScanFiles.Count > 0; // no File.Exists here: a lost network share would block the menu
+    }
+
+    private void OnTrayMouseUp(object? sender, MouseEventArgs e)
+    {
+        // Left click opens the menu (like ScanSnap); wait for a possible double click first.
+        if (e.Button == MouseButtons.Left)
+        {
+            _leftClickTimer.Stop();
+            _leftClickTimer.Start();
+        }
+    }
+
+    private void OnTrayDoubleClick(object? sender, EventArgs e)
+    {
+        _leftClickTimer.Stop();
+        ShowMainForm();
+    }
+
+    private void ShowTrayContextMenu()
+    {
         try
         {
-            // Pause polling while the context menu is open to avoid
-            // concurrent TWAIN access from the poll timer.
-            _pollTimer.Stop();
-            // Only query TWAIN if we think the scanner might be connected.
-            // When already Disconnected, skip the query to avoid triggering
-            // the TWAIN driver's "Kommunikation fehlgeschlagen" dialog.
-            if (_scannerStatus != ScannerStatus.Disconnected)
-                UpdateConnectionState();
-            // UpdateMenuItems uses the cached _lastScannerState from UpdateConnectionState
-            // to avoid opening the TWAIN source a second time.
-            UpdateMenuItems();
+            // NotifyIcon's own (non-public) routine positions the menu at the tray and
+            // handles the foreground window correctly.
+            if (ShowContextMenuMethod != null)
+                ShowContextMenuMethod.Invoke(_notifyIcon, null);
+            else
+                _contextMenu.Show(Cursor.Position);
         }
         catch (Exception ex)
         {
-            LogDiag($"OnContextMenuOpening exception: {ex.Message}");
+            LogDiag($"ShowTrayContextMenu failed: {ex.Message}");
+            _contextMenu.Show(Cursor.Position);
         }
     }
 
-    private void OnContextMenuClosed(object? sender, EventArgs e)
+    // ───────────────────────── Commands from the scan button / second instance ─────────────────────────
+
+    private void OnPipeCommand(string command)
     {
-        // Resume polling after the context menu closes.
-        _pollTimer.Start();
+        // Thread-pool thread → UI thread
+        try
+        {
+            if (_disposed || _hiddenWindow.IsDisposed) return;
+            _hiddenWindow.BeginInvoke(() => HandleCommand(command));
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"OnPipeCommand '{command}' could not be dispatched: {ex.Message}");
+        }
+    }
+
+    private void HandleCommand(string command)
+    {
+        LogDiag($"Pipe command: {command}");
+        if (command == ScanButtonPipeServer.CommandScan)
+        {
+            if (!_initialized)
+            {
+                _pendingButtonScan = true;
+                return;
+            }
+            StartScan(ScanTrigger.Button);
+        }
+        else if (command == ScanButtonPipeServer.CommandShow)
+        {
+            ShowMainForm();
+        }
+    }
+
+    // ───────────────────────── Scan flow ─────────────────────────
+
+    private void CancelRunningScan()
+    {
+        if (_activePipeline == null) return;
+        LogDiag("Tray: user requested scan cancel");
+        _cancelRequestedByUser = true;
+        _activePipeline.RequestCancel();
+    }
+
+    private async void StartScan(ScanTrigger trigger)
+    {
+        if (_busy)
+        {
+            if (trigger == ScanTrigger.Button)
+                LogDiag("StartScan: scan button ignored, a scan is already running");
+            else
+                TrayMessageBox.Info(_hiddenWindow, "Ein Scanvorgang läuft bereits.");
+            return;
+        }
+
+        if (trigger == ScanTrigger.Button)
+        {
+            var now = DateTime.UtcNow;
+            if (now - _lastButtonScanUtc < ButtonDebounce)
+            {
+                LogDiag("StartScan: scan button ignored (debounce)");
+                return;
+            }
+            _lastButtonScanUtc = now;
+        }
+
+        if (!_twainInitialized || _twain == null || _msgLoop == null)
+        {
+            TrayMessageBox.Error(_hiddenWindow, "TWAIN ist nicht initialisiert. Es ist kein Scanner verfügbar.");
+            return;
+        }
+
+        _busy = true;
+        _cancelRequestedByUser = false;
+        UpdateTrayVisuals();
+        ScanResult? scan = null;
+        try
+        {
+            // Snapshot for the whole flow: settings applied meanwhile don't change this scan.
+            var settings = _settings.Clone();
+            bool quickMenu = _appSettings.QuickMenuEnabled;
+
+            scan = await AcquireAsync(settings);
+            if (scan != null && !_exitRequested)
+                await PostScanAsync(scan, settings, quickMenu);
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"Scan flow failed: {ex}");
+            TrayMessageBox.Error(_hiddenWindow, $"Beim Scannen ist ein Fehler aufgetreten:\n\n{ex.Message}");
+        }
+        finally
+        {
+            scan?.DisposeImages();
+            _activePipeline = null;
+            _busy = false;
+            if (_exitRequested)
+                DoExit();
+            else
+                UpdateTrayVisuals();
+        }
     }
 
     /// <summary>
-    /// Updates all menu items based on current scanner state and last scan files.
-    /// Called before each menu open via the Opening event.
+    /// Acquires one or more batches ("Weitere Dokumente scannen?"). Returns null when
+    /// nothing is to be processed; all problems are already reported to the user.
     /// </summary>
-    private void UpdateMenuItems()
+    private async Task<ScanResult?> AcquireAsync(ScanSettings settings)
     {
-        bool connected = _scannerStatus == ScannerStatus.Connected;
-        bool supportsUltrasonic = false, supportsLength = false;
+        IntPtr handle = _hiddenWindow.Handle; // read on the UI thread
+        ScanResult? total = null;
+        bool errorShown = false;
 
-        // Use cached scanner state from UpdateConnectionState to avoid
-        // opening the TWAIN source a second time (causes native crash).
-        if (connected && !_isScanning && _lastScannerState != null)
+        using (var pipeline = new ScanPipeline(_twain!, _msgLoop!, _hiddenWindow, handle, settings, _appSettings.SelectedSourceName))
         {
-            supportsUltrasonic = _lastScannerState.SupportsUltrasonicDetection;
-            supportsLength = _lastScannerState.SupportsLengthDetection;
-
-            // Update multi-feed capabilities with cached values
-            if (_mainForm != null && !_mainForm.IsDisposed && _mainForm.PaperTab != null)
+            _activePipeline = pipeline;
+            _pagesInEarlierBatches = 0;
+            _progressTimer.Start();
+            try
             {
-                _mainForm.PaperTab.UpdateMultiFeedCapabilities(
-                    supportsUltrasonic,
-                    supportsLength);
+                while (true)
+                {
+                    _batchRunning = true;
+                    UpdateBusyText();
+                    ScanResult batch;
+                    try
+                    {
+                        batch = await Task.Run(() => pipeline.Scan(ScanSide.Automatic));
+                    }
+                    finally
+                    {
+                        _batchRunning = false;
+                    }
+
+                    if (batch.ErrorMessage != null)
+                    {
+                        batch.DisposeImages();
+                        TrayMessageBox.Error(_hiddenWindow, batch.ErrorMessage);
+                        errorShown = true;
+                        break; // earlier batches (if any) are still processed
+                    }
+
+                    if (batch.WasCancelled)
+                    {
+                        batch.DisposeImages();
+                        if (_cancelRequestedByUser || _exitRequested)
+                        {
+                            total?.DisposeImages();
+                            ShowBalloon("Scan abgebrochen", "Der Scanvorgang wurde abgebrochen.", ToolTipIcon.Info);
+                            return null;
+                        }
+                        ShowBalloon("Scan verworfen", batch.MultiFeedDetected
+                            ? "Mehrfacheinzug: Die Seiten wurden verworfen. Bitte legen Sie das Dokument erneut ein."
+                            : "Der Scanvorgang wurde abgebrochen.", ToolTipIcon.Info);
+                        if (total == null)
+                            return null;
+                    }
+                    else
+                    {
+                        ReportScanProblems(batch);
+                        if (total == null) total = batch;
+                        else total.Append(batch);
+                        _pagesInEarlierBatches = total.Images.Count;
+                    }
+
+                    if (!settings.ContinueScanning || _exitRequested)
+                        break;
+                    if (!AskContinueScanning(total?.Images.Count ?? 0))
+                        break;
+                }
+            }
+            catch
+            {
+                total?.DisposeImages();
+                throw;
+            }
+            finally
+            {
+                _progressTimer.Stop();
+                _activePipeline = null;
+                UpdateTrayVisuals();
             }
         }
-        else if (_mainForm != null && !_mainForm.IsDisposed && _mainForm.PaperTab != null)
+
+        if (total == null || total.Images.Count == 0)
         {
-            _mainForm.PaperTab.UpdateMultiFeedCapabilities(false, false);
+            if (!errorShown && !_exitRequested)
+            {
+                TrayMessageBox.Warning(_hiddenWindow, total?.TimedOut == true
+                    ? "Der Scanner hat nicht reagiert. Es wurden keine Seiten gescannt."
+                    : "Es wurden keine Seiten gescannt.\n\nBitte legen Sie das Dokument in den Scanner ein und versuchen Sie es erneut.");
+            }
+            total?.DisposeImages();
+            return null;
         }
 
-        _miScan.Enabled = connected;
-        _miScanKeySettings.Enabled = true;
-        _miProfileManagement.Enabled = true;
-        _miScanResult.Enabled = _lastScanFiles.Count > 0;
-        _miHelp.Enabled = true;
-        _miExit.Enabled = true;
+        // The scanner answered: it is connected.
+        if (_scannerStatus != ScannerStatus.Connected)
+        {
+            _scannerStatus = ScannerStatus.Connected;
+            _pendingDisconnectCount = 0;
+            _disconnectBalloonShown = false;
+            if (!string.IsNullOrEmpty(total.SourceName))
+                _currentScannerName = total.SourceName;
+        }
+        return total;
     }
 
-    private HelpForm? _helpForm;
+    private bool AskContinueScanning(int pagesSoFar)
+    {
+        using var dlg = new ContinueScanDialog(pagesSoFar);
+        return dlg.ShowDialog(_hiddenWindow) == DialogResult.OK;
+    }
+
+    private void ReportScanProblems(ScanResult batch)
+    {
+        var messages = new List<string>(batch.Warnings);
+        if (batch.FailedTransfers > 0)
+        {
+            messages.Add(batch.FailedTransfers == 1
+                ? "1 Seite konnte nicht übertragen werden."
+                : $"{batch.FailedTransfers} Seiten konnten nicht übertragen werden.");
+            messages.AddRange(batch.FailedTransferMessages.Distinct().Take(2));
+        }
+        foreach (var m in messages) LogDiag($"Scan warning: {m}");
+        if (messages.Count > 0)
+            ShowBalloon("Hinweis zum Scan", string.Join("\n", messages.Distinct()), ToolTipIcon.Warning);
+    }
+
+    private sealed record ProcessOutcome(ScanOutputResult Output, string? FallbackMessage);
+
+    private async Task PostScanAsync(ScanResult scan, ScanSettings settings, bool quickMenu)
+    {
+        var appType = settings.ApplicationType;
+        bool needPages = quickMenu
+            || settings.RenameAfterScan
+            || appType is not (ApplicationType.ScanToEmail or ApplicationType.EditWithPdf or ApplicationType.Custom);
+        string folder = string.IsNullOrWhiteSpace(settings.FolderPath) ? ScanSettings.DefaultFolderPath : settings.FolderPath;
+
+        var options = ScanOutputOptions.FromScanResult(scan, settings);
+        options.ProduceProcessedPages = needPages;
+
+        SetTrayText($"{AppTitle}\nVerarbeitet {scan.Images.Count} Seite(n)…");
+        ProcessOutcome outcome;
+        try
+        {
+            outcome = await Task.Run(() => ProcessWithFallback(scan.Images, folder, settings, options));
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"Process failed: {ex}");
+            TrayMessageBox.Error(_hiddenWindow, $"Der Scan konnte nicht gespeichert werden:\n\n{ex.Message}");
+            return;
+        }
+        finally
+        {
+            // The inputs are no longer needed — free the memory before the dialogs.
+            scan.DisposeImages();
+            UpdateBusyText();
+        }
+
+        using var output = outcome.Output;
+        if (outcome.FallbackMessage != null)
+            TrayMessageBox.Warning(_hiddenWindow, outcome.FallbackMessage);
+
+        foreach (var w in output.Warnings) LogDiag($"Output warning: {w}");
+        if (output.Warnings.Count > 0)
+            ShowBalloon("Hinweis", string.Join("\n", output.Warnings.Distinct()), ToolTipIcon.Warning);
+
+        if (output.AllPagesBlank)
+        {
+            TrayMessageBox.Info(_hiddenWindow, "Alle gescannten Seiten wurden als leer erkannt und entfernt. Es wurde keine Datei gespeichert.");
+            return;
+        }
+        if (output.Files.Count == 0)
+        {
+            TrayMessageBox.Error(_hiddenWindow, "Es wurde keine Datei erstellt.");
+            return;
+        }
+
+        var files = new List<string>(output.Files);
+        _lastScanFiles = files;
+        LogDiag($"Scan saved: {files.Count} file(s), {output.PageCount} page(s), {output.BlankPagesRemoved} blank removed");
+
+        if (quickMenu)
+        {
+            await QuickMenuAsync(output, files, settings);
+            return;
+        }
+
+        if (appType == ApplicationType.ScanToFolder)
+        {
+            var saved = ShowSaveDialog(output, files, settings);
+            if (saved != null)
+                ShowSavedBalloon(saved);
+            return;
+        }
+
+        if (settings.RenameAfterScan)
+        {
+            var renamed = ShowSaveDialog(output, files, settings);
+            if (renamed == null)
+                return;
+            files = renamed;
+        }
+
+        await RunApplicationAsync(appType, output, files, settings);
+    }
+
+    /// <summary>Worker thread: Process() into the folder, or into Documents\SpeedScanManager if that fails.</summary>
+    private static ProcessOutcome ProcessWithFallback(IReadOnlyList<Bitmap> images, string folder, ScanSettings settings, ScanOutputOptions options)
+    {
+        var processor = new ScanOutputProcessor(settings);
+        try
+        {
+            return new ProcessOutcome(processor.Process(images, folder, options), null);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException
+                                       or NotSupportedException or ArgumentException)
+        {
+            var fallback = ScanSettings.DefaultFolderPath;
+            if (SamePath(folder, fallback))
+                throw;
+
+            DiagLog.Write($"Process: saving to '{folder}' failed ({ex.Message}), falling back to '{fallback}'");
+            var output = processor.Process(images, fallback, options);
+            return new ProcessOutcome(output,
+                $"Der Scan konnte nicht im Zielordner gespeichert werden:\n{folder}\n\n{ex.Message}\n\n" +
+                $"Er wurde stattdessen hier gespeichert:\n{fallback}");
+        }
+    }
+
+    private static bool SamePath(string a, string b)
+    {
+        try
+        {
+            return string.Equals(Path.GetFullPath(a).TrimEnd('\\', '/'), Path.GetFullPath(b).TrimEnd('\\', '/'),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Quick-Menü. Closing it (Abbrechen / X) keeps the already saved file in the target
+    /// folder (like ScanSnap); nothing is deleted without an explicit "Scan verwerfen?".
+    /// </summary>
+    private async Task QuickMenuAsync(ScanOutputResult output, List<string> files, ScanSettings settings)
+    {
+        PostScanMediaDialog.MediaAction action;
+        using (var dlg = new PostScanMediaDialog(output.PageCount))
+        {
+            if (dlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
+            {
+                ShowSavedBalloon(files);
+                return;
+            }
+            action = dlg.SelectedMediaAction;
+        }
+
+        var appType = MapMediaAction(action);
+        if (appType == ApplicationType.ScanToFolder)
+        {
+            var saved = ShowSaveDialog(output, files, settings);
+            if (saved != null)
+                ShowSavedBalloon(saved);
+            return;
+        }
+
+        await RunApplicationAsync(appType, output, files, settings);
+    }
+
+    private static ApplicationType MapMediaAction(PostScanMediaDialog.MediaAction action) => action switch
+    {
+        PostScanMediaDialog.MediaAction.ScanToEmail => ApplicationType.ScanToEmail,
+        PostScanMediaDialog.MediaAction.ScanToPrint => ApplicationType.ScanToPrint,
+        PostScanMediaDialog.MediaAction.ScanToWord => ApplicationType.ScanToWord,
+        PostScanMediaDialog.MediaAction.ScanToExcel => ApplicationType.ScanToExcel,
+        PostScanMediaDialog.MediaAction.ScanToPowerPoint => ApplicationType.ScanToPowerPoint,
+        PostScanMediaDialog.MediaAction.ScanPictureFolder => ApplicationType.ScanPictureFolder,
+        PostScanMediaDialog.MediaAction.EditWithPdf => ApplicationType.EditWithPdf,
+        _ => ApplicationType.ScanToFolder
+    };
+
+    /// <summary>
+    /// "In Ordner speichern" / rename dialog for files that are already saved. OK moves or
+    /// renames them (never overwriting); cancel asks "Scan verwerfen?" and deletes them on
+    /// "Ja". Returns the final file list, or null if the scan was discarded.
+    /// </summary>
+    private List<string>? ShowSaveDialog(ScanOutputResult output, List<string> files, ScanSettings settings)
+    {
+        string currentFolder = Path.GetDirectoryName(files[0]) ?? ScanSettings.DefaultFolderPath;
+        string generatedName = Path.GetFileNameWithoutExtension(files[0]);
+
+        string targetFolder, title;
+        using (var dlg = new PostScanSaveDialog(output.ProcessedPages, settings, generatedName, currentFolder))
+        {
+            if (dlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
+            {
+                DeleteFiles(files);
+                _lastScanFiles = _lastScanFiles.Except(files, StringComparer.OrdinalIgnoreCase).ToList();
+                ShowBalloon("Scan verworfen", "Der Scan wurde gelöscht.", ToolTipIcon.Info);
+                return null;
+            }
+            targetFolder = dlg.SelectedFolderPath;
+            title = dlg.SelectedTitle;
+        }
+
+        bool sameName = string.Equals(title, generatedName, StringComparison.OrdinalIgnoreCase);
+        if (sameName && SamePath(targetFolder, currentFolder))
+            return files;
+
+        var result = new List<string>();
+        try
+        {
+            Directory.CreateDirectory(targetFolder);
+        }
+        catch (Exception ex)
+        {
+            TrayMessageBox.Error(_hiddenWindow,
+                $"Der Zielordner konnte nicht erstellt werden:\n{targetFolder}\n\n{ex.Message}\n\nDer Scan bleibt hier gespeichert:\n{currentFolder}");
+            return files;
+        }
+
+        var failures = new List<string>();
+        for (int i = 0; i < files.Count; i++)
+        {
+            var src = files[i];
+            if (!File.Exists(src)) continue;
+
+            var ext = Path.GetExtension(src);
+            string newName = sameName
+                ? Path.GetFileName(src)
+                : files.Count == 1 ? title + ext : $"{title}_{i + 1:D3}{ext}";
+            try
+            {
+                var dest = ScanOutputProcessor.MakeUniquePath(targetFolder, newName);
+                File.Move(src, dest);
+                result.Add(dest);
+            }
+            catch (Exception ex)
+            {
+                LogDiag($"Move '{src}' failed: {ex.Message}");
+                failures.Add($"{Path.GetFileName(src)}: {ex.Message}");
+                result.Add(src);
+            }
+        }
+
+        if (failures.Count > 0)
+        {
+            TrayMessageBox.Error(_hiddenWindow,
+                $"Folgende Dateien konnten nicht nach \"{targetFolder}\" verschoben werden und bleiben in \"{currentFolder}\":\n\n" +
+                string.Join("\n", failures.Take(5)));
+        }
+
+        _lastScanFiles = result;
+        return result;
+    }
+
+    private static void DeleteFiles(IEnumerable<string> files)
+    {
+        foreach (var f in files)
+        {
+            try { if (File.Exists(f)) File.Delete(f); }
+            catch (Exception ex) { DiagLog.Write($"Delete '{f}' failed: {ex.Message}"); }
+        }
+    }
+
+    private void ShowSavedBalloon(List<string> files)
+    {
+        var folder = files.Count > 0 ? Path.GetDirectoryName(files[0]) : null;
+        ShowBalloon("Scan gespeichert",
+            files.Count == 1
+                ? $"{Path.GetFileName(files[0])}\nin {folder}"
+                : $"{files.Count} Dateien in {folder}",
+            ToolTipIcon.Info);
+    }
+
+    // ───────────────────────── Applications ─────────────────────────
+
+    private async Task RunApplicationAsync(ApplicationType appType, ScanOutputResult output, List<string> files, ScanSettings settings)
+    {
+        int jpegQuality = ScanOutputProcessor.JpegQualityFor(settings.CompressionRate);
+        string targetFolder = Path.GetDirectoryName(files[0]) ?? ScanSettings.DefaultFolderPath;
+        string baseName = Path.GetFileNameWithoutExtension(files[0]);
+
+        switch (appType)
+        {
+            case ApplicationType.ScanToFolder:
+                ShowSavedBalloon(files);
+                break;
+
+            case ApplicationType.ScanToEmail:
+                // Not awaited: the compose window may stay open for a long time; the scan
+                // flow (busy state) ends now, errors are reported when MAPI returns.
+                SendMail(files, settings);
+                break;
+
+            case ApplicationType.ScanToPrint:
+                await PrintAsync(output.ProcessedPages, settings.PrinterName);
+                break;
+
+            case ApplicationType.ScanToWord:
+                await CreateOfficeFileAsync("Word", ".docx", targetFolder, baseName,
+                    path => OfficeExportHelper.CreateWord(output.ProcessedPages, path, jpegQuality));
+                break;
+
+            case ApplicationType.ScanToExcel:
+                await CreateOfficeFileAsync("Excel", ".xlsx", targetFolder, baseName,
+                    path => OfficeExportHelper.CreateExcel(output.ProcessedPages, path, jpegQuality));
+                break;
+
+            case ApplicationType.ScanToPowerPoint:
+                await CreateOfficeFileAsync("PowerPoint", ".pptx", targetFolder, baseName,
+                    path => OfficeExportHelper.CreatePowerPoint(output.ProcessedPages, path, jpegQuality));
+                break;
+
+            case ApplicationType.ScanPictureFolder:
+                await SaveToPictureFolderAsync(output.ProcessedPages, baseName, jpegQuality);
+                break;
+
+            case ApplicationType.EditWithPdf:
+                OpenFiles(files);
+                break;
+
+            case ApplicationType.Custom:
+                LaunchCustomApplication(settings, files);
+                break;
+        }
+    }
+
+    private async void SendMail(List<string> files, ScanSettings settings)
+    {
+        try
+        {
+            // MAPI runs on its own STA thread; no owner window is passed because a parent
+            // window owned by another thread would attach the input queues of both threads.
+            var result = await MailHelper.SendMailAsync(IntPtr.Zero, settings.EmailSubjectTemplate, settings.EmailRecipient, files);
+            if (result.Success || result.UserAborted)
+                return;
+
+            TrayMessageBox.Error(_hiddenWindow,
+                "Das E-Mail-Programm konnte nicht mit der Datei als Anhang geöffnet werden.\n\n" +
+                $"{result.ErrorMessage}\n\nDer Ordner mit der gespeicherten Datei wird geöffnet, damit Sie sie manuell anhängen können.");
+            RevealInExplorer(files[0]);
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"SendMail failed: {ex}");
+            TrayMessageBox.Error(_hiddenWindow, $"E-Mail-Fehler: {ex.Message}");
+        }
+    }
+
+    private async Task PrintAsync(IReadOnlyList<Bitmap> pages, string configuredPrinter)
+    {
+        if (pages.Count == 0)
+        {
+            TrayMessageBox.Error(_hiddenWindow, "Es gibt keine Seiten zum Drucken.");
+            return;
+        }
+
+        string? printer;
+        bool missing;
+        try
+        {
+            printer = PrintHelper.ResolvePrinter(configuredPrinter, out missing);
+        }
+        catch (Exception ex)
+        {
+            TrayMessageBox.Error(_hiddenWindow, $"Die Drucker konnten nicht abgefragt werden:\n{ex.Message}");
+            return;
+        }
+
+        if (printer == null)
+        {
+            TrayMessageBox.Error(_hiddenWindow, "Es ist kein Drucker installiert. Der Scan wurde gespeichert, aber nicht gedruckt.");
+            return;
+        }
+        if (missing && !TrayMessageBox.AskYesNo(_hiddenWindow,
+                $"Der Drucker \"{configuredPrinter}\" wurde nicht gefunden.\n\nAuf dem Standarddrucker drucken?"))
+            return;
+
+        try
+        {
+            SetTrayText($"{AppTitle}\nDruckt…");
+            await Task.Run(() => PrintHelper.PrintPages(pages, printer, "SpeedScan Manager – Gescanntes Dokument"));
+            ShowBalloon("Drucken", "Das Dokument wurde an den Drucker gesendet.", ToolTipIcon.Info);
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"Print failed: {ex}");
+            TrayMessageBox.Error(_hiddenWindow, $"Das Drucken ist fehlgeschlagen:\n\n{ex.Message}");
+        }
+    }
+
+    private async Task CreateOfficeFileAsync(string appName, string extension, string folder, string baseName, Action<string> create)
+    {
+        if (string.IsNullOrEmpty(baseName)) baseName = "Scan";
+        string path = ScanOutputProcessor.MakeUniquePath(folder, baseName + extension);
+        try
+        {
+            SetTrayText($"{AppTitle}\nErstellt {appName}-Datei…");
+            await Task.Run(() => create(path));
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"Create {appName} file failed: {ex}");
+            try { if (File.Exists(path)) File.Delete(path); } catch { }
+            TrayMessageBox.Error(_hiddenWindow, $"Die {appName}-Datei konnte nicht erstellt werden:\n\n{ex.Message}");
+            return;
+        }
+
+        _lastScanFiles = _lastScanFiles.Append(path).ToList();
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"Open {path} failed: {ex.Message}");
+            TrayMessageBox.Error(_hiddenWindow,
+                $"Die Datei wurde erstellt, konnte aber nicht geöffnet werden (ist {appName} installiert?):\n{path}\n\n{ex.Message}");
+            RevealInExplorer(path);
+        }
+    }
+
+    private async Task SaveToPictureFolderAsync(IReadOnlyList<Bitmap> pages, string baseName, int jpegQuality)
+    {
+        var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "SpeedScanManager");
+        List<string> images;
+        try
+        {
+            images = await Task.Run(() => OfficeExportHelper.SaveImages(pages, folder, string.IsNullOrEmpty(baseName) ? "Scan" : baseName, jpegQuality));
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"SaveToPictureFolder failed: {ex}");
+            TrayMessageBox.Error(_hiddenWindow, $"Die Bilder konnten nicht im Bilderordner gespeichert werden:\n{folder}\n\n{ex.Message}");
+            return;
+        }
+
+        if (images.Count > 0)
+        {
+            _lastScanFiles = _lastScanFiles.Concat(images).ToList();
+            RevealInExplorer(images[0]);
+        }
+    }
+
+    private void OpenFiles(List<string> files)
+    {
+        foreach (var f in files.Where(File.Exists))
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = f, UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                LogDiag($"Open {f} failed: {ex.Message}");
+                TrayMessageBox.Error(_hiddenWindow, $"Die Datei konnte nicht geöffnet werden:\n{f}\n\n{ex.Message}");
+                RevealInExplorer(f);
+                return;
+            }
+        }
+    }
+
+    private void LaunchCustomApplication(ScanSettings settings, List<string> files)
+    {
+        var exe = settings.CustomApplicationPath?.Trim().Trim('"') ?? "";
+        var name = string.IsNullOrWhiteSpace(settings.CustomApplicationName) ? Path.GetFileName(exe) : settings.CustomApplicationName;
+        if (string.IsNullOrEmpty(exe) || !File.Exists(exe))
+        {
+            TrayMessageBox.Error(_hiddenWindow,
+                $"Das Programm \"{name}\" wurde nicht gefunden:\n{exe}\n\nBitte prüfen Sie die Anwendung in den Einstellungen. Der Scan wurde gespeichert.");
+            RevealInExplorer(files[0]);
+            return;
+        }
+
+        var args = string.Join(" ", new[] { settings.CustomApplicationArguments?.Trim() ?? "" }
+            .Concat(files.Select(f => $"\"{f}\""))
+            .Where(a => a.Length > 0));
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = exe,
+                Arguments = args,
+                UseShellExecute = false,
+                WorkingDirectory = Path.GetDirectoryName(exe) ?? ""
+            });
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"Custom application failed: {ex}");
+            TrayMessageBox.Error(_hiddenWindow, $"Das Programm \"{name}\" konnte nicht gestartet werden:\n\n{ex.Message}");
+        }
+    }
+
+    private static void RevealInExplorer(string file)
+    {
+        try
+        {
+            if (File.Exists(file))
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{file}\"") { UseShellExecute = true });
+                return;
+            }
+            var folder = Path.GetDirectoryName(file);
+            if (folder != null && Directory.Exists(folder))
+                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            DiagLog.Write($"RevealInExplorer failed: {ex.Message}");
+        }
+    }
+
+    private void OpenScanResult()
+    {
+        var file = _lastScanFiles.FirstOrDefault(File.Exists);
+        if (file != null)
+        {
+            RevealInExplorer(file);
+            return;
+        }
+
+        var folder = string.IsNullOrWhiteSpace(_settings.FolderPath) ? ScanSettings.DefaultFolderPath : _settings.FolderPath;
+        if (Directory.Exists(folder))
+        {
+            try { Process.Start(new ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true }); }
+            catch (Exception ex) { LogDiag($"Open folder failed: {ex.Message}"); }
+        }
+        else
+            TrayMessageBox.Info(_hiddenWindow, $"Der Ordner \"{folder}\" existiert nicht.");
+    }
+
+    // ───────────────────────── Settings windows ─────────────────────────
 
     private void ShowHelpDialog()
     {
         if (_helpForm != null && !_helpForm.IsDisposed)
         {
-            _helpForm.Activate();
+            WindowActivation.BringToFront(_helpForm);
             return;
         }
 
         _helpForm = new HelpForm("root");
-        _helpForm.FormClosed += (s, e) => _helpForm = null;
+        _helpForm.FormClosed += (_, _) => _helpForm = null;
         _helpForm.Show(_hiddenWindow);
+        WindowActivation.BringToFront(_helpForm);
     }
 
     private void ShowVersionInfo()
     {
-        using var dlg = new VersionInfoDialog(_lastScannerState);
+        using var dlg = new VersionInfoDialog(_scannerStateService?.LastState);
+        dlg.StartPosition = FormStartPosition.CenterScreen;
+        dlg.TopMost = true;
         dlg.ShowDialog(_hiddenWindow);
     }
 
     private void OpenProfileManagement()
     {
         using var dlg = new ProfileManagementDialog(_profileManager);
-        dlg.ShowDialog(_mainForm ?? _hiddenWindow);
+        if (_mainForm == null || !_mainForm.Visible)
+        {
+            dlg.StartPosition = FormStartPosition.CenterScreen;
+            dlg.TopMost = true;
+        }
+        dlg.ShowDialog(_mainForm != null && _mainForm.Visible ? _mainForm : _hiddenWindow);
         _mainForm?.RefreshProfileDropdown();
     }
 
-    private void StartScan(ScanSide scanSideOverride)
-    {
-        if (_isScanning)
-        {
-            MessageBox.Show("Ein Scanvorgang läuft bereits.", "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
-
-        if (!_twainInitialized || _twain == null || _msgLoop == null)
-        {
-            MessageBox.Show("TWAIN ist nicht initialisiert. Kein Scanner verfügbar.", "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        // Sync settings from MainForm if it's open
-        SyncSettingsFromMainForm();
-
-        // Close persistent source and stop WIA watcher before scanning —
-        // ScanPipeline manages its own source lifecycle, and WIA must release the device
-        ClosePersistentSource();
-        StopWiaWatcher();
-
-        _isScanning = true;
-        _scannerStatus = ScannerStatus.Scanning;
-        _notifyIcon.Text = "SpeedScan Manager\nScanne...";
-
-        // Run scan on a background thread to avoid blocking the UI message loop
-        Task.Run(() =>
-        {
-            try
-            {
-                _scanPipeline = new ScanPipeline(_twain, _msgLoop, _hiddenWindow, _settings, _appSettings.SelectedSourceName);
-                var images = _scanPipeline.ExecuteScan(scanSideOverride);
-
-                if (images.Count > 0)
-                {
-                    // Get save config
-                    var (folder, formatMode, customName, digits) = GetSaveConfig();
-
-                    // Determine if we need to show the PostScanSaveDialog (Scan to Folder)
-                    bool isScanToFolder = _quickMenuScanTriggered
-                        ? false  // Quick-Menü: PostScanMediaDialog handles folder selection
-                        : _currentApplicationType == ApplicationType.ScanToFolder;
-
-                    // For non-QuickMenu Scan to Folder: keep images for the verify dialog
-                    List<Bitmap>? imagesForDialog = null;
-                    List<string> fileNames;
-
-                    if (isScanToFolder)
-                    {
-                        // Keep cloned images for the dialog, dispose originals
-                        imagesForDialog = images.Select(b => (Bitmap)b.Clone()).ToList();
-                        foreach (var img in images)
-                            img.Dispose();
-
-                        // Process on UI thread after dialog
-                        fileNames = new List<string>();
-                    }
-                    else
-                    {
-                        // Normal flow: save immediately
-                        Directory.CreateDirectory(folder);
-                        var processor = new ScanOutputProcessor(_settings);
-                        fileNames = processor.ProcessAndSave(images, folder, formatMode, customName, digits);
-
-                        // If Scan to Print, keep copies of images for printing before disposal
-                        List<Bitmap>? imagesToPrint = null;
-                        if (_currentApplicationType == ApplicationType.ScanToPrint || _quickMenuScanTriggered)
-                        {
-                            imagesToPrint = images.Select(b => (Bitmap)b.Clone()).ToList();
-                        }
-
-                        // Dispose images
-                        foreach (var img in images)
-                            img.Dispose();
-
-                        _hiddenWindow.BeginInvoke(() =>
-                        {
-                            if (fileNames.Count > 0)
-                            {
-                                _lastScanFiles = fileNames;
-                                Debug.WriteLine($"[Tray] Scan abgeschlossen: {fileNames.Count} Datei(en) erstellt.");
-
-                                if (_quickMenuScanTriggered)
-                                {
-                                    using var dlg = new PostScanMediaDialog(fileNames, imagesToPrint);
-                                    dlg.StartPosition = FormStartPosition.CenterParent;
-
-                                    if (dlg.ShowDialog(_hiddenWindow) == DialogResult.OK)
-                                    {
-                                        ExecuteApplicationAction(dlg.SelectedMediaAction, fileNames, imagesToPrint);
-                                        // Dispose imagesToPrint if not consumed by print
-                                        if (dlg.SelectedMediaAction != PostScanMediaDialog.MediaAction.ScanToPrint)
-                                            DisposeImages(imagesToPrint);
-                                    }
-                                    else
-                                    {
-                                        DisposeImages(imagesToPrint);
-                                    }
-                                }
-                                else
-                                {
-                                    ExecuteApplicationAction(_currentApplicationType, fileNames, imagesToPrint);
-                                    // Dispose imagesToPrint if not consumed by print
-                                    if (_currentApplicationType != ApplicationType.ScanToPrint)
-                                        DisposeImages(imagesToPrint);
-                                }
-                            }
-                            else
-                            {
-                                DisposeImages(imagesToPrint);
-                                Debug.WriteLine("[Tray] Scan abgeschlossen, aber keine Dateien erstellt.");
-                            }
-                        });
-                    }
-
-                    // Scan to Folder without Quick-Menü: show verify dialog, then save
-                    if (isScanToFolder && imagesForDialog != null)
-                    {
-                        _hiddenWindow.BeginInvoke(() =>
-                        {
-                            var generatedName = GenerateDefaultFileName(formatMode, customName);
-                            using var saveDlg = new PostScanSaveDialog(imagesForDialog, _settings, generatedName, folder);
-                            saveDlg.StartPosition = FormStartPosition.CenterParent;
-
-                            if (saveDlg.ShowDialog(_hiddenWindow) == DialogResult.OK)
-                            {
-                                string finalFolder = saveDlg.SelectedFolderPath;
-                                string finalTitle = saveDlg.SelectedTitle;
-                                Directory.CreateDirectory(finalFolder);
-
-                                var processor = new ScanOutputProcessor(_settings);
-                                fileNames = processor.ProcessAndSave(
-                                    imagesForDialog,
-                                    finalFolder,
-                                    formatMode,
-                                    finalTitle,
-                                    digits);
-
-                                _lastScanFiles = fileNames;
-                                Debug.WriteLine($"[Tray] Scan gespeichert in: {finalFolder} ({fileNames.Count} Datei(en))");
-                            }
-                            else
-                            {
-                                Debug.WriteLine("[Tray] Scan abgebrochen durch Verify-Dialog.");
-                            }
-
-                            // Dispose dialog images
-                            foreach (var img in imagesForDialog)
-                                img.Dispose();
-                        });
-                    }
-                }
-                else if (!_scanPipeline.WasCancelled)
-                {
-                    _hiddenWindow.BeginInvoke(() =>
-                    {
-                        Debug.WriteLine("[Tray] Keine Bilder vom Scanner empfangen.");
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Scan failed: {ex}");
-                _hiddenWindow.BeginInvoke(() =>
-                {
-                    Debug.WriteLine($"[Tray] Scan-Fehler: {ex.Message}");
-                });
-            }
-            finally
-            {
-                _hiddenWindow.BeginInvoke(() =>
-                {
-                    _isScanning = false;
-                    // Infer connection state from scan result — don't call QueryState()
-                    // which would trigger the driver's "Kommunikation fehlgeschlagen" dialog
-                    // if the scanner is off.
-                    if (_scanPipeline != null && _scanPipeline.AcquiredImages.Count > 0)
-                    {
-                        _scannerStatus = ScannerStatus.Connected;
-                    }
-                    // If no images, keep current status — could be user cancel or empty ADF.
-                    // The next poll cycle will re-evaluate.
-                    // Always restart WIA watcher to detect future button presses
-                    StartWiaWatcher();
-                    UpdateTrayVisuals();
-                });
-            }
-        });
-    }
-
     /// <summary>
-    /// Refreshes cached flags from the applied settings. The settings window edits a
-    /// working copy, so unapplied edits in an open MainForm are intentionally ignored.
+    /// E-mail options are also reachable here because the Anwendung tab is disabled while the
+    /// Quick-Menü is on. Changes go to the applied settings and to an open settings window's
+    /// working copy, so applying that window later doesn't revert them.
     /// </summary>
-    private void SyncSettingsFromMainForm()
+    private void ShowEmailSettings()
     {
-        _currentApplicationType = _settings.ApplicationType;
-        _quickMenuScanTriggered = _appSettings.QuickMenuEnabled;
-    }
+        using var dlg = new ScanToEmailOptionsDialog
+        {
+            Recipient = _settings.EmailRecipient,
+            SubjectTemplate = _settings.EmailSubjectTemplate,
+            StartPosition = FormStartPosition.CenterScreen,
+            TopMost = true
+        };
+        if (dlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
+            return;
 
-    /// <summary>
-    /// Called when OK/Übernehmen was pressed in the settings window: _settings already
-    /// holds the applied values; persist everything.
-    /// </summary>
-    private void OnSettingsApplied()
-    {
-        SyncSettingsFromMainForm();
+        foreach (var s in SettingsTargets())
+        {
+            s.EmailRecipient = dlg.Recipient;
+            s.EmailSubjectTemplate = dlg.SubjectTemplate;
+        }
         _appSettings.Save();
     }
 
-    private (string folder, FileNameFormatDialog.FormatMode mode, string customName, int digits) GetSaveConfig()
+    private void ShowPrintSettings()
     {
-        // Always the applied settings (single source of truth)
-        string folder = !string.IsNullOrEmpty(_settings.FolderPath)
-            ? _settings.FolderPath
-            : ScanSettings.DefaultFolderPath;
-        return (folder, _settings.FileNameFormat, _settings.CustomFileName, _settings.CounterDigits);
-    }
-
-    private static string GenerateDefaultFileName(FileNameFormatDialog.FormatMode mode, string customName)
-    {
-        return mode switch
+        using var dlg = new ScanToPrintOptionsDialog
         {
-            FileNameFormatDialog.FormatMode.OsDefault => DateTime.Now.ToString("yyyyMMdd_HHmmss"),
-            FileNameFormatDialog.FormatMode.Timestamp => DateTime.Now.ToString("yyyyMMddHHmmss"),
-            FileNameFormatDialog.FormatMode.Custom => customName,
-            _ => "ScanSnap"
+            SelectedPrinterName = _settings.PrinterName,
+            StartPosition = FormStartPosition.CenterScreen,
+            TopMost = true
         };
-    }
-
-    private void ExecuteApplicationAction(ApplicationType appType, List<string> fileNames, List<Bitmap>? imagesToPrint)
-    {
-        switch (appType)
-        {
-            case ApplicationType.ScanToFolder:
-                SaveToFolderWithDialog(fileNames, imagesToPrint);
-                break;
-            case ApplicationType.ScanToEmail:
-                OpenMailClient(fileNames);
-                break;
-            case ApplicationType.ScanToPrint:
-                if (imagesToPrint != null && imagesToPrint.Count > 0)
-                    PrintScannedImages(imagesToPrint);
-                break;
-            case ApplicationType.ScanToWord:
-                CreateWordDocument(fileNames);
-                break;
-            case ApplicationType.ScanToExcel:
-                CreateExcelDocument(fileNames);
-                break;
-            case ApplicationType.ScanToPowerPoint:
-                CreatePowerPointPresentation(fileNames);
-                break;
-            case ApplicationType.ScanPictureFolder:
-                SaveToPictureFolder(fileNames);
-                break;
-            case ApplicationType.EditWithPdf:
-                OpenPdfEditor(fileNames);
-                break;
-        }
-    }
-
-    private void ExecuteApplicationAction(PostScanMediaDialog.MediaAction action, List<string> fileNames, List<Bitmap>? imagesToPrint)
-    {
-        // Map MediaAction to ApplicationType and reuse the same switch
-        var appType = action switch
-        {
-            PostScanMediaDialog.MediaAction.ScanToFolder => ApplicationType.ScanToFolder,
-            PostScanMediaDialog.MediaAction.ScanToEmail => ApplicationType.ScanToEmail,
-            PostScanMediaDialog.MediaAction.ScanToPrint => ApplicationType.ScanToPrint,
-            PostScanMediaDialog.MediaAction.ScanToWord => ApplicationType.ScanToWord,
-            PostScanMediaDialog.MediaAction.ScanToExcel => ApplicationType.ScanToExcel,
-            PostScanMediaDialog.MediaAction.ScanToPowerPoint => ApplicationType.ScanToPowerPoint,
-            PostScanMediaDialog.MediaAction.ScanPictureFolder => ApplicationType.ScanPictureFolder,
-            PostScanMediaDialog.MediaAction.EditWithPdf => ApplicationType.EditWithPdf,
-            _ => ApplicationType.ScanToFolder
-        };
-        ExecuteApplicationAction(appType, fileNames, imagesToPrint);
-    }
-
-    private static void DisposeImages(List<Bitmap>? images)
-    {
-        if (images == null) return;
-        foreach (var img in images)
-            img.Dispose();
-    }
-
-    private void SaveToFolderWithDialog(List<string> fileNames, List<Bitmap>? previewImages)
-    {
-        var images = previewImages ?? new List<Bitmap>();
-        var (folder, formatMode, customName, digits) = GetSaveConfig();
-        var generatedName = GenerateDefaultFileName(formatMode, customName);
-        using var saveDlg = new PostScanSaveDialog(images, _settings, generatedName, folder);
-        saveDlg.StartPosition = FormStartPosition.CenterParent;
-
-        if (saveDlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
-        {
-            foreach (var file in fileNames)
-            {
-                try { if (File.Exists(file)) File.Delete(file); } catch { }
-            }
-            Debug.WriteLine($"[Tray] Scan abgebrochen: {fileNames.Count} Datei(en) gelöscht.");
-            return;
-        }
-
-        string finalFolder = saveDlg.SelectedFolderPath;
-        string finalTitle = saveDlg.SelectedTitle;
-
-        try
-        {
-            Directory.CreateDirectory(finalFolder);
-
-            var updatedFileNames = new List<string>();
-            for (int i = 0; i < fileNames.Count; i++)
-            {
-                var srcFile = fileNames[i];
-                if (!File.Exists(srcFile))
-                    continue;
-
-                var ext = Path.GetExtension(srcFile);
-                var newName = fileNames.Count == 1
-                    ? $"{finalTitle}{ext}"
-                    : $"{finalTitle}_{i + 1:D3}{ext}";
-                var destFile = Path.Combine(finalFolder, newName);
-
-                if (!string.Equals(Path.GetFullPath(srcFile), Path.GetFullPath(destFile), StringComparison.OrdinalIgnoreCase))
-                {
-                    File.Copy(srcFile, destFile, overwrite: true);
-                    File.Delete(srcFile);
-                }
-
-                updatedFileNames.Add(destFile);
-            }
-
-            _lastScanFiles = updatedFileNames;
-            Debug.WriteLine($"[Tray] Scan to Folder: {updatedFileNames.Count} Datei(en) nach {finalFolder} verschoben.");
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Tray] Scan to Folder speichern fehlgeschlagen: {ex.Message}");
-        }
-    }
-
-    private void OpenScanResultFolder()
-    {
-        if (_lastScanFiles.Count == 0)
+        if (dlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
             return;
 
-        string? firstFile = _lastScanFiles.FirstOrDefault(f => File.Exists(f));
-        if (firstFile != null)
-        {
-            string? folder = Path.GetDirectoryName(firstFile);
-            if (folder != null && Directory.Exists(folder))
-            {
-                Process.Start(new ProcessStartInfo("explorer.exe", folder)
-                {
-                    UseShellExecute = true
-                });
-            }
-        }
-        else
-        {
-            // All files deleted, fall back to configured folder
-            var (folder, _, _, _) = GetSaveConfig();
-            if (Directory.Exists(folder))
-            {
-                Process.Start(new ProcessStartInfo("explorer.exe", folder)
-                {
-                    UseShellExecute = true
-                });
-            }
-            else
-            {
-                MessageBox.Show($"Der Ordner \"{folder}\" existiert nicht.", "SpeedScan Manager",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-        }
+        foreach (var s in SettingsTargets())
+            s.PrinterName = dlg.SelectedPrinterName;
+        _appSettings.Save();
     }
 
-    private void OpenMailClient(List<string> filePaths)
+    private IEnumerable<ScanSettings> SettingsTargets()
     {
-        try
-        {
-            bool success = MailHelper.OpenMailWithAttachment(
-                _settings.EmailSubjectTemplate,
-                _settings.EmailRecipient,
-                filePaths);
-
-            if (!success)
-            {
-                Debug.WriteLine("[Tray] E-Mail-Client konnte nicht geöffnet werden. Dateien wurden im Zielordner gespeichert.");
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Mail client failed: {ex.Message}");
-            Debug.WriteLine($"[Tray] E-Mail-Fehler: {ex.Message}");
-        }
-    }
-
-    private void PrintScannedImages(List<Bitmap> images)
-    {
-        try
-        {
-            bool success = PrintHelper.PrintImages(images, _settings.PrinterName);
-
-            if (success)
-            {
-                Debug.WriteLine("[Tray] Dokument wurde zum Drucker gesendet.");
-            }
-            else
-            {
-                Debug.WriteLine("[Tray] Druck fehlgeschlagen. Dateien wurden im Zielordner gespeichert.");
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Print failed: {ex.Message}");
-            Debug.WriteLine($"[Tray] Druck-Fehler: {ex.Message}");
-        }
-        finally
-        {
-            foreach (var img in images)
-                img.Dispose();
-        }
-    }
-
-    private void CreateWordDocument(List<string> filePaths)
-    {
-        try
-        {
-            var tempDir = Path.Combine(Path.GetTempPath(), $"SpeedScanManager_Word_{DateTime.Now:yyyyMMddHHmmss}");
-            Directory.CreateDirectory(tempDir);
-            var docxPath = Path.Combine(tempDir, "ScanResult.docx");
-
-            using var doc = WordprocessingDocument.Create(docxPath, WordprocessingDocumentType.Document);
-
-            var mainPart = doc.AddMainDocumentPart();
-            mainPart.Document = new Document();
-            var body = new Body();
-
-            foreach (var imgFile in filePaths)
-            {
-                if (!File.Exists(imgFile)) continue;
-
-                var imagePart = mainPart.AddImagePart(GetImagePartType(imgFile));
-                using (var fs = File.OpenRead(imgFile))
-                {
-                    imagePart.FeedData(fs);
-                }
-
-                var relId = mainPart.GetIdOfPart(imagePart);
-                var drawing = new DocumentFormat.OpenXml.Wordprocessing.Drawing(CreateInlineDrawing(relId));
-                var paragraph = new Paragraph(new DocumentFormat.OpenXml.Wordprocessing.Run(drawing));
-                body.Append(paragraph);
-            }
-
-            mainPart.Document.Append(body);
-            mainPart.Document.Save();
-
-            Process.Start(new ProcessStartInfo { FileName = docxPath, UseShellExecute = true });
-            Debug.WriteLine("[Tray] Word-Dokument erstellt und geöffnet.");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"CreateWordDocument failed: {ex.Message}");
-            Debug.WriteLine($"[Tray] Word-Erstellung fehlgeschlagen: {ex.Message}");
-        }
-    }
-
-    private void CreateExcelDocument(List<string> filePaths)
-    {
-        try
-        {
-            var tempDir = Path.Combine(Path.GetTempPath(), $"SpeedScanManager_Excel_{DateTime.Now:yyyyMMddHHmmss}");
-            Directory.CreateDirectory(tempDir);
-            var xlsxPath = Path.Combine(tempDir, "ScanResult.xlsx");
-
-            using var doc = SpreadsheetDocument.Create(xlsxPath, SpreadsheetDocumentType.Workbook);
-
-            var wbPart = doc.AddWorkbookPart();
-            wbPart.Workbook = new Workbook();
-            var wsPart = wbPart.AddNewPart<WorksheetPart>();
-            wsPart.Worksheet = new Worksheet(new SheetData());
-
-            var sheets = wbPart.Workbook.AppendChild(new Sheets());
-            sheets.AppendChild(new Sheet
-            {
-                Id = wbPart.GetIdOfPart(wsPart),
-                SheetId = 1,
-                Name = "Scan"
-            });
-
-            var drawingsPart = wsPart.AddNewPart<DrawingsPart>();
-            wsPart.Worksheet.AppendChild(new DocumentFormat.OpenXml.Spreadsheet.Drawing
-            {
-                Id = wsPart.GetIdOfPart(drawingsPart)
-            });
-
-            var drawing = new Xdr.WorksheetDrawing();
-            uint drawingId = 1;
-            int rowOffset = 0;
-
-            foreach (var imgFile in filePaths)
-            {
-                if (!File.Exists(imgFile)) continue;
-
-                var imagePart = drawingsPart.AddImagePart(GetImagePartType(imgFile));
-                using (var fs = File.OpenRead(imgFile))
-                {
-                    imagePart.FeedData(fs);
-                }
-                var relId = drawingsPart.GetIdOfPart(imagePart);
-
-                var anchor = new Xdr.AbsoluteAnchor
-                {
-                    Position = new Xdr.Position { X = 0, Y = rowOffset },
-                    Extent = new Xdr.Extent { Cx = 6000000, Cy = 8000000 }
-                };
-                anchor.AppendChild(new A.Blip { Embed = relId });
-                drawing.AppendChild(anchor);
-                drawingId++;
-                rowOffset += 8200000;
-            }
-
-            drawingsPart.WorksheetDrawing = drawing;
-            wbPart.Workbook.Save();
-
-            Process.Start(new ProcessStartInfo { FileName = xlsxPath, UseShellExecute = true });
-            Debug.WriteLine("[Tray] Excel-Dokument erstellt und geöffnet.");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"CreateExcelDocument failed: {ex.Message}");
-            Debug.WriteLine($"[Tray] Excel-Erstellung fehlgeschlagen: {ex.Message}");
-        }
-    }
-
-    private void CreatePowerPointPresentation(List<string> filePaths)
-    {
-        try
-        {
-            var tempDir = Path.Combine(Path.GetTempPath(), $"SpeedScanManager_Pptx_{DateTime.Now:yyyyMMddHHmmss}");
-            Directory.CreateDirectory(tempDir);
-            var pptxPath = Path.Combine(tempDir, "ScanResult.pptx");
-
-            using var doc = PresentationDocument.Create(pptxPath, PresentationDocumentType.Presentation);
-
-            var presPart = doc.AddPresentationPart();
-            presPart.Presentation = new Presentation();
-            var slideIdList = new SlideIdList();
-            presPart.Presentation.Append(slideIdList);
-
-            var slideMasterPart = presPart.AddNewPart<SlideMasterPart>();
-            slideMasterPart.SlideMaster = new SlideMaster(
-                new CommonSlideData(),
-                new ColorMap(),
-                new SlideLayoutIdList(),
-                new TextStyles());
-            slideMasterPart.SlideMaster.Save();
-
-            var slideLayoutPart = slideMasterPart.AddNewPart<SlideLayoutPart>();
-            slideLayoutPart.SlideLayout = new SlideLayout(
-                new CommonSlideData(),
-                new ColorMapOverride());
-            slideLayoutPart.SlideLayout.Save();
-
-            presPart.Presentation.SlideMasterIdList = new SlideMasterIdList(
-                new SlideMasterId { Id = 2147483648U, RelationshipId = presPart.GetIdOfPart(slideMasterPart) });
-
-            presPart.Presentation.SlideSize = new SlideSize { Cx = 9144000, Cy = 6858000 };
-            presPart.Presentation.NotesSize = new NotesSize { Cx = 6858000, Cy = 9144000 };
-
-            uint slideIdx = 1;
-            foreach (var imgFile in filePaths)
-            {
-                if (!File.Exists(imgFile)) continue;
-
-                var slidePart = presPart.AddNewPart<SlidePart>();
-                slidePart.Slide = new Slide(
-                    new CommonSlideData(
-                        new ShapeTree(
-                            new NonVisualGroupShapeProperties(
-                                new NonVisualDrawingProperties { Id = 1U, Name = "Group 1" },
-                                new NonVisualGroupShapeProperties()),
-                            new GroupShapeProperties(new A.TransformGroup()))));
-
-                var imagePart = slidePart.AddImagePart(GetImagePartType(imgFile));
-                using (var fs = File.OpenRead(imgFile))
-                {
-                    imagePart.FeedData(fs);
-                }
-                var relId = slidePart.GetIdOfPart(imagePart);
-
-                var shapeTree = slidePart.Slide.CommonSlideData!.ShapeTree!;
-                shapeTree.AppendChild(new DocumentFormat.OpenXml.Presentation.Picture(
-                    new NonVisualPictureProperties(
-                        new NonVisualDrawingProperties { Id = 2U, Name = $"Image {slideIdx}" },
-                        new NonVisualPictureDrawingProperties()),
-                    new BlipFill(
-                        new A.Blip { Embed = relId },
-                        new A.Stretch(new A.FillRectangle())),
-                    new ShapeProperties(
-                        new A.Transform2D(
-                            new A.Offset { X = 457200, Y = 342900 },
-                            new A.Extents { Cx = 8229600, Cy = 6172200 }))));
-
-                slideIdList.AppendChild(new SlideId
-                {
-                    Id = 256U + slideIdx,
-                    RelationshipId = presPart.GetIdOfPart(slidePart)
-                });
-                slideIdx++;
-            }
-
-            presPart.Presentation.Save();
-
-            Process.Start(new ProcessStartInfo { FileName = pptxPath, UseShellExecute = true });
-            Debug.WriteLine("[Tray] PowerPoint-Präsentation erstellt und geöffnet.");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"CreatePowerPointPresentation failed: {ex.Message}");
-            Debug.WriteLine($"[Tray] PowerPoint-Erstellung fehlgeschlagen: {ex.Message}");
-        }
-    }
-
-    private void SaveToPictureFolder(List<string> filePaths)
-    {
-        try
-        {
-            var picsPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-                "SpeedScanManager",
-                $"Scan_{DateTime.Now:yyyyMMdd_HHmmss}");
-
-            Directory.CreateDirectory(picsPath);
-
-            foreach (var imgFile in filePaths)
-            {
-                if (!File.Exists(imgFile)) continue;
-                var dest = Path.Combine(picsPath, Path.GetFileName(imgFile));
-                File.Copy(imgFile, dest, true);
-            }
-
-            Process.Start(new ProcessStartInfo { FileName = picsPath, UseShellExecute = true });
-            Debug.WriteLine($"[Tray] Bilder gespeichert in: {picsPath}");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"SaveToPictureFolder failed: {ex.Message}");
-            Debug.WriteLine($"[Tray] Bilder-Ordner fehlgeschlagen: {ex.Message}");
-        }
-    }
-
-    private void OpenPdfEditor(List<string> filePaths)
-    {
-        try
-        {
-            foreach (var f in filePaths.Where(File.Exists))
-            {
-                Process.Start(new ProcessStartInfo { FileName = f, UseShellExecute = true });
-            }
-            Debug.WriteLine("[Tray] PDF-Editor geöffnet.");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"OpenPdfEditor failed: {ex.Message}");
-            Debug.WriteLine($"[Tray] PDF-Editor fehlgeschlagen: {ex.Message}");
-        }
-    }
-
-    private static PartTypeInfo GetImagePartType(string filePath)
-    {
-        var ext = Path.GetExtension(filePath).ToLowerInvariant();
-        return ext switch
-        {
-            ".jpeg" or ".jpg" => ImagePartType.Jpeg,
-            ".png" => ImagePartType.Png,
-            ".bmp" => ImagePartType.Bmp,
-            ".gif" => ImagePartType.Gif,
-            ".tiff" or ".tif" => ImagePartType.Tiff,
-            _ => ImagePartType.Jpeg
-        };
-    }
-
-    private static DW.Inline CreateInlineDrawing(string relId)
-    {
-        return new DW.Inline
-        {
-            Extent = new DW.Extent { Cx = 6000000, Cy = 8000000 },
-            DocProperties = new DW.DocProperties { Id = 1, Name = "Scan Image" },
-            Graphic = new A.Graphic(
-                new A.GraphicData(
-                    new PIC.Picture(
-                        new PIC.NonVisualPictureProperties(
-                            new PIC.NonVisualDrawingProperties { Id = 0, Name = "Scan" },
-                            new PIC.NonVisualPictureDrawingProperties()),
-                        new PIC.BlipFill(
-                            new A.Blip { Embed = relId },
-                            new A.Stretch(new A.FillRectangle())),
-                        new PIC.ShapeProperties(
-                            new A.Transform2D(
-                                new A.Offset { X = 0, Y = 0 },
-                                new A.Extents { Cx = 6000000, Cy = 8000000 }))))
-                { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
-        };
+        yield return _settings;
+        if (_mainForm != null && !_mainForm.IsDisposed && !ReferenceEquals(_mainForm.Settings, _settings))
+            yield return _mainForm.Settings;
     }
 
     private void ShowMainForm()
@@ -964,74 +1123,158 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         if (_mainForm == null || _mainForm.IsDisposed)
         {
             _mainForm = new MainForm(_settings, _profileManager, _appSettings);
-            _mainForm.SettingsApplied += (s, e) => OnSettingsApplied();
-            _mainForm.CustomApplicationsChanged += (s, e) => _appSettings.Save();
-            _mainForm.FormClosed += (s, e) => _mainForm = null;
+            _mainForm.SettingsApplied += (_, _) => OnSettingsApplied();
+            _mainForm.CustomApplicationsChanged += (_, _) => _appSettings.Save();
+            _mainForm.FormClosed += (_, _) => _mainForm = null;
         }
         if (!_mainForm.Visible)
         {
-            // Pause polling while opening the form to avoid concurrent TWAIN access
-            _pollTimer.Stop();
-            // Refresh connection state only if scanner might be connected.
-            // Skip when already Disconnected to avoid TWAIN driver dialog.
-            if (_scannerStatus != ScannerStatus.Disconnected)
-                UpdateConnectionState();
             _mainForm.Show();
-            // Use cached scanner state to avoid opening TWAIN source again
-            if (_scannerStatus == ScannerStatus.Connected)
-            {
-                bool ultrasonic = _lastScannerState?.SupportsUltrasonicDetection ?? true;
-                bool length = _lastScannerState?.SupportsLengthDetection ?? true;
-                _mainForm.PaperTab?.UpdateMultiFeedCapabilities(ultrasonic, length);
-            }
-            else
-            {
-                _mainForm.PaperTab?.UpdateMultiFeedCapabilities(false, false);
-            }
-            _pollTimer.Start();
+            UpdateMainFormCapabilities();
         }
-        _mainForm.BringToFront();
-        _mainForm.Activate();
+        WindowActivation.BringToFront(_mainForm);
     }
 
-    private void OnTrayDoubleClick(object? sender, EventArgs e)
+    /// <summary>OK/Übernehmen in the settings window: _settings already holds the applied values.</summary>
+    private void OnSettingsApplied()
     {
-        ShowMainForm();
+        _appSettings.Save();
+        ApplyAutoStart();
+    }
+
+    private void UpdateMainFormCapabilities()
+    {
+        if (_mainForm == null || _mainForm.IsDisposed || _mainForm.PaperTab == null)
+            return;
+        // Only restrict the multi-feed options when the connected scanner reported its modes.
+        // Unknown (offline scanner, driver without the capability) keeps all options: the
+        // paper tab resets unsupported selections, which would silently change the setting.
+        var state = _scannerStateService?.LastState;
+        if (_scannerStatus == ScannerStatus.Connected && state != null && state.IsScannerConnected && state.MultiFeedCapabilityKnown)
+            _mainForm.PaperTab.UpdateMultiFeedCapabilities(state.SupportsUltrasonicDetection, state.SupportsLengthDetection);
+        else
+            _mainForm.PaperTab.UpdateMultiFeedCapabilities(true, true);
+    }
+
+    /// <summary>Writes or removes HKCU\...\Run "SpeedScanManager" according to <see cref="AppSettings.AutoStart"/>.</summary>
+    private void ApplyAutoStart()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(RunKeyPath, writable: true);
+            if (key == null) return;
+
+            if (_appSettings.AutoStart)
+            {
+                var exe = Environment.ProcessPath;
+                if (string.IsNullOrEmpty(exe) || !File.Exists(exe)
+                    || !exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                    return;
+                var value = $"\"{exe}\"";
+                if (!string.Equals(key.GetValue(RunValueName) as string, value, StringComparison.OrdinalIgnoreCase))
+                {
+                    key.SetValue(RunValueName, value, RegistryValueKind.String);
+                    LogDiag($"AutoStart: registered {value}");
+                }
+            }
+            else if (key.GetValue(RunValueName) != null)
+            {
+                key.DeleteValue(RunValueName, false);
+                LogDiag("AutoStart: removed");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"ApplyAutoStart failed: {ex.Message}");
+        }
     }
 
     private void ShowScannerSelectionDialog()
     {
+        if (_busy)
+        {
+            TrayMessageBox.Info(_hiddenWindow, "Ein Scanvorgang läuft bereits.");
+            return;
+        }
         if (_twain == null || !_twain.IsDsmOpen)
         {
-            MessageBox.Show("TWAIN ist nicht initialisiert. Scanner-Auswahl nicht verfügbar.",
-                "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            TrayMessageBox.Warning(_hiddenWindow, "TWAIN ist nicht initialisiert. Die Scannerauswahl ist nicht verfügbar.");
             return;
         }
 
-        using var dlg = new ScannerSelectionDialog(_twain, _appSettings.SelectedSourceName);
-        if (dlg.ShowDialog(_hiddenWindow) == DialogResult.OK)
+        string? selected;
+        using (var dlg = new ScannerSelectionDialog(_twain, _appSettings.SelectedSourceName))
         {
-            _appSettings.SelectedSourceName = dlg.SelectedSourceName;
-            _appSettings.Save();
-            LogDiag($"Scanner selection changed to: {dlg.SelectedSourceName ?? "(auto)"}");
-
-            // Re-evaluate connection state with the new source
-            ClosePersistentSource();
-            StopWiaWatcher();
-            _scannerStatus = ScannerStatus.Unknown;
-            UpdateConnectionState();
-            UpdateTrayVisuals();
-            UpdateMenuItems();
+            dlg.TopMost = true;
+            if (dlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
+                return;
+            selected = dlg.SelectedSourceName;
         }
+
+        _appSettings.SelectedSourceName = selected;
+        _appSettings.Save();
+        LogDiag($"Scanner selection changed to: {selected ?? "(auto)"}");
+
+        if (_scannerStateService != null)
+        {
+            _scannerStateService.PreferredSourceName = selected;
+            _scannerStateService.NotifyDeviceChange();
+        }
+        _scannerStatus = ScannerStatus.Unknown;
+        _pendingDisconnectCount = 0;
+        _disconnectBalloonShown = false;
+        UpdateConnectionState(forceRefresh: true);
     }
+
+    // ───────────────────────── Exit ─────────────────────────
 
     private void ExitApplication()
     {
-        ClosePersistentSource();
-        StopWiaWatcher();
+        if (_busy)
+        {
+            if (_activePipeline != null)
+            {
+                if (!TrayMessageBox.AskYesNo(_hiddenWindow,
+                        "Es läuft gerade ein Scanvorgang.\n\nScan abbrechen und SpeedScan Manager beenden?", defaultNo: true))
+                    return;
+
+                // The scan runs through the UI message loop: cancel, let the flow finish
+                // (it calls DoExit), and force the exit if the driver doesn't respond.
+                _exitRequested = true;
+                _cancelRequestedByUser = true;
+                _activePipeline.RequestCancel();
+                var exitTimer = new System.Windows.Forms.Timer { Interval = ExitCancelTimeoutMs };
+                exitTimer.Tick += (_, _) =>
+                {
+                    exitTimer.Stop();
+                    exitTimer.Dispose();
+                    LogDiag("Exit: scan did not stop in time, exiting anyway");
+                    DoExit();
+                };
+                exitTimer.Start();
+                return;
+            }
+
+            if (!TrayMessageBox.AskYesNo(_hiddenWindow,
+                    "Der letzte Scan ist noch nicht abgeschlossen.\n\nSpeedScan Manager trotzdem beenden?", defaultNo: true))
+                return;
+        }
+
+        DoExit();
+    }
+
+    private bool _exiting;
+
+    private void DoExit()
+    {
+        if (_exiting) return;
+        _exiting = true;
+        _pollTimer.Stop();
         _notifyIcon.Visible = false;
         Application.Exit();
     }
+
+    // ───────────────────────── TWAIN / scanner state ─────────────────────────
 
     private void InitializeTwain()
     {
@@ -1040,9 +1283,10 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
             _hiddenWindow.Show();
             _hiddenWindow.Hide();
 
+            var asmVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 1, 2, 0);
             var appId = TWIdentity.Create(
                 DataGroups.Control | DataGroups.Image,
-                new Version(0, 1, 0, 0),
+                asmVersion,
                 "VeridonNetzwerk",
                 "SpeedScan Manager",
                 "SpeedScan Manager",
@@ -1064,8 +1308,6 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
                     LogDiag($"TWAIN sources count={sources.Count}");
                     foreach (var s in sources)
                         LogDiag($"  Source: {s.Name} (mfr={s.Manufacturer}, family={s.ProductFamily})");
-                    var def = _twain.DefaultSource;
-                    LogDiag($"  DefaultSource: {def?.Name ?? "(null)"}");
                 }
                 catch (Exception ex) { LogDiag($"Source enum failed: {ex.Message}"); }
             }
@@ -1077,66 +1319,20 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         }
     }
 
-    private static void LogDiag(string msg) => DiagLog.Write(msg);
-
-    /// <summary>
-    /// Checks if the scan button VBS script exists. If not, launches
-    /// SpeedScanManager.exe /setup as elevated to register the WIA handler.
-    /// This ensures portable and installer versions both get scan button support.
-    /// </summary>
-    private static void EnsureScanButtonSetup()
-    {
-        try
-        {
-            // Check if WIA scan button handler is already registered
-            if (WiaEventWatcher.IsHandlerRegistered())
-            {
-                LogDiag("EnsureScanButtonSetup: WIA handler already registered, skipping");
-                return;
-            }
-
-            var exePath = Environment.ProcessPath;
-            if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
-            {
-                LogDiag("EnsureScanButtonSetup: could not determine exe path");
-                return;
-            }
-
-            LogDiag("EnsureScanButtonSetup: WIA handler not registered, launching /setup elevated");
-            var psi = new ProcessStartInfo
-            {
-                FileName = exePath,
-                Arguments = "/setup",
-                UseShellExecute = true,
-                Verb = "runas"
-            };
-            try
-            {
-                Process.Start(psi);
-            }
-            catch (System.ComponentModel.Win32Exception)
-            {
-                // User declined UAC — scan button won't work until manual /setup
-                LogDiag("EnsureScanButtonSetup: UAC declined, scan button setup skipped");
-            }
-        }
-        catch (Exception ex)
-        {
-            LogDiag($"EnsureScanButtonSetup exception: {ex.Message}");
-        }
-    }
+    private static void LogDiag(string msg) => DiagLog.Write($"[Tray] {msg}");
 
     private void OnFirstIdle(object? sender, EventArgs e)
     {
         Application.Idle -= OnFirstIdle;
 
-        // Ensure scan button VBS script is installed (for portable and installer versions)
-        EnsureScanButtonSetup();
+        // Scan button registration: cheap registry check, elevation at most once (off the UI thread).
+        WiaEventWatcher.EnsureScanButtonHandlerAsync().ContinueWith(
+            t => LogDiag(t.IsFaulted
+                ? $"EnsureScanButtonHandler failed: {t.Exception?.GetBaseException().Message}"
+                : $"EnsureScanButtonHandler: registered={t.Result}"),
+            TaskScheduler.Default);
 
         InitializeTwain();
-        // Query scanner state once after TWAIN init to detect connected scanners.
-        // If the scanner is disconnected, source.Open() may show a driver dialog,
-        // but that's acceptable — the user needs to know the real status.
         if (_twainInitialized)
         {
             _scannerStatus = ScannerStatus.Unknown;
@@ -1145,137 +1341,92 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         else
         {
             _scannerStatus = ScannerStatus.Disconnected;
+            ShowBalloon(AppTitle, "TWAIN konnte nicht initialisiert werden. Es kann nicht gescannt werden.", ToolTipIcon.Error);
         }
         UpdateTrayVisuals();
-        UpdateMenuItems();
+        _initialized = true;
+        _pollTimer.Start();
+
+        if (Program.ScanOnStartRequested || _pendingButtonScan)
+        {
+            Program.ScanOnStartRequested = false;
+            _pendingButtonScan = false;
+            LogDiag("Starting scan requested by the scan button at startup");
+            StartScan(ScanTrigger.Button);
+        }
     }
 
     private void OnPollTick(object? sender, EventArgs e)
     {
-        try
-        {
-            // When scanning, never poll — the scanner is busy
-            if (_isScanning)
-                return;
-
-            // When WIA watcher is active (connected, waiting for button events),
-            // poll less frequently to detect disconnection — WIA doesn't reliably
-            // fire events when the scanner is unplugged, so we need to actively check.
-            if (_wiaWatcher != null && _scannerStatus == ScannerStatus.Connected)
-            {
-                _wiaPollSkip++;
-                if (_wiaPollSkip < 2)
-                    return;
-                _wiaPollSkip = 0;
-            }
-
-            // Keep polling even when disconnected — this is how we detect
-            // newly connected scanners. The timer interval is slower when
-            // disconnected to reduce overhead.
-            UpdateConnectionState();
-        }
-        catch (Exception ex)
-        {
-            LogDiag($"OnPollTick exception: {ex.Message}");
-        }
+        try { UpdateConnectionState(); }
+        catch (Exception ex) { LogDiag($"OnPollTick exception: {ex.Message}"); }
     }
 
-    private bool _isUpdatingConnection;
-
-    private void UpdateConnectionState()
+    private void OnDeviceChanged(object? sender, EventArgs e)
     {
-        // Don't poll during scanning — the scanner is busy
-        if (_isScanning) return;
+        _scannerStateService?.NotifyDeviceChange();
+        // Device notifications come in bursts: requery once things settled.
+        _deviceChangeTimer.Stop();
+        _deviceChangeTimer.Start();
+    }
 
-        // Prevent re-entrancy: if the poll timer fires while the context menu
-        // is already calling this method, skip the second call.
+    private void OnDeviceChangeTimerTick(object? sender, EventArgs e)
+    {
+        _deviceChangeTimer.Stop();
+        LogDiag("WM_DEVICECHANGE: requerying scanner state");
+        UpdateConnectionState();
+    }
+
+    private void UpdateConnectionState(bool forceRefresh = false)
+    {
+        // Never touch TWAIN while a scan uses the source (dialogs after the scan are fine).
+        if (_activePipeline != null)
+            return;
         if (_isUpdatingConnection) return;
         _isUpdatingConnection = true;
 
         try
         {
+            if (!_twainInitialized || _scannerStateService == null)
+                return;
 
-        // TWAIN not yet initialized — stay in Unknown, no balloon
-        if (!_twainInitialized)
-        {
-            LogDiag("UpdateConnectionState: TWAIN not initialized, status=Unknown");
-            return;
-        }
-
-        // Use QueryState as the single TWAIN source access — it checks
-        // connection (source.Open + CapDeviceOnline) AND queries capabilities
-        // in one pass, avoiding double source.Open that causes native crashes.
-        ScannerState? state = null;
-        bool connected;
-        string scannerName = "";
-
-        if (_scannerStateService != null)
-        {
+            bool connected;
+            string scannerName = "";
             try
             {
-                state = _scannerStateService.QueryState();
+                var state = _scannerStateService.QueryState(_appSettings.SelectedSourceName, forceRefresh);
                 connected = state.IsScannerConnected;
                 scannerName = state.SourceName ?? "";
-                _lastScannerState = state;
-                LogDiag($"UpdateConnectionState: QueryState connected={connected}, ultrasonic={state.SupportsUltrasonicDetection}, length={state.SupportsLengthDetection}");
             }
             catch (Exception ex)
             {
                 LogDiag($"UpdateConnectionState: QueryState failed: {ex.Message}");
                 connected = false;
-                _lastScannerState = null;
             }
-        }
-        else
-        {
-            connected = false;
-            _lastScannerState = null;
-        }
 
-        if (connected)
-        {
-            _pendingDisconnectCount = 0;
-
-            if (_scannerStatus != ScannerStatus.Connected || scannerName != _currentScannerName)
+            if (connected)
             {
-                LogDiag($"UpdateConnectionState: ->Connected, scanner='{scannerName}', prev={_scannerStatus}");
-                _scannerStatus = ScannerStatus.Connected;
-                _currentScannerName = scannerName;
-                UpdateTrayVisuals();
-                // Start WIA event watcher for scanner button presses
-                StartWiaWatcher();
-            }
-        }
-        else
-        {
-            if (_scannerStatus == ScannerStatus.Unknown)
-            {
-                // First valid check after TWAIN init — take as initial state, no debounce
-                LogDiag("UpdateConnectionState: ->Disconnected (initial), showing balloon");
-                _scannerStatus = ScannerStatus.Disconnected;
-                _currentScannerName = "";
-                ClosePersistentSource();
-                StopWiaWatcher();
-                UpdateTrayVisuals();
-                ShowScannerDisconnectedBalloon();
-            }
-            else if (_scannerStatus == ScannerStatus.Connected)
-            {
-                _pendingDisconnectCount++;
-                LogDiag($"UpdateConnectionState: pending disconnect {_pendingDisconnectCount}/{DisconnectConfirmThreshold}");
-                if (_pendingDisconnectCount >= DisconnectConfirmThreshold)
+                _pendingDisconnectCount = 0;
+                _disconnectBalloonShown = false;
+                if (_scannerStatus != ScannerStatus.Connected || scannerName != _currentScannerName)
                 {
-                    LogDiag("UpdateConnectionState: ->Disconnected (confirmed), showing balloon");
-                    _scannerStatus = ScannerStatus.Disconnected;
-                    _currentScannerName = "";
-                    ClosePersistentSource();
-                    StopWiaWatcher();
+                    LogDiag($"UpdateConnectionState: ->Connected, scanner='{scannerName}', prev={_scannerStatus}");
+                    _scannerStatus = ScannerStatus.Connected;
+                    _currentScannerName = scannerName;
                     UpdateTrayVisuals();
-                    ShowScannerDisconnectedBalloon();
+                    UpdateMainFormCapabilities();
                 }
             }
-            // If already Disconnected, do nothing — no repeated balloon
-        }
+            else if (_scannerStatus == ScannerStatus.Unknown
+                     || (_scannerStatus == ScannerStatus.Connected && ++_pendingDisconnectCount >= DisconnectConfirmThreshold))
+            {
+                LogDiag($"UpdateConnectionState: ->Disconnected (prev={_scannerStatus})");
+                _scannerStatus = ScannerStatus.Disconnected;
+                _currentScannerName = "";
+                UpdateTrayVisuals();
+                UpdateMainFormCapabilities();
+                ShowScannerDisconnectedBalloon();
+            }
         }
         catch (Exception ex)
         {
@@ -1287,225 +1438,109 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
         }
     }
 
+    private void ShowScannerDisconnectedBalloon()
+    {
+        if (_disconnectBalloonShown) return;
+        _disconnectBalloonShown = true;
+        ShowBalloon(AppTitle, "Der Scanner ist nicht angeschlossen oder ausgeschaltet.", ToolTipIcon.Warning);
+    }
+
+    // ───────────────────────── Tray visuals ─────────────────────────
+
     private void UpdateTrayVisuals()
     {
+        if (_disposed) return;
+
+        if (_busy)
+        {
+            _notifyIcon.Icon = GetScanningIcon();
+            UpdateBusyText();
+            return;
+        }
+
         bool connected = _scannerStatus == ScannerStatus.Connected;
         _notifyIcon.Icon = connected ? GetConnectedIcon() : GetDisconnectedIcon();
 
         if (connected)
-        {
-            _notifyIcon.Text = $"SpeedScan Manager\n{_currentScannerName}";
-        }
+            SetTrayText($"{AppTitle}\n{_currentScannerName}");
         else if (!string.IsNullOrEmpty(_appSettings.SelectedSourceName))
+            SetTrayText($"{AppTitle}\nAuswahl: {_appSettings.SelectedSourceName} (offline)");
+        else if (_scannerStatus == ScannerStatus.Disconnected)
+            SetTrayText($"{AppTitle}\nKein Scanner verbunden");
+        else
+            SetTrayText(AppTitle);
+    }
+
+    private void UpdateBusyText()
+    {
+        if (!_busy || _disposed) return;
+        if (_activePipeline != null)
         {
-            _notifyIcon.Text = $"SpeedScan Manager\nAuswahl: {_appSettings.SelectedSourceName} (offline)";
+            int pages = _pagesInEarlierBatches + (_batchRunning ? _activePipeline.AcquiredImages.Count : 0);
+            SetTrayText(pages > 0
+                ? $"{AppTitle}\nScannt… ({pages} {(pages == 1 ? "Seite" : "Seiten")})"
+                : $"{AppTitle}\nScannt…");
         }
         else
         {
-            _notifyIcon.Text = "SpeedScan Manager\nKein Scanner ausgewählt";
-        }
-
-        // Adjust poll interval: fast when connected or unknown, slow when disconnected
-        int targetInterval = _scannerStatus == ScannerStatus.Disconnected
-            ? SlowPollIntervalMs
-            : PollIntervalMs;
-        if (_pollTimer.Interval != targetInterval)
-        {
-            _pollTimer.Interval = targetInterval;
-            LogDiag($"UpdateTrayVisuals: poll interval -> {targetInterval}ms");
+            SetTrayText($"{AppTitle}\nScan wird bearbeitet…");
         }
     }
 
-    /// <summary>
-    /// Opens the default TWAIN source and keeps it open to receive device events
-    /// (scanner button presses). This prevents Windows from showing its own
-    /// scanner button event dialog.
-    /// </summary>
-    private void OpenPersistentSource()
+    /// <summary>NotifyIcon.Text throws for more than 127 characters.</summary>
+    private void SetTrayText(string text)
     {
-        if (_twain == null || !_twain.IsDsmOpen) return;
-        if (_persistentSource != null && _persistentSource.IsOpen) return;
+        if (_disposed) return;
+        if (text.Length > 127)
+            text = text.Substring(0, 126) + "…";
+        try { _notifyIcon.Text = text; }
+        catch (Exception ex) { LogDiag($"SetTrayText failed: {ex.Message}"); }
+    }
 
+    private void ShowBalloon(string title, string text, ToolTipIcon icon)
+    {
+        if (_disposed) return;
         try
         {
-            var source = ScannerSelectionDialog.SelectBestSource(_twain, _appSettings.SelectedSourceName);
-            if (source == null)
-            {
-                LogDiag("OpenPersistentSource: no source found");
-                return;
-            }
-
-            var rc = source.Open();
-            if (rc != ReturnCode.Success)
-            {
-                LogDiag($"OpenPersistentSource: source.Open rc={rc}");
-                return;
-            }
-
-            _persistentSource = source;
-            LogDiag($"OpenPersistentSource: opened '{source.Name}'");
-
-            // Log supported device events (CAP_DEVICEEVENT is typically read-only —
-            // the driver reports which events it can send; the app processes them
-            // via the message loop when the source is open)
-            try
-            {
-                var supportedEvents = source.Capabilities.CapDeviceEvent.GetValues();
-                LogDiag($"OpenPersistentSource: supported device events: [{string.Join(", ", supportedEvents)}]");
-            }
-            catch (Exception ex)
-            {
-                LogDiag($"OpenPersistentSource: CapDeviceEvent GetValues failed: {ex.Message}");
-            }
-
-            if (!_deviceEventSubscribed)
-            {
-                _twain.DeviceEvent += OnScannerDeviceEvent;
-                _deviceEventSubscribed = true;
-                Application.AddMessageFilter(this);
-                LogDiag("OpenPersistentSource: subscribed to DeviceEvent + message filter");
-            }
+            if (text.Length > 250) text = text.Substring(0, 249) + "…";
+            if (title.Length > 60) title = title.Substring(0, 60);
+            _notifyIcon.ShowBalloonTip(6000, title, text, icon);
         }
         catch (Exception ex)
         {
-            LogDiag($"OpenPersistentSource exception: {ex.Message}");
+            LogDiag($"ShowBalloon failed: {ex.Message}");
         }
     }
 
-    private void ClosePersistentSource()
-    {
-        if (_twain != null && _deviceEventSubscribed)
-        {
-            _twain.DeviceEvent -= OnScannerDeviceEvent;
-            _deviceEventSubscribed = false;
-            Application.RemoveMessageFilter(this);
-            LogDiag("ClosePersistentSource: unsubscribed from DeviceEvent + message filter");
-        }
-
-        if (_persistentSource != null && _persistentSource.IsOpen)
-        {
-            try { _persistentSource.Close(); LogDiag("ClosePersistentSource: closed"); }
-            catch (Exception ex) { LogDiag($"ClosePersistentSource close failed: {ex.Message}"); }
-        }
-        _persistentSource = null;
-    }
-
-    private void OnScannerDeviceEvent(object? sender, DeviceEventArgs e)
-    {
-        var eventType = e.DeviceEvent.Event;
-        LogDiag($"OnScannerDeviceEvent: {eventType}, device='{e.DeviceEvent.DeviceName}'");
-
-        // Trigger scan on any device event when connected and not already scanning.
-        // Some scanners may use different event types for button presses.
-        if (!_isScanning && _scannerStatus == ScannerStatus.Connected)
-        {
-            LogDiag("OnScannerDeviceEvent: triggering scan from button press");
-            _hiddenWindow.BeginInvoke(() => StartScan(ScanSide.Automatic));
-        }
-    }
-
-    private void StartWiaWatcher()
-    {
-        if (_wiaWatcher != null) return;
-
-        try
-        {
-            // Close persistent TWAIN source so WIA can access the scanner device
-            ClosePersistentSource();
-
-            _wiaWatcher = new WiaEventWatcher();
-            _wiaWatcher.ScanButtonPressed += OnWiaScanButtonPressed;
-            _wiaWatcher.Start();
-            LogDiag("StartWiaWatcher: started");
-        }
-        catch (Exception ex)
-        {
-            LogDiag($"StartWiaWatcher exception: {ex.Message}");
-        }
-    }
-
-    private void StopWiaWatcher()
-    {
-        if (_wiaWatcher == null) return;
-
-        try
-        {
-            _wiaWatcher.ScanButtonPressed -= OnWiaScanButtonPressed;
-            _wiaWatcher.Dispose();
-            _wiaWatcher = null;
-            LogDiag("StopWiaWatcher: stopped");
-        }
-        catch (Exception ex)
-        {
-            LogDiag($"StopWiaWatcher exception: {ex.Message}");
-        }
-    }
-
-    private void OnWiaScanButtonPressed()
-    {
-        LogDiag($"OnWiaScanButtonPressed: isScanning={_isScanning}, status={_scannerStatus}");
-
-        if (!_isScanning && _scannerStatus == ScannerStatus.Connected)
-        {
-            LogDiag("OnWiaScanButtonPressed: triggering scan");
-            _hiddenWindow.BeginInvoke(() => StartScan(ScanSide.Automatic));
-        }
-    }
-
-    /// <summary>
-    /// IMessageFilter implementation — intercepts Windows messages and forwards
-    /// them to TWAIN for device event processing when the source is open but not enabled.
-    /// </summary>
-    public bool PreFilterMessage(ref System.Windows.Forms.Message m)
-    {
-        if (_twain != null && _persistentSource != null && _persistentSource.IsOpen && !_isScanning)
-        {
-            try
-            {
-                _twain.IsTwainMessage(m.HWnd, m.Msg, m.WParam, m.LParam);
-            }
-            catch { }
-        }
-        return false;
-    }
-
-    private void ShowScannerDisconnectedBalloon()
-    {
-        Debug.WriteLine("[Tray] Der Scanner ist nicht angeschlossen oder ausgeschaltet.");
-    }
-
-    private Icon GetConnectedIcon()
-    {
-        if (_cachedConnectedIcon == null)
-            _cachedConnectedIcon = TrayIcons.CreateConnectedIcon();
-        return _cachedConnectedIcon;
-    }
-
-    private Icon GetDisconnectedIcon()
-    {
-        if (_cachedDisconnectedIcon == null)
-            _cachedDisconnectedIcon = TrayIcons.CreateDisconnectedIcon();
-        return _cachedDisconnectedIcon;
-    }
+    private Icon GetConnectedIcon() => _cachedConnectedIcon ??= TrayIcons.CreateConnectedIcon();
+    private Icon GetDisconnectedIcon() => _cachedDisconnectedIcon ??= TrayIcons.CreateDisconnectedIcon();
+    private Icon GetScanningIcon() => _cachedScanningIcon ??= TrayIcons.CreateScanningIcon();
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && !_disposed)
         {
+            _disposed = true;
+            ScanButtonPipeServer.Shared.CommandReceived -= OnPipeCommand;
+            Application.Idle -= OnFirstIdle;
+
             _pollTimer.Stop();
             _pollTimer.Dispose();
+            _deviceChangeTimer.Stop();
+            _deviceChangeTimer.Dispose();
+            _progressTimer.Stop();
+            _progressTimer.Dispose();
+            _leftClickTimer.Stop();
+            _leftClickTimer.Dispose();
 
             try
             {
-                if (_twain != null)
-                {
-                    if (_twain.IsDsmOpen)
-                        _twain.Close();
-                }
+                if (_twain != null && _twain.IsDsmOpen)
+                    _twain.Close();
             }
             catch { }
 
-            _mainForm?.Close();
+            try { _mainForm?.Close(); } catch { }
             _contextMenu.Dispose();
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
@@ -1513,12 +1548,72 @@ internal class TrayApplicationContext : ApplicationContext, IMessageFilter
 
             _cachedConnectedIcon?.Dispose();
             _cachedDisconnectedIcon?.Dispose();
-            _scanPipeline?.Dispose();
+            _cachedScanningIcon?.Dispose();
 
             // Persist settings on exit
             _appSettings.Save();
         }
 
         base.Dispose(disposing);
+    }
+
+    /// <summary>
+    /// "Scanvorgang fortsetzen": asks whether more documents should be appended to this scan.
+    /// </summary>
+    private sealed class ContinueScanDialog : Form
+    {
+        public ContinueScanDialog(int pagesSoFar)
+        {
+            SuspendLayout();
+            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            Text = AppTitle;
+            Icon = TrayIcons.GetAppIcon();
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
+            StartPosition = FormStartPosition.CenterScreen;
+            TopMost = true;
+            ShowInTaskbar = true;
+            ClientSize = new Size(360, 120);
+            Font = UiFonts.Default;
+
+            var lbl = new Label
+            {
+                Text = (pagesSoFar == 1 ? "Bisher wurde 1 Seite gescannt." : $"Bisher wurden {pagesSoFar} Seiten gescannt.")
+                       + "\n\nWeitere Dokumente scannen? Legen Sie dazu die nächsten Seiten in den Scanner ein.",
+                Location = new Point(14, 12),
+                Size = new Size(332, 60),
+                Font = UiFonts.Default
+            };
+
+            var btnContinue = new Button
+            {
+                Text = "Fortsetzen",
+                DialogResult = DialogResult.OK,
+                Location = new Point(150, 80),
+                Size = new Size(95, 28),
+                Font = UiFonts.Default
+            };
+            var btnFinish = new Button
+            {
+                Text = "Scan beenden",
+                DialogResult = DialogResult.Cancel,
+                Location = new Point(251, 80),
+                Size = new Size(95, 28),
+                Font = UiFonts.Default
+            };
+
+            Controls.AddRange(new Control[] { lbl, btnContinue, btnFinish });
+            AcceptButton = btnContinue;
+            CancelButton = btnFinish;
+            ResumeLayout(false);
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            WindowActivation.BringToFront(this);
+        }
     }
 }

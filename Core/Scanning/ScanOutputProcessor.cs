@@ -110,26 +110,6 @@ internal class ScanOutputProcessor
         _settings = settings;
     }
 
-    /// <summary>
-    /// Full pipeline: post-process images, generate output file(s), return list of created file paths.
-    /// Does not dispose or modify <paramref name="images"/>. Kept for compatibility — prefer
-    /// <see cref="Process"/>, which also reports blank pages, warnings and the processed pages.
-    /// </summary>
-    public List<string> ProcessAndSave(List<Bitmap> images, string targetFolder,
-        FileNameFormatDialog.FormatMode formatMode = FileNameFormatDialog.FormatMode.Timestamp,
-        string customFileName = "unbenannt", int counterDigits = 3)
-    {
-        using var result = Process(images, targetFolder, new ScanOutputOptions
-        {
-            FormatMode = formatMode,
-            CustomFileName = customFileName,
-            CounterDigits = counterDigits,
-            ProduceProcessedPages = false
-        });
-        foreach (var w in result.Warnings) LogDiag($"ProcessAndSave warning: {w}");
-        return new List<string>(result.Files);
-    }
-
     private sealed class WorkPage
     {
         public Bitmap Bmp = null!;
@@ -584,7 +564,10 @@ internal class ScanOutputProcessor
         }
     }
 
-    private int GetJpegQuality() => _settings.CompressionRate switch
+    private int GetJpegQuality() => JpegQualityFor(_settings.CompressionRate);
+
+    /// <summary>JPEG quality for a compression rate (1 = low compression/large file … 5 = small file).</summary>
+    internal static int JpegQualityFor(int compressionRate) => compressionRate switch
     {
         1 => 100,
         2 => 85,

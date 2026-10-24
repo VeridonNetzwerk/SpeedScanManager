@@ -6,29 +6,36 @@ namespace SpeedScanManager;
 
 /// <summary>
 /// Options dialog for "Scan to Print" application.
-/// Allows selecting the target printer from all installed printers.
+/// Allows selecting the target printer from all installed printers. The first entry
+/// "(Standarddrucker)" is stored as an empty name, so the current Windows default printer
+/// is used at print time.
 /// </summary>
 internal class ScanToPrintOptionsDialog : Form
 {
+    private const string DefaultPrinterEntry = "(Standarddrucker)";
+
     private readonly ComboBox _cbPrinter;
     private readonly Button _btnOk;
     private readonly Button _btnCancel;
 
+    /// <summary>Selected printer; "" = Windows default printer.</summary>
     public string SelectedPrinterName { get; set; } = "";
 
     public ScanToPrintOptionsDialog()
     {
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Scan to Print – Optionen";
         Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(380, 150);
+        ClientSize = new Size(380, 120);
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        var font = UiFonts.Default;
         Font = font;
 
         var lblPrinter = new Label
@@ -47,19 +54,17 @@ internal class ScanToPrintOptionsDialog : Form
             Font = font
         };
 
-        // Populate with installed printers
-        foreach (string printer in PrinterSettings.InstalledPrinters)
+        _cbPrinter.Items.Add(DefaultPrinterEntry);
+        try
         {
-            _cbPrinter.Items.Add(printer);
+            foreach (string printer in PrinterSettings.InstalledPrinters)
+                _cbPrinter.Items.Add(printer);
         }
-
-        // Select default printer
-        string defaultPrinter = new PrinterSettings().PrinterName;
-        int defaultIdx = _cbPrinter.Items.IndexOf(defaultPrinter);
-        if (defaultIdx >= 0)
-            _cbPrinter.SelectedIndex = defaultIdx;
-        else if (_cbPrinter.Items.Count > 0)
-            _cbPrinter.SelectedIndex = 0;
+        catch (Exception ex)
+        {
+            DiagLog.Write($"ScanToPrintOptionsDialog: printer enumeration failed: {ex.Message}");
+        }
+        _cbPrinter.SelectedIndex = 0;
 
         _btnOk = new Button
         {
@@ -87,16 +92,26 @@ internal class ScanToPrintOptionsDialog : Form
 
         AcceptButton = _btnOk;
         CancelButton = _btnCancel;
+        ResumeLayout(false);
     }
 
     protected override void OnShown(EventArgs e)
     {
-        // Select the previously saved printer if it exists
+        // Select the previously saved printer; keep a no longer installed one visible.
         if (!string.IsNullOrEmpty(SelectedPrinterName))
         {
-            int idx = _cbPrinter.Items.IndexOf(SelectedPrinterName);
-            if (idx >= 0)
-                _cbPrinter.SelectedIndex = idx;
+            int idx = -1;
+            for (int i = 1; i < _cbPrinter.Items.Count; i++)
+            {
+                if (string.Equals(_cbPrinter.Items[i]?.ToString(), SelectedPrinterName, StringComparison.OrdinalIgnoreCase))
+                {
+                    idx = i;
+                    break;
+                }
+            }
+            if (idx < 0)
+                idx = _cbPrinter.Items.Add(SelectedPrinterName);
+            _cbPrinter.SelectedIndex = idx;
         }
         base.OnShown(e);
     }
@@ -105,7 +120,9 @@ internal class ScanToPrintOptionsDialog : Form
     {
         if (DialogResult == DialogResult.OK)
         {
-            SelectedPrinterName = _cbPrinter.SelectedItem?.ToString() ?? "";
+            SelectedPrinterName = _cbPrinter.SelectedIndex <= 0
+                ? ""
+                : _cbPrinter.SelectedItem?.ToString() ?? "";
         }
         base.OnFormClosing(e);
     }

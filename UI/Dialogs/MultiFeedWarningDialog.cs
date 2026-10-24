@@ -30,7 +30,10 @@ internal class MultiFeedWarningDialog : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ShowInTaskbar = false;
+        // Owned by the invisible tray window: keep it on top so it isn't hidden behind
+        // other applications while the scanner waits for the decision.
+        TopMost = true;
+        ShowInTaskbar = true;
         Width = 720;
         Height = 480;
 
@@ -60,8 +63,8 @@ internal class MultiFeedWarningDialog : Form
             Font = new Font("Segoe UI", 9F)
         };
 
-        var prevPanel = CreatePreviewPanel(currentPage, 12, 78, 300, 260);
-        var currPanel = CreatePreviewPanel(previousPage, 370, 78, 300, 260);
+        var prevPanel = CreatePreviewPanel(previousPage, 12, 78, 300, 260);
+        var currPanel = CreatePreviewPanel(currentPage, 370, 78, 300, 260);
 
         // Buttons
         var btnRescan = new Button
@@ -122,6 +125,12 @@ internal class MultiFeedWarningDialog : Form
         });
 
         AcceptButton = btnRescan;
+    }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        WindowActivation.BringToFront(this);
     }
 
     private static Panel CreatePreviewPanel(Bitmap? image, int x, int y, int width, int height)

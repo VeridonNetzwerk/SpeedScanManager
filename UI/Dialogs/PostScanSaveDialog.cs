@@ -14,7 +14,8 @@ internal class PostScanSaveDialog : Form
     private static readonly Color AccentBlue = Color.FromArgb(45, 90, 170);
     private static readonly Color TextGray = Color.FromArgb(80, 85, 95);
 
-    private readonly List<Bitmap> _scanImages;
+    private readonly IReadOnlyList<Bitmap> _scanImages;
+    private readonly string _defaultTitle;
     private readonly ScanSettings _settings;
     private int _currentPageIndex;
 
@@ -32,12 +33,23 @@ internal class PostScanSaveDialog : Form
     private readonly Button _btnPrev;
     private readonly Button _btnNext;
 
-    public string SelectedTitle => string.IsNullOrWhiteSpace(_txtTitle.Text) ? "ScanSnap" : _txtTitle.Text;
+    /// <summary>
+    /// The typed title as a single valid file name (invalid characters such as "/" are
+    /// replaced, so "03/2026" never creates subfolders). Empty input = the generated name.
+    /// </summary>
+    public string SelectedTitle => ScanOutputProcessor.SanitizeFileName(
+        string.IsNullOrWhiteSpace(_txtTitle.Text) ? _defaultTitle : _txtTitle.Text.Trim());
     public string SelectedFolderPath => _txtFolderPath.Text;
 
-    public PostScanSaveDialog(List<Bitmap> scanImages, ScanSettings settings, string defaultTitle, string defaultFolder)
+    /// <summary>
+    /// Ask "Scan verwerfen?" when the dialog is cancelled or closed. "Nein" keeps the dialog open.
+    /// </summary>
+    public bool ConfirmDiscardOnCancel { get; set; } = true;
+
+    public PostScanSaveDialog(IReadOnlyList<Bitmap> scanImages, ScanSettings settings, string defaultTitle, string defaultFolder)
     {
         _scanImages = scanImages;
+        _defaultTitle = string.IsNullOrWhiteSpace(defaultTitle) ? "Scan" : defaultTitle;
         _settings = settings;
         _currentPageIndex = 0;
 
@@ -46,9 +58,12 @@ internal class PostScanSaveDialog : Form
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
-        StartPosition = FormStartPosition.CenterParent;
+        // Owner is the invisible tray window: center on screen and stay on top, otherwise the
+        // dialog may open behind other windows (scan started with the hardware button).
+        StartPosition = FormStartPosition.CenterScreen;
+        TopMost = true;
         ClientSize = new Size(560, 420);
-        ShowInTaskbar = false;
+        ShowInTaskbar = true;
         AutoScaleMode = AutoScaleMode.None;
         Font = UiFont;
         BackColor = PanelGray;
@@ -114,7 +129,7 @@ internal class PostScanSaveDialog : Form
             Location = new Point(14, 32),
             Size = new Size(260, 24),
             BackColor = Color.White,
-            Text = defaultTitle
+            Text = _defaultTitle
         };
 
         var lblFolder = new Label
@@ -320,13 +335,47 @@ internal class PostScanSaveDialog : Form
         CancelButton = _btnCancel;
 
         // Wire events
-        _btnSave.Click += (_, _) => DialogResult = DialogResult.OK;
+        _btnSave.Click += (_, _) =>
+        {
+            if (string.IsNullOrWhiteSpace(_txtFolderPath.Text))
+            {
+                MessageBox.Show(this, "Bitte wählen Sie einen Zielordner.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            DialogResult = DialogResult.OK;
+        };
         _btnCancel.Click += (_, _) => DialogResult = DialogResult.Cancel;
         _btnPrev.Click += (_, _) => NavigatePage(-1);
         _btnNext.Click += (_, _) => NavigatePage(1);
 
         // Set initial preview
         UpdatePreview();
+    }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        WindowActivation.BringToFront(this);
+        _txtTitle.SelectAll();
+        _txtTitle.Focus();
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        if (DialogResult != DialogResult.OK && ConfirmDiscardOnCancel
+            && e.CloseReason is CloseReason.UserClosing or CloseReason.None)
+        {
+            var answer = MessageBox.Show(this,
+                "Scan verwerfen?\n\nJa: Der Scan wird gelöscht.\nNein: Zurück zum Dialog.",
+                Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+            if (answer != DialogResult.Yes)
+            {
+                e.Cancel = true;
+                DialogResult = DialogResult.None;
+                return;
+            }
+        }
+        base.OnFormClosing(e);
     }
 
     private void BrowseFolder()

@@ -53,6 +53,26 @@ internal static class TrayIcons
     }
 
     /// <summary>
+    /// "Scanning" icon: the app logo with an orange status dot (scan / post-scan flow running).
+    /// </summary>
+    public static Icon CreateScanningIcon()
+    {
+        using var bmp = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using var g = Graphics.FromImage(bmp);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.Clear(Color.Transparent);
+
+        DrawLogoCentered(g, 28);
+
+        using var ledBrush = new SolidBrush(Color.FromArgb(245, 150, 30));
+        g.FillEllipse(ledBrush, 21, 21, 10, 10);
+        using var ledPen = new Pen(Color.White, 1.5f);
+        g.DrawEllipse(ledPen, 21, 21, 10, 10);
+
+        return IconFromBitmap(bmp);
+    }
+
+    /// <summary>
     /// "Disconnected" icon: the app logo dimmed with a red slash overlay.
     /// </summary>
     public static Icon CreateDisconnectedIcon()
@@ -120,10 +140,20 @@ internal static class TrayIcons
         g.FillPath(brush, path);
     }
 
+    private static readonly object AppIconSync = new();
+    private static Icon? _appIcon;
+
     /// <summary>
-    /// Creates an Icon from the app logo PNG for use as Form.Icon (title bar).
+    /// The app logo as Form.Icon (title bar). Created once and shared by all forms —
+    /// do not dispose it.
     /// </summary>
     public static Icon GetAppIcon()
+    {
+        lock (AppIconSync)
+            return _appIcon ??= CreateAppIcon();
+    }
+
+    private static Icon CreateAppIcon()
     {
         try
         {

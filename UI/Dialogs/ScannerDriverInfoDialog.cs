@@ -137,9 +137,8 @@ internal class ScannerDriverInfoDialog : Form
         }
 
         lvwVersions.Items.Add(new ListViewItem(new[] { "SpeedScanManager.exe", ver, buildDate }));
-        lvwVersions.Items.Add(new ListViewItem(new[] { "NTwain.dll", "4.0.0.0", "—" }));
-        lvwVersions.Items.Add(new ListViewItem(new[] { "Tesseract.dll", "5.0.0.0", "—" }));
-        lvwVersions.Items.Add(new ListViewItem(new[] { "PdfSharpCore.dll", "1.3.65.0", "—" }));
+        foreach (var dll in new[] { "NTwain.dll", "Tesseract.dll", "PdfSharpCore.dll", "DocumentFormat.OpenXml.dll" })
+            lvwVersions.Items.Add(new ListViewItem(GetFileVersionRow(dll)));
 
         // === Footer (OK + Hilfe) ===
         var footerTable = new TableLayoutPanel
@@ -205,5 +204,29 @@ internal class ScannerDriverInfoDialog : Form
         Controls.Add(lblScannerName);
 
         AcceptButton = btnOk;
+    }
+
+    /// <summary>File name, file version and modification time of a DLL next to the exe.</summary>
+    private static string[] GetFileVersionRow(string fileName)
+    {
+        try
+        {
+            var path = System.IO.Path.Combine(AppContext.BaseDirectory, fileName);
+            if (System.IO.File.Exists(path))
+            {
+                var fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(path);
+                return new[]
+                {
+                    fileName,
+                    fvi.FileVersion ?? "—",
+                    System.IO.File.GetLastWriteTime(path).ToString("yyyy.MM.dd HH:mm:ss")
+                };
+            }
+        }
+        catch
+        {
+            // fall through
+        }
+        return new[] { fileName, "—", "—" };
     }
 }

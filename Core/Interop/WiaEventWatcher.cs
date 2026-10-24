@@ -17,12 +17,8 @@ namespace SpeedScanManager;
 /// The in-process WIA COM callback (IWiaDevMgr2::RegisterEventCallbackInterface) was
 /// removed: it never worked (wrong event GUID and wrong callback signature) and the
 /// registry handler covers the use case.
-///
-/// The instance members (<see cref="Start"/>, <see cref="Stop"/>, <see cref="ScanButtonPressed"/>)
-/// are kept for compatibility: they simply forward "SCAN" commands of the app-wide
-/// <see cref="ScanButtonPipeServer.Shared"/> while the watcher is started.
 /// </summary>
-internal sealed class WiaEventWatcher : IDisposable
+internal static class WiaEventWatcher
 {
     private const string OurGuid = "{B7E3A1F0-5C2D-4E8A-9F1A-3D6B7C8E9F12}";
     private const string OldOurGuid = "{33C60039-B6C1-4C33-9BB5-7B3B669D6631}";
@@ -41,10 +37,6 @@ internal sealed class WiaEventWatcher : IDisposable
     private const string DeclinedValueName = "ScanButtonSetupDeclined";
 
     private static int _elevationAttempted;
-
-    private bool _started;
-
-    public event Action? ScanButtonPressed;
 
     private static void LogDiag(string msg) => DiagLog.WriteWia(msg);
 
@@ -627,39 +619,4 @@ internal sealed class WiaEventWatcher : IDisposable
             LogDiag($"  RestartWiaService failed: {ex.Message}");
         }
     }
-
-    // ───────────────────────── Compatibility instance API ─────────────────────────
-
-    /// <summary>
-    /// Starts forwarding "SCAN" commands of <see cref="ScanButtonPipeServer.Shared"/> to
-    /// <see cref="ScanButtonPressed"/>. Never elevates and never blocks
-    /// (use <see cref="EnsureScanButtonHandlerAsync"/> once at startup for the registration).
-    /// </summary>
-    public void Start()
-    {
-        if (_started) return;
-        _started = true;
-
-        var server = ScanButtonPipeServer.Shared;
-        server.CommandReceived += OnPipeCommand;
-        if (!server.IsRunning)
-            server.Start();
-        LogDiag("Start: forwarding scan button commands");
-    }
-
-    private void OnPipeCommand(string command)
-    {
-        if (command == ScanButtonPipeServer.CommandScan)
-            ScanButtonPressed?.Invoke();
-    }
-
-    public void Stop()
-    {
-        if (!_started) return;
-        _started = false;
-        ScanButtonPipeServer.Shared.CommandReceived -= OnPipeCommand;
-        LogDiag("Stop: stopped forwarding scan button commands");
-    }
-
-    public void Dispose() => Stop();
 }

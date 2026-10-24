@@ -48,10 +48,15 @@ internal class PostScanMediaDialog : Form
         "Mit PDF Edit bearbeiten"
     };
 
+    private static readonly Font TitleFont = new("Microsoft Sans Serif", 10f, FontStyle.Bold);
+    private static readonly Font CircleFont = new("Microsoft Sans Serif", 9f, FontStyle.Bold);
+
     private readonly Bitmap[] _icons;
+    private readonly List<Image> _ownedImages = new();
     private Point? _dragStart;
 
-    public PostScanMediaDialog(List<string> filePaths, List<Bitmap>? images)
+    /// <param name="pageCount">Number of pages in the output (not the number of files).</param>
+    public PostScanMediaDialog(int pageCount)
     {
         _icons = new Bitmap[]
         {
@@ -66,16 +71,21 @@ internal class PostScanMediaDialog : Form
         };
 
         FormBorderStyle = FormBorderStyle.None;
-        StartPosition = FormStartPosition.CenterParent;
+        // The owner is the invisible tray window: center on screen, stay on top and show in
+        // the taskbar so the Quick Menu can't get lost behind other windows.
+        StartPosition = FormStartPosition.CenterScreen;
+        TopMost = true;
+        Text = "SpeedScan Manager – Quick-Menü";
         ClientSize = new Size(520, 410);
         Icon = TrayIcons.GetAppIcon();
-        ShowInTaskbar = false;
+        ShowInTaskbar = true;
         AutoScaleMode = AutoScaleMode.None;
-        Font = new Font("Microsoft Sans Serif", 8.25f);
+        Font = UiFonts.Default;
         BackColor = PanelGray;
 
         // Rounded window outline + thin border
-        Region = new Region(RoundedRect(new Rectangle(0, 0, ClientSize.Width, ClientSize.Height), 8));
+        using (var outline = RoundedRect(new Rectangle(0, 0, ClientSize.Width, ClientSize.Height), 8))
+            Region = new Region(outline);
         Paint += (_, e) =>
         {
             using var pen = new Pen(Color.FromArgb(140, 150, 165), 1f);
@@ -119,18 +129,17 @@ internal class PostScanMediaDialog : Form
         var lblTitle = new Label
         {
             Text = "Wohin möchtest du scannen?",
-            Font = new Font("Microsoft Sans Serif", 10f, FontStyle.Bold),
+            Font = TitleFont,
             ForeColor = Color.White,
             Location = new Point(44, 6),
             AutoSize = true,
             BackColor = Color.Transparent
         };
 
-        int fileCount = filePaths?.Count ?? images?.Count ?? 0;
         var lblSubtitle = new Label
         {
-            Text = fileCount == 1 ? "1 Seite gescannt" : $"{fileCount} Seiten gescannt",
-            Font = new Font("Microsoft Sans Serif", 8.25f),
+            Text = pageCount == 1 ? "1 Seite gescannt" : $"{pageCount} Seiten gescannt",
+            Font = UiFonts.Default,
             ForeColor = Color.FromArgb(215, 225, 245),
             Location = new Point(45, 24),
             AutoSize = true,
@@ -203,8 +212,8 @@ internal class PostScanMediaDialog : Form
             FlatStyle = FlatStyle.Standard,
             UseVisualStyleBackColor = true,
             Size = new Size(116, 26),
-            Font = new Font("Microsoft Sans Serif", 8.25f),
-            Image = TabIcons.CreateCheckIcon(),
+            Font = UiFonts.Default,
+            Image = Own(TabIcons.CreateCheckIcon()),
             ImageAlign = ContentAlignment.MiddleLeft,
             TextAlign = ContentAlignment.MiddleRight,
             Location = new Point(ClientSize.Width - 244, 7)
@@ -222,8 +231,8 @@ internal class PostScanMediaDialog : Form
             FlatStyle = FlatStyle.Standard,
             UseVisualStyleBackColor = true,
             Size = new Size(116, 26),
-            Font = new Font("Microsoft Sans Serif", 8.25f),
-            Image = TabIcons.CreateCrossIcon(),
+            Font = UiFonts.Default,
+            Image = Own(TabIcons.CreateCrossIcon()),
             ImageAlign = ContentAlignment.MiddleLeft,
             TextAlign = ContentAlignment.MiddleRight,
             Location = new Point(ClientSize.Width - 122, 7),
@@ -239,6 +248,30 @@ internal class PostScanMediaDialog : Form
         CancelButton = btnCancel;
 
         UpdateSelection();
+    }
+
+    private Image Own(Image image)
+    {
+        _ownedImages.Add(image);
+        return image;
+    }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        WindowActivation.BringToFront(this);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            foreach (var icon in _icons) icon.Dispose();
+            foreach (var img in _ownedImages) img.Dispose();
+            _ownedImages.Clear();
+            Region?.Dispose();
+        }
+        base.Dispose(disposing);
     }
 
     private static GraphicsPath RoundedRect(Rectangle bounds, int radius)
@@ -279,7 +312,7 @@ internal class PostScanMediaDialog : Form
         var lblText = new Label
         {
             Text = _labels[index],
-            Font = new Font("Microsoft Sans Serif", 8.25f),
+            Font = UiFonts.Default,
             ForeColor = Color.FromArgb(50, 50, 50),
             TextAlign = ContentAlignment.MiddleCenter,
             Dock = DockStyle.Fill,
@@ -361,7 +394,7 @@ internal class PostScanMediaDialog : Form
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
             ForeColor = Color.White;
-            Font = new Font("Microsoft Sans Serif", 9f, FontStyle.Bold);
+            Font = CircleFont;
             BackColor = Color.Transparent;
             Cursor = Cursors.Hand;
         }

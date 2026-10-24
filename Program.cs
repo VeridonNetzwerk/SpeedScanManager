@@ -65,6 +65,8 @@ internal static class Program
             {
                 // Another instance is running: hand the request over and exit.
                 var command = scanButton ? ScanButtonPipeServer.CommandScan : ScanButtonPipeServer.CommandShow;
+                // Let the running instance bring its dialogs/settings window to the front.
+                WindowActivation.AllowAnyProcessToActivate();
                 var sw = Stopwatch.StartNew();
                 while (sw.ElapsedMilliseconds < 3000)
                 {
@@ -89,12 +91,15 @@ internal static class Program
             if (scanButton)
                 ScanOnStartRequested = true;
 
+            InstallExceptionHandlers();
+
             // App-lifetime pipe server (independent of scanner/WIA state).
             ScanButtonPipeServer.Shared.Start();
             try
             {
                 ApplicationConfiguration.Initialize();
-                Application.Run(new TrayApplicationContext());
+                using var context = new TrayApplicationContext();
+                Application.Run(context);
             }
             finally
             {
@@ -105,14 +110,72 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            var logPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "SpeedScanManager", "crash.log");
-            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
-            File.WriteAllText(logPath, $"{DateTime.Now}: {ex}\n\nInner: {ex.InnerException}");
-            MessageBox.Show(ex.ToString(), "SpeedScan Manager – Fehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ReportCrash("Main", ex, fatal: true);
             return 1;
         }
+    }
+
+    private static int _handlersInstalled;
+
+    /// <summary>
+    /// Last-resort handlers: log to DiagLog and crash.log (%LocalAppData%\SpeedScanManager)
+    /// and tell the user. Exceptions on the UI thread don't terminate the app.
+    /// </summary>
+    private static void InstallExceptionHandlers()
+    {
+        if (Interlocked.Exchange(ref _handlersInstalled, 1) == 1) return;
+
+        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+        Application.ThreadException += (_, e) => ReportCrash("UI-Thread", e.Exception, fatal: false);
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            ReportCrash("AppDomain", e.ExceptionObject as Exception ?? new Exception(e.ExceptionObject?.ToString()), e.IsTerminating);
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            // Errors of background tasks: log only, they must not take the app down.
+            e.SetObserved();
+            WriteCrashLog("Task", e.Exception);
+        };
+    }
+
+    private static int _crashDialogOpen;
+
+    private static void ReportCrash(string source, Exception ex, bool fatal)
+    {
+        WriteCrashLog(source, ex);
+
+        // Avoid a cascade of dialogs if the error repeats while the first one is open.
+        if (Interlocked.Exchange(ref _crashDialogOpen, 1) == 1) return;
+        try
+        {
+            var text = fatal
+                ? "SpeedScan Manager wurde wegen eines unerwarteten Fehlers beendet."
+                : "In SpeedScan Manager ist ein unerwarteter Fehler aufgetreten. Das Programm läuft weiter.";
+            TrayMessageBox.Error(null,
+                $"{text}\n\n{ex.GetType().Name}: {ex.Message}\n\nDetails stehen in:\n{CrashLogPath}");
+        }
+        catch
+        {
+            // nothing left to do
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _crashDialogOpen, 0);
+        }
+    }
+
+    private static string CrashLogPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "SpeedScanManager", "crash.log");
+
+    private static void WriteCrashLog(string source, Exception ex)
+    {
+        try { DiagLog.Write($"[Crash] {source}: {ex}"); } catch { }
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(CrashLogPath)!);
+            File.AppendAllText(CrashLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{source}] {ex}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch { }
     }
 
     private static bool HasArg(string[] args, string name) =>

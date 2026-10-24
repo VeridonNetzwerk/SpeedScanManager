@@ -162,17 +162,6 @@ internal class ScanPipeline : IDisposable
     }
 
     /// <summary>
-    /// Executes a full scan cycle with the given scan side override.
-    /// Returns acquired images as Bitmap list (empty if cancelled).
-    /// Kept for compatibility — prefer <see cref="Scan"/>, which also reports cancel/timeout/failures.
-    /// </summary>
-    public List<Bitmap> ExecuteScan(ScanSide scanSideOverride)
-    {
-        var result = Scan(scanSideOverride);
-        return new List<Bitmap>(result.Images);
-    }
-
-    /// <summary>
     /// Executes one scan batch. Never throws for TWAIN problems; see the result flags.
     /// The returned images are owned by the caller.
     /// </summary>
