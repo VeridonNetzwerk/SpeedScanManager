@@ -93,7 +93,6 @@ internal class FileTypeTabContent : Panel
 
         var font = UiFonts.Default;
         Dock = DockStyle.Fill;
-        BackColor = Color.White;
 
         // === Info bar ===
         var infoBar = new GradientInfoBar("Geben Sie die gewünschten Dateioptionen an.");
@@ -136,27 +135,26 @@ internal class FileTypeTabContent : Panel
         _lblJpegHint = new Label
         {
             Text = "JPEG steht nicht zur Verfügung, wenn \"Schwarzweiß\" unter [Farbmodus]\ngewählt wurde.",
-            Location = new Point(176, 48),
-            Size = new Size(420, 26),
+            Location = new Point(176, 50),
+            Size = new Size(420, 32),
             AutoSize = false,
-            Font = font,
-            ForeColor = Color.FromArgb(70, 70, 70)
+            Font = font
         };
+        ThemeManager.SetRole(_lblJpegHint, ThemeRole.Muted);
 
         // === GroupBox: Texterkennung wählen ===
         var grpChoose = new GroupBox
         {
             Text = "Texterkennung wählen",
-            Location = new Point(38, 78),
-            Size = new Size(598, 68),
-            Font = font,
-            BackColor = Color.White
+            Location = new Point(38, 86),
+            Size = new Size(598, 92),
+            Font = font
         };
 
         _chkAddKeyword = new CheckBox
         {
             Text = "Markierten Text als Schlüsselwort der PDF-Datei hinzufügen",
-            Location = new Point(10, 14),
+            Location = new Point(10, 22),
             AutoSize = true,
             Font = font
         };
@@ -170,7 +168,7 @@ internal class FileTypeTabContent : Panel
         _lblKeywordTarget = new Label
         {
             Text = "Zielmarkierung:",
-            Location = new Point(10, 36),
+            Location = new Point(10, 47),
             AutoSize = true,
             Font = font
         };
@@ -178,7 +176,7 @@ internal class FileTypeTabContent : Panel
         _rbFirstSection = new RadioButton
         {
             Text = "Erste markierte Sektion",
-            Location = new Point(110, 36),
+            Location = new Point(110, 45),
             AutoSize = true,
             Font = font
         };
@@ -191,7 +189,7 @@ internal class FileTypeTabContent : Panel
         _rbAllSections = new RadioButton
         {
             Text = "Alle markierten Sektionen",
-            Location = new Point(270, 36),
+            Location = new Point(270, 45),
             AutoSize = true,
             Font = font
         };
@@ -204,7 +202,7 @@ internal class FileTypeTabContent : Panel
         _chkOcr = new CheckBox
         {
             Text = "In durchsuchbare PDF konvertieren",
-            Location = new Point(10, 52),
+            Location = new Point(10, 68),
             AutoSize = true,
             Font = font
         };
@@ -226,16 +224,15 @@ internal class FileTypeTabContent : Panel
         _grpOcrOptions = new GroupBox
         {
             Text = "Texterkennungsoptionen",
-            Location = new Point(38, 150),
-            Size = new Size(598, 56),
-            Font = font,
-            BackColor = Color.White
+            Location = new Point(38, 183),
+            Size = new Size(598, 72),
+            Font = font
         };
 
         _lblOcrLanguage = new Label
         {
             Text = "Sprache:",
-            Location = new Point(12, 20),
+            Location = new Point(12, 25),
             AutoSize = true,
             Font = font
         };
@@ -243,7 +240,7 @@ internal class FileTypeTabContent : Panel
         _cbOcrLanguage = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(100, 17),
+            Location = new Point(100, 21),
             Size = new Size(320, 24),
             Font = font,
             DrawMode = DrawMode.OwnerDrawFixed,
@@ -260,7 +257,7 @@ internal class FileTypeTabContent : Panel
         _lblOcrTarget = new Label
         {
             Text = "Zielseiten:",
-            Location = new Point(12, 40),
+            Location = new Point(12, 50),
             AutoSize = true,
             Font = font
         };
@@ -268,7 +265,7 @@ internal class FileTypeTabContent : Panel
         _rbFirstPage = new RadioButton
         {
             Text = "Erste Seite",
-            Location = new Point(100, 40),
+            Location = new Point(100, 48),
             AutoSize = true,
             Font = font
         };
@@ -281,7 +278,7 @@ internal class FileTypeTabContent : Panel
         _rbAllPages = new RadioButton
         {
             Text = "Alle Seiten",
-            Location = new Point(200, 40),
+            Location = new Point(200, 48),
             AutoSize = true,
             Font = font
         };
@@ -305,12 +302,10 @@ internal class FileTypeTabContent : Panel
             UseVisualStyleBackColor = true,
             Size = new Size(90, 24),
             Font = font,
-            Image = TabIcons.CreateGearIcon(),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
             Padding = new Padding(2, 0, 4, 0),
             Anchor = AnchorStyles.Bottom | AnchorStyles.Right
         };
+        ThemeManager.SetGlyph(_btnOptions, Glyph.Gear);
         _btnOptions.Click += (s, e) => OpenPdfOptionsDialog();
 
         Layout += (s, e) =>
@@ -374,7 +369,7 @@ internal class FileTypeTabContent : Panel
     {
         ColorMode cm = mode ?? _settings.ColorMode;
         _jpegAvailable = cm != ColorMode.BlackWhite;
-        _lblJpegHint.ForeColor = _jpegAvailable ? Color.FromArgb(70, 70, 70) : Color.FromArgb(180, 60, 40);
+        ThemeManager.SetRole(_lblJpegHint, _jpegAvailable ? ThemeRole.Muted : ThemeRole.Danger);
 
         if (!_jpegAvailable && _cbFileFormat.SelectedIndex == (int)FileFormat.Jpeg)
         {
@@ -391,42 +386,38 @@ internal class FileTypeTabContent : Panel
 
     private void DrawFileFormatItem(DrawItemEventArgs e)
     {
-        e.DrawBackground();
-
-        if (e.Index < 0) return;
+        if (e.Index < 0)
+        {
+            ThemeManager.DrawItemBackground(_cbFileFormat, e);
+            return;
+        }
 
         string text = _cbFileFormat.Items[e.Index]!.ToString()!;
         bool isJpeg = e.Index == (int)FileFormat.Jpeg;
         bool disabled = isJpeg && !_jpegAvailable;
 
-        var color = disabled ? SystemColors.GrayText : SystemColors.ControlText;
+        var color = ThemeManager.DrawItemBackground(_cbFileFormat, e, itemEnabled: !disabled);
 
         // Draw file type icon before text
         var icon = e.Index >= 0 && e.Index < FileTypeIcons.Length ? FileTypeIcons[e.Index] : null;
         var textBounds = e.Bounds;
         if (icon != null)
         {
-            var iconRect = new Rectangle(e.Bounds.X + 1, e.Bounds.Y + (e.Bounds.Height - 16) / 2, 16, 16);
+            var iconRect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y + (e.Bounds.Height - 16) / 2, 16, 16);
             using var ia = new System.Drawing.Imaging.ImageAttributes();
             if (disabled)
             {
-                var cm = new System.Drawing.Imaging.ColorMatrix
-                {
-                    Matrix00 = 0.3f, Matrix11 = 0.3f, Matrix22 = 0.3f, Matrix33 = 1f, Matrix44 = 1f
-                };
-                ia.SetColorMatrix(cm);
+                ia.SetColorMatrix(new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.4f });
             }
             e.Graphics.DrawImage(icon,
                 new Rectangle(iconRect.X, iconRect.Y, iconRect.Width, iconRect.Height),
                 0, 0, icon.Width, icon.Height,
                 GraphicsUnit.Pixel, ia);
-            textBounds = new Rectangle(iconRect.Right + 4, e.Bounds.Y, e.Bounds.Width - iconRect.Width - 5, e.Bounds.Height);
+            textBounds = new Rectangle(iconRect.Right + 6, e.Bounds.Y, e.Bounds.Right - iconRect.Right - 6, e.Bounds.Height);
         }
 
         TextRenderer.DrawText(e.Graphics, text, _cbFileFormat.Font, textBounds, color,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
-
-        e.DrawFocusRectangle();
     }
 
     /// <summary>Entry of the OCR language list.</summary>
@@ -511,7 +502,7 @@ internal class FileTypeTabContent : Panel
 
     private void DrawOcrLanguageItem(DrawItemEventArgs e)
     {
-        e.DrawBackground();
+        var color = ThemeManager.DrawItemBackground(_cbOcrLanguage, e);
 
         if (e.Index < 0) return;
 
@@ -519,22 +510,16 @@ internal class FileTypeTabContent : Panel
         string text = entry?.ToString() ?? "";
         bool enabled = _cbOcrLanguage.Enabled;
 
-        var color = enabled ? SystemColors.ControlText : SystemColors.GrayText;
-
         int flagIndex = entry is OcrLanguageItem item ? (int)item.Language : -1;
         var flag = flagIndex >= 0 && flagIndex < OcrLanguageFlags.Length ? OcrLanguageFlags[flagIndex] : null;
         var textBounds = e.Bounds;
         if (flag != null)
         {
-            var iconRect = new Rectangle(e.Bounds.X + 1, e.Bounds.Y + (e.Bounds.Height - 16) / 2, 16, 16);
+            var iconRect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y + (e.Bounds.Height - 16) / 2, 16, 16);
             if (!enabled)
             {
                 using var ia = new System.Drawing.Imaging.ImageAttributes();
-                var cm = new System.Drawing.Imaging.ColorMatrix
-                {
-                    Matrix00 = 0.3f, Matrix11 = 0.3f, Matrix22 = 0.3f, Matrix33 = 1f, Matrix44 = 1f
-                };
-                ia.SetColorMatrix(cm);
+                ia.SetColorMatrix(new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.4f });
                 e.Graphics.DrawImage(flag,
                     new Rectangle(iconRect.X, iconRect.Y, iconRect.Width, iconRect.Height),
                     0, 0, flag.Width, flag.Height,
@@ -544,13 +529,11 @@ internal class FileTypeTabContent : Panel
             {
                 e.Graphics.DrawImage(flag, iconRect);
             }
-            textBounds = new Rectangle(iconRect.Right + 4, e.Bounds.Y, e.Bounds.Width - iconRect.Width - 5, e.Bounds.Height);
+            textBounds = new Rectangle(iconRect.Right + 6, e.Bounds.Y, e.Bounds.Right - iconRect.Right - 6, e.Bounds.Height);
         }
 
         TextRenderer.DrawText(e.Graphics, text, _cbOcrLanguage.Font, textBounds, color,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
-
-        e.DrawFocusRectangle();
     }
 
     private void UpdateOptionsButtonState()

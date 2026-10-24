@@ -108,7 +108,6 @@ internal class ScanModeTabContent : Panel
 
         var font = UiFonts.Default;
         Dock = DockStyle.Fill;
-        BackColor = Color.White;
 
         // === Info bar ===
         var infoBar = new GradientInfoBar("Wählen Sie den gewünschten Scanmodus.");
@@ -177,9 +176,9 @@ internal class ScanModeTabContent : Panel
             Location = new Point(176, 119),
             Size = new Size(420, 34),
             AutoSize = false,
-            Font = font,
-            ForeColor = Color.FromArgb(90, 90, 90)
+            Font = font
         };
+        ThemeManager.SetRole(lblHint, ThemeRole.Muted);
 
         // === Continue scanning checkbox ===
         _chkContinueScanning = new CheckBox
@@ -247,31 +246,22 @@ internal class ScanModeTabContent : Panel
 
     private static void DrawComboItem(object? sender, DrawItemEventArgs e, List<ComboItem> items)
     {
-        if (e.Index < 0) return;
         var cb = (ComboBox)sender!;
+        Color fg = ThemeManager.DrawItemBackground(cb, e);
+        if (e.Index < 0) return;
         var item = items[e.Index];
-
-        // Background
-        bool selected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
-        Color bg = selected ? SystemColors.Highlight : cb.BackColor;
-        Color fg = selected ? SystemColors.HighlightText : SystemColors.ControlText;
-
-        using var bgBrush = new SolidBrush(bg);
-        e.Graphics.FillRectangle(bgBrush, e.Bounds);
 
         // Icon
         if (item.Icon != null)
         {
             int iconY = e.Bounds.Y + (e.Bounds.Height - 16) / 2;
-            e.Graphics.DrawImage(item.Icon, e.Bounds.X + 3, iconY, 16, 16);
+            e.Graphics.DrawImage(item.Icon, e.Bounds.X + 4, iconY, 16, 16);
         }
 
         // Text
-        var textRect = new Rectangle(e.Bounds.X + 24, e.Bounds.Y, e.Bounds.Width - 27, e.Bounds.Height);
+        var textRect = new Rectangle(e.Bounds.X + 26, e.Bounds.Y, e.Bounds.Width - 29, e.Bounds.Height);
         TextRenderer.DrawText(e.Graphics, item.Text, cb.Font, textRect, fg,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
-
-        e.DrawFocusRectangle();
     }
 
     private static void SelectComboItem(ComboBox cb, List<ComboItem> items, object value)

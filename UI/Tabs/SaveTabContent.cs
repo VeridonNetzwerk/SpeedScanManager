@@ -43,7 +43,6 @@ internal class SaveTabContent : Panel
 
         var font = UiFonts.Default;
         Dock = DockStyle.Fill;
-        BackColor = Color.White;
 
         // === Blue gradient info bar (Dock.Top) ===
         var infoBar = new GradientInfoBar("Geben Sie den zu benutzenden Ordner und das gewünschte Dateinamenformat an.");
@@ -51,8 +50,7 @@ internal class SaveTabContent : Panel
         // === Content panel below info bar ===
         var contentPanel = new Panel
         {
-            Dock = DockStyle.Fill,
-            BackColor = Color.White
+            Dock = DockStyle.Fill
         };
 
         // === Folder selection ===
@@ -70,7 +68,6 @@ internal class SaveTabContent : Panel
             Location = new Point(176, 8),
             ReadOnly = true,
             Font = font,
-            BackColor = SystemColors.Control,
             AutoSize = false,
             Size = new Size(438, 22)
         };
@@ -105,9 +102,9 @@ internal class SaveTabContent : Panel
             Text = "",
             Location = new Point(176, 116),
             AutoSize = true,
-            Font = font,
-            ForeColor = SystemColors.ControlText
+            Font = font
         };
+        ThemeManager.SetRole(_lblFilePreview, ThemeRole.Muted);
 
         // === Rename checkbox ===
         _chkRenameAfterScan = new CheckBox

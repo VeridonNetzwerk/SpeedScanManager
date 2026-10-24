@@ -72,6 +72,8 @@ internal sealed class TrayHiddenWindow : Form
 internal class TrayApplicationContext : ApplicationContext
 {
     private const int PollIntervalMs = 10000;
+    /// <summary>Poll interval while no scanner is connected (cheap check, see ScannerStateService).</summary>
+    private const int DisconnectedPollIntervalMs = 5000;
     private const int DeviceChangeDebounceMs = 1500;
     private const int DisconnectConfirmThreshold = 2;
     private const int ExitCancelTimeoutMs = 8000;
@@ -91,6 +93,7 @@ internal class TrayApplicationContext : ApplicationContext
     private ToolStripMenuItem _miEmailSettings = null!;
     private ToolStripMenuItem _miPrintSettings = null!;
     private ToolStripMenuItem _miScanResult = null!;
+    private ToolStripMenuItem _miDesign = null!;
     private ToolStripMenuItem _miHelp = null!;
     private ToolStripMenuItem _miExit = null!;
 
@@ -98,7 +101,19 @@ internal class TrayApplicationContext : ApplicationContext
     private readonly System.Windows.Forms.Timer _deviceChangeTimer;
     private readonly System.Windows.Forms.Timer _progressTimer;
     private readonly System.Windows.Forms.Timer _leftClickTimer;
+    private readonly System.Windows.Forms.Timer _deviceRetryTimer;
     private readonly TrayHiddenWindow _hiddenWindow;
+
+    /// <summary>The next left MouseUp belongs to a double click (see <see cref="OnTrayMouseUp"/>).</summary>
+    private bool _doubleClickUpPending;
+    private long _doubleClickTicks;
+
+    /// <summary>
+    /// Forced requeries after WM_DEVICECHANGE (ms after the device change): a replugged
+    /// scanner's driver is often not ready when the notification arrives.
+    /// </summary>
+    private static readonly int[] DeviceRetryOffsetsMs = { 2000, 5000, 10000, 20000 };
+    private int _deviceRetryStep;
 
     private TwainSession? _twain;
     private WindowsFormsMessageLoopHook? _msgLoop;
@@ -166,6 +181,11 @@ internal class TrayApplicationContext : ApplicationContext
         // (BeginInvoke) even before the TWAIN initialisation ran.
         _ = _hiddenWindow.Handle;
 
+        // Design (after the first control was created: the theme marshals Windows setting
+        // changes to the UI thread's synchronization context).
+        ThemeManager.Initialize(_appSettings.ThemeMode);
+        ThemeManager.ModeChanged += OnThemeModeChanged;
+
         _notifyIcon = new NotifyIcon
         {
             Icon = GetDisconnectedIcon(),
@@ -183,6 +203,9 @@ internal class TrayApplicationContext : ApplicationContext
 
         _deviceChangeTimer = new System.Windows.Forms.Timer { Interval = DeviceChangeDebounceMs };
         _deviceChangeTimer.Tick += OnDeviceChangeTimerTick;
+
+        _deviceRetryTimer = new System.Windows.Forms.Timer();
+        _deviceRetryTimer.Tick += OnDeviceRetryTimerTick;
 
         _progressTimer = new System.Windows.Forms.Timer { Interval = 500 };
         _progressTimer.Tick += (_, _) => UpdateBusyText();
@@ -209,7 +232,6 @@ internal class TrayApplicationContext : ApplicationContext
     {
         _contextMenu = new ContextMenuStrip
         {
-            RenderMode = ToolStripRenderMode.System,
             Font = SystemFonts.MenuFont,
             ShowImageMargin = false
         };
@@ -245,6 +267,20 @@ internal class TrayApplicationContext : ApplicationContext
 
         _miHelp.DropDownItems.AddRange(new ToolStripItem[] { miHelpTopics, miVersionInfo });
 
+        // Design: System / Hell / Dunkel (checked = current)
+        _miDesign = new ToolStripMenuItem("Design");
+        foreach (ThemeMode mode in Enum.GetValues<ThemeMode>())
+        {
+            var item = new ToolStripMenuItem(ThemeManager.GetModeName(mode)) { Tag = mode };
+            item.Click += (_, _) => ThemeManager.SetMode(mode);
+            _miDesign.DropDownItems.Add(item);
+        }
+        if (_miDesign.DropDown is ToolStripDropDownMenu designMenu)
+        {
+            designMenu.ShowImageMargin = false;
+            designMenu.ShowCheckMargin = true;
+        }
+
         _contextMenu.Items.AddRange(new ToolStripItem[]
         {
             _miScan,
@@ -259,9 +295,32 @@ internal class TrayApplicationContext : ApplicationContext
             new ToolStripSeparator(),
             _miScanResult,
             new ToolStripSeparator(),
+            _miDesign,
             _miHelp,
             _miExit
         });
+
+        ThemeManager.SetMenuItemRole(_miExit, ThemeRole.Danger);
+        ThemeManager.Apply(_contextMenu);
+        UpdateDesignMenu();
+    }
+
+    private void UpdateDesignMenu()
+    {
+        foreach (ToolStripItem item in _miDesign.DropDownItems)
+        {
+            if (item is ToolStripMenuItem mi && mi.Tag is ThemeMode mode)
+                mi.Checked = mode == ThemeManager.Mode;
+        }
+    }
+
+    /// <summary>The design was changed (tray menu or settings window): persist it.</summary>
+    private void OnThemeModeChanged(object? sender, EventArgs e)
+    {
+        UpdateDesignMenu();
+        if (_appSettings.ThemeMode == ThemeManager.Mode) return;
+        _appSettings.ThemeMode = ThemeManager.Mode;
+        _appSettings.Save();
     }
 
     private void OnContextMenuOpening(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -283,16 +342,28 @@ internal class TrayApplicationContext : ApplicationContext
     private void OnTrayMouseUp(object? sender, MouseEventArgs e)
     {
         // Left click opens the menu (like ScanSnap); wait for a possible double click first.
-        if (e.Button == MouseButtons.Left)
+        if (e.Button != MouseButtons.Left)
+            return;
+
+        // NotifyIcon raises MouseUp also for the second click of a double click (after
+        // DoubleClick): that one must not start the timer again, or the menu would open
+        // on top of the settings window.
+        if (_doubleClickUpPending)
         {
-            _leftClickTimer.Stop();
-            _leftClickTimer.Start();
+            _doubleClickUpPending = false;
+            if (Environment.TickCount64 - _doubleClickTicks <= Math.Max(500, SystemInformation.DoubleClickTime * 2))
+                return;
         }
+
+        _leftClickTimer.Stop();
+        _leftClickTimer.Start();
     }
 
     private void OnTrayDoubleClick(object? sender, EventArgs e)
     {
         _leftClickTimer.Stop();
+        _doubleClickUpPending = true;
+        _doubleClickTicks = Environment.TickCount64;
         ShowMainForm();
     }
 
@@ -554,6 +625,7 @@ internal class TrayApplicationContext : ApplicationContext
             _disconnectBalloonShown = false;
             if (!string.IsNullOrEmpty(total.SourceName))
                 _currentScannerName = total.SourceName;
+            UpdatePollInterval();
         }
         return total;
     }
@@ -1529,6 +1601,7 @@ internal class TrayApplicationContext : ApplicationContext
         }
         UpdateTrayVisuals();
         _initialized = true;
+        UpdatePollInterval();
         _pollTimer.Start();
 
         if (Program.ScanOnStartRequested || _pendingButtonScan)
@@ -1552,6 +1625,13 @@ internal class TrayApplicationContext : ApplicationContext
         // Device notifications come in bursts: requery once things settled.
         _deviceChangeTimer.Stop();
         _deviceChangeTimer.Start();
+
+        // A replugged scanner often can't be opened yet when the notification arrives:
+        // retry a few times (restarted by every notification of the burst).
+        _deviceRetryStep = 0;
+        _deviceRetryTimer.Stop();
+        _deviceRetryTimer.Interval = DeviceRetryOffsetsMs[0];
+        _deviceRetryTimer.Start();
     }
 
     private void OnDeviceChangeTimerTick(object? sender, EventArgs e)
@@ -1559,6 +1639,39 @@ internal class TrayApplicationContext : ApplicationContext
         _deviceChangeTimer.Stop();
         LogDiag("WM_DEVICECHANGE: requerying scanner state");
         UpdateConnectionState();
+    }
+
+    private void OnDeviceRetryTimerTick(object? sender, EventArgs e)
+    {
+        _deviceRetryTimer.Stop();
+        try
+        {
+            // Done as soon as the scanner is (still) connected and no disconnect is pending.
+            if (_scannerStatus == ScannerStatus.Connected && _pendingDisconnectCount == 0)
+                return;
+
+            LogDiag($"WM_DEVICECHANGE retry {_deviceRetryStep + 1}/{DeviceRetryOffsetsMs.Length}: forced requery");
+            UpdateConnectionState(forceRefresh: true);
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"OnDeviceRetryTimerTick exception: {ex.Message}");
+        }
+
+        _deviceRetryStep++;
+        if (_deviceRetryStep < DeviceRetryOffsetsMs.Length && !_disposed)
+        {
+            _deviceRetryTimer.Interval = DeviceRetryOffsetsMs[_deviceRetryStep] - DeviceRetryOffsetsMs[_deviceRetryStep - 1];
+            _deviceRetryTimer.Start();
+        }
+    }
+
+    /// <summary>Polls faster while no scanner is connected (the check itself is cheap).</summary>
+    private void UpdatePollInterval()
+    {
+        int interval = _scannerStatus == ScannerStatus.Connected ? PollIntervalMs : DisconnectedPollIntervalMs;
+        if (_pollTimer.Interval != interval)
+            _pollTimer.Interval = interval;
     }
 
     private void UpdateConnectionState(bool forceRefresh = false)
@@ -1619,6 +1732,7 @@ internal class TrayApplicationContext : ApplicationContext
         finally
         {
             _isUpdatingConnection = false;
+            UpdatePollInterval();
         }
     }
 
@@ -1718,6 +1832,10 @@ internal class TrayApplicationContext : ApplicationContext
             _pollTimer.Dispose();
             _deviceChangeTimer.Stop();
             _deviceChangeTimer.Dispose();
+            _deviceRetryTimer.Stop();
+            _deviceRetryTimer.Dispose();
+            ThemeManager.ModeChanged -= OnThemeModeChanged;
+            ThemeManager.Shutdown();
             _progressTimer.Stop();
             _progressTimer.Dispose();
             _leftClickTimer.Stop();
@@ -1797,6 +1915,7 @@ internal class TrayApplicationContext : ApplicationContext
             Controls.AddRange(new Control[] { lbl, btnContinue, btnFinish });
             AcceptButton = btnContinue;
             CancelButton = btnFinish;
+            ThemeManager.Apply(this);
             ResumeLayout(false);
         }
 

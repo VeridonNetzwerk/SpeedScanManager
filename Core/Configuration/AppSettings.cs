@@ -35,6 +35,8 @@ internal class AppSettings
     public bool AutoStart { get; set; } = true;
     /// <summary>User-added applications (max <see cref="MaxCustomApplications"/>).</summary>
     public List<CustomApplication> CustomApplications { get; set; } = new();
+    /// <summary>Design: follow Windows (System), Hell or Dunkel.</summary>
+    public ThemeMode ThemeMode { get; set; } = ThemeMode.System;
 
     /// <summary>Current scan settings (full payload). Null only in files written by old versions.</summary>
     public ScanSettings? ScanSettings { get; set; }
@@ -70,6 +72,8 @@ internal class AppSettings
 
         if (!Enum.IsDefined(settings.CurrentApplicationType))
             settings.CurrentApplicationType = ApplicationType.ScanToFolder;
+        if (!Enum.IsDefined(settings.ThemeMode))
+            settings.ThemeMode = ThemeMode.System;
         if (!Enum.IsDefined(settings.FileNameFormat))
             settings.FileNameFormat = FileNameFormatDialog.FormatMode.Timestamp;
         settings.FolderPath ??= "";

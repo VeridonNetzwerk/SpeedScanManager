@@ -74,21 +74,25 @@ internal class MainForm : Form
     private readonly Button _okButton;
     private readonly Button _cancelButton;
     private readonly Button _applyButton;
-    private readonly Image _downArrowIcon;
-    private readonly Image _upArrowIcon;
+
+    private readonly PictureBox _headerLogo;
+    private readonly ComboBox _themeDropdown;
+    private Bitmap? _headerLogoImage;
 
     private bool _expanded;
     private bool _suppressChange;
     private bool _suppressProfileEvent;
+    private bool _suppressThemeEvent;
 
     // Layout constants (96 dpi; use Px() for values applied after construction)
     private const int ClientWidth = 686;
-    private const int ExpandedClientHeight = 463;
+    private const int ExpandedClientHeight = 503; // Segoe UI needs a little more room than the old 8.25 pt font
     private const int CollapsedClientHeight = 173; // 133 top + 40 footer
-    private const int HeaderHeight = 44; // white logo zone
-    private const int TopPanelHeight = 133; // 44 white + 89 gray
+    private const int HeaderHeight = 44; // logo zone
+    private const int TopPanelHeight = 133; // 44 header + 89 control zone
     private const int BottomBarHeight = 40;
-    private const int SeparatorHeight = 2;
+    private const int SeparatorHeight = 1;
+    private const int HeaderLogoHeight = 26;
     private const int PresetMargin = 18;
     private const int PresetSpacing = 8;
 
@@ -129,34 +133,61 @@ internal class MainForm : Form
         var contentFont = UiFonts.Default;
         var presetFont = UiFonts.Default;
 
-        // === Top panel (gray control zone, contains white header + checkbox + presets + separator) ===
+        // === Top panel (control zone, contains header + checkbox + presets + separator) ===
         _topPanel = new Panel
         {
             Dock = DockStyle.Top,
-            Height = TopPanelHeight,
-            BackColor = Color.FromArgb(235, 235, 235)
+            Height = TopPanelHeight
         };
+        ThemeManager.SetRole(_topPanel, ThemeRole.Secondary);
 
-        // === White logo area ===
+        // === Logo area ===
         var headerPanel = new Panel
         {
             Location = new Point(0, 0),
-            Size = new Size(ClientWidth, HeaderHeight),
-            BackColor = Color.White
+            Size = new Size(ClientWidth, HeaderHeight)
         };
+        ThemeManager.SetRole(headerPanel, ThemeRole.Header);
 
         var textBmp = AppResources.TextLogo;
-        int hdrTextH = 26;
-        int hdrTextW = (int)(textBmp.Width * (hdrTextH / (double)textBmp.Height));
-        var pbHeaderLogo = new PictureBox
+        int hdrTextW = (int)(textBmp.Width * (HeaderLogoHeight / (double)textBmp.Height));
+        _headerLogo = new PictureBox
         {
-            Image = textBmp,
             SizeMode = PictureBoxSizeMode.Zoom,
             AutoSize = false,
             Location = new Point(16, 9),
-            Size = new Size(hdrTextW, hdrTextH)
+            Size = new Size(hdrTextW, HeaderLogoHeight)
         };
-        headerPanel.Controls.Add(pbHeaderLogo);
+        headerPanel.Controls.Add(_headerLogo);
+
+        // === Design selection (System / Hell / Dunkel), applied immediately ===
+        const int themeDropdownWidth = 110;
+        _themeDropdown = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Font = contentFont,
+            Size = new Size(themeDropdownWidth, 24),
+            Location = new Point(ClientWidth - 18 - themeDropdownWidth, 10)
+        };
+        foreach (ThemeMode mode in Enum.GetValues<ThemeMode>())
+            _themeDropdown.Items.Add(ThemeManager.GetModeName(mode));
+        _themeDropdown.SelectedIndex = (int)ThemeManager.Mode;
+        _themeDropdown.SelectedIndexChanged += (s, e) =>
+        {
+            if (!_suppressThemeEvent && _themeDropdown.SelectedIndex >= 0)
+                ThemeManager.SetMode((ThemeMode)_themeDropdown.SelectedIndex);
+        };
+        var themeLabel = new Label
+        {
+            Text = "Design:",
+            AutoSize = true,
+            Font = contentFont
+        };
+        int themeLabelWidth = TextRenderer.MeasureText(themeLabel.Text, ThemeFonts.Regular).Width;
+        themeLabel.Location = new Point(_themeDropdown.Left - 6 - themeLabelWidth, 14);
+        ThemeManager.SetRole(themeLabel, ThemeRole.Muted);
+        headerPanel.Controls.Add(themeLabel);
+        headerPanel.Controls.Add(_themeDropdown);
         _topPanel.Controls.Add(headerPanel);
 
         // === Quick-Menü checkbox (in gray zone) ===
@@ -202,8 +233,7 @@ internal class MainForm : Form
             RowCount = 1,
             RowStyles = { new RowStyle(SizeType.Percent, 100f) },
             Margin = Padding.Empty,
-            Padding = Padding.Empty,
-            BackColor = Color.FromArgb(235, 235, 235)
+            Padding = Padding.Empty
         };
 
         _btnRecommended = CreatePresetButton("Empfohlen", 0, 0, presetFont);
@@ -233,9 +263,9 @@ internal class MainForm : Form
         _separatorPanel = new Panel
         {
             Location = new Point(0, 124), // still at bottom of top panel
-            Size = new Size(ClientWidth, SeparatorHeight),
-            BackColor = Color.FromArgb(160, 175, 195)
+            Size = new Size(ClientWidth, SeparatorHeight)
         };
+        ThemeManager.SetRole(_separatorPanel, ThemeRole.Divider);
         _topPanel.Controls.Add(_separatorPanel);
 
         // === Profile dropdown (shown in 4th column when Quick-Menü is off) ===
@@ -259,8 +289,7 @@ internal class MainForm : Form
         _profileSelectorPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Visible = false,
-            BackColor = Color.FromArgb(235, 235, 235)
+            Visible = false
         };
 
         RefreshProfileDropdown();
@@ -279,7 +308,7 @@ internal class MainForm : Form
                 for (int i = 0; i < 7; i++) x += widths[i];
                 int colWidth = widths.Length > 7 ? widths[7] : Px(100);
                 int presetTop = _presetPanel.Top;
-                _profileLabel.Location = new Point(x, presetTop - Px(13));
+                _profileLabel.Location = new Point(x, presetTop - Px(18));
                 _profileDropdown.Location = new Point(x, presetTop + Px(2));
                 _profileDropdown.Width = colWidth;
                 _profileDropdown.BringToFront();
@@ -296,14 +325,11 @@ internal class MainForm : Form
             Font = contentFont,
             Appearance = TabAppearance.FlatButtons,
             DrawMode = TabDrawMode.OwnerDrawFixed,
-            // Normal lets WinForms size every tab independently from its own text.
-            // Padding.X must be large enough to account for the 16px icon drawn
-            // in TabControl_DrawItem: icon at x+6 (16px) + 3px gap + 5px right
-            // padding = 30px total beyond text. WinForms adds Padding.X on both
-            // sides, so Padding.X=16 gives textWidth+32px per tab.
+            // Normal lets WinForms size every tab independently from its own text
+            // (plus the ImageList width). The tab strip itself is painted by the theme
+            // (TabControlSubclass), each tab by TabControl_DrawItem.
             SizeMode = TabSizeMode.Normal,
-            BackColor = Color.FromArgb(225, 225, 225),
-            Padding = new Point(18, 2)
+            Padding = new Point(20, 5)
         };
         _tabControl.DrawItem += TabControl_DrawItem;
         _tabControl.Selecting += TabControl_Selecting;
@@ -335,8 +361,7 @@ internal class MainForm : Form
         {
             var page = new TabPage(name)
             {
-                ImageKey = key,
-                BackColor = Color.White
+                ImageKey = key
             };
             _tabControl.TabPages.Add(page);
         }
@@ -378,78 +403,59 @@ internal class MainForm : Form
         _bottomPanel = new Panel
         {
             Dock = DockStyle.Bottom,
-            Height = BottomBarHeight,
-            BackColor = Color.FromArgb(235, 235, 235)
+            Height = BottomBarHeight
         };
+        ThemeManager.SetRole(_bottomPanel, ThemeRole.Secondary);
         _bottomPanel.Paint += (s, e) =>
         {
-            using var pen = new Pen(Color.FromArgb(180, 180, 180));
+            using var pen = new Pen(ThemeManager.Current.Border);
             e.Graphics.DrawLine(pen, 0, 0, _bottomPanel.Width, 0);
         };
-
-        _downArrowIcon = TabIcons.CreateDownArrowIcon();
-        _upArrowIcon = TabIcons.CreateUpArrowIcon();
 
         _detailButton = new Button
         {
             Text = "Detail",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Size = new Size(125, 21),
+            Size = new Size(125, 28),
             Font = contentFont,
-            Image = _downArrowIcon,
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
-            Padding = new Padding(2, 0, 4, 0),
             Dock = DockStyle.Fill,
-            Margin = new Padding(18, 9, 0, 9)
+            Margin = new Padding(18, 6, 0, 6)
         };
+        ThemeManager.SetGlyph(_detailButton, Glyph.ChevronDown);
         _detailButton.Click += (s, e) => ToggleExpanded();
 
         _okButton = new Button
         {
             Text = "OK",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Size = new Size(116, 21),
+            Size = new Size(116, 28),
             Font = contentFont,
-            Image = TabIcons.CreateCheckIcon(),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
             Dock = DockStyle.Fill,
-            Margin = new Padding(0, 9, 0, 9)
+            Margin = new Padding(8, 6, 0, 6)
         };
+        ThemeManager.SetRole(_okButton, ThemeRole.Primary);
+        ThemeManager.SetGlyph(_okButton, Glyph.Check);
         _okButton.Click += (s, e) => { if (ApplySettings()) Close(); };
 
         _cancelButton = new Button
         {
             Text = "Abbrechen",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Size = new Size(116, 21),
+            Size = new Size(116, 28),
             Font = contentFont,
-            Image = TabIcons.CreateCrossIcon(),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
             Dock = DockStyle.Fill,
-            Margin = new Padding(0, 9, 0, 9)
+            Margin = new Padding(8, 6, 0, 6)
         };
+        ThemeManager.SetGlyph(_cancelButton, Glyph.Cross);
         _cancelButton.Click += (s, e) => { CancelSettings(); Close(); };
 
         _applyButton = new Button
         {
             Text = "Übernehmen",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Size = new Size(116, 21),
+            Size = new Size(116, 28),
             Font = contentFont,
             Enabled = false,
-            Image = TabIcons.CreateApplyIcon(),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
             Dock = DockStyle.Fill,
-            Margin = new Padding(0, 9, 18, 9)
+            Margin = new Padding(8, 6, 0, 6)
         };
+        ThemeManager.SetGlyph(_applyButton, Glyph.Apply);
         _applyButton.Click += (s, e) => ApplySettings();
 
         // Wire tab content changes to enable Apply button
@@ -471,16 +477,15 @@ internal class MainForm : Form
             RowCount = 1,
             RowStyles = { new RowStyle(SizeType.Percent, 100f) },
             Margin = Padding.Empty,
-            Padding = Padding.Empty,
-            BackColor = Color.FromArgb(235, 235, 235)
+            Padding = new Padding(0, 1, 0, 0) // keep the divider line drawn by _bottomPanel visible
         };
 
         bottomTable.Controls.Add(_detailButton, 0, 0);
-        bottomTable.Controls.Add(new Panel { BackColor = Color.FromArgb(235, 235, 235), Dock = DockStyle.Fill }, 1, 0);
+        bottomTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 1, 0);
         bottomTable.Controls.Add(_okButton, 2, 0);
         bottomTable.Controls.Add(_cancelButton, 3, 0);
         bottomTable.Controls.Add(_applyButton, 4, 0);
-        bottomTable.Controls.Add(new Panel { BackColor = Color.FromArgb(235, 235, 235), Dock = DockStyle.Fill }, 5, 0);
+        bottomTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 5, 0);
 
         _bottomPanel.Controls.Add(bottomTable);
 
@@ -499,8 +504,67 @@ internal class MainForm : Form
         OnQuickMenuToggled();
         UpdateApplyButton();
 
+        ThemeManager.Apply(this);
+        UpdateHeaderLogo();
+        ThemeManager.ThemeChanged += OnThemeChanged;
+        ThemeManager.ModeChanged += OnThemeModeChanged;
+
         ResumeLayout(false);
         PerformLayout();
+    }
+
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        UpdateHeaderLogo();
+        UpdatePresetHighlight();
+    }
+
+    private void OnThemeModeChanged(object? sender, EventArgs e)
+    {
+        _suppressThemeEvent = true;
+        try { _themeDropdown.SelectedIndex = (int)ThemeManager.Mode; }
+        finally { _suppressThemeEvent = false; }
+    }
+
+    /// <summary>
+    /// Logo wordmark pre-scaled to its display size (crisp at any DPI); in dark mode it is
+    /// drawn in white instead of blue for contrast.
+    /// </summary>
+    private void UpdateHeaderLogo()
+    {
+        var src = AppResources.TextLogo;
+        int h = Px(HeaderLogoHeight);
+        int w = Math.Max(1, (int)Math.Round(src.Width * (h / (double)src.Height)));
+        var bmp = new Bitmap(w, h, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(bmp))
+        {
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.Clear(Color.Transparent);
+            if (ThemeManager.IsDark)
+            {
+                // Keep the shape (alpha), replace the color.
+                using var ia = new System.Drawing.Imaging.ImageAttributes();
+                ia.SetColorMatrix(new System.Drawing.Imaging.ColorMatrix(new[]
+                {
+                    new float[] { 0, 0, 0, 0, 0 },
+                    new float[] { 0, 0, 0, 0, 0 },
+                    new float[] { 0, 0, 0, 0, 0 },
+                    new float[] { 0, 0, 0, 1, 0 },
+                    new float[] { 0.95f, 0.95f, 0.97f, 0, 1 }
+                }));
+                g.DrawImage(src, new Rectangle(0, 0, w, h), 0, 0, src.Width, src.Height, GraphicsUnit.Pixel, ia);
+            }
+            else
+            {
+                g.DrawImage(src, new Rectangle(0, 0, w, h));
+            }
+        }
+        var old = _headerLogoImage;
+        _headerLogoImage = bmp;
+        _headerLogo.Image = bmp;
+        old?.Dispose();
     }
 
     /// <summary>
@@ -519,13 +583,11 @@ internal class MainForm : Form
         return new Button
         {
             Text = text,
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
             Location = new Point(x, 0),
             Size = new Size(width, 23),
             Font = font,
             TextAlign = ContentAlignment.MiddleCenter,
-            Margin = new Padding(0, 1, 0, 1)
+            Margin = new Padding(0, 0, 0, 0)
         };
     }
 
@@ -585,14 +647,9 @@ internal class MainForm : Form
             _ => _btnCustom
         };
 
+        // The active preset is shown as primary (accent) button.
         foreach (var b in new[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom })
-        {
-            b.BackColor = SystemColors.Control;
-            b.ForeColor = SystemColors.ControlText;
-        }
-
-        // Highlight active button with subtle blue tint
-        active.BackColor = Color.FromArgb(220, 230, 245);
+            ThemeManager.SetRole(b, b == active ? ThemeRole.Primary : ThemeRole.Secondary);
     }
 
     private void OnQuickMenuToggled()
@@ -738,7 +795,7 @@ internal class MainForm : Form
         {
             ClientSize = new Size(Px(ClientWidth), Px(ExpandedClientHeight));
             _detailButton.Text = "Ausblenden";
-            _detailButton.Image = _upArrowIcon;
+            ThemeManager.SetGlyph(_detailButton, Glyph.ChevronUp);
             _tabControl.Visible = true;
 
             // When Quick-Menü is on, never show the Anwendung tab
@@ -749,7 +806,7 @@ internal class MainForm : Form
         {
             ClientSize = new Size(Px(ClientWidth), Px(CollapsedClientHeight));
             _detailButton.Text = "Detail";
-            _detailButton.Image = _downArrowIcon;
+            ThemeManager.SetGlyph(_detailButton, Glyph.ChevronDown);
             _tabControl.Visible = false;
         }
     }
@@ -760,8 +817,6 @@ internal class MainForm : Form
         {
             Dock = DockStyle.Fill,
             Margin = new Padding(8),
-            BackColor = Color.White,
-            BorderStyle = BorderStyle.FixedSingle,
             Padding = new Padding(0)
         };
         innerPanel.Controls.Add(content);
@@ -966,71 +1021,69 @@ internal class MainForm : Form
         }
     }
 
+    private static readonly Glyph[] TabGlyphs =
+    {
+        Glyph.Apps, Glyph.Folder, Glyph.Scanner, Glyph.FileType, Glyph.Paper, Glyph.Compress
+    };
+
+    /// <summary>
+    /// Draws one tab (called by the themed tab strip): rounded pill for the selected / hovered
+    /// tab, monochrome glyph and text in the theme colors.
+    /// </summary>
     private void TabControl_DrawItem(object? sender, DrawItemEventArgs e)
     {
         if (e.Index < 0 || e.Index >= _tabControl.TabPages.Count) return;
 
+        var p = ThemeManager.Current;
+        var g = e.Graphics;
         var page = _tabControl.TabPages[e.Index];
-        var tabRect = _tabControl.GetTabRect(e.Index);
+        var tabRect = e.Bounds;
         bool isSelected = _tabControl.SelectedIndex == e.Index;
+        // Anwendung is not available while the Quick-Menü is on
+        bool isDisabled = e.Index == 0 && _quickMenuCheckBox.Checked;
+        bool isHot = !isDisabled && (e.State & DrawItemState.HotLight) != 0;
 
-        // Background
-        Color bgColor = isSelected ? Color.White : Color.FromArgb(225, 225, 225);
-        using var brush = new SolidBrush(bgColor);
-        e.Graphics.FillRectangle(brush, tabRect);
-
-        // Separator line between tabs (right edge, except last tab)
-        if (e.Index < _tabControl.TabPages.Count - 1 && !isSelected)
+        if (isSelected || isHot)
         {
-            using var pen = new Pen(Color.FromArgb(190, 195, 200));
-            e.Graphics.DrawLine(pen, tabRect.Right - 1, tabRect.Top + 4, tabRect.Right - 1, tabRect.Bottom - 4);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            var pill = RectangleF.Inflate(tabRect, -Px(2), -Px(3));
+            using var path = ThemeGlyphs.Rounded(pill, Px(4));
+            using var brush = new SolidBrush(isSelected ? p.Selected : p.Hover);
+            g.FillPath(brush, path);
         }
 
-        // Blue accent line on top of selected tab
-        if (isSelected)
-        {
-            using var pen = new Pen(Color.FromArgb(45, 90, 170), 2f);
-            e.Graphics.DrawLine(pen, tabRect.Left, tabRect.Top, tabRect.Right, tabRect.Top);
-        }
+        Color textColor = isDisabled ? ThemePalette.Blend(p.TextMuted, _tabControl.Parent?.BackColor ?? p.Background, 0.5f)
+                        : isSelected ? p.Text
+                        : isHot ? p.TextSecondary
+                        : p.TextMuted;
 
-        // Icon (ImageList.Draw avoids creating a new Bitmap on every paint)
+        // Glyph at x+10 (16px), text starts at x+32; the tab width includes the ImageList image.
         int iconSize = Px(16);
-        if (e.Index < _tabImageList.Images.Count)
+        if (e.Index < TabGlyphs.Length)
         {
-            int iconY = tabRect.Y + (tabRect.Height - iconSize) / 2;
-            _tabImageList.Draw(e.Graphics, tabRect.X + Px(6), iconY, iconSize, iconSize, e.Index);
+            var iconRect = new RectangleF(tabRect.X + Px(10), tabRect.Y + (tabRect.Height - iconSize) / 2f, iconSize, iconSize);
+            ThemeGlyphs.Draw(g, TabGlyphs[e.Index], iconRect, isSelected ? p.Accent : textColor);
         }
 
-        // Text — gray out Anwendung tab when Quick-Menü is on
-        bool isDisabled = (e.Index == 0 && _quickMenuCheckBox.Checked);
-        Color textColor = isDisabled ? Color.FromArgb(160, 160, 160)
-                       : isSelected ? Color.Black : Color.FromArgb(90, 95, 105);
-        // Icon at x+6 (16px wide), text starts at x+25, right padding 5px.
-        // Keep the text rectangle inside the actual, individually sized tab.
-        int textLeft = tabRect.Left + Px(25);
-        int textRightPadding = Px(5);
-        var textRect = new Rectangle(
-            textLeft,
-            tabRect.Top,
-            Math.Max(0, tabRect.Right - textLeft - textRightPadding),
-            tabRect.Height);
+        int textLeft = tabRect.Left + Px(32);
+        var textRect = new Rectangle(textLeft, tabRect.Top, Math.Max(0, tabRect.Right - textLeft - Px(4)), tabRect.Height);
         // Same font as TabControl.Font, which WinForms uses to size the tabs
-        TextRenderer.DrawText(e.Graphics, page.Text, _tabControl.Font, textRect, textColor,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+        TextRenderer.DrawText(g, page.Text, _tabControl.Font, textRect, textColor,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
     }
 
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
+            ThemeManager.ThemeChanged -= OnThemeChanged;
+            ThemeManager.ModeChanged -= OnThemeModeChanged;
             _tabImageList.Dispose();
             foreach (var img in _ownedImages)
                 img.Dispose();
-            _downArrowIcon.Dispose();
-            _upArrowIcon.Dispose();
-            _okButton.Image?.Dispose();
-            _cancelButton.Image?.Dispose();
-            _applyButton.Image?.Dispose();
+            _headerLogo.Image = null;
+            _headerLogoImage?.Dispose();
         }
         base.Dispose(disposing);
     }
@@ -1038,6 +1091,7 @@ internal class MainForm : Form
 
 /// <summary>
 /// Shared fonts for all settings UI (created once instead of per control).
+/// ThemeManager.Apply maps them to Segoe UI (see <see cref="ThemeFonts.Map"/>).
 /// </summary>
 internal static class UiFonts
 {
@@ -1047,32 +1101,12 @@ internal static class UiFonts
 }
 
 /// <summary>
-/// Reusable gradient info bar for tab content panels.
-/// Paints a blue gradient from (80,110,160) to (140,165,200) with white bold text.
+/// Info bar at the top of tab content panels and dialogs. Formerly a blue gradient; now
+/// the flat themed banner (<see cref="ThemedBanner"/>).
 /// </summary>
-internal class GradientInfoBar : Panel
+internal class GradientInfoBar : ThemedBanner
 {
-    private readonly string _text;
-
-    public GradientInfoBar(string text)
+    public GradientInfoBar(string text) : base(text)
     {
-        _text = text;
-        Dock = DockStyle.Top;
-        Height = 18;
-        BackColor = Color.FromArgb(105, 135, 175);
-    }
-
-    protected override void OnPaint(PaintEventArgs e)
-    {
-        var rect = new Rectangle(0, 0, Width, Height);
-        using var brush = new LinearGradientBrush(rect,
-            Color.FromArgb(105, 135, 175),
-            Color.FromArgb(115, 145, 185),
-            LinearGradientMode.Vertical);
-        e.Graphics.FillRectangle(brush, rect);
-
-        var textRect = new Rectangle(7, 0, Width - 10, Height);
-        TextRenderer.DrawText(e.Graphics, _text, UiFonts.Bold, textRect, Color.White,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
     }
 }

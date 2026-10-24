@@ -68,7 +68,6 @@ internal class ApplicationTabContent : Panel
 
         var font = UiFonts.Default;
         Dock = DockStyle.Fill;
-        BackColor = Color.White;
 
         // === Info bar ===
         var infoBar = new GradientInfoBar("Wählen Sie eine Anwendung.");
@@ -138,11 +137,9 @@ internal class ApplicationTabContent : Panel
             Location = new Point(176, 112),
             Size = new Size(160, 26),
             Font = font,
-            Image = TabIcons.CreateManageIcon(),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
             Padding = new Padding(2, 0, 4, 0)
         };
+        ThemeManager.SetGlyph(_btnManage, Glyph.PlusMinus);
         _btnManage.Click += (s, e) => OpenManageDialog();
 
         Controls.AddRange(new Control[]

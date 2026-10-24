@@ -113,7 +113,6 @@ internal class FileSizeTabContent : Panel
         var smallFont = UiFonts.Default;
         var boldFont = UiFonts.Bold;
         Dock = DockStyle.Fill;
-        BackColor = Color.White;
 
         // === Info bar ===
         var infoBar = new GradientInfoBar("Geben Sie die Komprimierungsrate an (nur für Farb- und Graustufenbilder).");
@@ -121,7 +120,6 @@ internal class FileSizeTabContent : Panel
         // === Centered container ===
         _centerPanel = new Panel
         {
-            BackColor = Color.White,
             Size = new Size(GroupWidth, GroupHeight),
             Anchor = AnchorStyles.None
         };
@@ -152,7 +150,6 @@ internal class FileSizeTabContent : Panel
         {
             Location = new Point(WedgeX, TopWedgeY),
             Size = new Size(TopWedgeWidth, WedgeHeight),
-            BackColor = Color.White,
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
@@ -176,32 +173,25 @@ internal class FileSizeTabContent : Panel
             Location = new Point(CompressionLabelX, CompressionLabelY),
             AutoSize = true,
             Font = smallFont,
-            ForeColor = Color.FromArgb(80, 80, 80),
             BackColor = Color.Transparent
         };
+        ThemeManager.SetRole(lblCompression, ThemeRole.Muted);
         _centerPanel.Controls.Add(lblCompression);
 
-        // 3D frame around slider — like selected category tab
+        // Card around the slider (the slider sits inside it)
         var sliderFrame = new Panel
         {
             Location = new Point(SliderX - 2, SliderY - 2),
             Size = new Size(SliderWidth + 4, SliderHeight + 4),
-            BackColor = Color.White,
-            BorderStyle = BorderStyle.Fixed3D,
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
-        sliderFrame.Paint += (sender, e) =>
-        {
-            // Blue accent line on top — like selected category tab
-            using var accentPen = new Pen(Color.FromArgb(45, 90, 170), 2f);
-            e.Graphics.DrawLine(accentPen, 0, 0, sliderFrame.ClientSize.Width - 1, 0);
-        };
+        ThemeManager.SetRole(sliderFrame, ThemeRole.Card);
         _centerPanel.Controls.Add(sliderFrame);
 
         _slider = new TrackBar
         {
-            Location = new Point(SliderX, SliderY),
+            Location = new Point(2, 2),
             Size = new Size(SliderWidth, SliderHeight),
             Minimum = 1,
             Maximum = 5,
@@ -210,26 +200,18 @@ internal class FileSizeTabContent : Panel
             SmallChange = 1,
             LargeChange = 1,
             TickStyle = TickStyle.BottomRight,
-            BackColor = Color.White,
             Margin = Padding.Empty
         };
-        _centerPanel.Controls.Add(_slider);
+        sliderFrame.Controls.Add(_slider);
 
         _numBox = new Panel
         {
             Location = new Point(NumberX, NumberY),
             Size = new Size(NumberWidth, NumberHeight),
-            BackColor = Color.White,
-            BorderStyle = BorderStyle.Fixed3D,
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
-        _numBox.Paint += (sender, e) =>
-        {
-            // Blue accent line on top — like selected category tab
-            using var accentPen = new Pen(Color.FromArgb(45, 90, 170), 2f);
-            e.Graphics.DrawLine(accentPen, 0, 0, _numBox.ClientSize.Width - 1, 0);
-        };
+        ThemeManager.SetRole(_numBox, ThemeRole.Card);
         _centerPanel.Controls.Add(_numBox);
 
         // === Separator line between Komprimierung and Dateigröße ===
@@ -237,10 +219,10 @@ internal class FileSizeTabContent : Panel
         {
             Location = new Point(24, 57),
             Size = new Size(86, 1),
-            BackColor = Color.FromArgb(145, 145, 145),
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
+        ThemeManager.SetRole(_separatorLine, ThemeRole.Divider);
         _centerPanel.Controls.Add(_separatorLine);
 
         _numDisplay = new Label
@@ -248,9 +230,8 @@ internal class FileSizeTabContent : Panel
             Dock = DockStyle.Fill,
             Text = "3",
             Font = UiFonts.Large,
-            ForeColor = Color.FromArgb(35, 35, 35),
+            BackColor = Color.Transparent,
             TextAlign = ContentAlignment.MiddleCenter,
-            BackColor = Color.White,
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
@@ -296,9 +277,9 @@ internal class FileSizeTabContent : Panel
             Location = new Point(FileSizeLabelX, FileSizeLabelY),
             AutoSize = true,
             Font = smallFont,
-            ForeColor = Color.FromArgb(80, 80, 80),
             BackColor = Color.Transparent
         };
+        ThemeManager.SetRole(lblFileSize, ThemeRole.Muted);
         _centerPanel.Controls.Add(lblFileSize);
 
         // === Row 5: (Groß) + bottom wedge + (Klein) ===
@@ -316,7 +297,6 @@ internal class FileSizeTabContent : Panel
         {
             Location = new Point(WedgeX, BottomWedgeY),
             Size = new Size(BottomWedgeWidth, WedgeHeight),
-            BackColor = Color.White,
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
@@ -339,7 +319,6 @@ internal class FileSizeTabContent : Panel
             Text = "Normal",
             AutoSize = true,
             Font = UiFonts.Default,
-            ForeColor = Color.FromArgb(35, 35, 35),
             BackColor = Color.Transparent,
             Margin = Padding.Empty,
             Padding = Padding.Empty
@@ -354,15 +333,14 @@ internal class FileSizeTabContent : Panel
             AutoSize = false,
             Size = new Size(GroupWidth, 30),
             Font = font,
-            ForeColor = Color.FromArgb(180, 60, 40),
-            BackColor = Color.White,
             Visible = false
         };
+        ThemeManager.SetRole(_lblDisabledHint, ThemeRole.Danger);
 
         Controls.AddRange(new Control[] { infoBar, _centerPanel, _lblDisabledHint });
 
-        // Ensure slider and number box are always on top of decorative panels
-        _slider.BringToFront();
+        // Ensure the slider card and number box are always on top of decorative panels
+        sliderFrame.BringToFront();
         _numBox.BringToFront();
 
         Dock = DockStyle.Fill;
@@ -399,10 +377,11 @@ internal class FileSizeTabContent : Panel
         using var path = new GraphicsPath();
         path.AddPolygon(points);
 
+        var p = ThemeManager.Current;
         using var brush = new LinearGradientBrush(
             bounds,
-            Color.FromArgb(255, 239, 239),
-            Color.FromArgb(211, 67, 48),
+            ThemePalette.Blend(p.Danger, p.Background, 0.85f),
+            p.Danger,
             LinearGradientMode.Horizontal);
 
         g.FillPath(brush, path);
@@ -428,10 +407,11 @@ internal class FileSizeTabContent : Panel
         using var path = new GraphicsPath();
         path.AddPolygon(points);
 
+        var p = ThemeManager.Current;
         using var brush = new LinearGradientBrush(
             bounds,
-            Color.FromArgb(38, 125, 220),
-            Color.FromArgb(220, 239, 255),
+            p.Accent,
+            ThemePalette.Blend(p.Accent, p.Background, 0.85f),
             LinearGradientMode.Horizontal);
 
         g.FillPath(brush, path);

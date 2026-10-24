@@ -31,80 +31,76 @@ internal static class TrayIcons
     }
 
     /// <summary>
-    /// Normal "connected" icon: the app logo with a green status dot.
+    /// Size the tray shows its icons at (16 px at 100 %, 20/24/32 px at higher scaling).
+    /// The icons are rendered at exactly this size so the shell doesn't rescale them (crisp).
     /// </summary>
-    public static Icon CreateConnectedIcon()
+    private static int TraySize => Math.Max(16, SystemInformation.SmallIconSize.Width);
+
+    /// <summary>
+    /// Draws on a transparent bitmap of <see cref="TraySize"/> through a 32x32 design grid.
+    /// </summary>
+    private static Icon CreateTrayIcon(Action<Graphics> draw)
     {
-        using var bmp = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        int size = TraySize;
+        using var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bmp);
         g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
         g.Clear(Color.Transparent);
-
-        // Draw the logo scaled to fit 32x32
-        DrawLogoCentered(g, 28);
-
-        // Status LED (green dot) in bottom-right corner
-        using var ledBrush = new SolidBrush(Color.FromArgb(80, 200, 80));
-        g.FillEllipse(ledBrush, 23, 23, 7, 7);
-        using var ledPen = new Pen(Color.White, 1.5f);
-        g.DrawEllipse(ledPen, 23, 23, 7, 7);
-
+        g.ScaleTransform(size / 32f, size / 32f);
+        draw(g);
         return IconFromBitmap(bmp);
     }
+
+    /// <summary>
+    /// Normal "connected" icon: the app logo with a green status dot.
+    /// </summary>
+    public static Icon CreateConnectedIcon() => CreateTrayIcon(g =>
+    {
+        DrawLogoCentered(g, 30);
+
+        // Status LED (green dot) in bottom-right corner
+        using var ledBrush = new SolidBrush(Color.FromArgb(35, 165, 90));
+        g.FillEllipse(ledBrush, 20.5f, 20.5f, 10f, 10f);
+        using var ledPen = new Pen(Color.White, 2f);
+        g.DrawEllipse(ledPen, 20.5f, 20.5f, 10f, 10f);
+    });
 
     /// <summary>
     /// "Scanning" icon: the app logo with an orange status dot (scan / post-scan flow running).
     /// </summary>
-    public static Icon CreateScanningIcon()
+    public static Icon CreateScanningIcon() => CreateTrayIcon(g =>
     {
-        using var bmp = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-        using var g = Graphics.FromImage(bmp);
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.Clear(Color.Transparent);
-
-        DrawLogoCentered(g, 28);
+        DrawLogoCentered(g, 30);
 
         using var ledBrush = new SolidBrush(Color.FromArgb(245, 150, 30));
-        g.FillEllipse(ledBrush, 21, 21, 10, 10);
-        using var ledPen = new Pen(Color.White, 1.5f);
-        g.DrawEllipse(ledPen, 21, 21, 10, 10);
-
-        return IconFromBitmap(bmp);
-    }
+        g.FillEllipse(ledBrush, 19.5f, 19.5f, 11.5f, 11.5f);
+        using var ledPen = new Pen(Color.White, 2f);
+        g.DrawEllipse(ledPen, 19.5f, 19.5f, 11.5f, 11.5f);
+    });
 
     /// <summary>
     /// "Disconnected" icon: the app logo dimmed with a red slash overlay.
     /// </summary>
-    public static Icon CreateDisconnectedIcon()
+    public static Icon CreateDisconnectedIcon() => CreateTrayIcon(g =>
     {
-        using var bmp = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-        using var g = Graphics.FromImage(bmp);
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.Clear(Color.Transparent);
-
-        // Draw the logo dimmed
-        DrawLogoCentered(g, 28);
-        // Apply dimming overlay
-        using (var dimBrush = new SolidBrush(Color.FromArgb(100, 200, 200, 200)))
-        {
-            g.FillRectangle(dimBrush, 0, 0, 32, 32);
-        }
+        // Draw the logo dimmed (gray, slightly transparent: visible on light and dark taskbars)
+        DrawLogoCentered(g, 30, dimmed: true);
 
         // Red diagonal slash (the "no signal" overlay)
-        using var slashPen = new Pen(Color.FromArgb(220, 40, 40), 3f)
+        using var slashPen = new Pen(Color.FromArgb(218, 55, 60), 3.5f)
         {
             StartCap = LineCap.Round,
             EndCap = LineCap.Round
         };
         g.DrawLine(slashPen, 4, 28, 28, 4);
-
-        return IconFromBitmap(bmp);
-    }
+    });
 
     /// <summary>
     /// Draws the app logo centered in the bitmap at the given max size.
     /// </summary>
-    private static void DrawLogoCentered(Graphics g, int maxSize)
+    private static void DrawLogoCentered(Graphics g, int maxSize, bool dimmed = false)
     {
         try
         {
@@ -123,7 +119,23 @@ internal static class TrayIcons
             }
             int x = (32 - w) / 2;
             int y = (32 - h) / 2;
-            g.DrawImage(logo, new Rectangle(x, y, w, h));
+            if (!dimmed)
+            {
+                g.DrawImage(logo, new Rectangle(x, y, w, h));
+            }
+            else
+            {
+                using var ia = new System.Drawing.Imaging.ImageAttributes();
+                ia.SetColorMatrix(new System.Drawing.Imaging.ColorMatrix(new[]
+                {
+                    new[] { 0.3f, 0.3f, 0.3f, 0f, 0f },
+                    new[] { 0.59f, 0.59f, 0.59f, 0f, 0f },
+                    new[] { 0.11f, 0.11f, 0.11f, 0f, 0f },
+                    new[] { 0f, 0f, 0f, 0.85f, 0f },
+                    new[] { 0.25f, 0.25f, 0.25f, 0f, 1f }
+                }));
+                g.DrawImage(logo, new Rectangle(x, y, w, h), 0, 0, logo.Width, logo.Height, GraphicsUnit.Pixel, ia);
+            }
         }
         catch
         {
@@ -161,6 +173,8 @@ internal static class TrayIcons
             using var bmp = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using var g = Graphics.FromImage(bmp);
             g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.Clear(Color.Transparent);
             int w = logo.Width, h = logo.Height;
             if (w > h) { h = (int)(h * (28.0 / w)); w = 28; }

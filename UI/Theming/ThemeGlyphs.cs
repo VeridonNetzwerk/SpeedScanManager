@@ -1,0 +1,211 @@
+using System.Drawing;
+using System.Drawing.Drawing2D;
+
+namespace SpeedScanManager;
+
+/// <summary>Monochrome line glyphs (Discord-like icons) drawn as vectors in any color and size.</summary>
+internal enum Glyph
+{
+    None,
+    Apps,
+    Folder,
+    Scanner,
+    FileType,
+    Paper,
+    Compress,
+    Check,
+    Cross,
+    Apply,
+    ChevronDown,
+    ChevronUp,
+    ChevronRight,
+    Gear,
+    PlusMinus,
+    Carrier,
+    Ruler,
+    Mail,
+    Printer,
+    Palette
+}
+
+internal static class ThemeGlyphs
+{
+    /// <summary>Draws <paramref name="glyph"/> into <paramref name="bounds"/> (designed on a 16x16 grid).</summary>
+    public static void Draw(Graphics g, Glyph glyph, RectangleF bounds, Color color)
+    {
+        if (glyph == Glyph.None || bounds.Width <= 0 || bounds.Height <= 0) return;
+
+        var state = g.Save();
+        try
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            float s = Math.Min(bounds.Width, bounds.Height) / 16f;
+            g.TranslateTransform(bounds.X + (bounds.Width - 16 * s) / 2f, bounds.Y + (bounds.Height - 16 * s) / 2f);
+            g.ScaleTransform(s, s);
+
+            using var pen = new Pen(color, 1.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+            using var thick = new Pen(color, 2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+            using var brush = new SolidBrush(color);
+            DrawCore(g, glyph, pen, thick, brush);
+        }
+        finally
+        {
+            g.Restore(state);
+        }
+    }
+
+    /// <summary>Renders the glyph into a new 32-bit bitmap (for APIs that need an Image).</summary>
+    public static Bitmap CreateBitmap(Glyph glyph, int size, Color color)
+    {
+        var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using var g = Graphics.FromImage(bmp);
+        g.Clear(Color.Transparent);
+        Draw(g, glyph, new RectangleF(0, 0, size, size), color);
+        return bmp;
+    }
+
+    private static void DrawCore(Graphics g, Glyph glyph, Pen pen, Pen thick, Brush brush)
+    {
+        switch (glyph)
+        {
+            case Glyph.Apps:
+                using (var p = Rounded(new RectangleF(2f, 2f, 5f, 5f), 1.5f)) g.DrawPath(pen, p);
+                using (var p = Rounded(new RectangleF(9f, 2f, 5f, 5f), 1.5f)) g.DrawPath(pen, p);
+                using (var p = Rounded(new RectangleF(2f, 9f, 5f, 5f), 1.5f)) g.DrawPath(pen, p);
+                using (var p = Rounded(new RectangleF(9f, 9f, 5f, 5f), 1.5f)) g.DrawPath(pen, p);
+                break;
+
+            case Glyph.Folder:
+                g.DrawPolygon(pen, new PointF[]
+                {
+                    new(1.75f, 3.5f), new(6f, 3.5f), new(7.5f, 5.25f), new(14.25f, 5.25f),
+                    new(14.25f, 12.75f), new(1.75f, 12.75f)
+                });
+                g.DrawLine(pen, 1.75f, 7.5f, 14.25f, 7.5f);
+                break;
+
+            case Glyph.Scanner:
+                using (var p = Rounded(new RectangleF(1.75f, 7.75f, 12.5f, 5.5f), 1.5f)) g.DrawPath(pen, p);
+                g.DrawLine(pen, 2.5f, 5.75f, 13.25f, 2.75f);
+                g.FillEllipse(brush, 10.6f, 9.6f, 1.8f, 1.8f);
+                g.DrawLine(pen, 4f, 10.5f, 8f, 10.5f);
+                break;
+
+            case Glyph.FileType:
+                g.DrawPolygon(pen, new PointF[]
+                {
+                    new(3.25f, 1.75f), new(9.25f, 1.75f), new(12.75f, 5.25f), new(12.75f, 14.25f), new(3.25f, 14.25f)
+                });
+                g.DrawLines(pen, new PointF[] { new(9.25f, 1.75f), new(9.25f, 5.25f), new(12.75f, 5.25f) });
+                g.DrawLine(pen, 5.75f, 8.5f, 10.25f, 8.5f);
+                g.DrawLine(pen, 5.75f, 11.25f, 9f, 11.25f);
+                break;
+
+            case Glyph.Paper:
+                using (var p = Rounded(new RectangleF(5f, 1.75f, 9.25f, 10.5f), 1.25f)) g.DrawPath(pen, p);
+                g.DrawLines(pen, new PointF[] { new(2f, 4.75f), new(2f, 14.25f), new(10.75f, 14.25f) });
+                break;
+
+            case Glyph.Compress:
+                g.DrawLine(pen, 8f, 1.75f, 8f, 6f);
+                g.DrawLines(pen, new PointF[] { new(5.5f, 3.75f), new(8f, 6.25f), new(10.5f, 3.75f) });
+                g.DrawLine(pen, 8f, 14.25f, 8f, 10f);
+                g.DrawLines(pen, new PointF[] { new(5.5f, 12.25f), new(8f, 9.75f), new(10.5f, 12.25f) });
+                g.DrawLine(pen, 2f, 8f, 14f, 8f);
+                break;
+
+            case Glyph.Check:
+                g.DrawLines(thick, new PointF[] { new(3f, 8.5f), new(6.5f, 12f), new(13f, 4.5f) });
+                break;
+
+            case Glyph.Cross:
+                g.DrawLine(thick, 4f, 4f, 12f, 12f);
+                g.DrawLine(thick, 12f, 4f, 4f, 12f);
+                break;
+
+            case Glyph.Apply:
+                g.DrawEllipse(pen, 1.75f, 1.75f, 12.5f, 12.5f);
+                g.DrawLines(pen, new PointF[] { new(5f, 8.25f), new(7.25f, 10.5f), new(11f, 6f) });
+                break;
+
+            case Glyph.ChevronDown:
+                g.DrawLines(thick, new PointF[] { new(4f, 6.25f), new(8f, 10.25f), new(12f, 6.25f) });
+                break;
+
+            case Glyph.ChevronUp:
+                g.DrawLines(thick, new PointF[] { new(4f, 9.75f), new(8f, 5.75f), new(12f, 9.75f) });
+                break;
+
+            case Glyph.ChevronRight:
+                g.DrawLines(thick, new PointF[] { new(6.25f, 4f), new(10.25f, 8f), new(6.25f, 12f) });
+                break;
+
+            case Glyph.Gear:
+                for (int i = 0; i < 8; i++)
+                {
+                    double a = i * Math.PI / 4;
+                    g.DrawLine(thick,
+                        (float)(8 + Math.Cos(a) * 4.75), (float)(8 + Math.Sin(a) * 4.75),
+                        (float)(8 + Math.Cos(a) * 6.5), (float)(8 + Math.Sin(a) * 6.5));
+                }
+                g.DrawEllipse(pen, 3.5f, 3.5f, 9f, 9f);
+                g.DrawEllipse(pen, 6.25f, 6.25f, 3.5f, 3.5f);
+                break;
+
+            case Glyph.PlusMinus:
+                g.DrawLine(pen, 1.75f, 8f, 7.25f, 8f);
+                g.DrawLine(pen, 4.5f, 5.25f, 4.5f, 10.75f);
+                g.DrawLine(pen, 9.25f, 8f, 14.25f, 8f);
+                break;
+
+            case Glyph.Carrier:
+                using (var p = Rounded(new RectangleF(1.75f, 2.25f, 12.5f, 11.5f), 2f)) g.DrawPath(pen, p);
+                using (var p = Rounded(new RectangleF(4.75f, 5.25f, 6.5f, 5.5f), 1f)) g.DrawPath(pen, p);
+                break;
+
+            case Glyph.Ruler:
+                using (var p = Rounded(new RectangleF(1.75f, 5f, 12.5f, 6f), 1.25f)) g.DrawPath(pen, p);
+                foreach (var x in new[] { 4.5f, 7f, 9.5f, 12f })
+                    g.DrawLine(pen, x, 5f, x, x == 7f || x == 12f ? 8.5f : 7.25f);
+                break;
+
+            case Glyph.Mail:
+                using (var p = Rounded(new RectangleF(1.75f, 3.25f, 12.5f, 9.5f), 1.5f)) g.DrawPath(pen, p);
+                g.DrawLines(pen, new PointF[] { new(2.5f, 4.5f), new(8f, 8.75f), new(13.5f, 4.5f) });
+                break;
+
+            case Glyph.Printer:
+                g.DrawLines(pen, new PointF[] { new(4.25f, 5.5f), new(4.25f, 1.75f), new(11.75f, 1.75f), new(11.75f, 5.5f) });
+                using (var p = Rounded(new RectangleF(1.75f, 5.5f, 12.5f, 6f), 1.5f)) g.DrawPath(pen, p);
+                g.DrawPolygon(pen, new PointF[] { new(4.25f, 9.5f), new(11.75f, 9.5f), new(11.75f, 14.25f), new(4.25f, 14.25f) });
+                break;
+
+            case Glyph.Palette:
+                g.DrawEllipse(pen, 1.75f, 1.75f, 12.5f, 12.5f);
+                g.FillEllipse(brush, 4.5f, 5.5f, 2f, 2f);
+                g.FillEllipse(brush, 7.25f, 3.75f, 2f, 2f);
+                g.FillEllipse(brush, 10f, 5.75f, 2f, 2f);
+                g.FillEllipse(brush, 9f, 9.25f, 2.5f, 2.5f);
+                break;
+        }
+    }
+
+    /// <summary>Path of a rectangle with rounded corners.</summary>
+    public static GraphicsPath Rounded(RectangleF r, float radius)
+    {
+        var path = new GraphicsPath();
+        float d = Math.Min(radius * 2, Math.Min(r.Width, r.Height));
+        if (d <= 0.5f)
+        {
+            path.AddRectangle(r);
+            return path;
+        }
+        path.AddArc(r.X, r.Y, d, d, 180, 90);
+        path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+        path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+        path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+        path.CloseFigure();
+        return path;
+    }
+}

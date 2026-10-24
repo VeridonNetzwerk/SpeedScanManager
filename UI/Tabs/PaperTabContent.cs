@@ -60,7 +60,6 @@ internal class PaperTabContent : Panel
 
         var font = UiFonts.Default;
         Dock = DockStyle.Fill;
-        BackColor = Color.White;
 
         // === Info bar ===
         var infoBar = new GradientInfoBar("Wählen Sie ein Papier.");
@@ -91,8 +90,7 @@ internal class PaperTabContent : Panel
         var paperSizeContainer = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(92, 6, 24, 0),
-            BackColor = Color.White
+            Padding = new Padding(92, 6, 24, 0)
         };
         var paperSizeTable = new TableLayoutPanel
         {
@@ -105,8 +103,7 @@ internal class PaperTabContent : Panel
             },
             RowCount = 1,
             RowStyles = { new RowStyle(SizeType.Percent, 100f) },
-            Margin = Padding.Empty,
-            BackColor = Color.White
+            Margin = Padding.Empty
         };
         paperSizeTable.Controls.Add(lblPaperSize, 0, 0);
         paperSizeTable.Controls.Add(_cbPaperSize, 1, 0);
@@ -121,13 +118,11 @@ internal class PaperTabContent : Panel
             UseVisualStyleBackColor = true,
             Size = new Size(200, 25),
             Font = font,
-            Image = TabIcons.CreateCarrierIcon(),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
             Padding = new Padding(2, 0, 4, 0),
             Anchor = AnchorStyles.Left,
             Margin = Padding.Empty
         };
+        ThemeManager.SetGlyph(_btnCarrierSheet, Glyph.Carrier);
         _btnCarrierSheet.Click += (s, e) => OpenCarrierSheetDialog();
 
         _btnCustomSize = new Button
@@ -138,14 +133,12 @@ internal class PaperTabContent : Panel
             Size = new Size(160, 25),
             Font = font,
             Enabled = true,
-            Image = TabIcons.CreateRulerIcon(),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
             Padding = new Padding(2, 0, 4, 0),
             Anchor = AnchorStyles.Right,
             Margin = Padding.Empty,
             AutoSize = false
         };
+        ThemeManager.SetGlyph(_btnCustomSize, Glyph.Ruler);
         _btnCustomSize.Click += (s, e) => OpenCustomSizeDialog();
 
         var buttonTable = new TableLayoutPanel
@@ -163,14 +156,13 @@ internal class PaperTabContent : Panel
             RowCount = 1,
             RowStyles = { new RowStyle(SizeType.Percent, 100f) },
             Margin = Padding.Empty,
-            Padding = Padding.Empty,
-            BackColor = Color.White
+            Padding = Padding.Empty
         };
-        buttonTable.Controls.Add(new Panel { BackColor = Color.White, Dock = DockStyle.Fill }, 0, 0);
+        buttonTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 0, 0);
         buttonTable.Controls.Add(_btnCarrierSheet, 1, 0);
-        buttonTable.Controls.Add(new Panel { BackColor = Color.White, Dock = DockStyle.Fill }, 2, 0);
+        buttonTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 2, 0);
         buttonTable.Controls.Add(_btnCustomSize, 3, 0);
-        buttonTable.Controls.Add(new Panel { BackColor = Color.White, Dock = DockStyle.Fill }, 4, 0);
+        buttonTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 4, 0);
 
         // === Multi-feed row ===
         var lblMultiFeed = new Label
@@ -216,8 +208,7 @@ internal class PaperTabContent : Panel
         var multiFeedContainer = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(92, 4, 24, 0),
-            BackColor = Color.White
+            Padding = new Padding(92, 4, 24, 0)
         };
         var multiFeedTable = new TableLayoutPanel
         {
@@ -230,8 +221,7 @@ internal class PaperTabContent : Panel
             },
             RowCount = 1,
             RowStyles = { new RowStyle(SizeType.Percent, 100f) },
-            Margin = Padding.Empty,
-            BackColor = Color.White
+            Margin = Padding.Empty
         };
         multiFeedTable.Controls.Add(lblMultiFeed, 0, 0);
         multiFeedTable.Controls.Add(_cbMultiFeed, 1, 0);
@@ -249,25 +239,22 @@ internal class PaperTabContent : Panel
             {
                 new RowStyle(SizeType.Absolute, 20f),   // Row 0: Info bar
                 new RowStyle(SizeType.Absolute, 36f),   // Row 1: Paper size
-                new RowStyle(SizeType.Absolute, 30f),   // Row 2: Hint text
+                new RowStyle(SizeType.Absolute, 36f),   // Row 2: Hint text (may wrap)
                 new RowStyle(SizeType.Absolute, 35f),   // Row 3: Button row
                 new RowStyle(SizeType.Absolute, 38f),   // Row 4: Multi-feed row
                 new RowStyle(SizeType.Percent, 100f)    // Row 5: Flexible remainder at bottom
             },
             Margin = Padding.Empty,
-            Padding = Padding.Empty,
-            BackColor = Color.White
+            Padding = Padding.Empty
         };
 
         var lblHint = _lblFlatbedHint = new Label
         {
             Text = "Die automatische Papiergrößenerkennung steht für das Flachbettscannen nicht zur Verfügung.",
             Font = font,
-            ForeColor = Color.FromArgb(90, 90, 90),
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(176, 0, 0, 0),
-            BackColor = Color.White
+            Padding = new Padding(176, 0, 0, 0)
         };
 
         mainTable.Controls.Add(infoBar, 0, 0);
@@ -275,7 +262,7 @@ internal class PaperTabContent : Panel
         mainTable.Controls.Add(lblHint, 0, 2);
         mainTable.Controls.Add(buttonTable, 0, 3);
         mainTable.Controls.Add(multiFeedContainer, 0, 4);
-        mainTable.Controls.Add(new Panel { Dock = DockStyle.Fill, BackColor = Color.White }, 0, 5);
+        mainTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 0, 5);
 
         Controls.Add(mainTable);
         LoadFromSettings();
@@ -370,7 +357,7 @@ internal class PaperTabContent : Panel
     private void UpdateFlatbedHint()
     {
         bool flatbed = _settings.ScanSide == ScanSide.Flatbed;
-        _lblFlatbedHint.ForeColor = flatbed ? Color.FromArgb(180, 60, 40) : Color.FromArgb(90, 90, 90);
+        ThemeManager.SetRole(_lblFlatbedHint, flatbed ? ThemeRole.Danger : ThemeRole.Muted);
     }
 
     private void OpenCustomSizeDialog()
@@ -455,31 +442,29 @@ internal class PaperTabContent : Panel
 
     private void DrawMultiFeedItem(DrawItemEventArgs e)
     {
-        if (e.Index < 0) return;
-        e.DrawBackground();
+        if (e.Index < 0)
+        {
+            ThemeManager.DrawItemBackground(_cbMultiFeed, e);
+            return;
+        }
 
         var mode = (MultiFeedDetection)e.Index;
         bool supported = IsMultiFeedModeSupported(mode);
         var text = _cbMultiFeed.Items[e.Index]?.ToString() ?? "";
 
-        var textColor = supported
-            ? (e.State & DrawItemState.Selected) == DrawItemState.Selected
-                ? SystemColors.HighlightText
-                : SystemColors.ControlText
-            : SystemColors.GrayText;
+        var textColor = ThemeManager.DrawItemBackground(_cbMultiFeed, e, itemEnabled: supported);
+        var bounds = new Rectangle(e.Bounds.X + 4, e.Bounds.Y, Math.Max(0, e.Bounds.Width - 4), e.Bounds.Height);
 
         var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix;
-        TextRenderer.DrawText(e.Graphics, text, _cbMultiFeed.Font, e.Bounds, textColor, flags);
+        TextRenderer.DrawText(e.Graphics, text, _cbMultiFeed.Font, bounds, textColor, flags);
 
         if (!supported && (e.State & DrawItemState.Selected) != DrawItemState.Selected)
         {
             var suffix = " (nicht unterstützt)";
-            var textSize = TextRenderer.MeasureText(e.Graphics, text + "  ", _cbMultiFeed.Font, e.Bounds.Size, flags);
-            var suffixRect = new Rectangle(e.Bounds.X + textSize.Width, e.Bounds.Y, e.Bounds.Width - textSize.Width, e.Bounds.Height);
-            TextRenderer.DrawText(e.Graphics, suffix, _cbMultiFeed.Font, suffixRect, Color.Gray, flags);
+            var textSize = TextRenderer.MeasureText(e.Graphics, text + "  ", _cbMultiFeed.Font, bounds.Size, flags);
+            var suffixRect = new Rectangle(bounds.X + textSize.Width, bounds.Y, bounds.Width - textSize.Width, bounds.Height);
+            TextRenderer.DrawText(e.Graphics, suffix, _cbMultiFeed.Font, suffixRect, ThemeManager.Current.TextMuted, flags);
         }
-
-        e.DrawFocusRectangle();
     }
 
     private void OpenCarrierSheetDialog()
