@@ -110,8 +110,7 @@ internal class ApplicationManageDialog : Form
             Text = $"Bis zu {MaxEntries} Anwendungen können hinzugefügt werden.",
             Location = new Point(12, 178),
             AutoSize = true,
-            Font = font,
-            ForeColor = SystemColors.GrayText
+            Font = font
         };
 
         Controls.AddRange(new Control[]
@@ -130,6 +129,10 @@ internal class ApplicationManageDialog : Form
         RefreshList();
         ResumeLayout(false);
         PerformLayout();
+
+        ThemeManager.SetRole(_btnRemove, ThemeRole.Danger);
+        ThemeManager.SetRole(lblHint, ThemeRole.Muted);
+        ThemeManager.Apply(this);
     }
 
     private void RefreshList()
@@ -248,8 +251,8 @@ internal class ApplicationEditDialog : Form
         _txtName = new TextBox { Location = new Point(100, 13), Size = new Size(326, 24), Font = font, MaxLength = 64 };
 
         var lblPath = new Label { Text = "Programm:", Location = new Point(12, 48), AutoSize = true, Font = font };
-        _txtPath = new TextBox { Location = new Point(100, 45), Size = new Size(236, 24), Font = font };
-        var btnBrowse = new Button { Text = "Durchsuchen...", Location = new Point(342, 43), Size = new Size(84, 26), Font = font };
+        _txtPath = new TextBox { Location = new Point(100, 45), Size = new Size(220, 24), Font = font };
+        var btnBrowse = new Button { Text = "Durchsuchen...", Location = new Point(326, 44), Size = new Size(100, 26), Font = font };
         btnBrowse.Click += (s, e) => BrowseExe();
 
         var lblArgs = new Label { Text = "Argumente:", Location = new Point(12, 80), AutoSize = true, Font = font };
@@ -259,9 +262,9 @@ internal class ApplicationEditDialog : Form
             Text = "Optional. Die gescannten Dateien werden danach angehängt.",
             Location = new Point(100, 103),
             AutoSize = true,
-            Font = font,
-            ForeColor = SystemColors.GrayText
+            Font = font
         };
+        ThemeManager.SetRole(lblArgsHint, ThemeRole.Muted);
 
         var btnOk = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(266, 136), Size = new Size(75, 28), Font = font };
         var btnCancel = new Button { Text = "Abbrechen", DialogResult = DialogResult.Cancel, Location = new Point(351, 136), Size = new Size(75, 28), Font = font };
@@ -271,6 +274,8 @@ internal class ApplicationEditDialog : Form
         CancelButton = btnCancel;
         ResumeLayout(false);
         PerformLayout();
+
+        ThemeManager.Apply(this);
     }
 
     private void BrowseExe()

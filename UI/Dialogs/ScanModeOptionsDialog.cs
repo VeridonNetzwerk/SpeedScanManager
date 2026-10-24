@@ -42,7 +42,7 @@ internal class ScanModeOptionsDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         Text = "Scanmodus-Optionen";
         Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(400, 360);
+        ClientSize = new Size(400, 312);
         ShowInTaskbar = false;
 
         var font = UiFonts.Default;
@@ -55,7 +55,7 @@ internal class ScanModeOptionsDialog : Form
         {
             Text = "Helligkeit (nur Schwarzweiß-Scan)",
             Location = new Point(12, 12),
-            Size = new Size(372, 80),
+            Size = new Size(376, 92),
             Font = font
         };
 
@@ -109,17 +109,18 @@ internal class ScanModeOptionsDialog : Form
         _lblBrightnessValue = new Label
         {
             Text = "Normal",
-            Location = new Point(160, 52),
-            AutoSize = true,
+            Location = new Point(66, 64),
+            Size = new Size(250, 18),
+            AutoSize = false,
             Font = UiFonts.Bold,
-            ForeColor = Color.FromArgb(45, 90, 170),
             TextAlign = ContentAlignment.MiddleCenter
         };
+        ThemeManager.SetRole(_lblBrightnessValue, ThemeRole.Accent);
 
         grpBrightness.Controls.AddRange(new Control[] { picLeftIcon, lblDark, lblBright, picRightIcon, _brightnessSlider, _lblBrightnessValue });
 
         // === Checkboxes ===
-        int cbY = 104;
+        int cbY = 116;
         int cbSpacing = 28;
 
         _chkTextOnly = new CheckBox
@@ -192,9 +193,9 @@ internal class ScanModeOptionsDialog : Form
         var buttonPanel = new TableLayoutPanel
         {
             Dock = DockStyle.Bottom,
-            Height = 36,
+            Height = 46,
             Margin = Padding.Empty,
-            Padding = Padding.Empty,
+            Padding = new Padding(0, 0, 12, 10),
             ColumnCount = 6,
             ColumnStyles =
             {
@@ -208,7 +209,6 @@ internal class ScanModeOptionsDialog : Form
             RowCount = 1,
             RowStyles = { new RowStyle(SizeType.Absolute, 36f) }
         };
-        buttonPanel.Margin = new Padding(0, 0, 12, 0);
 
         btnOk.Dock = DockStyle.Fill;
         btnCancel.Dock = DockStyle.Fill;
@@ -236,6 +236,8 @@ internal class ScanModeOptionsDialog : Form
         CancelButton = btnCancel;
         ResumeLayout(false);
         PerformLayout();
+
+        ThemeManager.Apply(this);
     }
 
     private void UpdateBrightnessLabel()

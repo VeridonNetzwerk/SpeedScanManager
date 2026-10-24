@@ -31,7 +31,7 @@ internal class PdfOptionsDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         Text = "PDF-Dateiformat-Optionen";
         Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(400, 300);
+        ClientSize = new Size(460, 274);
         ShowInTaskbar = false;
 
         var font = UiFonts.Default;
@@ -42,7 +42,7 @@ internal class PdfOptionsDialog : Form
         {
             Text = "PDF-Seiten teilen",
             Location = new Point(12, 12),
-            Size = new Size(368, 90),
+            Size = new Size(436, 100),
             Font = font
         };
 
@@ -59,13 +59,13 @@ internal class PdfOptionsDialog : Form
         {
             Text = "Seitenzahl, für die jeweils eine neue PDF-Datei erstellt werden soll",
             Location = new Point(16, 46),
-            Size = new Size(340, 20),
+            Size = new Size(410, 22),
             Font = font
         };
 
         _numSplitPages = new NumericUpDown
         {
-            Location = new Point(32, 68),
+            Location = new Point(34, 70),
             Size = new Size(60, 24),
             Font = font,
             Minimum = 1,
@@ -77,7 +77,7 @@ internal class PdfOptionsDialog : Form
         var lblPages = new Label
         {
             Text = "Seite(n)",
-            Location = new Point(100, 70),
+            Location = new Point(100, 73),
             AutoSize = true,
             Font = font
         };
@@ -93,8 +93,8 @@ internal class PdfOptionsDialog : Form
         var grpPassword = new GroupBox
         {
             Text = "Kennwort",
-            Location = new Point(12, 112),
-            Size = new Size(368, 100),
+            Location = new Point(12, 122),
+            Size = new Size(436, 100),
             Font = font
         };
 
@@ -117,7 +117,7 @@ internal class PdfOptionsDialog : Form
         _txtPassword = new TextBox
         {
             Location = new Point(130, 45),
-            Size = new Size(200, 24),
+            Size = new Size(240, 24),
             Font = font,
             UseSystemPasswordChar = true,
             Enabled = false
@@ -134,7 +134,7 @@ internal class PdfOptionsDialog : Form
         _txtConfirmPassword = new TextBox
         {
             Location = new Point(130, 73),
-            Size = new Size(200, 24),
+            Size = new Size(240, 24),
             Font = font,
             UseSystemPasswordChar = true,
             Enabled = false
@@ -157,7 +157,7 @@ internal class PdfOptionsDialog : Form
         {
             Text = "OK",
             DialogResult = DialogResult.OK,
-            Location = new Point(216, 222),
+            Location = new Point(282, 234),
             Size = new Size(75, 28),
             Font = font
         };
@@ -166,7 +166,7 @@ internal class PdfOptionsDialog : Form
         {
             Text = "Abbrechen",
             DialogResult = DialogResult.Cancel,
-            Location = new Point(302, 222),
+            Location = new Point(370, 234),
             Size = new Size(75, 28),
             Font = font
         };
@@ -176,6 +176,8 @@ internal class PdfOptionsDialog : Form
         CancelButton = btnCancel;
         ResumeLayout(false);
         PerformLayout();
+
+        ThemeManager.Apply(this);
     }
 
     protected override void OnShown(EventArgs e)

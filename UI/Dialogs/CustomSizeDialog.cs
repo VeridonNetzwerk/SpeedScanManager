@@ -34,7 +34,7 @@ internal class CustomSizeDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         Text = "Hinzufügen oder Entfernen von benutzerdefinierten Größen";
         Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(600, 340);
+        ClientSize = new Size(600, 292);
         ShowInTaskbar = false;
 
         var font = UiFonts.Default;
@@ -117,7 +117,7 @@ internal class CustomSizeDialog : Form
                 new RowStyle(SizeType.Absolute, 48f),
                 new RowStyle(SizeType.Absolute, 28f)
             },
-            Margin = Padding.Empty,
+            Margin = new Padding(10, 0, 0, 0),
             Padding = Padding.Empty
         };
         buttonColumn.Controls.Add(_btnAdd, 0, 0);
@@ -173,7 +173,7 @@ internal class CustomSizeDialog : Form
                 new ColumnStyle(SizeType.Absolute, 75f),  // width label + textbox
                 new ColumnStyle(SizeType.Absolute, 20f),  // ×
                 new ColumnStyle(SizeType.Absolute, 75f),  // length label + textbox
-                new ColumnStyle(SizeType.Absolute, 30f),  // mm
+                new ColumnStyle(SizeType.Absolute, 40f),  // mm
                 new ColumnStyle(SizeType.Percent, 100f)   // filler
             },
             RowCount = 2,
@@ -212,9 +212,8 @@ internal class CustomSizeDialog : Form
         {
             Text = "×",
             Font = font,
-            AutoSize = true,
-            Anchor = AnchorStyles.Left,
-            Margin = new Padding(4, 0, 0, 0),
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
             TextAlign = ContentAlignment.MiddleCenter
         }, 1, 1);
         dimTable.Controls.Add(_txtLength, 2, 1);
@@ -222,8 +221,7 @@ internal class CustomSizeDialog : Form
         {
             Text = "mm",
             Font = font,
-            AutoSize = false,
-            Width = 30,
+            AutoSize = true,
             Anchor = AnchorStyles.Left,
             Margin = new Padding(4, 0, 0, 0)
         }, 3, 1);
@@ -268,6 +266,10 @@ internal class CustomSizeDialog : Form
         RefreshList();
         ResumeLayout(false);
         PerformLayout();
+
+        ThemeManager.SetRole(_btnRemove, ThemeRole.Danger);
+        ThemeManager.SetRole(hintLabel, ThemeRole.Muted);
+        ThemeManager.Apply(this);
     }
 
     private void RefreshList()
@@ -379,7 +381,7 @@ internal class CustomSizeEditDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         Text = "Benutzerdefinierte Größe";
         Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(300, 185);
+        ClientSize = new Size(300, 156);
         ShowInTaskbar = false;
 
         var font = UiFonts.Default;
@@ -450,7 +452,7 @@ internal class CustomSizeEditDialog : Form
             Size = new Size(75, 28),
             Font = font,
             Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
-            Margin = Padding.Empty
+            Margin = new Padding(0, 0, 8, 0)
         };
         _btnCancel = new Button
         {
@@ -507,6 +509,8 @@ internal class CustomSizeEditDialog : Form
         CancelButton = _btnCancel;
         ResumeLayout(false);
         PerformLayout();
+
+        ThemeManager.Apply(this);
     }
 
     protected override void OnShown(EventArgs e)

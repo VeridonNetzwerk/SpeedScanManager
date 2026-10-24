@@ -40,13 +40,13 @@ internal class ScannerSelectionDialog : Form
         StartPosition = FormStartPosition.CenterScreen;
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;
-        ClientSize = new Size(420, 290);
+        ClientSize = new Size(420, 176);
         Font = new Font("Microsoft Sans Serif", 8.25f);
 
         var lbl = new Label
         {
             Text = "Bitte wählen Sie einen Scanner:",
-            Location = new Point(16, 86),
+            Location = new Point(16, 18),
             AutoSize = true,
             Font = Font
         };
@@ -54,7 +54,7 @@ internal class ScannerSelectionDialog : Form
         _combo = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(16, 110),
+            Location = new Point(16, 42),
             Size = new Size(388, 24),
             Font = Font
         };
@@ -66,17 +66,18 @@ internal class ScannerSelectionDialog : Form
         _lblHint = new Label
         {
             Text = "USB-verbundene Scanner werden bevorzugt oben angezeigt.",
-            Location = new Point(16, 146),
+            Location = new Point(16, 78),
             AutoSize = true,
-            ForeColor = Color.Gray,
+            MaximumSize = new Size(388, 0),
             Font = Font
         };
+        ThemeManager.SetRole(_lblHint, ThemeRole.Muted);
 
         _btnOk = new Button
         {
             Text = "OK",
             DialogResult = DialogResult.OK,
-            Location = new Point(230, 240),
+            Location = new Point(230, 132),
             Size = new Size(80, 28),
             Font = Font
         };
@@ -99,7 +100,7 @@ internal class ScannerSelectionDialog : Form
         {
             Text = "Abbrechen",
             DialogResult = DialogResult.Cancel,
-            Location = new Point(324, 240),
+            Location = new Point(324, 132),
             Size = new Size(80, 28),
             Font = Font
         };
@@ -114,6 +115,7 @@ internal class ScannerSelectionDialog : Form
         _pollTimer.Start();
 
         RefreshSources();
+        ThemeManager.Apply(this);
     }
 
     private void RefreshSources(bool autoRefresh = false)
@@ -173,7 +175,7 @@ internal class ScannerSelectionDialog : Form
             _combo.Enabled = false;
             _btnOk.Enabled = true; // OK still works for "Automatisch"
             _lblHint.Text = "Kein Scanner gefunden. Die Liste wird automatisch aktualisiert, sobald ein Scanner erkannt wird.";
-            _lblHint.ForeColor = Color.Firebrick;
+            ThemeManager.SetRole(_lblHint, ThemeRole.Danger);
             _isAutoSelected = true;
         }
         else
@@ -181,7 +183,7 @@ internal class ScannerSelectionDialog : Form
             _combo.Enabled = true;
             _btnOk.Enabled = true;
             _lblHint.Text = "USB-verbundene Scanner werden bevorzugt oben angezeigt.";
-            _lblHint.ForeColor = Color.Gray;
+            ThemeManager.SetRole(_lblHint, ThemeRole.Muted);
 
             // Restore selection
             if (wasAuto)

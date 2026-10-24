@@ -7,6 +7,8 @@ namespace SpeedScanManager;
 internal class VersionInfoDialog : Form
 {
     private readonly ScannerState? _scannerState;
+    private readonly Bitmap _githubSource;
+    private readonly PictureBox _pbGithub;
 
     public VersionInfoDialog(ScannerState? scannerState = null)
     {
@@ -19,7 +21,7 @@ internal class VersionInfoDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.None;
-        ClientSize = new Size(390, 355);
+        ClientSize = new Size(390, 390);
         Font = new Font("Microsoft Sans Serif", 8.25f);
 
         var font = new Font("Microsoft Sans Serif", 8.25f);
@@ -85,17 +87,19 @@ internal class VersionInfoDialog : Form
                    "PDF-Verarbeitung: PdfSharpCore.\n\n" +
                    "Copyright © 2026 VeridonNetzwerk",
             Font = font,
-            Location = new Point(24, 90),
-            Size = new Size(335, 230),
-            AutoSize = false,
-            BackColor = Color.White
+            Location = new Point(20, 90),
+            Size = new Size(350, 256),
+            Padding = new Padding(8, 6, 8, 6),
+            AutoSize = false
         };
+        // Former white info box: secondary surface in both themes.
+        ThemeManager.SetRole(lblLicense, ThemeRole.Secondary);
 
         // === Detail button (right of text block) ===
         var btnDetail = new Button
         {
             Text = "Detail...",
-            Location = new Point(290, 56),
+            Location = new Point(305, 56),
             Size = new Size(65, 22),
             Font = font,
             FlatStyle = FlatStyle.Standard,
@@ -108,11 +112,12 @@ internal class VersionInfoDialog : Form
         };
 
         // === GitHub + Discord link icons (inside white box, below text) ===
-        var pbGithub = new PictureBox
+        _githubSource = CreateGithubIcon();
+        var pbGithub = _pbGithub = new PictureBox
         {
-            Image = CreateGithubIcon(),
+            Image = TintGithubIcon(),
             SizeMode = PictureBoxSizeMode.AutoSize,
-            Location = new Point(8, 198),
+            Location = new Point(350 - 8 - 28 - 8 - 28, 256 - 8 - 28),
             Cursor = Cursors.Hand
         };
         pbGithub.Click += (s, e) =>
@@ -128,7 +133,7 @@ internal class VersionInfoDialog : Form
         {
             Image = CreateDiscordIcon(),
             SizeMode = PictureBoxSizeMode.AutoSize,
-            Location = new Point(8 + 28 + 8, 198),
+            Location = new Point(350 - 8 - 28, 256 - 8 - 28),
             Cursor = Cursors.Hand
         };
         pbDiscord.Click += (s, e) =>
@@ -155,9 +160,9 @@ internal class VersionInfoDialog : Form
                 new ColumnStyle(SizeType.Percent, 100f)
             },
             RowCount = 1,
-            RowStyles = { new RowStyle(SizeType.Percent, 100f) },
-            BackColor = Color.FromArgb(240, 240, 240)
+            RowStyles = { new RowStyle(SizeType.Percent, 100f) }
         };
+        ThemeManager.SetRole(footerTable, ThemeRole.Secondary);
 
         var btnOk = new Button
         {
@@ -202,6 +207,38 @@ internal class VersionInfoDialog : Form
         Controls.Add(pbLogo);
 
         AcceptButton = btnOk;
+
+        ThemeManager.Apply(this);
+        ThemeManager.ThemeChanged += OnThemeChanged;
+    }
+
+    /// <summary>The GitHub mark is near-black: recolor it to the theme text color (visible in dark mode).</summary>
+    private Bitmap TintGithubIcon()
+    {
+        var color = ThemeManager.Current.Text;
+        var bmp = new Bitmap(_githubSource.Width, _githubSource.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        for (int y = 0; y < bmp.Height; y++)
+            for (int x = 0; x < bmp.Width; x++)
+                bmp.SetPixel(x, y, Color.FromArgb(_githubSource.GetPixel(x, y).A, color));
+        return bmp;
+    }
+
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        var old = _pbGithub.Image;
+        _pbGithub.Image = TintGithubIcon();
+        old?.Dispose();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            ThemeManager.ThemeChanged -= OnThemeChanged;
+            _pbGithub.Image?.Dispose();
+            _githubSource.Dispose();
+        }
+        base.Dispose(disposing);
     }
 
     private static Bitmap CreateGithubIcon()

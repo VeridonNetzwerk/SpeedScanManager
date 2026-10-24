@@ -30,7 +30,7 @@ internal class ProfileManagementDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         Text = "SpeedScan Manager – Profilverwaltung";
         Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(420, 370);
+        ClientSize = new Size(411, 304);
         ShowInTaskbar = false;
 
         var font = UiFonts.Default;
@@ -95,7 +95,7 @@ internal class ProfileManagementDialog : Form
         {
             Text = "Schließen",
             DialogResult = DialogResult.OK,
-            Location = new Point(299, 280),
+            Location = new Point(299, 264),
             Size = new Size(100, 28),
             Font = font
         };
@@ -113,6 +113,9 @@ internal class ProfileManagementDialog : Form
         RefreshList();
         ResumeLayout(false);
         PerformLayout();
+
+        ThemeManager.SetRole(_btnDelete, ThemeRole.Danger);
+        ThemeManager.Apply(this);
     }
 
     private void RefreshList()
@@ -262,6 +265,7 @@ internal static class ProfileNameInput
         };
         dlg.ResumeLayout(false);
         dlg.PerformLayout();
+        ThemeManager.Apply(dlg);
 
         return dlg.ShowDialog(owner) == DialogResult.OK ? txt.Text.Trim() : null;
     }

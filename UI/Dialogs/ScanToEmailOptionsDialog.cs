@@ -94,6 +94,8 @@ internal class ScanToEmailOptionsDialog : Form
         AcceptButton = _btnOk;
         CancelButton = _btnCancel;
         ResumeLayout(false);
+
+        ThemeManager.Apply(this);
     }
 
     protected override void OnShown(EventArgs e)

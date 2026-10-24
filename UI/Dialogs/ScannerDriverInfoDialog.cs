@@ -34,11 +34,10 @@ internal class ScannerDriverInfoDialog : Form
         {
             Text = scannerState?.SourceName ?? "Kein Scanner verbunden",
             ReadOnly = true,
-            Enabled = false,
+            TabStop = false,
             Font = font,
             Location = new Point(108, 22),
-            Size = new Size(326, 22),
-            BackColor = Color.FromArgb(240, 240, 240)
+            Size = new Size(326, 22)
         };
 
         var lblManufacturer = new Label
@@ -53,11 +52,10 @@ internal class ScannerDriverInfoDialog : Form
         {
             Text = scannerState?.Manufacturer ?? "—",
             ReadOnly = true,
-            Enabled = false,
+            TabStop = false,
             Font = font,
             Location = new Point(108, 48),
-            Size = new Size(326, 22),
-            BackColor = Color.FromArgb(240, 240, 240)
+            Size = new Size(326, 22)
         };
 
         var lblProductFamily = new Label
@@ -72,11 +70,10 @@ internal class ScannerDriverInfoDialog : Form
         {
             Text = scannerState?.ProductFamily ?? "—",
             ReadOnly = true,
-            Enabled = false,
+            TabStop = false,
             Font = font,
             Location = new Point(108, 74),
-            Size = new Size(326, 22),
-            BackColor = Color.FromArgb(240, 240, 240)
+            Size = new Size(326, 22)
         };
 
         var lblDriverVersion = new Label
@@ -91,11 +88,10 @@ internal class ScannerDriverInfoDialog : Form
         {
             Text = scannerState?.DriverVersion ?? "—",
             ReadOnly = true,
-            Enabled = false,
+            TabStop = false,
             Font = font,
             Location = new Point(108, 100),
-            Size = new Size(326, 22),
-            BackColor = Color.FromArgb(240, 240, 240)
+            Size = new Size(326, 22)
         };
 
         // === File version section ===
@@ -120,9 +116,9 @@ internal class ScannerDriverInfoDialog : Form
             Font = font
         };
 
-        lvwVersions.Columns.Add("Dateiname", 160, HorizontalAlignment.Left);
-        lvwVersions.Columns.Add("Version", 80, HorizontalAlignment.Center);
-        lvwVersions.Columns.Add("Zeit", 146, HorizontalAlignment.Right);
+        lvwVersions.Columns.Add("Dateiname", 180, HorizontalAlignment.Left);
+        lvwVersions.Columns.Add("Version", 70, HorizontalAlignment.Center);
+        lvwVersions.Columns.Add("Zeit", 148, HorizontalAlignment.Right);
 
         var asm = Assembly.GetExecutingAssembly();
         var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
@@ -155,9 +151,9 @@ internal class ScannerDriverInfoDialog : Form
                 new ColumnStyle(SizeType.Percent, 100f)
             },
             RowCount = 1,
-            RowStyles = { new RowStyle(SizeType.Percent, 100f) },
-            BackColor = Color.FromArgb(240, 240, 240)
+            RowStyles = { new RowStyle(SizeType.Percent, 100f) }
         };
+        ThemeManager.SetRole(footerTable, ThemeRole.Secondary);
 
         var btnOk = new Button
         {
@@ -204,6 +200,8 @@ internal class ScannerDriverInfoDialog : Form
         Controls.Add(lblScannerName);
 
         AcceptButton = btnOk;
+
+        ThemeManager.Apply(this);
     }
 
     /// <summary>File name, file version and modification time of a DLL next to the exe.</summary>

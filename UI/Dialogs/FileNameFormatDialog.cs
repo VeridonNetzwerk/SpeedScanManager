@@ -43,7 +43,7 @@ internal class FileNameFormatDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         Text = "Dateinamenformat";
         Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(550, 270);
+        ClientSize = new Size(550, 240);
         ShowInTaskbar = false;
 
         var font = UiFonts.Default;
@@ -54,8 +54,7 @@ internal class FileNameFormatDialog : Form
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(14, 30, 14, 8),
-            Margin = Padding.Empty,
-            BackColor = Color.Transparent
+            Margin = Padding.Empty
         };
 
         // === Content table (no GroupBox, plain label heading) ===
@@ -139,7 +138,7 @@ internal class FileNameFormatDialog : Form
             Font = font,
             MaxLength = FileNamePattern.MaxCustomNameLength,
             Size = new Size(200, 22),
-            Dock = DockStyle.Fill,
+            Anchor = AnchorStyles.Left | AnchorStyles.Right,
             Margin = Padding.Empty,
             Enabled = false
         };
@@ -158,7 +157,7 @@ internal class FileNameFormatDialog : Form
             DropDownStyle = ComboBoxStyle.DropDownList,
             Font = font,
             Size = new Size(110, 22),
-            Dock = DockStyle.Left,
+            Anchor = AnchorStyles.Left,
             Margin = Padding.Empty,
             Enabled = false
         };
@@ -169,7 +168,6 @@ internal class FileNameFormatDialog : Form
         {
             Text = "",
             Font = font,
-            ForeColor = SystemColors.ControlText,
             AutoSize = true,
             Dock = DockStyle.Fill,
             Margin = new Padding(16, 0, 0, 0)
@@ -297,6 +295,10 @@ internal class FileNameFormatDialog : Form
         UpdatePreview();
         ResumeLayout(false);
         PerformLayout();
+
+        ThemeManager.SetRole(lblHeading, ThemeRole.Heading);
+        ThemeManager.SetRole(_lblPreview, ThemeRole.Muted);
+        ThemeManager.Apply(this);
     }
 
     protected override void OnShown(EventArgs e)
