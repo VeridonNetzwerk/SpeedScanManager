@@ -111,13 +111,14 @@ internal class HelpForm : Form
             TextAlign = ContentAlignment.BottomCenter,
             TextImageRelation = TextImageRelation.ImageAboveText
         };
-        btnOptions.DropDownItems.Add("Registerkarten ausblenden", null, (s, e) => ToggleNavigation());
-        btnOptions.DropDownItems.Add("Zurück", null, (s, e) => GoBack()).Enabled = false;
-        btnOptions.DropDownItems.Add("Vorwärts", null, (s, e) => GoForward()).Enabled = false;
+        _miToggleNav = (ToolStripMenuItem)btnOptions.DropDownItems.Add("Registerkarten ausblenden", null, (s, e) => ToggleNavigation());
+        _miBack = (ToolStripMenuItem)btnOptions.DropDownItems.Add("Zurück", null, (s, e) => GoBack());
+        _miBack.Enabled = false;
+        _miForward = (ToolStripMenuItem)btnOptions.DropDownItems.Add("Vorwärts", null, (s, e) => GoForward());
+        _miForward.Enabled = false;
         btnOptions.DropDownItems.Add("Startseite", null, (s, e) => NavigateTo("root"));
         btnOptions.DropDownItems.Add(new ToolStripSeparator());
         btnOptions.DropDownItems.Add("Drucken...", null, (s, e) => _webBrowser?.Print());
-        btnOptions.DropDownItems.Add("Suchbegriffhervorhebung deaktivieren", null, (s, e) => { });
 
         _toolStrip.Items.AddRange(new ToolStripItem[]
         {
@@ -206,6 +207,9 @@ internal class HelpForm : Form
 
     private readonly ToolStripButton _tsBtnBack;
     private readonly ToolStripButton _tsBtnForward;
+    private readonly ToolStripMenuItem _miToggleNav;
+    private readonly ToolStripMenuItem _miBack;
+    private readonly ToolStripMenuItem _miForward;
 
     private int _activeNavTab = 0; // 0=Inhalt, 1=Index, 2=Suchen
 
@@ -333,8 +337,12 @@ internal class HelpForm : Form
 
     private void UpdateNavButtons()
     {
-        _tsBtnBack.Enabled = _historyIndex > 0;
-        _tsBtnForward.Enabled = _historyIndex < _history.Count - 1;
+        bool canBack = _historyIndex > 0;
+        bool canForward = _historyIndex < _history.Count - 1;
+        _tsBtnBack.Enabled = canBack;
+        _tsBtnForward.Enabled = canForward;
+        _miBack.Enabled = canBack;
+        _miForward.Enabled = canForward;
     }
 
     private void TreeView_AfterSelect(object? sender, TreeViewEventArgs e)
@@ -576,6 +584,26 @@ internal class HelpForm : Form
         _searchPanel.Hide();
     }
 
+    private static readonly Dictionary<string, string> PlainTextCache = new();
+
+    /// <summary>
+    /// Visible text of a topic (style block and markup removed, entities decoded),
+    /// so that searching never matches CSS or tag/attribute names.
+    /// </summary>
+    private static string GetPlainText(HelpTopic topic)
+    {
+        if (PlainTextCache.TryGetValue(topic.Id, out var cached))
+            return cached;
+
+        var html = System.Text.RegularExpressions.Regex.Replace(
+            topic.Html, @"<(style|script)\b[^>]*>.*?</\1\s*>", " ",
+            System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"<[^>]*>", " ");
+        var text = System.Text.RegularExpressions.Regex.Replace(System.Net.WebUtility.HtmlDecode(html), @"\s+", " ").Trim();
+        PlainTextCache[topic.Id] = text;
+        return text;
+    }
+
     private void PerformSearch()
     {
         if (_searchResults == null || _searchBox == null) return;
@@ -587,7 +615,7 @@ internal class HelpForm : Form
         var results = _topicMap.Values
             .Where(t => !string.IsNullOrEmpty(t.Html) &&
                    (t.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                    t.Html.Contains(query, StringComparison.OrdinalIgnoreCase)))
+                    GetPlainText(t).Contains(query, StringComparison.OrdinalIgnoreCase)))
             .OrderBy(t => t.Title, StringComparer.OrdinalIgnoreCase);
 
         foreach (var topic in results)
@@ -601,6 +629,7 @@ internal class HelpForm : Form
     {
         _navVisible = !_navVisible;
         _split.Panel1Collapsed = !_navVisible;
+        _miToggleNav.Text = _navVisible ? "Registerkarten ausblenden" : "Registerkarten einblenden";
     }
 
     // === Icon creation (16x16) ===
