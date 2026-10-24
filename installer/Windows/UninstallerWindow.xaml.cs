@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text;
-using Microsoft.Win32;
 using System.Windows;
 using System.Windows.Input;
 using MessageBox = System.Windows.MessageBox;
@@ -91,6 +90,8 @@ public partial class UninstallerWindow : Window
                 filesError = "Der Installationsordner ist nicht in der Registry eingetragen.";
             else if (!InstallerCore.IsSafeAppDirectory(targetDir, out var dirError))
                 filesError = dirError;
+            else if (InstallerCore.IsReparsePoint(targetDir))
+                filesError = $"Der Installationsordner \"{targetDir}\" ist ein Link (Junction/Symlink) und wird aus Sicherheitsgründen nicht bearbeitet.";
             else if (!File.Exists(Path.Combine(targetDir, InstallerCore.AppExeName)))
                 filesError = $"Im Ordner \"{targetDir}\" wurde keine {InstallerCore.AppExeName} gefunden.";
             var canRemoveFiles = filesError == null;
@@ -100,14 +101,17 @@ public partial class UninstallerWindow : Window
             UninstallProgress.Value = 10;
             await Task.Run(InstallerCore.KillRunningApp);
 
-            // Remove scanner button handler and restore the Windows default (needs admin; we are elevated)
+            // Remove scanner button handler and restore the Windows default (needs admin; we are elevated).
+            // Preferably via the app itself; if it is missing or fails, the uninstaller does it directly.
+            StatusText.Text = "Entferne Scan-Tasten-Registrierung...";
+            UninstallProgress.Value = 18;
+            int? unregisterExit = null;
             if (canRemoveFiles)
             {
-                StatusText.Text = "Entferne Scan-Tasten-Registrierung...";
-                UninstallProgress.Value = 18;
-                var exit = await InstallerCore.RunAppHelperAsync(targetDir!, "/unregister", TimeSpan.FromSeconds(30));
-                Debug.WriteLine($"/unregister exit code: {exit?.ToString() ?? "n/a"}");
+                unregisterExit = await InstallerCore.RunAppHelperAsync(targetDir!, "/unregister", TimeSpan.FromSeconds(30));
+                Debug.WriteLine($"/unregister exit code: {unregisterExit?.ToString() ?? "n/a"}");
             }
+            var scanButtonRestored = unregisterExit == 0 || await Task.Run(ScanButtonRegistry.Unregister);
 
             // Remove shortcuts
             StatusText.Text = "Entferne Verknüpfungen...";
@@ -138,26 +142,11 @@ public partial class UninstallerWindow : Window
             // Remove registry entries
             StatusText.Text = "Entferne Registry-Einträge...";
             UninstallProgress.Value = 40;
-            try { Registry.LocalMachine.DeleteSubKeyTree(InstallerCore.UninstallKeyPath, false); } catch { }
-            try { Registry.LocalMachine.DeleteSubKeyTree(InstallerCore.AppKeyPath, false); } catch { }
-            try
-            {
-                bool publisherKeyEmpty;
-                using (var pubKey = Registry.LocalMachine.OpenSubKey(InstallerCore.PublisherKeyPath))
-                    publisherKeyEmpty = pubKey != null && pubKey.SubKeyCount == 0 && pubKey.ValueCount == 0;
-                if (publisherKeyEmpty)
-                    Registry.LocalMachine.DeleteSubKey(InstallerCore.PublisherKeyPath, false);
-            }
-            catch { }
+            // Both registry views; the scanner-button backup stays if restoring it failed
+            InstallerCore.DeleteProductRegistryKeys(keepScanButtonBackup: !scanButtonRestored);
 
-            // Autostart entry. Note: this is the HKCU of the account the (elevated) uninstaller
-            // runs as — if elevation used a different admin account, that user's entry stays.
-            try
-            {
-                using var runKey = Registry.CurrentUser.OpenSubKey(InstallerCore.RunKeyPath, writable: true);
-                runKey?.DeleteValue(InstallerCore.RunValueName, false);
-            }
-            catch { }
+            // Autostart entries of the elevated account and of all logged-on users
+            InstallerCore.RemoveAutostartEntries();
             await Task.Delay(200);
 
             // Remove settings if requested
@@ -179,9 +168,10 @@ public partial class UninstallerWindow : Window
             // Remove program files (only those listed in the install manifest)
             StatusText.Text = "Entferne Programmdateien...";
             UninstallProgress.Value = 70;
+            var allFilesKnown = true;
             if (canRemoveFiles)
             {
-                await Task.Run(() => RemoveProgramFiles(targetDir!));
+                allFilesKnown = await Task.Run(() => RemoveProgramFiles(targetDir!));
             }
             await Task.Delay(300);
 
@@ -190,7 +180,23 @@ public partial class UninstallerWindow : Window
 
             await Task.Delay(800);
 
-            if (canRemoveFiles)
+            var warnings = new List<string>();
+            if (!canRemoveFiles)
+            {
+                warnings.Add("Die Programmdateien konnten nicht automatisch gelöscht werden:\n" + filesError +
+                    "\nBitte löschen Sie den Programmordner bei Bedarf manuell.");
+            }
+            else if (!allFilesKnown)
+            {
+                warnings.Add(InstallerCore.LegacyLeftoverMessage(targetDir!));
+            }
+            if (!scanButtonRestored)
+            {
+                warnings.Add("Die Scan-Tasten-Registrierung konnte nicht vollständig zurückgesetzt werden. " +
+                    "Die Sicherung der ursprünglichen Windows-Einstellungen bleibt in der Registry erhalten.");
+            }
+
+            if (warnings.Count == 0)
             {
                 MessageBox.Show(
                     "SpeedScan Manager wurde erfolgreich deinstalliert.",
@@ -200,8 +206,7 @@ public partial class UninstallerWindow : Window
             else
             {
                 MessageBox.Show(
-                    "SpeedScan Manager wurde aus Windows entfernt, die Programmdateien konnten aber nicht automatisch gelöscht werden:\n\n" +
-                    filesError + "\n\nBitte löschen Sie den Programmordner bei Bedarf manuell.",
+                    "SpeedScan Manager wurde aus Windows entfernt, aber:\n\n" + string.Join("\n\n", warnings),
                     "Deinstallation abgeschlossen",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
@@ -223,27 +228,13 @@ public partial class UninstallerWindow : Window
     /// <summary>
     /// Deletes the files listed in the install manifest (or the legacy file set of installs
     /// without manifest), then empty folders. The running uninstaller and the install folder
-    /// itself are removed by a cleanup script after this process has exited.
+    /// itself are removed by a cleanup script after this process has exited. Returns false if
+    /// files of a legacy install may remain (see InstallerCore.GetLegacyFileList).
     /// </summary>
-    private static void RemoveProgramFiles(string targetDir)
+    private static bool RemoveProgramFiles(string targetDir)
     {
         var uninstallerPath = Environment.ProcessPath != null ? Path.GetFullPath(Environment.ProcessPath) : null;
-        var files = InstallerCore.ReadManifest(targetDir) ?? InstallerCore.GetLegacyFileList(targetDir);
-        files.Add(InstallerCore.ManifestFileName);
-        files.Add("scanbutton.vbs");
-
-        foreach (var rel in files)
-        {
-            try
-            {
-                var path = InstallerCore.ResolveInside(targetDir, rel);
-                if (uninstallerPath != null && string.Equals(path, uninstallerPath, StringComparison.OrdinalIgnoreCase))
-                    continue;
-                if (File.Exists(path)) File.Delete(path);
-            }
-            catch { }
-        }
-        InstallerCore.RemoveEmptySubdirectories(targetDir);
+        var allFilesKnown = InstallerCore.RemoveInstalledFiles(targetDir, uninstallerPath);
 
         var normalizedTarget = Path.GetFullPath(targetDir).TrimEnd(Path.DirectorySeparatorChar);
         var uninstallerInTarget = uninstallerPath != null &&
@@ -256,10 +247,11 @@ public partial class UninstallerWindow : Window
                     Directory.Delete(normalizedTarget);
             }
             catch { }
-            return;
+            return allFilesKnown;
         }
 
         ScheduleSelfDelete(uninstallerPath!, normalizedTarget);
+        return allFilesKnown;
     }
 
     /// <summary>

@@ -247,6 +247,45 @@ public partial class MainWindow : Window
             return;
         }
         TxtInstallPath.Text = targetDir;
+        if (InstallerCore.IsReparsePoint(targetDir))
+        {
+            MessageBox.Show($"Der Ordner \"{targetDir}\" ist ein Link (Junction/Symlink). Bitte wählen Sie einen normalen Ordner.",
+                "Ungültiger Installationspfad", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        // An existing installation in a different folder: offer to remove it, otherwise the
+        // old folder would stay behind while the Windows entry points to the new one.
+        string? oldInstallDir = null;
+        var existingDir = InstallerCore.GetExistingInstallLocation();
+        if (existingDir != null &&
+            !string.Equals(Path.GetFullPath(existingDir).TrimEnd('\\'), targetDir, StringComparison.OrdinalIgnoreCase) &&
+            File.Exists(Path.Combine(existingDir, InstallerCore.AppExeName)))
+        {
+            var answer = MessageBox.Show(
+                $"SpeedScan Manager ist bereits in einem anderen Ordner installiert:\n{existingDir}\n\n" +
+                $"Vorhandene Installation in {existingDir} entfernen?\n\n" +
+                "Ja: alte Programmdateien löschen und neu installieren\n" +
+                "Nein: alte Dateien behalten (die Windows-Einträge zeigen danach auf den neuen Ordner)",
+                "Vorhandene Installation",
+                MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (answer == MessageBoxResult.Cancel)
+                return;
+            if (answer == MessageBoxResult.Yes)
+            {
+                if (!InstallerCore.IsSafeAppDirectory(existingDir, out var oldDirError) || InstallerCore.IsReparsePoint(existingDir))
+                {
+                    MessageBox.Show("Die vorhandene Installation kann nicht automatisch entfernt werden:\n\n" +
+                        (oldDirError.Length > 0 ? oldDirError : $"\"{existingDir}\" ist ein Link (Junction/Symlink).") +
+                        "\n\nBitte löschen Sie den alten Ordner bei Bedarf manuell.",
+                        "Vorhandene Installation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else
+                {
+                    oldInstallDir = existingDir;
+                }
+            }
+        }
 
         InstallerCore.Payload payload;
         try
@@ -259,7 +298,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        using var _ = payload;
+        using var payloadScope = payload;
 
         if (!payload.Files.Any(f => string.Equals(f.RelativePath, InstallerCore.AppExeName, StringComparison.OrdinalIgnoreCase)))
         {
@@ -298,16 +337,56 @@ public partial class MainWindow : Window
 
         try
         {
+            // Remove the installation in the other folder first (manifest-based)
+            if (oldInstallDir != null)
+            {
+                StatusText.Text = "Entferne vorhandene Installation...";
+                InstallProgress.Value = 2;
+                var oldDir = oldInstallDir;
+                var allOldFilesKnown = await Task.Run(() =>
+                {
+                    var self = Environment.ProcessPath != null ? Path.GetFullPath(Environment.ProcessPath) : null;
+                    var known = InstallerCore.RemoveInstalledFiles(oldDir, self);
+                    try
+                    {
+                        if (Directory.Exists(oldDir) && !Directory.EnumerateFileSystemEntries(oldDir).Any())
+                            Directory.Delete(oldDir, false);
+                    }
+                    catch { }
+                    return known;
+                });
+                if (!allOldFilesKnown)
+                {
+                    MessageBox.Show(InstallerCore.LegacyLeftoverMessage(oldDir), "Vorhandene Installation",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+
             // Create target directory
             StatusText.Text = "Erstelle Installationsverzeichnis...";
             InstallProgress.Value = 5;
             Directory.CreateDirectory(targetDir);
+            if (InstallerCore.IsReparsePoint(targetDir))
+                throw new IOException($"Der Installationsordner ist ein Link (Junction/Symlink): {targetDir}");
+            try
+            {
+                // Outside Program Files: keep standard users from modifying the install folder
+                InstallerCore.SecureInstallDirectory(targetDir);
+            }
+            catch (Exception aclEx)
+            {
+                MessageBox.Show(
+                    "Die Zugriffsrechte des Installationsordners konnten nicht eingeschränkt werden:\n\n" + aclEx.Message +
+                    "\n\nDie Installation wird fortgesetzt. Ohne eingeschränkte Rechte können auch Standardbenutzer " +
+                    "die Programmdateien verändern.",
+                    "Warnung", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
             await Task.Delay(100);
 
             // Files of a previous installation in this folder (for upgrade cleanup)
             var oldFiles = InstallerCore.ReadManifest(targetDir)
                 ?? (File.Exists(Path.Combine(targetDir, InstallerCore.AppExeName))
-                    ? InstallerCore.GetLegacyFileList(targetDir)
+                    ? InstallerCore.GetLegacyFileList(targetDir, out _)
                     : new List<string>());
 
             // Copy files
@@ -316,14 +395,13 @@ public partial class MainWindow : Window
             for (int i = 0; i < totalFiles; i++)
             {
                 var file = payload.Files[i];
-                var dstFile = InstallerCore.ResolveInside(targetDir, file.RelativePath);
 
                 StatusText.Text = $"Kopiere: {Path.GetFileName(file.RelativePath)}  ({i + 1}/{totalFiles})";
-                Directory.CreateDirectory(Path.GetDirectoryName(dstFile)!);
                 await Task.Run(() =>
                 {
+                    // Refuses paths through links and replaces (never follows) existing links
+                    using var dst = InstallerCore.CreateFileInside(targetDir, file.RelativePath);
                     using var src = file.Open();
-                    using var dst = new FileStream(dstFile, FileMode.Create, FileAccess.Write, FileShare.None);
                     src.CopyTo(dst);
                 });
                 installed.Add(file.RelativePath);
@@ -331,16 +409,10 @@ public partial class MainWindow : Window
                 InstallProgress.Value = 10 + (int)((double)(i + 1) / totalFiles * 70);
             }
 
-            // Uninstaller (copy of this setup, started with --uninstall)
+            // Uninstaller (payload-less build of this setup, started with --uninstall)
             StatusText.Text = "Erstelle Deinstallationsprogramm...";
             InstallProgress.Value = 82;
-            var uninstallPath = Path.Combine(targetDir, InstallerCore.UninstallerExeName);
-            var installerPath = Environment.ProcessPath;
-            if (installerPath != null &&
-                !string.Equals(Path.GetFullPath(installerPath), uninstallPath, StringComparison.OrdinalIgnoreCase))
-            {
-                await Task.Run(() => File.Copy(installerPath, uninstallPath, overwrite: true));
-            }
+            await Task.Run(() => InstallerCore.WriteUninstaller(targetDir));
             installed.Add(InstallerCore.UninstallerExeName);
 
             // Remove files of the previous version that are no longer part of the payload
@@ -350,11 +422,7 @@ public partial class MainWindow : Window
             foreach (var rel in oldFiles.Append("scanbutton.vbs"))
             {
                 if (keep.Contains(rel)) continue;
-                try
-                {
-                    var path = InstallerCore.ResolveInside(targetDir, rel);
-                    if (File.Exists(path)) File.Delete(path);
-                }
+                try { InstallerCore.DeleteFileInside(targetDir, rel); }
                 catch { }
             }
             InstallerCore.RemoveEmptySubdirectories(targetDir);
@@ -416,7 +484,22 @@ public partial class MainWindow : Window
         var exePath = Path.Combine(targetDir, InstallerCore.AppExeName);
         var uninstallPath = Path.Combine(targetDir, InstallerCore.UninstallerExeName);
 
-        using (var key = Registry.LocalMachine.CreateSubKey(InstallerCore.UninstallKeyPath))
+        // Explicit 32-bit view (matches the x86 app and earlier release installs); a stale entry
+        // of an AnyCPU dev build in the other view would show up twice in "Apps".
+        foreach (var view in InstallerCore.AllRegistryViews.Where(v => v != InstallerCore.AppRegistryView))
+        {
+            try
+            {
+                using var otherHklm = InstallerCore.OpenHklm(view);
+                using var probe = otherHklm.OpenSubKey(InstallerCore.UninstallKeyPath);
+                if (probe != null && Environment.Is64BitOperatingSystem)
+                    otherHklm.DeleteSubKeyTree(InstallerCore.UninstallKeyPath, false);
+            }
+            catch { }
+        }
+
+        using var hklm = InstallerCore.OpenHklm(InstallerCore.AppRegistryView);
+        using (var key = hklm.CreateSubKey(InstallerCore.UninstallKeyPath))
         {
             key.SetValue("DisplayName", ProductName);
             key.SetValue("DisplayVersion", InstallerCore.GetAppVersion(targetDir));
@@ -434,7 +517,7 @@ public partial class MainWindow : Window
         }
 
         // Also store install dir for app lookup
-        using var appKey = Registry.LocalMachine.CreateSubKey(InstallerCore.AppKeyPath);
+        using var appKey = hklm.CreateSubKey(InstallerCore.AppKeyPath);
         appKey.SetValue("InstallDir", targetDir);
     }
 

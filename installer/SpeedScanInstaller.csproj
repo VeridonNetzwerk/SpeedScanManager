@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -38,10 +39,22 @@
     <EmbeddedResource Include="$(AppPayloadZip)" LogicalName="AppPayload.zip" Link="Payload\AppPayload.zip" />
   </ItemGroup>
 
+  <!--
+    Uninstaller: a build of this project WITHOUT payload (first publish step in
+    build-release.ps1), passed as -p:UninstallerExe=<path>. The setup installs it as
+    uninstall.exe, so the uninstaller doesn't carry the app payload. Without it (dev build)
+    the setup copies itself.
+  -->
+  <ItemGroup Condition="'$(UninstallerExe)' != '' And Exists('$(UninstallerExe)')">
+    <EmbeddedResource Include="$(UninstallerExe)" LogicalName="Uninstaller.exe" Link="Payload\Uninstaller.exe" />
+  </ItemGroup>
+
   <Target Name="ReportAppPayload" BeforeTargets="CoreCompile">
     <Error Condition="'$(AppPayloadZip)' != '' And !Exists('$(AppPayloadZip)')" Text="AppPayloadZip not found: $(AppPayloadZip)" />
+    <Error Condition="'$(UninstallerExe)' != '' And !Exists('$(UninstallerExe)')" Text="UninstallerExe not found: $(UninstallerExe)" />
     <Message Importance="high" Condition="'$(AppPayloadZip)' != ''" Text="SpeedScanInstaller: embedding app payload $(AppPayloadZip)" />
     <Message Importance="high" Condition="'$(AppPayloadZip)' == ''" Text="SpeedScanInstaller: no app payload embedded (dev build, uses dist folder)" />
+    <Message Importance="high" Condition="'$(UninstallerExe)' != ''" Text="SpeedScanInstaller: embedding uninstaller $(UninstallerExe)" />
   </Target>
 
 </Project>

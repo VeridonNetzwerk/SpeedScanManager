@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using Microsoft.Win32;
 
 namespace SpeedScanInstaller;
@@ -27,6 +29,23 @@ internal static class InstallerCore
 
     /// <summary>Logical name of the embedded app zip (see SpeedScanInstaller.csproj).</summary>
     private const string PayloadResourceName = "AppPayload.zip";
+
+    /// <summary>Logical name of the embedded payload-less uninstaller build (see SpeedScanInstaller.csproj).</summary>
+    private const string UninstallerResourceName = "Uninstaller.exe";
+
+    // ===== Registry views =====
+
+    /// <summary>
+    /// View for the HKLM\SOFTWARE keys (Uninstall entry, app key). The app is x86 and the
+    /// release installer is published win-x86, so existing installs live in the 32-bit view
+    /// (WOW6432Node). Using it explicitly keeps AnyCPU dev builds consistent with that.
+    /// </summary>
+    public const RegistryView AppRegistryView = RegistryView.Registry32;
+
+    /// <summary>Both views; deletes and lookups go through both (on 32-bit Windows they coincide).</summary>
+    public static readonly RegistryView[] AllRegistryViews = { RegistryView.Registry32, RegistryView.Registry64 };
+
+    public static RegistryKey OpenHklm(RegistryView view) => RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
 
     // ===== Payload =====
 
@@ -115,14 +134,125 @@ internal static class InstallerCore
         return norm;
     }
 
-    /// <summary>Combines installDir and rel, guaranteeing the result lies inside installDir.</summary>
+    /// <summary>
+    /// Combines installDir and rel, guaranteeing the result lies inside installDir — also
+    /// physically: installDir itself and every existing directory between it and the result
+    /// must not be a reparse point (junction, symlink, mount point), otherwise the elevated
+    /// installer/uninstaller could be redirected to write or delete elsewhere. The last
+    /// component itself may be a link; callers delete such links without following them.
+    /// </summary>
     public static string ResolveInside(string installDir, string rel)
     {
-        var root = Path.GetFullPath(installDir).TrimEnd('\\') + "\\";
+        var rootDir = Path.GetFullPath(installDir).TrimEnd('\\');
+        var root = rootDir + "\\";
         var full = Path.GetFullPath(Path.Combine(root, NormalizeRelative(rel)));
         if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException($"Pfad liegt außerhalb des Installationsordners: {rel}");
+
+        if (IsReparsePoint(rootDir))
+            throw new IOException($"Der Installationsordner ist ein Link (Junction/Symlink) und wird nicht verwendet: {rootDir}");
+        for (var dir = Path.GetDirectoryName(full); dir != null && dir.Length > rootDir.Length; dir = Path.GetDirectoryName(dir))
+        {
+            if (IsReparsePoint(dir))
+                throw new IOException($"Pfad führt über einen Link (Junction/Symlink) und wird nicht verwendet: {dir}");
+        }
         return full;
+    }
+
+    /// <summary>True if path exists and is a reparse point (the link itself is inspected, not its target).</summary>
+    public static bool IsReparsePoint(string path)
+    {
+        try
+        {
+            return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
+        }
+        catch (FileNotFoundException) { return false; }
+        catch (DirectoryNotFoundException) { return false; }
+    }
+
+    /// <summary>
+    /// Creates (or replaces) installDir\rel for writing. An existing file or link at that
+    /// path is deleted first instead of being opened, so neither a symlink nor a hard link
+    /// can redirect the write to a file outside the install dir.
+    /// </summary>
+    public static FileStream CreateFileInside(string installDir, string rel)
+    {
+        var path = ResolveInside(installDir, rel);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        path = ResolveInside(installDir, rel); // re-check the directories just created
+        if (File.Exists(path) || IsReparsePoint(path))
+            File.Delete(path);
+        return new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+    }
+
+    /// <summary>
+    /// Deletes installDir\rel if it exists. A link is removed itself, never its target;
+    /// paths that lead through a link are refused (see <see cref="ResolveInside"/>).
+    /// </summary>
+    public static void DeleteFileInside(string installDir, string rel, string? skipPath = null)
+    {
+        var path = ResolveInside(installDir, rel);
+        if (skipPath != null && string.Equals(path, skipPath, StringComparison.OrdinalIgnoreCase))
+            return;
+        FileAttributes attr;
+        try { attr = File.GetAttributes(path); }
+        catch (FileNotFoundException) { return; }
+        catch (DirectoryNotFoundException) { return; }
+
+        if ((attr & FileAttributes.Directory) != 0)
+        {
+            // A directory where the manifest lists a file: only remove it if it is a link
+            // (RemoveDirectory deletes the link, not the target's contents).
+            if ((attr & FileAttributes.ReparsePoint) != 0)
+                Directory.Delete(path, false);
+            return;
+        }
+        File.Delete(path);
+    }
+
+    /// <summary>
+    /// Restricts the install dir's ACL when it is outside Program Files (where the inherited
+    /// ACL would typically let standard users modify it): no inheritance, Administrators and
+    /// SYSTEM full control, Users read and execute, owner Administrators. Prevents a standard
+    /// user from tampering with install-manifest.txt, the exe the elevated setup starts, or
+    /// planting junctions. Throws on failure.
+    /// </summary>
+    public static void SecureInstallDirectory(string installDir)
+    {
+        if (IsUnderProgramFiles(installDir))
+            return;
+
+        var admins = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null);
+        var system = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null);
+        var users = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
+        const InheritanceFlags inherit = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
+
+        var security = new DirectorySecurity();
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        security.AddAccessRule(new FileSystemAccessRule(admins, FileSystemRights.FullControl, inherit, PropagationFlags.None, AccessControlType.Allow));
+        security.AddAccessRule(new FileSystemAccessRule(system, FileSystemRights.FullControl, inherit, PropagationFlags.None, AccessControlType.Allow));
+        security.AddAccessRule(new FileSystemAccessRule(users, FileSystemRights.ReadAndExecute, inherit, PropagationFlags.None, AccessControlType.Allow));
+        var dirInfo = new DirectoryInfo(installDir);
+        dirInfo.SetAccessControl(security);
+
+        // A folder created beforehand by a standard user is owned by that user, and the owner
+        // can always rewrite the ACL — hand ownership to Administrators.
+        var owner = new DirectorySecurity();
+        owner.SetOwner(admins);
+        dirInfo.SetAccessControl(owner);
+    }
+
+    private static bool IsUnderProgramFiles(string dir)
+    {
+        var full = Path.GetFullPath(dir).TrimEnd('\\') + "\\";
+        return new[]
+            {
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                Environment.GetEnvironmentVariable("ProgramW6432") ?? "",
+            }
+            .Where(p => !string.IsNullOrEmpty(p))
+            .Any(p => full.StartsWith(Path.GetFullPath(p).TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase));
     }
 
     // ===== Install path validation =====
@@ -263,15 +393,102 @@ internal static class InstallerCore
     /// <summary>Install location of an existing installation from the Uninstall key, or null.</summary>
     public static string? GetExistingInstallLocation()
     {
+        // 32-bit view first (release installs); 64-bit view only for older AnyCPU dev builds.
+        foreach (var view in AllRegistryViews)
+        {
+            try
+            {
+                using var hklm = OpenHklm(view);
+                using var key = hklm.OpenSubKey(UninstallKeyPath);
+                var loc = key?.GetValue("InstallLocation") as string;
+                if (!string.IsNullOrWhiteSpace(loc))
+                    return loc.Trim().Trim('"').TrimEnd('\\');
+            }
+            catch { }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Deletes the Uninstall entry and the app key (HKLM\SOFTWARE\VeridonNetzwerk\SpeedScanManager)
+    /// in both registry views, plus the publisher key when it is empty. With keepScanButtonBackup
+    /// the app key's "RemovedHandlers" backup survives (only "InstallDir" is removed) so a failed
+    /// scanner-button restore can still be repeated later.
+    /// </summary>
+    public static void DeleteProductRegistryKeys(bool keepScanButtonBackup)
+    {
+        foreach (var view in AllRegistryViews)
+        {
+            try
+            {
+                using var hklm = OpenHklm(view);
+                try { hklm.DeleteSubKeyTree(UninstallKeyPath, false); } catch { }
+
+                if (keepScanButtonBackup)
+                {
+                    try
+                    {
+                        using var appKey = hklm.OpenSubKey(AppKeyPath, writable: true);
+                        appKey?.DeleteValue("InstallDir", false);
+                    }
+                    catch { }
+                }
+                else
+                {
+                    try { hklm.DeleteSubKeyTree(AppKeyPath, false); } catch { }
+                }
+
+                try
+                {
+                    bool publisherKeyEmpty;
+                    using (var pubKey = hklm.OpenSubKey(PublisherKeyPath))
+                        publisherKeyEmpty = pubKey != null && pubKey.SubKeyCount == 0 && pubKey.ValueCount == 0;
+                    if (publisherKeyEmpty)
+                        hklm.DeleteSubKey(PublisherKeyPath, false);
+                }
+                catch { }
+            }
+            catch { }
+        }
+    }
+
+    /// <summary>
+    /// Removes the autostart value from HKCU\...\Run of the current (elevated) account and of
+    /// every user hive loaded under HKEY_USERS — that includes the logged-on, non-elevated user
+    /// who started the uninstaller when a different admin account was used for elevation.
+    /// Users who are not logged on (hive not loaded) keep their value; it then points to a
+    /// missing exe and Windows ignores it.
+    /// </summary>
+    public static void RemoveAutostartEntries()
+    {
         try
         {
-            using var key = Registry.LocalMachine.OpenSubKey(UninstallKeyPath);
-            var loc = key?.GetValue("InstallLocation") as string;
-            return string.IsNullOrWhiteSpace(loc) ? null : loc.Trim().Trim('"').TrimEnd('\\');
+            using var runKey = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
+            runKey?.DeleteValue(RunValueName, false);
         }
-        catch
+        catch { }
+
+        try
         {
-            return null;
+            using var users = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64);
+            foreach (var sid in users.GetSubKeyNames())
+            {
+                if (sid.EndsWith("_Classes", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                try
+                {
+                    using var runKey = users.OpenSubKey($@"{sid}\{RunKeyPath}", writable: true);
+                    runKey?.DeleteValue(RunValueName, false);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Removing autostart for {sid} failed: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Enumerating HKEY_USERS failed: {ex.Message}");
         }
     }
 
@@ -280,7 +497,7 @@ internal static class InstallerCore
     /// <summary>Reads the list of installed files (relative paths), or null if there is no manifest.</summary>
     public static List<string>? ReadManifest(string installDir)
     {
-        var path = Path.Combine(installDir, ManifestFileName);
+        var path = ResolveInside(installDir, ManifestFileName);
         if (!File.Exists(path)) return null;
         var result = new List<string>();
         foreach (var line in File.ReadAllLines(path))
@@ -299,46 +516,133 @@ internal static class InstallerCore
             $"# {ProductName} – installierte Dateien (vom Deinstallationsprogramm verwendet)",
         };
         lines.AddRange(relativePaths.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(p => p, StringComparer.OrdinalIgnoreCase));
-        File.WriteAllLines(Path.Combine(installDir, ManifestFileName), lines);
+        using var stream = CreateFileInside(installDir, ManifestFileName);
+        using var writer = new StreamWriter(stream);
+        foreach (var line in lines)
+            writer.WriteLine(line);
     }
 
-    /// <summary>
-    /// Files a pre-manifest installer (v0.1.x) copied: top-level exe/dll/pdb/vbs plus x86\ and x64\.
-    /// Used only when an existing install has no manifest.
-    /// </summary>
-    public static List<string> GetLegacyFileList(string installDir)
+    /// <summary>Enumeration that neither returns nor descends into reparse points.</summary>
+    private static readonly EnumerationOptions NoLinksRecursive = new()
     {
-        var result = new List<string>();
-        foreach (var f in Directory.GetFiles(installDir, "*", SearchOption.TopDirectoryOnly))
+        RecurseSubdirectories = true,
+        AttributesToSkip = FileAttributes.ReparsePoint,
+        IgnoreInaccessible = true,
+    };
+
+    /// <summary>
+    /// Files to remove for an install without manifest (v0.1.x). That installer copied every
+    /// top-level *.exe/*.dll/*.pdb of its dist folder plus x86\ and x64\, so the file set can
+    /// only be reconstructed by pattern. That is safe only in a folder that belongs to the app
+    /// (leaf name "SpeedScanManager"); anywhere else (e.g. a shared tools folder) only
+    /// SpeedScanManager.exe and uninstall.exe are returned and restricted is true — the caller
+    /// must tell the user to remove the remaining files manually.
+    /// </summary>
+    public static List<string> GetLegacyFileList(string installDir, out bool restricted)
+    {
+        var result = new List<string> { AppExeName, UninstallerExeName, "scanbutton.vbs" };
+        restricted = !string.Equals(Path.GetFileName(Path.GetFullPath(installDir).TrimEnd('\\')),
+            AppFolderName, StringComparison.OrdinalIgnoreCase);
+        if (restricted || IsReparsePoint(installDir))
+            return result;
+
+        foreach (var f in Directory.GetFiles(installDir, "*", new EnumerationOptions { AttributesToSkip = FileAttributes.ReparsePoint }))
         {
             var ext = Path.GetExtension(f).ToLowerInvariant();
-            if (ext is ".exe" or ".dll" or ".pdb" or ".vbs")
+            if (ext is ".exe" or ".dll" or ".pdb")
                 result.Add(Path.GetFileName(f));
         }
         foreach (var sub in new[] { "x86", "x64" })
         {
             var d = Path.Combine(installDir, sub);
-            if (Directory.Exists(d))
-                result.AddRange(Directory.GetFiles(d, "*", SearchOption.AllDirectories)
+            if (Directory.Exists(d) && !IsReparsePoint(d))
+                result.AddRange(Directory.GetFiles(d, "*", NoLinksRecursive)
                     .Select(f => Path.GetRelativePath(installDir, f)));
         }
         return result;
     }
 
-    /// <summary>Deletes empty directories below installDir (deepest first), never installDir itself.</summary>
+    /// <summary>
+    /// Deletes empty directories below installDir (deepest first), never installDir itself.
+    /// Never descends into a reparse point; such a link is removed itself (not its target).
+    /// </summary>
     public static void RemoveEmptySubdirectories(string installDir)
     {
-        if (!Directory.Exists(installDir)) return;
-        foreach (var d in Directory.GetDirectories(installDir, "*", SearchOption.AllDirectories)
-                     .OrderByDescending(d => d.Length))
+        if (!Directory.Exists(installDir) || IsReparsePoint(installDir)) return;
+        try
         {
-            try
-            {
-                if (!Directory.EnumerateFileSystemEntries(d).Any())
-                    Directory.Delete(d);
-            }
-            catch { }
+            foreach (var d in Directory.GetDirectories(installDir))
+                RemoveEmptyTree(d);
         }
+        catch { }
+    }
+
+    private static void RemoveEmptyTree(string dir)
+    {
+        try
+        {
+            if (IsReparsePoint(dir))
+            {
+                Directory.Delete(dir, false); // removes the link only
+                return;
+            }
+            foreach (var sub in Directory.GetDirectories(dir))
+                RemoveEmptyTree(sub);
+            if (!Directory.EnumerateFileSystemEntries(dir).Any())
+                Directory.Delete(dir, false);
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Removes the files of an installation: those in its manifest, or the legacy file set
+    /// (see <see cref="GetLegacyFileList"/>), the manifest itself and empty subfolders.
+    /// skipPath (the running uninstaller) is left alone. Returns false if the legacy set had
+    /// to be restricted, i.e. files the user must remove manually may remain.
+    /// </summary>
+    public static bool RemoveInstalledFiles(string installDir, string? skipPath)
+    {
+        if (IsReparsePoint(installDir))
+            throw new IOException($"Der Installationsordner ist ein Link (Junction/Symlink) und wird nicht verwendet: {installDir}");
+
+        var restricted = false;
+        var files = ReadManifest(installDir) ?? GetLegacyFileList(installDir, out restricted);
+        files.Add(ManifestFileName);
+        files.Add("scanbutton.vbs");
+
+        foreach (var rel in files.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            try { DeleteFileInside(installDir, rel, skipPath); }
+            catch (Exception ex) { Debug.WriteLine($"Deleting {rel} failed: {ex.Message}"); }
+        }
+        RemoveEmptySubdirectories(installDir);
+        return !restricted;
+    }
+
+    /// <summary>User message for <see cref="RemoveInstalledFiles"/> returning false.</summary>
+    public static string LegacyLeftoverMessage(string installDir) =>
+        $"Für die ältere Installation in \"{installDir}\" gibt es keine Dateiliste. Da dies kein eigener " +
+        $"{AppFolderName}-Ordner ist, wurden nur {AppExeName} und {UninstallerExeName} entfernt. " +
+        "Bitte löschen Sie die übrigen Programmdateien (DLLs sowie die Ordner x86 und x64) manuell.";
+
+    /// <summary>
+    /// Writes the uninstaller to installDir\uninstall.exe: the payload-less build embedded by
+    /// build-release.ps1, or (dev builds without it) a copy of the running setup.
+    /// </summary>
+    public static void WriteUninstaller(string installDir)
+    {
+        var source = Assembly.GetExecutingAssembly().GetManifestResourceStream(UninstallerResourceName);
+        if (source == null)
+        {
+            var self = Environment.ProcessPath;
+            if (self == null) throw new InvalidOperationException("Der Pfad des Setups konnte nicht ermittelt werden.");
+            if (string.Equals(Path.GetFullPath(self), ResolveInside(installDir, UninstallerExeName), StringComparison.OrdinalIgnoreCase))
+                return; // running as the installed uninstaller already
+            source = File.OpenRead(self);
+        }
+        using (source)
+        using (var dst = CreateFileInside(installDir, UninstallerExeName))
+            source.CopyTo(dst);
     }
 
     // ===== Processes =====
@@ -424,7 +728,7 @@ internal static class InstallerCore
     {
         try
         {
-            var bytes = Directory.GetFiles(dir, "*", SearchOption.AllDirectories).Sum(f => new FileInfo(f).Length);
+            var bytes = Directory.GetFiles(dir, "*", NoLinksRecursive).Sum(f => new FileInfo(f).Length);
             return bytes / 1024;
         }
         catch

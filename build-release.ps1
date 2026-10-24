@@ -5,9 +5,13 @@
 .DESCRIPTION
     1. Publishes SpeedScanManager.csproj (self-contained, win-x86) into ./dist.
     2. Zips ./dist as the portable release. The same zip is the installer's app payload.
-    3. Publishes installer/SpeedScanInstaller.csproj as a single-file exe with that zip
-       embedded (-p:AppPayloadZip=...), so the setup is one self-contained file.
-    4. Both artifacts end up in ./release/vX.X.X/:
+    3. Publishes installer/SpeedScanInstaller.csproj WITHOUT payload as a single-file exe:
+       the uninstaller, which the setup installs as uninstall.exe. It is built in its own
+       obj/bin folders so it can never pick up a payload from an earlier incremental build.
+    4. Publishes installer/SpeedScanInstaller.csproj as a single-file exe with that zip
+       (-p:AppPayloadZip=...) and the uninstaller (-p:UninstallerExe=...) embedded, so the
+       setup is one self-contained file and uninstall.exe doesn't carry the app payload.
+    5. Both artifacts end up in ./release/vX.X.X/:
          SpeedScanManager-X.X.X-portable-win-x86.zip
          SpeedScanManager-X.X.X-Setup-win-x86.exe
 
@@ -44,9 +48,10 @@ if (-not $Version) {
 
 Write-Host "=== SpeedScan Manager Release Build v$Version ===" -ForegroundColor Cyan
 
-$distDir      = Join-Path $root "dist"
-$distInstDir  = Join-Path $root "dist-installer"
-$releaseDir   = Join-Path $root "release\v$Version"
+$distDir       = Join-Path $root "dist"
+$distInstDir   = Join-Path $root "dist-installer"
+$distUninstDir = Join-Path $distInstDir "uninstaller"
+$releaseDir    = Join-Path $root "release\v$Version"
 
 # --- Clean previous outputs ---
 foreach ($dir in @($distDir, $distInstDir)) {
@@ -73,7 +78,7 @@ $commonProps = @(
 )
 
 # --- 1) Publish app ---
-Write-Host "`n[1/3] Publishing app..." -ForegroundColor Yellow
+Write-Host "`n[1/4] Publishing app..." -ForegroundColor Yellow
 Invoke-Checked "App publish" {
     dotnet publish (Join-Path $root "SpeedScanManager.csproj") `
         -c Release -r win-x86 --self-contained true `
@@ -85,20 +90,38 @@ if (-not (Test-Path (Join-Path $distDir "SpeedScanManager.exe"))) {
 }
 
 # --- 2) Zip app (portable release + installer payload) ---
-Write-Host "[2/3] Zipping app -> $portableZip" -ForegroundColor Yellow
+Write-Host "[2/4] Zipping app -> $portableZip" -ForegroundColor Yellow
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 if (Test-Path $portableZip) { Remove-Item $portableZip -Force }
 [System.IO.Compression.ZipFile]::CreateFromDirectory(
     $distDir, $portableZip, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 
-# --- 3) Publish installer with embedded payload ---
-Write-Host "`n[3/3] Publishing installer (payload embedded)..." -ForegroundColor Yellow
+$installerProject = Join-Path $root "installer\SpeedScanInstaller.csproj"
+$installerProps = @(
+    "-c", "Release", "-r", "win-x86", "--self-contained", "true",
+    "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true",
+    "-p:EnableCompressionInSingleFile=true"
+)
+
+# --- 3) Publish uninstaller (installer without payload) ---
+# Own obj/bin folders (relative to the project): otherwise the incremental build of a
+# previous full installer could be reused and the uninstaller would contain the payload.
+Write-Host "`n[3/4] Publishing uninstaller (no payload)..." -ForegroundColor Yellow
+Invoke-Checked "Uninstaller publish" {
+    dotnet publish $installerProject @installerProps `
+        "-p:IntermediateOutputPath=obj\uninstaller\" "-p:OutputPath=bin\uninstaller\" `
+        @commonProps `
+        -o $distUninstDir
+}
+$builtUninstaller = Join-Path $distUninstDir "SpeedScanInstaller.exe"
+if (-not (Test-Path $builtUninstaller)) { throw "SpeedScanInstaller.exe missing in $distUninstDir." }
+
+# --- 4) Publish installer with embedded payload and uninstaller ---
+Write-Host "`n[4/4] Publishing installer (payload + uninstaller embedded)..." -ForegroundColor Yellow
 Invoke-Checked "Installer publish" {
-    dotnet publish (Join-Path $root "installer\SpeedScanInstaller.csproj") `
-        -c Release -r win-x86 --self-contained true `
-        -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
-        -p:EnableCompressionInSingleFile=true `
+    dotnet publish $installerProject @installerProps `
         "-p:AppPayloadZip=$portableZip" `
+        "-p:UninstallerExe=$builtUninstaller" `
         @commonProps `
         -o $distInstDir
 }
@@ -113,3 +136,5 @@ Get-ChildItem $releaseDir -File | ForEach-Object {
     $sizeMB = [math]::Round($_.Length / 1MB, 1)
     Write-Host " - $($_.Name) ($sizeMB MB)"
 }
+$uninstMB = [math]::Round((Get-Item $builtUninstaller).Length / 1MB, 1)
+Write-Host " (embedded uninstall.exe: $uninstMB MB)"
