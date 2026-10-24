@@ -48,6 +48,7 @@ internal static class WindowActivation
     }
 }
 
+
 /// <summary>
 /// Message boxes for the tray app. The owner is usually the invisible tray window, so the
 /// box must be top-most and take the foreground to never be hidden behind other windows.
@@ -57,6 +58,7 @@ internal static class WindowActivation
 /// session receives its events while a scan is running. A native MessageBox has its own
 /// loop without those filters and would stall the scan while it is open. Other threads
 /// (e.g. crash reports) use the native MessageBox with MB_TOPMOST | MB_SETFOREGROUND.
+/// The WinForms box follows the app theme (light/dark).
 /// </summary>
 internal static class TrayMessageBox
 {
@@ -73,12 +75,20 @@ internal static class TrayMessageBox
         MessageBoxButtons buttons = MessageBoxButtons.OK,
         MessageBoxIcon icon = MessageBoxIcon.Information,
         bool defaultSecondButton = false)
+        => Show(owner, text, Caption, buttons, icon, defaultSecondButton);
+
+    /// <summary>Same as <see cref="Show(IWin32Window?, string, MessageBoxButtons, MessageBoxIcon, bool)"/> with an own window caption.</summary>
+    public static DialogResult Show(IWin32Window? owner, string text, string caption,
+        MessageBoxButtons buttons = MessageBoxButtons.OK,
+        MessageBoxIcon icon = MessageBoxIcon.Information,
+        bool defaultSecondButton = false)
     {
+        if (string.IsNullOrEmpty(caption)) caption = Caption;
         if (Application.MessageLoop && buttons is MessageBoxButtons.OK or MessageBoxButtons.YesNo)
         {
             try
             {
-                using var form = new TrayPromptForm(text, Caption, buttons, icon, defaultSecondButton);
+                using var form = new TrayPromptForm(text, caption, buttons, icon, defaultSecondButton);
                 return owner != null ? form.ShowDialog(owner) : form.ShowDialog();
             }
             catch (Exception ex)
@@ -92,7 +102,7 @@ internal static class TrayMessageBox
         IntPtr hwnd = IntPtr.Zero;
         try { hwnd = owner?.Handle ?? IntPtr.Zero; } catch { }
         // IDOK=1, IDCANCEL=2, IDABORT=3, IDRETRY=4, IDIGNORE=5, IDYES=6, IDNO=7 = DialogResult values
-        return (DialogResult)MessageBoxW(hwnd, text, Caption, type);
+        return (DialogResult)MessageBoxW(hwnd, text, caption, type);
     }
 
     public static void Error(IWin32Window? owner, string text) => Show(owner, text, MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -105,8 +115,8 @@ internal static class TrayMessageBox
 
 /// <summary>
 /// WinForms replacement for the native message box (see <see cref="TrayMessageBox"/>):
-/// icon, text and OK or Ja/Nein buttons; top-most, centered on the screen, brought to the
-/// foreground when shown.
+/// themed modal (Discord style) with a colored symbol badge, the text and a footer bar with
+/// OK or Ja/Nein; top-most, centered on the screen, brought to the foreground when shown.
 /// </summary>
 internal sealed class TrayPromptForm : Form
 {
@@ -116,7 +126,7 @@ internal sealed class TrayPromptForm : Form
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
         Text = caption;
-        Font = SystemFonts.MessageBoxFont ?? Control.DefaultFont;
+        Font = ThemeFonts.Regular;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -126,48 +136,87 @@ internal sealed class TrayPromptForm : Form
         TopMost = true;
         AutoSize = true;
         AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        BackColor = SystemColors.Window;
 
         var layout = new TableLayoutPanel
         {
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 2,
-            RowCount = 2,
-            Padding = new Padding(12, 16, 12, 0),
-            Margin = Padding.Empty,
-            BackColor = SystemColors.Window
+            RowCount = 1,
+            Padding = new Padding(20, 20, 24, 8),
+            Margin = Padding.Empty
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-        var systemIcon = icon switch
+        var kind = icon switch
         {
-            MessageBoxIcon.Error => SystemIcons.Error,
-            MessageBoxIcon.Warning => SystemIcons.Warning,
-            MessageBoxIcon.Question => SystemIcons.Question,
-            MessageBoxIcon.Information => SystemIcons.Information,
-            _ => null
+            MessageBoxIcon.Error => PromptBadge.Kind.Error,
+            MessageBoxIcon.Warning => PromptBadge.Kind.Warning,
+            MessageBoxIcon.Question => PromptBadge.Kind.Question,
+            MessageBoxIcon.Information => PromptBadge.Kind.Info,
+            _ => PromptBadge.Kind.None
         };
-        if (systemIcon != null)
+        if (kind != PromptBadge.Kind.None)
         {
-            layout.Controls.Add(new PictureBox
+            layout.Controls.Add(new PromptBadge(kind)
             {
-                Image = systemIcon.ToBitmap(),
-                SizeMode = PictureBoxSizeMode.AutoSize,
-                Margin = new Padding(0, 0, 12, 12)
+                Size = new Size(36, 36),
+                Margin = new Padding(0, 0, 14, 12)
             }, 0, 0);
         }
 
-        var label = new Label
+        // A short first paragraph ("Scan verwerfen?\n\nJa: ...") becomes a semibold heading.
+        string normalized = text.Replace("\r\n", "\n");
+        int split = normalized.IndexOf("\n\n", StringComparison.Ordinal);
+        Control content;
+        if (split > 0 && split <= 80 && normalized.IndexOf('\n') == split)
         {
-            Text = text,
-            AutoSize = true,
-            MaximumSize = new Size(420, 0),
-            Margin = new Padding(0, 2, 8, 16),
-            UseMnemonic = false
-        };
-        layout.Controls.Add(label, 1, 0);
+            var heading = new Label
+            {
+                Text = normalized[..split],
+                AutoSize = true,
+                MaximumSize = new Size(400, 0),
+                Font = ThemeFonts.Heading,
+                Margin = new Padding(0, 0, 0, 6),
+                UseMnemonic = false
+            };
+            var body = new Label
+            {
+                Text = normalized[(split + 2)..],
+                AutoSize = true,
+                MaximumSize = new Size(400, 0),
+                Margin = Padding.Empty,
+                UseMnemonic = false
+            };
+            ThemeManager.SetRole(body, ThemeRole.Muted);
+            var stack = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Margin = new Padding(0, 2, 0, 16),
+                Padding = Padding.Empty
+            };
+            stack.Controls.Add(heading);
+            stack.Controls.Add(body);
+            content = stack;
+        }
+        else
+        {
+            content = new Label
+            {
+                Text = text,
+                AutoSize = true,
+                MaximumSize = new Size(400, 0),
+                MinimumSize = new Size(0, 36),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0, 0, 0, 16),
+                UseMnemonic = false
+            };
+        }
+        layout.Controls.Add(content, kind != PromptBadge.Kind.None ? 1 : 0, 0);
 
         var buttonPanel = new FlowLayoutPanel
         {
@@ -176,18 +225,17 @@ internal sealed class TrayPromptForm : Form
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
-            Padding = new Padding(0, 8, 0, 8),
-            BackColor = SystemColors.Control
+            Padding = new Padding(16, 12, 6, 12)
         };
+        ThemeManager.SetRole(buttonPanel, ThemeRole.Secondary);
 
         Button MakeButton(string caption2, DialogResult result) => new()
         {
             Text = caption2,
             DialogResult = result,
-            MinimumSize = new Size(86, 26),
+            MinimumSize = new Size(90, 32),
             AutoSize = true,
-            Margin = new Padding(0, 0, 10, 0),
-            UseVisualStyleBackColor = true
+            Margin = new Padding(0, 0, 10, 0)
         };
 
         Button first, second;
@@ -208,6 +256,9 @@ internal sealed class TrayPromptForm : Form
         }
         var defaultButton = defaultSecondButton ? second : first;
         AcceptButton = defaultButton;
+        ThemeManager.SetRole(first, ReferenceEquals(first, defaultButton) ? ThemeRole.Primary : ThemeRole.Secondary);
+        if (!ReferenceEquals(first, second))
+            ThemeManager.SetRole(second, ReferenceEquals(second, defaultButton) ? ThemeRole.Primary : ThemeRole.Secondary);
 
         var outer = new TableLayoutPanel
         {
@@ -223,7 +274,8 @@ internal sealed class TrayPromptForm : Form
         outer.Controls.Add(buttonPanel, 0, 1);
         Controls.Add(outer);
 
-        MinimumSize = new Size(260, 0);
+        MinimumSize = new Size(300, 0);
+        ThemeManager.Apply(this);
         ResumeLayout(true);
     }
 
@@ -232,5 +284,81 @@ internal sealed class TrayPromptForm : Form
         base.OnShown(e);
         WindowActivation.BringToFront(this);
         (AcceptButton as Control)?.Focus();
+    }
+
+    /// <summary>Round colored badge with the message symbol (i, !, ?, x).</summary>
+    private sealed class PromptBadge : Control, IThemeAware
+    {
+        public enum Kind { None, Info, Warning, Error, Question }
+
+        private readonly Kind _kind;
+
+        public PromptBadge(Kind kind)
+        {
+            _kind = kind;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
+                     | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.Selectable, false);
+            AccessibleRole = AccessibleRole.Graphic;
+            AccessibleName = kind switch
+            {
+                Kind.Error => "Fehler",
+                Kind.Warning => "Warnung",
+                Kind.Question => "Frage",
+                _ => "Information"
+            };
+        }
+
+        public void ApplyTheme(ThemePalette palette) => Invalidate();
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var p = ThemeManager.Current;
+            var g = e.Graphics;
+            g.Clear(Parent?.BackColor ?? p.Background);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+
+            var color = _kind switch
+            {
+                Kind.Error => p.Danger,
+                Kind.Warning => p.Warning,
+                _ => p.Accent
+            };
+            float d = Math.Min(Width, Height) - 1f;
+            var circle = new RectangleF((Width - d) / 2f, (Height - d) / 2f, d, d);
+            // Soft halo + solid disc
+            using (var halo = new SolidBrush(Color.FromArgb(p.IsDark ? 60 : 40, color)))
+                g.FillEllipse(halo, circle);
+            var inner = RectangleF.Inflate(circle, -d * 0.14f, -d * 0.14f);
+            using (var brush = new SolidBrush(color))
+                g.FillEllipse(brush, inner);
+
+            float s = inner.Width / 16f;
+            float cx = inner.X + inner.Width / 2f, cy = inner.Y + inner.Height / 2f;
+            var fore = _kind == Kind.Warning && !p.IsDark ? Color.White : p.TextOnAccent;
+            using var pen = new Pen(fore, 2f * s) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round, LineJoin = System.Drawing.Drawing2D.LineJoin.Round };
+            using var dot = new SolidBrush(fore);
+            switch (_kind)
+            {
+                case Kind.Info:
+                    g.FillEllipse(dot, cx - 1.25f * s, cy - 5.5f * s, 2.5f * s, 2.5f * s);
+                    g.DrawLine(pen, cx, cy - 0.5f * s, cx, cy + 4.5f * s);
+                    break;
+                case Kind.Warning:
+                    g.DrawLine(pen, cx, cy - 5f * s, cx, cy + 1f * s);
+                    g.FillEllipse(dot, cx - 1.25f * s, cy + 3.25f * s, 2.5f * s, 2.5f * s);
+                    break;
+                case Kind.Error:
+                    g.DrawLine(pen, cx - 3.5f * s, cy - 3.5f * s, cx + 3.5f * s, cy + 3.5f * s);
+                    g.DrawLine(pen, cx + 3.5f * s, cy - 3.5f * s, cx - 3.5f * s, cy + 3.5f * s);
+                    break;
+                case Kind.Question:
+                    g.DrawArc(pen, cx - 3f * s, cy - 5.5f * s, 6f * s, 6f * s, 180, 270);
+                    g.DrawLine(pen, cx, cy + 0.5f * s, cx, cy + 1.5f * s);
+                    g.FillEllipse(dot, cx - 1.25f * s, cy + 3.5f * s, 2.5f * s, 2.5f * s);
+                    break;
+            }
+        }
     }
 }

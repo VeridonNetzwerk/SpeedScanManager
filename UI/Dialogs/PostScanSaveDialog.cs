@@ -6,21 +6,18 @@ namespace SpeedScanManager;
 /// <summary>
 /// Post-scan "In Ordner speichern" dialog shown when destination is Scan to Folder.
 /// Lets the user preview scanned images, choose a title and destination folder before saving.
-/// Styled to match the rest of SpeedScan Manager (gray panels, blue accents, icon buttons).
+/// Themed (light/dark) via <see cref="ThemeManager"/>: page preview on a canvas surface,
+/// input fields on the right, footer bar with page navigation and the buttons.
 /// </summary>
 internal class PostScanSaveDialog : Form
 {
-    private static readonly Color PanelGray = Color.FromArgb(235, 235, 235);
-    private static readonly Color AccentBlue = Color.FromArgb(45, 90, 170);
-    private static readonly Color TextGray = Color.FromArgb(80, 85, 95);
-
     private readonly IReadOnlyList<Bitmap> _scanImages;
     private readonly string _defaultTitle;
     private readonly ScanSettings _settings;
     private int _currentPageIndex;
 
-    private static readonly Font UiFont = new("Microsoft Sans Serif", 8.25f);
-    private static readonly Font BoldFont = new("Microsoft Sans Serif", 8.25f, FontStyle.Bold);
+    private static readonly Font UiFont = ThemeFonts.Regular;
+    private static readonly Font BoldFont = ThemeFonts.Semibold;
 
     private readonly SplitContainer _split;
     private readonly PictureBox _imgPreview;
@@ -73,33 +70,31 @@ internal class PostScanSaveDialog : Form
         ShowInTaskbar = true;
         AutoScaleMode = AutoScaleMode.None;
         Font = UiFont;
-        BackColor = PanelGray;
 
         // === SplitContainer ===
         _split = new SplitContainer
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
-            SplitterWidth = 4,
-            BackColor = PanelGray,
+            SplitterWidth = 1,
             IsSplitterFixed = true,
             FixedPanel = FixedPanel.Panel1
         };
 
         // === Left side: Preview ===
+        // Canvas surface around the page so a white page stands out in both themes
         var previewPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = Color.White,
-            BorderStyle = BorderStyle.FixedSingle
+            Padding = new Padding(10)
         };
+        ThemeManager.SetRole(previewPanel, ThemeRole.Sidebar);
 
         _imgPreview = new PictureBox
         {
             SizeMode = PictureBoxSizeMode.Zoom,
             Image = null,
-            Dock = DockStyle.Fill,
-            BackColor = Color.White
+            Dock = DockStyle.Fill
         };
         previewPanel.Controls.Add(_imgPreview);
         _split.Panel1.Controls.Add(previewPanel);
@@ -109,25 +104,24 @@ internal class PostScanSaveDialog : Form
             Text = "Seite 1",
             Font = UiFont,
             AutoSize = false,
-            BackColor = PanelGray,
-            ForeColor = TextGray,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter
         };
 
-        _btnPrev = new Button { Text = "\u25C0", FlatStyle = FlatStyle.Standard, UseVisualStyleBackColor = true, Size = new Size(28, 26), Font = UiFont, Anchor = AnchorStyles.None };
-        _btnNext = new Button { Text = "\u25B6", FlatStyle = FlatStyle.Standard, UseVisualStyleBackColor = true, Size = new Size(28, 26), Font = UiFont, Anchor = AnchorStyles.None };
+        _btnPrev = new Button { Size = new Size(28, 28), Font = UiFont, Anchor = AnchorStyles.None, Margin = new Padding(0), AccessibleName = "Vorherige Seite" };
+        _btnNext = new Button { Size = new Size(28, 28), Font = UiFont, Anchor = AnchorStyles.None, Margin = new Padding(0), AccessibleName = "Nächste Seite" };
+        _btnPrev.Image = _chevronLeft = CreateChevron(left: true);
+        _btnNext.Image = _chevronRight = CreateChevron(left: false);
 
         // === Right side: Title + Folder ===
-        var contentPanel = new Panel { Dock = DockStyle.Fill, BackColor = PanelGray };
+        var contentPanel = new Panel { Dock = DockStyle.Fill };
 
         var lblTitle = new Label
         {
             Text = "Titel festlegen",
             Font = BoldFont,
             Location = new Point(14, 12),
-            AutoSize = true,
-            ForeColor = Color.FromArgb(40, 40, 40)
+            AutoSize = true
         };
 
         _txtTitle = new TextBox
@@ -135,7 +129,6 @@ internal class PostScanSaveDialog : Form
             Font = UiFont,
             Location = new Point(14, 32),
             Size = new Size(260, 24),
-            BackColor = Color.White,
             Text = _defaultTitle
         };
 
@@ -144,8 +137,7 @@ internal class PostScanSaveDialog : Form
             Text = "Zielordner festlegen",
             Font = BoldFont,
             Location = new Point(14, 74),
-            AutoSize = true,
-            ForeColor = Color.FromArgb(40, 40, 40)
+            AutoSize = true
         };
 
         _txtFolderPath = new TextBox
@@ -154,23 +146,17 @@ internal class PostScanSaveDialog : Form
             Font = UiFont,
             Location = new Point(14, 94),
             Size = new Size(260, 24),
-            BackColor = Color.White,
             Text = defaultFolder
         };
 
         _btnBrowse = new Button
         {
             Text = "Durchsuchen...",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Size = new Size(135, 26),
+            Size = new Size(135, 28),
             Font = UiFont,
-            Location = new Point(14, 124),
-            Image = TabIcons.CreateBrowseIcon(),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
-            Padding = new Padding(4, 0, 2, 0)
+            Location = new Point(14, 124)
         };
+        ThemeManager.SetGlyph(_btnBrowse, Glyph.Folder);
         _btnBrowse.Click += (_, _) => BrowseFolder();
 
         // Scan settings summary
@@ -178,10 +164,8 @@ internal class PostScanSaveDialog : Form
         {
             Text = "Scaneinstellungen",
             Location = new Point(14, 168),
-            Size = new Size(260, 130),
-            Font = UiFont,
-            ForeColor = TextGray,
-            BackColor = PanelGray
+            Size = new Size(260, 142),
+            Font = UiFont
         };
 
         var dpiValue = _settings.ImageQuality switch
@@ -214,57 +198,54 @@ internal class PostScanSaveDialog : Form
         var lblPreset = new Label
         {
             Text = presetText,
-            Font = new Font("Microsoft Sans Serif", 9f, FontStyle.Bold),
-            Location = new Point(10, 16),
-            AutoSize = true,
-            ForeColor = AccentBlue
+            Font = ThemeFonts.Semibold,
+            Location = new Point(10, 22),
+            AutoSize = true
         };
+        ThemeManager.SetRole(lblPreset, ThemeRole.Accent);
 
         var lblDpi = new Label
         {
             Text = $"Auflösung: {dpiValue} dpi",
             Font = UiFont,
-            Location = new Point(10, 34),
-            AutoSize = true,
-            ForeColor = TextGray
+            Location = new Point(10, 40),
+            AutoSize = true
         };
 
         var lblColor = new Label
         {
             Text = $"Farbmodus: {GetColorModeText(_settings.ColorMode)}",
             Font = UiFont,
-            Location = new Point(10, 52),
-            AutoSize = true,
-            ForeColor = TextGray
+            Location = new Point(10, 58),
+            AutoSize = true
         };
 
         var lblSide = new Label
         {
             Text = $"Scanseite: {GetScanSideText(_settings.ScanSide)}",
             Font = UiFont,
-            Location = new Point(10, 70),
-            AutoSize = true,
-            ForeColor = TextGray
+            Location = new Point(10, 76),
+            AutoSize = true
         };
 
         var lblFormat = new Label
         {
             Text = $"Dateiformat: {fileFormatText}",
             Font = UiFont,
-            Location = new Point(10, 88),
-            AutoSize = true,
-            ForeColor = TextGray
+            Location = new Point(10, 94),
+            AutoSize = true
         };
 
         var lblCompression = new Label
         {
             Text = $"Kompression: Stufe {_settings.CompressionRate}",
             Font = UiFont,
-            Location = new Point(10, 106),
-            AutoSize = true,
-            ForeColor = TextGray
+            Location = new Point(10, 112),
+            AutoSize = true
         };
 
+        foreach (var row in new[] { lblDpi, lblColor, lblSide, lblFormat, lblCompression })
+            ThemeManager.SetRole(row, ThemeRole.Muted);
         grpSummary.Controls.AddRange(new Control[] { lblPreset, lblDpi, lblColor, lblSide, lblFormat, lblCompression });
 
         contentPanel.Controls.AddRange(new Control[] { lblTitle, _txtTitle, lblFolder, _txtFolderPath, _btnBrowse, grpSummary });
@@ -274,49 +255,38 @@ internal class PostScanSaveDialog : Form
         var footerPanel = new Panel
         {
             Dock = DockStyle.Bottom,
-            Height = 42,
-            BackColor = PanelGray
+            Height = 48,
+            Padding = new Padding(8, 0, 8, 0)
         };
-        footerPanel.Paint += (_, e) =>
-        {
-            using var pen = new Pen(Color.FromArgb(200, 200, 200), 1f);
-            e.Graphics.DrawLine(pen, 0, 0, footerPanel.Width, 0);
-        };
+        ThemeManager.SetRole(footerPanel, ThemeRole.Secondary);
 
         _btnSave = new Button
         {
             Text = "Speichern",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Size = new Size(116, 26),
+            Size = new Size(110, 30),
             Font = UiFont,
-            Image = TabIcons.CreateCheckIcon(),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
-            Anchor = AnchorStyles.None,
+            Anchor = AnchorStyles.Right,
             Margin = new Padding(0)
         };
+        ThemeManager.SetRole(_btnSave, ThemeRole.Primary);
+        ThemeManager.SetGlyph(_btnSave, Glyph.Check);
 
         _btnCancel = new Button
         {
             Text = "Abbrechen",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Size = new Size(116, 26),
+            Size = new Size(110, 30),
             Font = UiFont,
-            Image = TabIcons.CreateCrossIcon(),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
-            Anchor = AnchorStyles.None,
+            Anchor = AnchorStyles.Right,
             Margin = new Padding(0)
         };
+        ThemeManager.SetRole(_btnCancel, ThemeRole.Secondary);
+        ThemeManager.SetGlyph(_btnCancel, Glyph.Cross);
 
         var footerTable = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 6,
             RowCount = 1,
-            BackColor = PanelGray,
             Margin = new Padding(0)
         };
         footerTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -324,12 +294,12 @@ internal class PostScanSaveDialog : Form
         footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));
         footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 28));
         footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
-        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
+        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 118));
+        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
         footerTable.Controls.Add(_btnPrev, 0, 0);
         footerTable.Controls.Add(_lblPageCounter, 1, 0);
         footerTable.Controls.Add(_btnNext, 2, 0);
-        footerTable.Controls.Add(new Panel { Dock = DockStyle.Fill, BackColor = PanelGray }, 3, 0);
+        footerTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 3, 0);
         footerTable.Controls.Add(_btnCancel, 4, 0);
         footerTable.Controls.Add(_btnSave, 5, 0);
         footerPanel.Controls.Add(footerTable);
@@ -346,7 +316,7 @@ internal class PostScanSaveDialog : Form
         {
             if (string.IsNullOrWhiteSpace(_txtFolderPath.Text))
             {
-                MessageBox.Show(this, "Bitte wählen Sie einen Zielordner.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                TrayMessageBox.Show(this, "Bitte wählen Sie einen Zielordner.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             DialogResult = DialogResult.OK;
@@ -357,6 +327,28 @@ internal class PostScanSaveDialog : Form
 
         // Set initial preview
         UpdatePreview();
+        ThemeManager.Apply(this);
+    }
+
+    private readonly Bitmap _chevronLeft;
+    private readonly Bitmap _chevronRight;
+
+    /// <summary>Chevron for the page buttons (drawn dark; the themed button tints it).</summary>
+    private static Bitmap CreateChevron(bool left)
+    {
+        var bmp = ThemeGlyphs.CreateBitmap(Glyph.ChevronRight, 16, Color.Black);
+        if (left) bmp.RotateFlip(RotateFlipType.RotateNoneFlipX);
+        return bmp;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _chevronLeft.Dispose();
+            _chevronRight.Dispose();
+        }
+        base.Dispose(disposing);
     }
 
     protected override void OnShown(EventArgs e)
@@ -372,9 +364,9 @@ internal class PostScanSaveDialog : Form
         if (DialogResult != DialogResult.OK && ConfirmDiscardOnCancel
             && e.CloseReason is CloseReason.UserClosing or CloseReason.None)
         {
-            var answer = MessageBox.Show(this,
+            var answer = TrayMessageBox.Show(this,
                 "Scan verwerfen?\n\nJa: Der Scan wird gelöscht.\nNein: Zurück zum Dialog.",
-                Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question, defaultSecondButton: true);
             if (answer != DialogResult.Yes)
             {
                 e.Cancel = true;

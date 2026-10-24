@@ -252,7 +252,7 @@ internal sealed class ComboSubclass : ControlSubclass
 }
 
 /// <summary>Themed 1-2 px border for controls with a native border (TextBox, ListBox, TreeView).</summary>
-internal sealed class BorderSubclass : ControlSubclass
+internal class BorderSubclass : ControlSubclass
 {
     private const int GWL_STYLE = -16;
     private const int GWL_EXSTYLE = -20;
@@ -298,7 +298,7 @@ internal sealed class BorderSubclass : ControlSubclass
         {
             using var g = Graphics.FromHdc(hdc);
             var p = ThemeManager.Current;
-            var outer = _focusAccent && Owner.Focused ? p.Accent : p.InputBorder;
+            var outer = _focusAccent && Owner.ContainsFocus ? p.Accent : p.InputBorder;
             using (var pen = new Pen(outer))
                 g.DrawRectangle(pen, 0, 0, w - 1, h - 1);
             if (thickness == 2)
@@ -524,5 +524,230 @@ internal sealed class TabControlSubclass : ControlSubclass
                 g.FillRectangle(brush, rect.X + 4 * s, stripBottom - 2 * s, rect.Width - 8 * s, 2 * s);
             }
         }
+    }
+}
+
+/// <summary>
+/// Themed frame of NumericUpDown/DomainUpDown. UpDownBase paints its visual-style border after
+/// the Paint event, so the frame is drawn after WM_PAINT; the spin buttons get their own subclass.
+/// </summary>
+internal sealed class UpDownSubclass : ControlSubclass
+{
+    private readonly UpDownButtonsSubclass? _buttons;
+
+    public UpDownSubclass(UpDownBase upDown) : base(upDown)
+    {
+        foreach (Control child in upDown.Controls)
+        {
+            if (child is not TextBoxBase)
+                _buttons ??= new UpDownButtonsSubclass(child);
+        }
+        upDown.Enter += (_, _) => upDown.Invalidate();
+        upDown.Leave += (_, _) => upDown.Invalidate();
+    }
+
+    /// <summary>Repaints the spin buttons (after a theme change).</summary>
+    public void InvalidateButtons() => _buttons?.Invalidate();
+
+    protected override void WndProc(ref Message m)
+    {
+        switch (m.Msg)
+        {
+            case WM_PAINT:
+                base.WndProc(ref m);
+                PaintFrame(IntPtr.Zero);
+                return;
+            case WM_PRINTCLIENT:
+                base.WndProc(ref m);
+                PaintFrame(m.WParam);
+                return;
+        }
+        base.WndProc(ref m);
+    }
+
+    private void PaintFrame(IntPtr hdcIn)
+    {
+        var upDown = (UpDownBase)Owner;
+        if (upDown.BorderStyle == BorderStyle.None) return;
+        IntPtr hdc = hdcIn != IntPtr.Zero ? hdcIn : GetDC(Handle);
+        if (hdc == IntPtr.Zero) return;
+        try
+        {
+            using var g = Graphics.FromHdc(hdc);
+            var p = ThemeManager.Current;
+            var client = upDown.ClientRectangle;
+            // Cover the native 2 px border and the gaps around the edit/buttons children
+            // (the children themselves are clipped: WS_CLIPCHILDREN).
+            using (var fill = new SolidBrush(upDown.BackColor))
+                g.FillRectangle(fill, client);
+            var outer = upDown.ContainsFocus && upDown.Enabled ? p.Accent : p.InputBorder;
+            using var pen = new Pen(outer);
+            g.DrawRectangle(pen, 0, 0, client.Width - 1, client.Height - 1);
+        }
+        finally
+        {
+            if (hdcIn == IntPtr.Zero)
+                ReleaseDC(Handle, hdc);
+        }
+    }
+}
+
+/// <summary>Fully themed spin buttons of an UpDownBase (flat, chevrons, hover/pressed halves).</summary>
+internal sealed class UpDownButtonsSubclass : ControlSubclass
+{
+    private const int WM_LBUTTONDOWN = 0x0201;
+    private const int WM_LBUTTONUP = 0x0202;
+    private const int WM_CAPTURECHANGED = 0x0215;
+
+    private Point? _mouse;
+
+    public UpDownButtonsSubclass(Control buttons) : base(buttons)
+    {
+        buttons.EnabledChanged += (_, _) => buttons.Invalidate();
+    }
+
+    public void Invalidate() => Owner.Invalidate();
+
+    protected override void WndProc(ref Message m)
+    {
+        switch (m.Msg)
+        {
+            case WM_ERASEBKGND:
+                m.Result = (IntPtr)1;
+                return;
+            case WM_PAINT:
+            {
+                IntPtr hdc = BeginPaint(Handle, out var ps);
+                try { PaintBuffered(hdc, Draw); }
+                finally { EndPaint(Handle, ref ps); }
+                return;
+            }
+            case WM_PRINTCLIENT:
+                PaintBuffered(m.WParam, Draw);
+                return;
+            case WM_MOUSEMOVE:
+                base.WndProc(ref m);
+                if (_mouse == null) TrackMouseLeave();
+                _mouse = new Point((short)((long)m.LParam & 0xFFFF), (short)(((long)m.LParam >> 16) & 0xFFFF));
+                Owner.Invalidate();
+                return;
+            case WM_MOUSELEAVE:
+                base.WndProc(ref m);
+                _mouse = null;
+                Owner.Invalidate();
+                return;
+            case WM_LBUTTONDOWN:
+            case WM_LBUTTONUP:
+            case WM_CAPTURECHANGED:
+                base.WndProc(ref m);
+                Owner.Invalidate();
+                return;
+        }
+        base.WndProc(ref m);
+    }
+
+    private void Draw(Graphics g)
+    {
+        var p = ThemeManager.Current;
+        var upDown = Owner.Parent;
+        bool enabled = Owner.Enabled && (upDown?.Enabled ?? true);
+        var bg = upDown?.BackColor ?? p.Input;
+        g.Clear(bg);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+        int w = Owner.Width, h = Owner.Height, half = h / 2;
+        var top = new Rectangle(0, 0, w, half);
+        var bottom = new Rectangle(0, half, w, h - half);
+        bool pressed = (Control.MouseButtons & MouseButtons.Left) != 0;
+        float s = Scale;
+
+        void DrawHalf(Rectangle r, Glyph glyph)
+        {
+            bool hot = enabled && _mouse.HasValue && r.Contains(_mouse.Value);
+            if (hot)
+            {
+                var fill = pressed
+                    ? (p.IsDark ? p.Selected : p.ButtonSecondaryPressed)
+                    : (p.IsDark ? p.Hover : p.Selected);
+                using var path = ThemeGlyphs.Rounded(RectangleF.Inflate(r, -1f, -1f), 2f * s);
+                using var brush = new SolidBrush(fill);
+                g.FillPath(brush, path);
+            }
+            var color = !enabled ? ThemePalette.Blend(p.TextMuted, bg, 0.45f) : hot ? p.Text : p.TextSecondary;
+            float size = Math.Min(r.Width, r.Height);
+            var glyphRect = new RectangleF(r.X + (r.Width - size) / 2f, r.Y + (r.Height - size) / 2f, size, size);
+            ThemeGlyphs.Draw(g, glyph, glyphRect, color);
+        }
+
+        DrawHalf(top, Glyph.ChevronUp);
+        DrawHalf(bottom, Glyph.ChevronDown);
+    }
+}
+
+/// <summary>
+/// ListView: themed native border plus readable header text in dark mode (the dark
+/// "ItemsView" header theme keeps black text; NM_CUSTOMDRAW sets the text color).
+/// </summary>
+internal sealed class ListViewSubclass : BorderSubclass
+{
+    private const int WM_NOTIFY = 0x004E;
+    private const int NM_CUSTOMDRAW = -12;
+    private const int CDDS_PREPAINT = 0x00000001;
+    private const int CDDS_ITEMPREPAINT = 0x00010001;
+    private const int CDRF_DODEFAULT = 0x00000000;
+    private const int CDRF_NOTIFYITEMDRAW = 0x00000020;
+    private const int LVM_GETHEADER = 0x101F;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NMHDR
+    {
+        public IntPtr hwndFrom;
+        public IntPtr idFrom;
+        public int code;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NMCUSTOMDRAW
+    {
+        public NMHDR hdr;
+        public int dwDrawStage;
+        public IntPtr hdc;
+        public ThemePainters.RECT rc;
+        public IntPtr dwItemSpec;
+        public int uItemState;
+        public IntPtr lItemlParam;
+    }
+
+    [DllImport("gdi32.dll")]
+    private static extern int SetTextColor(IntPtr hdc, int color);
+
+    public ListViewSubclass(ListView listView) : base(listView, focusAccent: false) { }
+
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == WM_NOTIFY && m.LParam != IntPtr.Zero && ThemeManager.IsDark
+            && Owner is ListView { OwnerDraw: false, View: View.Details })
+        {
+            var hdr = Marshal.PtrToStructure<NMHDR>(m.LParam);
+            if (hdr.code == NM_CUSTOMDRAW
+                && hdr.hwndFrom == ThemePainters.SendMessage(Handle, LVM_GETHEADER, IntPtr.Zero, IntPtr.Zero))
+            {
+                var cd = Marshal.PtrToStructure<NMCUSTOMDRAW>(m.LParam);
+                if (cd.dwDrawStage == CDDS_PREPAINT)
+                {
+                    m.Result = (IntPtr)CDRF_NOTIFYITEMDRAW;
+                    return;
+                }
+                if (cd.dwDrawStage == CDDS_ITEMPREPAINT)
+                {
+                    var c = ThemeManager.Current.TextSecondary;
+                    SetTextColor(cd.hdc, c.R | (c.G << 8) | (c.B << 16));
+                    m.Result = (IntPtr)CDRF_DODEFAULT;
+                    return;
+                }
+            }
+        }
+        base.WndProc(ref m);
     }
 }

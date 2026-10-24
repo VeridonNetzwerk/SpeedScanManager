@@ -491,7 +491,10 @@ internal static class ThemePainters
         const int LVM_GETHEADER = 0x101F;
         var header = SendMessage(listView.Handle, LVM_GETHEADER, IntPtr.Zero, IntPtr.Zero);
         if (header != IntPtr.Zero)
+        {
             ThemeNative.SetTheme(header, dark ? "DarkMode_ItemsView" : "ItemsView");
+            ThemeNative.RedrawWindow(header, IntPtr.Zero, IntPtr.Zero, ThemeNative.RDW_INVALIDATE | ThemeNative.RDW_FRAME);
+        }
     }
 
     /// <summary>Repaints the non-client border (after a theme or focus change).</summary>

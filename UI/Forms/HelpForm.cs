@@ -6,9 +6,10 @@ using System.Windows.Forms;
 namespace SpeedScanManager;
 
 /// <summary>
-/// Classic Windows HTML Help viewer style form.
+/// HTML Help viewer style form, themed (light/dark) via <see cref="ThemeManager"/>.
 /// Two-panel layout: left navigation (Inhalt/Index/Suchen + TreeView),
-/// right content area with WebBrowser rendering HTML help topics.
+/// right content area with WebBrowser rendering HTML help topics (themed style sheet,
+/// re-rendered when the theme changes).
 /// </summary>
 internal class HelpForm : Form
 {
@@ -28,9 +29,14 @@ internal class HelpForm : Form
     private readonly List<string> _history = new();
     private int _historyIndex = -1;
 
-    private static readonly Color NavTabActive = Color.FromArgb(220, 230, 245);
-    private static readonly Color NavTabInactive = SystemColors.Control;
-    private static readonly Font UiFont = new("Microsoft Sans Serif", 8.25f);
+    private static readonly Font UiFont = ThemeFonts.Regular;
+
+    private readonly ToolStripButton _tsBtnHide;
+    private readonly ToolStripButton _tsBtnPrint;
+    private readonly ToolStripDropDownButton _tsBtnOptions;
+    private readonly ImageList _treeImages;
+    private readonly List<Image> _themeImages = new();
+    private int _hotNavTab = -1;
 
     private readonly string _initialTopic;
 
@@ -56,25 +62,24 @@ internal class HelpForm : Form
         _toolStrip = new ToolStrip
         {
             Dock = DockStyle.Top,
-            Height = 38,
-            RenderMode = ToolStripRenderMode.System,
-            GripStyle = ToolStripGripStyle.Hidden
+            Height = 44,
+            GripStyle = ToolStripGripStyle.Hidden,
+            Padding = new Padding(6, 2, 6, 2)
         };
 
         var btnHide = new ToolStripButton("Ausblenden")
         {
             DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
-            Image = CreateHideIcon(),
             ImageAlign = ContentAlignment.TopCenter,
             TextAlign = ContentAlignment.BottomCenter,
             TextImageRelation = TextImageRelation.ImageAboveText
         };
         btnHide.Click += (s, e) => ToggleNavigation();
+        _tsBtnHide = btnHide;
 
         var tsBtnBack = new ToolStripButton("Zurück")
         {
             DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
-            Image = CreateBackIcon(),
             ImageAlign = ContentAlignment.TopCenter,
             TextAlign = ContentAlignment.BottomCenter,
             TextImageRelation = TextImageRelation.ImageAboveText,
@@ -85,7 +90,6 @@ internal class HelpForm : Form
         var tsBtnForward = new ToolStripButton("Vorwärts")
         {
             DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
-            Image = CreateForwardIcon(),
             ImageAlign = ContentAlignment.TopCenter,
             TextAlign = ContentAlignment.BottomCenter,
             TextImageRelation = TextImageRelation.ImageAboveText,
@@ -96,21 +100,21 @@ internal class HelpForm : Form
         var btnPrint = new ToolStripButton("Drucken")
         {
             DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
-            Image = CreatePrintIcon(),
             ImageAlign = ContentAlignment.TopCenter,
             TextAlign = ContentAlignment.BottomCenter,
             TextImageRelation = TextImageRelation.ImageAboveText
         };
         btnPrint.Click += (s, e) => _webBrowser?.Print();
+        _tsBtnPrint = btnPrint;
 
         var btnOptions = new ToolStripDropDownButton("Optionen")
         {
             DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
-            Image = CreateOptionsIcon(),
             ImageAlign = ContentAlignment.TopCenter,
             TextAlign = ContentAlignment.BottomCenter,
             TextImageRelation = TextImageRelation.ImageAboveText
         };
+        _tsBtnOptions = btnOptions;
         _miToggleNav = (ToolStripMenuItem)btnOptions.DropDownItems.Add("Registerkarten ausblenden", null, (s, e) => ToggleNavigation());
         _miBack = (ToolStripMenuItem)btnOptions.DropDownItems.Add("Zurück", null, (s, e) => GoBack());
         _miBack.Enabled = false;
@@ -140,35 +144,45 @@ internal class HelpForm : Form
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
-            SplitterWidth = 4,
-            BackColor = SystemColors.Control
+            SplitterWidth = 4
         };
+        // Navigation side = secondary surface (Discord sidebar), content = main background
+        ThemeManager.SetRole(_split.Panel1, ThemeRole.Secondary);
 
         // === Left panel: tab strip + TreeView ===
         _navTabStrip = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 24,
-            BackColor = SystemColors.Control
+            Height = 34
         };
         _navTabStrip.Paint += NavTabStrip_Paint;
         _navTabStrip.Click += NavTabStrip_Click;
+        _navTabStrip.MouseMove += (s, e) =>
+        {
+            int hot = e.X / GetTabWidth();
+            hot = hot is >= 0 and <= 2 ? hot : -1;
+            if (hot != _hotNavTab) { _hotNavTab = hot; _navTabStrip.Invalidate(); }
+        };
+        _navTabStrip.MouseLeave += (s, e) => { _hotNavTab = -1; _navTabStrip.Invalidate(); };
+        _navTabStrip.Cursor = Cursors.Hand;
+        EnableDoubleBuffer(_navTabStrip);
 
         _treeView = new TreeView
         {
             Dock = DockStyle.Fill,
             Font = UiFont,
             BorderStyle = BorderStyle.None,
-            ShowLines = true,
+            ShowLines = false,
+            FullRowSelect = true,
+            HotTracking = true,
             Indent = 19,
-            ItemHeight = 20
+            ItemHeight = 22
         };
 
         // Build tree nodes from help topic tree
-        var imgList = new ImageList { ImageSize = new Size(16, 16), ColorDepth = ColorDepth.Depth32Bit };
-        imgList.Images.Add(CreateBookIcon());       // 0: book (root/branch)
-        imgList.Images.Add(CreatePageIcon());       // 1: page (leaf)
-        _treeView.ImageList = imgList;
+        _treeImages = new ImageList { ImageSize = new Size(16, 16), ColorDepth = ColorDepth.Depth32Bit };
+        // 0: book (root/branch), 1: page (leaf) - created in UpdateThemeImages()
+        _treeView.ImageList = _treeImages;
 
         var rootNode = BuildTreeNode(_rootTopic);
         _treeView.Nodes.Add(rootNode);
@@ -194,6 +208,10 @@ internal class HelpForm : Form
 
         // === Assemble ===
         Controls.AddRange(new Control[] { _split, _toolStrip });
+
+        UpdateThemeImages();
+        ThemeManager.Apply(this);
+        ThemeManager.ThemeChanged += OnThemeChanged;
 
         // Navigate to root topic on load (SplitterDistance set here too, when form has actual width)
         Load += (s, e) =>
@@ -263,13 +281,13 @@ internal class HelpForm : Form
     {
         if (!string.IsNullOrEmpty(topic.Html))
         {
-            _webBrowser.DocumentText = topic.Html;
+            _webBrowser.DocumentText = HelpContent.ApplyTheme(topic.Html, ThemeManager.Current);
         }
         else
         {
             // Branch node: show child topic links using shared CSS
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"<html><head><meta charset='utf-8'><style>{HelpContent.Css}</style></head><body>");
+            sb.AppendLine($"<html><head><meta http-equiv='X-UA-Compatible' content='IE=edge'><meta charset='utf-8'><style>{HelpContent.ThemedCss(ThemeManager.Current)}</style></head><body>");
             sb.AppendLine($"<h1>{topic.Title}</h1>");
             sb.AppendLine("<ul>");
             foreach (var child in topic.Children)
@@ -420,30 +438,30 @@ internal class HelpForm : Form
 
     private void NavTabStrip_Paint(object? sender, PaintEventArgs e)
     {
+        var p = ThemeManager.Current;
         var g = e.Graphics;
+        g.Clear(_navTabStrip.BackColor);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
         string[] tabs = { "Inhalt", "Index", "Suchen" };
         int tabW = GetTabWidth();
         for (int i = 0; i < tabs.Length; i++)
         {
             var rect = new Rectangle(i * tabW, 0, tabW, _navTabStrip.Height - 1);
             bool active = i == _activeNavTab;
-            using var bg = new SolidBrush(active ? NavTabActive : NavTabInactive);
-            g.FillRectangle(bg, rect);
-            if (i > 0)
+            bool hot = i == _hotNavTab && !active;
+            var pill = new RectangleF(rect.X + 4, rect.Y + 5, rect.Width - 8, rect.Height - 10);
+            if (active || hot)
             {
-                using var sepPen = new Pen(Color.FromArgb(180, 180, 180));
-                g.DrawLine(sepPen, rect.X, 2, rect.X, rect.Bottom - 2);
+                using var path = ThemeGlyphs.Rounded(pill, 4);
+                using var bg = new SolidBrush(active ? p.Selected : p.Hover);
+                g.FillPath(bg, path);
             }
-            if (!active)
-            {
-                using var bottomPen = new Pen(Color.FromArgb(160, 160, 160));
-                g.DrawLine(bottomPen, rect.X, rect.Bottom, rect.Right, rect.Bottom);
-            }
-            TextRenderer.DrawText(g, tabs[i], UiFont, rect,
-                SystemColors.ControlText,
+            TextRenderer.DrawText(g, tabs[i], active ? ThemeFonts.Semibold : UiFont, rect,
+                active ? p.Text : hot ? p.TextSecondary : p.TextMuted,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
         }
-        using var linePen = new Pen(Color.FromArgb(160, 160, 160));
+        using var linePen = new Pen(p.Border);
         g.DrawLine(linePen, 0, _navTabStrip.Height - 1, _navTabStrip.Width, _navTabStrip.Height - 1);
     }
 
@@ -528,22 +546,21 @@ internal class HelpForm : Form
         var topPanel = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 32,
-            BackColor = SystemColors.Control
+            Height = 36
         };
 
         var lblSearch = new Label
         {
             Text = "Suchen:",
-            Location = new Point(6, 7),
+            Location = new Point(6, 10),
             Font = UiFont,
             AutoSize = true
         };
 
         _searchBox = new TextBox
         {
-            Location = new Point(58, 5),
-            Size = new Size(180, 22),
+            Location = new Point(58, 7),
+            Size = new Size(148, 23),
             Font = UiFont
         };
         _searchBox.TextChanged += (s, e) => PerformSearch();
@@ -551,12 +568,11 @@ internal class HelpForm : Form
         var btnSearch = new Button
         {
             Text = "Suchen",
-            Location = new Point(244, 4),
-            Size = new Size(60, 23),
-            Font = UiFont,
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true
+            Location = new Point(212, 5),
+            Size = new Size(62, 27),
+            Font = UiFont
         };
+        ThemeManager.SetRole(btnSearch, ThemeRole.Primary);
         btnSearch.Click += (s, e) => PerformSearch();
 
         topPanel.Controls.AddRange(new Control[] { lblSearch, _searchBox, btnSearch });
@@ -632,81 +648,97 @@ internal class HelpForm : Form
         _miToggleNav.Text = _navVisible ? "Registerkarten ausblenden" : "Registerkarten einblenden";
     }
 
-    // === Icon creation (16x16) ===
+    // === Themed icons (16x16) ===
 
-    private static Bitmap CreateHideIcon() => DrawIcon16(g =>
+    private void OnThemeChanged(object? sender, EventArgs e)
     {
-        g.FillRectangle(new SolidBrush(Color.FromArgb(220, 230, 245)), 2, 3, 12, 10);
-        g.DrawRectangle(new Pen(Color.FromArgb(60, 90, 150)), 2, 3, 12, 10);
-        g.FillRectangle(new SolidBrush(Color.FromArgb(60, 90, 150)), 2, 3, 5, 10);
-        g.DrawLine(new Pen(Color.White), 4, 6, 4, 10);
+        if (IsDisposed) return;
+        UpdateThemeImages();
+        _navTabStrip.Invalidate();
+        // Re-render the current page with the new style sheet
+        if (_historyIndex >= 0 && _historyIndex < _history.Count && _topicMap.TryGetValue(_history[_historyIndex], out var topic))
+            RenderTopic(topic);
+    }
+
+    /// <summary>(Re)creates the toolbar and tree icons in the colors of the current theme.</summary>
+    private void UpdateThemeImages()
+    {
+        var p = ThemeManager.Current;
+        var color = p.TextSecondary;
+        var old = _themeImages.ToArray();
+        _themeImages.Clear();
+
+        Image Own(Image image) { _themeImages.Add(image); return image; }
+
+        _tsBtnHide.Image = Own(DrawIcon16(g => DrawSidebarIcon(g, color)));
+        _tsBtnBack.Image = Own(DrawIcon16(g => DrawArrowIcon(g, color, left: true)));
+        _tsBtnForward.Image = Own(DrawIcon16(g => DrawArrowIcon(g, color, left: false)));
+        _tsBtnPrint.Image = Own(ThemeGlyphs.CreateBitmap(Glyph.Printer, 16, color));
+        _tsBtnOptions.Image = Own(ThemeGlyphs.CreateBitmap(Glyph.Gear, 16, color));
+
+        _treeImages.Images.Clear();
+        _treeImages.Images.Add(CreateBookIcon(p));   // 0: book (root/branch)
+        _treeImages.Images.Add(CreatePageIcon(p));   // 1: page (leaf)
+
+        foreach (var image in old) image.Dispose();
+        _toolStrip.Invalidate();
+        _treeView.Invalidate();
+    }
+
+    private static Pen LinePen(Color color, float width = 1.5f) => new(color, width)
+    {
+        StartCap = LineCap.Round,
+        EndCap = LineCap.Round,
+        LineJoin = LineJoin.Round
+    };
+
+    private static void DrawSidebarIcon(Graphics g, Color color)
+    {
+        using var pen = LinePen(color);
+        using (var path = ThemeGlyphs.Rounded(new RectangleF(1.75f, 2.75f, 12.5f, 10.5f), 2f))
+            g.DrawPath(pen, path);
+        g.DrawLine(pen, 6f, 3f, 6f, 13f);
+        using var thin = LinePen(color, 1.25f);
+        g.DrawLine(thin, 3.5f, 5.75f, 4.25f, 5.75f);
+        g.DrawLine(thin, 3.5f, 8f, 4.25f, 8f);
+    }
+
+    private static void DrawArrowIcon(Graphics g, Color color, bool left)
+    {
+        using var pen = LinePen(color, 1.75f);
+        float tip = left ? 2.75f : 13.25f, back = left ? 7f : 9f;
+        g.DrawLine(pen, 2.75f, 8f, 13.25f, 8f);
+        g.DrawLines(pen, new PointF[] { new(back, 3.75f), new(tip, 8f), new(back, 12.25f) });
+    }
+
+    private static Bitmap CreateBookIcon(ThemePalette p) => DrawIcon16(g =>
+    {
+        // Closed book in the accent color with light pages
+        using (var cover = ThemeGlyphs.Rounded(new RectangleF(2.5f, 1.5f, 11f, 13f), 1.75f))
+        using (var brush = new SolidBrush(p.Accent))
+            g.FillPath(brush, cover);
+        using (var spine = new SolidBrush(p.AccentPressed))
+            g.FillRectangle(spine, 2.5f, 2.5f, 2.25f, 11f);
+        using (var pages = new SolidBrush(Color.FromArgb(235, 255, 255, 255)))
+            g.FillRectangle(pages, 6.5f, 4f, 5f, 1.5f);
+        using (var pages = new SolidBrush(Color.FromArgb(150, 255, 255, 255)))
+            g.FillRectangle(pages, 6.5f, 7f, 3.5f, 1.25f);
     });
 
-    private static Bitmap CreateBackIcon() => DrawIcon16(g =>
+    private static Bitmap CreatePageIcon(ThemePalette p) => DrawIcon16(g =>
     {
-        using var arrowPen = new Pen(Color.FromArgb(60, 90, 150), 2f);
-        g.DrawLine(arrowPen, 12, 8, 4, 8);
-        g.DrawLine(arrowPen, 4, 8, 7, 5);
-        g.DrawLine(arrowPen, 4, 8, 7, 11);
-    });
-
-    private static Bitmap CreateForwardIcon() => DrawIcon16(g =>
-    {
-        using var arrowPen = new Pen(Color.FromArgb(160, 160, 160), 2f);
-        g.DrawLine(arrowPen, 4, 8, 12, 8);
-        g.DrawLine(arrowPen, 12, 8, 9, 5);
-        g.DrawLine(arrowPen, 12, 8, 9, 11);
-    });
-
-    private static Bitmap CreatePrintIcon() => DrawIcon16(g =>
-    {
-        g.FillRectangle(new SolidBrush(Color.FromArgb(200, 200, 200)), 3, 6, 10, 6);
-        g.DrawRectangle(new Pen(Color.FromArgb(80, 80, 80)), 3, 6, 10, 6);
-        g.FillRectangle(new SolidBrush(Color.White), 5, 2, 6, 5);
-        g.DrawRectangle(new Pen(Color.FromArgb(80, 80, 80)), 5, 2, 6, 5);
-        g.FillRectangle(new SolidBrush(Color.White), 5, 12, 6, 2);
-        g.DrawRectangle(new Pen(Color.FromArgb(80, 80, 80)), 5, 12, 6, 2);
-        g.FillRectangle(new SolidBrush(Color.FromArgb(60, 160, 60)), 11, 8, 1, 1);
-    });
-
-    private static Bitmap CreateOptionsIcon() => DrawIcon16(g =>
-    {
-        g.DrawEllipse(new Pen(Color.FromArgb(60, 90, 150), 1.5f), 3, 3, 8, 8);
-        g.FillEllipse(new SolidBrush(Color.FromArgb(220, 230, 245)), 5, 5, 4, 4);
-        using var arrowPen = new Pen(Color.FromArgb(60, 90, 150), 1.5f);
-        g.DrawLine(arrowPen, 11, 12, 13, 12);
-        g.DrawLine(arrowPen, 11, 12, 12, 13);
-        g.DrawLine(arrowPen, 13, 12, 12, 13);
-    });
-
-    private static Bitmap CreateBookIcon() => DrawIcon16(g =>
-    {
-        var bookColor = new SolidBrush(Color.FromArgb(60, 90, 170));
-        var darkColor = new Pen(Color.FromArgb(40, 60, 120));
-        g.FillRectangle(bookColor, 3, 3, 10, 11);
-        g.DrawRectangle(darkColor, 3, 3, 10, 11);
-        g.FillRectangle(new SolidBrush(Color.FromArgb(40, 60, 120)), 3, 3, 2, 11);
-        g.FillRectangle(new SolidBrush(Color.White), 6, 5, 6, 7);
-        g.DrawRectangle(darkColor, 6, 5, 6, 7);
-        g.DrawLine(new Pen(Color.FromArgb(180, 180, 180)), 7, 7, 11, 7);
-        g.DrawLine(new Pen(Color.FromArgb(180, 180, 180)), 7, 9, 11, 9);
-        g.DrawLine(new Pen(Color.FromArgb(180, 180, 180)), 7, 11, 10, 11);
-    });
-
-    private static Bitmap CreatePageIcon() => DrawIcon16(g =>
-    {
-        // White page with folded corner
-        g.FillRectangle(new SolidBrush(Color.White), 4, 2, 8, 12);
-        g.DrawRectangle(new Pen(Color.FromArgb(120, 120, 120)), 4, 2, 8, 12);
-        // Folded corner
-        g.FillPolygon(new SolidBrush(Color.FromArgb(220, 220, 220)),
-            new Point[] { new(9, 2), new(12, 5), new(9, 5) });
-        g.DrawLine(new Pen(Color.FromArgb(120, 120, 120)), 9, 2, 12, 5);
-        g.DrawLine(new Pen(Color.FromArgb(120, 120, 120)), 9, 5, 12, 5);
-        // Text lines
-        g.DrawLine(new Pen(Color.FromArgb(180, 180, 180)), 5, 7, 10, 7);
-        g.DrawLine(new Pen(Color.FromArgb(180, 180, 180)), 5, 9, 10, 9);
-        g.DrawLine(new Pen(Color.FromArgb(180, 180, 180)), 5, 11, 9, 11);
+        var line = p.IsDark ? p.TextMuted : ThemePalette.Blend(p.TextMuted, p.Secondary, 0.15f);
+        var fill = p.IsDark ? p.Background : Color.White;
+        var outline = new PointF[] { new(3.25f, 1.75f), new(9.5f, 1.75f), new(12.75f, 5f), new(12.75f, 14.25f), new(3.25f, 14.25f) };
+        using (var brush = new SolidBrush(fill))
+            g.FillPolygon(brush, outline);
+        using var pen = LinePen(line, 1.25f);
+        g.DrawPolygon(pen, outline);
+        g.DrawLines(pen, new PointF[] { new(9.5f, 1.75f), new(9.5f, 5f), new(12.75f, 5f) });
+        using var text = LinePen(ThemePalette.Blend(line, fill, 0.35f), 1f);
+        g.DrawLine(text, 5.5f, 8f, 10.5f, 8f);
+        g.DrawLine(text, 5.5f, 10.25f, 10.5f, 10.25f);
+        g.DrawLine(text, 5.5f, 12.25f, 8.75f, 12.25f);
     });
 
     private static Bitmap DrawIcon16(Action<Graphics> draw)
@@ -714,10 +746,24 @@ internal class HelpForm : Form
         var bmp = new Bitmap(16, 16, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bmp);
         g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
         g.InterpolationMode = InterpolationMode.HighQualityBicubic;
         g.Clear(Color.Transparent);
         draw(g);
         return bmp;
+    }
+
+    private static void EnableDoubleBuffer(Control control)
+    {
+        try
+        {
+            typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                ?.SetValue(control, true);
+        }
+        catch
+        {
+            // optional
+        }
     }
 
     protected override void Dispose(bool disposing)
@@ -725,6 +771,10 @@ internal class HelpForm : Form
         if (disposing)
         {
             // UiFont is static readonly — do not dispose
+            ThemeManager.ThemeChanged -= OnThemeChanged;
+            _treeImages.Dispose();
+            foreach (var image in _themeImages) image.Dispose();
+            _themeImages.Clear();
         }
         base.Dispose(disposing);
     }

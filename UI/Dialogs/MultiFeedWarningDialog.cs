@@ -125,6 +125,12 @@ internal class MultiFeedWarningDialog : Form
         });
 
         AcceptButton = btnRescan;
+        ThemeManager.SetRole(btnRescan, ThemeRole.Primary);
+        ThemeManager.SetRole(btnKeep, ThemeRole.Secondary);
+        ThemeManager.SetRole(btnDisable, ThemeRole.Secondary);
+        ThemeManager.SetRole(lblHeader, ThemeRole.Danger);
+        ThemeManager.SetRole(lblHint, ThemeRole.Muted);
+        ThemeManager.Apply(this);
     }
 
     protected override void OnShown(EventArgs e)
@@ -135,13 +141,14 @@ internal class MultiFeedWarningDialog : Form
 
     private static Panel CreatePreviewPanel(Bitmap? image, int x, int y, int width, int height)
     {
+        // Canvas surface (themed) so the white page stands out in light and dark mode
         var panel = new Panel
         {
-            BorderStyle = BorderStyle.FixedSingle,
             Location = new Point(x, y),
             Size = new Size(width, height),
-            BackColor = Color.FromArgb(240, 240, 240)
+            Padding = new Padding(8)
         };
+        ThemeManager.SetRole(panel, ThemeRole.Card);
 
         if (image != null)
         {
@@ -159,9 +166,9 @@ internal class MultiFeedWarningDialog : Form
             {
                 Text = "Kein Vorschaubild verfügbar",
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = Color.Gray
+                TextAlign = ContentAlignment.MiddleCenter
             };
+            ThemeManager.SetRole(lbl, ThemeRole.Muted);
             panel.Controls.Add(lbl);
         }
 

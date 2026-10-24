@@ -4,7 +4,8 @@ using System.Drawing.Drawing2D;
 namespace SpeedScanManager;
 
 /// <summary>
-/// Renders detailed 3D-style icons for the PostScanMediaDialog grid items.
+/// Renders detailed 3D-style icons for the PostScanMediaDialog grid items (theme-aware
+/// outlines, redrawn in place on theme changes).
 /// </summary>
 internal static class PostScanIcons
 {
@@ -18,14 +19,7 @@ internal static class PostScanIcons
     public static Bitmap CreatePdfEditIcon() => DrawToBitmap(DrawPdfEdit);
 
     private static Bitmap DrawToBitmap(Action<Graphics, Rectangle> drawAction)
-    {
-        var bmp = new Bitmap(48, 48);
-        using var g = Graphics.FromImage(bmp);
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        drawAction(g, new Rectangle(0, 0, 48, 48));
-        return bmp;
-    }
+        => IconInk.Create(48, 48, g => drawAction(g, new Rectangle(0, 0, 48, 48)));
 
     private static void DrawFolder(Graphics g, Rectangle rect)
     {
@@ -94,7 +88,7 @@ internal static class PostScanIcons
             Color.FromArgb(120, 120, 125), Color.FromArgb(80, 80, 85), LinearGradientMode.Vertical);
         var bodyPath = RoundRect(bodyRect, 2);
         g.FillPath(bodyBrush, bodyPath);
-        using var edgePen = new Pen(Color.FromArgb(50, 50, 55), 1.2f);
+        using var edgePen = new Pen(IconInk.Adapt(Color.FromArgb(50, 50, 55), 0.42f), 1.2f);
         g.DrawPath(edgePen, bodyPath);
         // LED indicator
         g.FillEllipse(new SolidBrush(Color.FromArgb(80, 200, 80)), x + 4, y + 14, 4, 4);

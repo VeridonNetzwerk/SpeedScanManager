@@ -4,7 +4,8 @@ using System.Drawing.Drawing2D;
 namespace SpeedScanManager;
 
 /// <summary>
-/// Generates 16x16 simplified flag icons for the OCR language dropdown.
+/// Generates 16x16 simplified flag icons for the OCR language dropdown (theme-aware frame,
+/// redrawn in place on theme changes).
 /// </summary>
 internal static class FlagIcons
 {
@@ -151,7 +152,9 @@ internal static class FlagIcons
 
     private static void DrawBorder(Graphics g)
     {
-        g.DrawRectangle(new Pen(Color.FromArgb(160, 160, 160)), 1, 2, 14, 12);
+        // Light frame in light mode; in dark mode a softer one that still separates dark flag parts
+        using var pen = new Pen(ThemeManager.IsDark ? Color.FromArgb(128, 132, 140) : Color.FromArgb(160, 160, 160));
+        g.DrawRectangle(pen, 1, 2, 14, 12);
     }
 
     private static void DrawStar(Graphics g, int cx, int cy, int radius, Color color)
@@ -168,13 +171,10 @@ internal static class FlagIcons
         g.FillPolygon(new SolidBrush(color), points);
     }
 
-    private static Bitmap DrawIcon(Action<Graphics> draw)
+    private static Bitmap DrawIcon(Action<Graphics> draw) => IconInk.Create(16, 16, g =>
     {
-        var bmp = new Bitmap(16, 16, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-        using var g = Graphics.FromImage(bmp);
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.Clear(Color.Transparent);
+        // Flags are pixel-aligned: no half-pixel offset
+        g.PixelOffsetMode = PixelOffsetMode.Default;
         draw(g);
-        return bmp;
-    }
+    });
 }

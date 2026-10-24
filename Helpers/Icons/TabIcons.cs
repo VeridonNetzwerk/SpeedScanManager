@@ -5,14 +5,15 @@ namespace SpeedScanManager;
 
 /// <summary>
 /// Generates 16x16 pixel classic Windows-style icons for tab pages and buttons at runtime.
-/// All icons use a consistent color palette and transparent backgrounds.
+/// All icons use a consistent color palette and transparent backgrounds; outlines follow the
+/// theme (lighter in dark mode) and the bitmaps are redrawn in place on theme changes.
 /// </summary>
 internal static class TabIcons
 {
-    private static readonly Color DarkBlue = Color.FromArgb(49, 90, 134);
-    private static readonly Color MidBlue = Color.FromArgb(95, 134, 173);
+    private static Color DarkBlue => IconInk.Adapt(Color.FromArgb(49, 90, 134));
+    private static Color MidBlue => IconInk.Adapt(Color.FromArgb(95, 134, 173));
     private static readonly Color LightBlue = Color.FromArgb(184, 211, 234);
-    private static readonly Color DarkGray = Color.FromArgb(85, 85, 85);
+    private static Color DarkGray => IconInk.Adapt(Color.FromArgb(85, 85, 85), 0.5f);
     private static readonly Color LightGray = Color.FromArgb(232, 232, 232);
     private static readonly Color Green = Color.FromArgb(62, 154, 84);
     private static readonly Color Red = Color.FromArgb(200, 66, 66);
@@ -55,7 +56,7 @@ internal static class TabIcons
     public static Bitmap CreateScanIcon() => DrawIcon(g =>
     {
         g.FillRectangle(new SolidBrush(DarkGray), 2, 4, 12, 8);
-        g.DrawRectangle(new Pen(Color.Black), 2, 4, 12, 8);
+        g.DrawRectangle(new Pen(IconInk.Outline), 2, 4, 12, 8);
         g.FillRectangle(new SolidBrush(Color.White), 3, 6, 10, 4);
         g.DrawRectangle(new Pen(DarkGray), 3, 6, 10, 4);
         g.DrawLine(new Pen(Red, 1.5f), 4, 8, 12, 8);
@@ -136,7 +137,7 @@ internal static class TabIcons
     public static Bitmap CreateGearIcon() => DrawIcon(g =>
     {
         g.FillEllipse(new SolidBrush(DarkGray), 4, 4, 8, 8);
-        g.DrawEllipse(new Pen(Color.Black), 4, 4, 8, 8);
+        g.DrawEllipse(new Pen(IconInk.Outline), 4, 4, 8, 8);
         for (int i = 0; i < 8; i++)
         {
             double angle = i * Math.PI / 4;
@@ -149,14 +150,14 @@ internal static class TabIcons
                 Math.Abs(x2 - x1) + 1, Math.Abs(y2 - y1) + 1);
         }
         g.FillEllipse(new SolidBrush(Color.White), 6, 6, 4, 4);
-        g.DrawEllipse(new Pen(Color.Black), 6, 6, 4, 4);
+        g.DrawEllipse(new Pen(IconInk.Outline), 6, 6, 4, 4);
     });
 
     public static Bitmap CreateDownArrowIcon() => DrawIcon(g =>
     {
         g.FillPolygon(new SolidBrush(DarkBlue),
             new Point[] { new(3, 5), new(13, 5), new(8, 12) });
-        g.DrawPolygon(new Pen(Color.Black),
+        g.DrawPolygon(new Pen(IconInk.Outline),
             new Point[] { new(3, 5), new(13, 5), new(8, 12) });
     });
 
@@ -164,7 +165,7 @@ internal static class TabIcons
     {
         g.FillPolygon(new SolidBrush(DarkBlue),
             new Point[] { new(3, 11), new(13, 11), new(8, 4) });
-        g.DrawPolygon(new Pen(Color.Black),
+        g.DrawPolygon(new Pen(IconInk.Outline),
             new Point[] { new(3, 11), new(13, 11), new(8, 4) });
     });
 
@@ -222,7 +223,7 @@ internal static class TabIcons
     public static Bitmap CreateQualityAutoIcon() => DrawIcon(g =>
     {
         g.FillRectangle(new SolidBrush(DarkGray), 2, 4, 12, 8);
-        g.DrawRectangle(new Pen(Color.Black), 2, 4, 12, 8);
+        g.DrawRectangle(new Pen(IconInk.Outline), 2, 4, 12, 8);
         g.FillRectangle(new SolidBrush(Color.White), 3, 6, 10, 4);
         g.DrawLine(new Pen(Red, 1.5f), 4, 8, 12, 8);
         g.FillRectangle(new SolidBrush(Green), 12, 5, 1, 1);
@@ -234,7 +235,7 @@ internal static class TabIcons
     public static Bitmap CreateQualityNormalIcon() => DrawIcon(g =>
     {
         g.FillRectangle(new SolidBrush(DarkGray), 2, 4, 12, 8);
-        g.DrawRectangle(new Pen(Color.Black), 2, 4, 12, 8);
+        g.DrawRectangle(new Pen(IconInk.Outline), 2, 4, 12, 8);
         g.FillRectangle(new SolidBrush(Color.White), 3, 6, 10, 4);
         // Single scan line (coarse)
         g.DrawLine(new Pen(Red, 2f), 4, 8, 12, 8);
@@ -243,7 +244,7 @@ internal static class TabIcons
     public static Bitmap CreateQualityFineIcon() => DrawIcon(g =>
     {
         g.FillRectangle(new SolidBrush(DarkGray), 2, 4, 12, 8);
-        g.DrawRectangle(new Pen(Color.Black), 2, 4, 12, 8);
+        g.DrawRectangle(new Pen(IconInk.Outline), 2, 4, 12, 8);
         g.FillRectangle(new SolidBrush(Color.White), 3, 6, 10, 4);
         // Two scan lines (finer)
         g.DrawLine(new Pen(Red, 1f), 4, 7, 12, 7);
@@ -253,7 +254,7 @@ internal static class TabIcons
     public static Bitmap CreateQualityBestIcon() => DrawIcon(g =>
     {
         g.FillRectangle(new SolidBrush(DarkGray), 2, 4, 12, 8);
-        g.DrawRectangle(new Pen(Color.Black), 2, 4, 12, 8);
+        g.DrawRectangle(new Pen(IconInk.Outline), 2, 4, 12, 8);
         g.FillRectangle(new SolidBrush(Color.White), 3, 6, 10, 4);
         // Three scan lines (dense)
         g.DrawLine(new Pen(Red, 0.8f), 4, 7, 12, 7);
@@ -264,7 +265,7 @@ internal static class TabIcons
     public static Bitmap CreateQualityExcellentIcon() => DrawIcon(g =>
     {
         g.FillRectangle(new SolidBrush(DarkGray), 2, 4, 12, 8);
-        g.DrawRectangle(new Pen(Color.Black), 2, 4, 12, 8);
+        g.DrawRectangle(new Pen(IconInk.Outline), 2, 4, 12, 8);
         g.FillRectangle(new SolidBrush(Color.White), 3, 6, 10, 4);
         // Five scan lines (very dense)
         for (int y = 6; y <= 10; y++)
@@ -342,7 +343,7 @@ internal static class TabIcons
     {
         // Flatbed scanner: lid + glass surface
         g.FillRectangle(new SolidBrush(DarkGray), 2, 3, 12, 3);
-        g.DrawRectangle(new Pen(Color.Black), 2, 3, 12, 3);
+        g.DrawRectangle(new Pen(IconInk.Outline), 2, 3, 12, 3);
         g.FillRectangle(new SolidBrush(LightBlue), 2, 7, 12, 6);
         g.DrawRectangle(new Pen(DarkBlue), 2, 7, 12, 6);
         // Paper on glass
@@ -358,15 +359,5 @@ internal static class TabIcons
         g.FillPolygon(new SolidBrush(DarkBlue), new Point[] { new(12, 4), new(14, 8), new(10, 8) });
     });
 
-    private static Bitmap DrawIcon(Action<Graphics> draw)
-    {
-        var bmp = new Bitmap(16, 16, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-        using var g = Graphics.FromImage(bmp);
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-        g.Clear(Color.Transparent);
-        draw(g);
-        return bmp;
-    }
+    private static Bitmap DrawIcon(Action<Graphics> draw) => IconInk.Create(16, 16, draw);
 }

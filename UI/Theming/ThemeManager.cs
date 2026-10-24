@@ -500,6 +500,9 @@ internal static class ThemeManager
                 upDown.BackColor = p.Input;
                 upDown.ForeColor = p.Text;
                 HookPaint(upDown, st, (s, e) => ThemePainters.PaintUpDownBorder((UpDownBase)s!, e.Graphics));
+                st.Subclass ??= new UpDownSubclass(upDown);
+                (st.Subclass as UpDownSubclass)?.InvalidateButtons();
+                upDown.Invalidate();
                 break;
 
             case ComboBox combo:
@@ -525,6 +528,8 @@ internal static class ThemeManager
             case ListView listView:
                 listView.BackColor = p.Secondary;
                 listView.ForeColor = p.Text;
+                st.Subclass ??= new ListViewSubclass(listView);
+                ThemePainters.RedrawFrame(listView);
                 break;
 
             case TreeView tree:

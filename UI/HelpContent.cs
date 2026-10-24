@@ -1,3 +1,4 @@
+using System.Drawing;
 using System.Text;
 
 namespace SpeedScanManager;
@@ -60,6 +61,78 @@ internal static class HelpContent
         code { font-family: 'Consolas', monospace; font-size: 9pt; background-color: #F6F6F6; padding: 1px 4px; }
         kbd { background: #E8E8E8; border: 1px solid #CCC; padding: 1px 6px; font-family: 'Microsoft Sans Serif', monospace; font-size: 9pt; white-space: nowrap; }
     ";
+
+    /// <summary>
+    /// Style sheet for <paramref name="p"/> (light or dark). The WebBrowser control is Internet
+    /// Explorer, which has no CSS custom properties, so the theme colors are written into the
+    /// rules directly.
+    /// </summary>
+    public static string ThemedCss(ThemePalette p)
+    {
+        static string H(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
+        bool dark = p.IsDark;
+        var link = dark ? Color.FromArgb(0x00, 0xA8, 0xFC) : Color.FromArgb(0x00, 0x5F, 0xCC);
+        var heading2 = dark ? ThemePalette.Blend(p.Accent, Color.White, 0.3f) : p.AccentHover;
+        var noteText = dark ? p.Warning : Color.FromArgb(0x8A, 0x5A, 0x00);
+        var dangerText = dark ? Color.FromArgb(0xF2, 0x6B, 0x6E) : Color.FromArgb(0xC0, 0x24, 0x29);
+        var noteBg = ThemePalette.Blend(p.Background, p.Warning, dark ? 0.10f : 0.09f);
+        var warnBg = ThemePalette.Blend(p.Background, p.Danger, dark ? 0.10f : 0.07f);
+        var codeBg = dark ? p.Tertiary : p.Secondary;
+        var thumb = dark ? Color.FromArgb(0x1A, 0x1B, 0x1E) : Color.FromArgb(0xC4, 0xC9, 0xCE);
+        var track = dark ? p.Secondary : p.Secondary;
+        var sb = new StringBuilder();
+        sb.Append($@"
+        html, body {{ scrollbar-face-color: {H(thumb)}; scrollbar-track-color: {H(track)}; scrollbar-arrow-color: {H(p.TextMuted)};
+            scrollbar-shadow-color: {H(thumb)}; scrollbar-highlight-color: {H(thumb)}; scrollbar-3dlight-color: {H(track)};
+            scrollbar-darkshadow-color: {H(track)}; scrollbar-base-color: {H(track)};
+            -ms-scrollbar-face-color: {H(thumb)}; -ms-scrollbar-track-color: {H(track)}; -ms-scrollbar-arrow-color: {H(p.TextMuted)};
+            -ms-scrollbar-shadow-color: {H(thumb)}; -ms-scrollbar-highlight-color: {H(thumb)}; -ms-scrollbar-3dlight-color: {H(track)};
+            -ms-scrollbar-darkshadow-color: {H(track)}; -ms-scrollbar-base-color: {H(track)}; background: {H(p.Background)}; }}
+        body {{ font-family: 'Segoe UI', Tahoma, Verdana, sans-serif; font-size: 9.5pt; color: {H(p.Text)}; background: {H(p.Background)};
+            margin: 14px 22px 22px 22px; line-height: 1.45; }}
+        h1 {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(p.Text)}; font-size: 15pt;
+            margin: 0 0 12px 0; padding-bottom: 8px; border-bottom: 1px solid {H(p.Border)}; }}
+        h2 {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(heading2)}; font-size: 11.5pt; margin: 18px 0 6px 0; }}
+        h3 {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(p.TextSecondary)}; font-size: 10pt; margin: 12px 0 4px 0; }}
+        p {{ margin: 4px 0 8px 0; line-height: 1.45; }}
+        b, strong {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(p.Text)}; }}
+        ul, ol {{ margin: 4px 0 10px 0; padding-left: 24px; }}
+        li {{ margin: 3px 0; line-height: 1.45; }}
+        a {{ color: {H(link)}; text-decoration: none; }}
+        a:visited {{ color: {H(link)}; }}
+        a:hover {{ text-decoration: underline; }}
+        .note {{ background: {H(noteBg)}; border: 1px solid {H(ThemePalette.Blend(noteBg, p.Warning, 0.35f))}; border-left: 4px solid {H(p.Warning)};
+            border-radius: 4px; padding: 8px 12px; margin: 10px 0; }}
+        .note-title {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(noteText)}; }}
+        .warning {{ background: {H(warnBg)}; border: 1px solid {H(ThemePalette.Blend(warnBg, p.Danger, 0.35f))}; border-left: 4px solid {H(p.Danger)};
+            border-radius: 4px; padding: 8px 12px; margin: 10px 0; }}
+        .warning-title {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(dangerText)}; }}
+        .see-also {{ margin: 16px 0 4px 0; padding-top: 8px; border-top: 1px solid {H(p.Border)}; color: {H(p.TextMuted)}; }}
+        .see-also ul {{ color: {H(p.Text)}; padding-left: 18px; margin-top: 4px; }}
+        table {{ border-collapse: collapse; margin: 10px 0; }}
+        td, th {{ border: 1px solid {H(p.Border)}; padding: 5px 10px; font-size: 9pt; text-align: left; }}
+        th {{ background: {H(p.Secondary)}; color: {H(p.Text)}; font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; }}
+        .kbd, kbd {{ background: {H(codeBg)}; color: {H(p.Text)}; border: 1px solid {H(p.Border)}; border-bottom-width: 2px; border-radius: 3px;
+            padding: 0 5px; font-family: 'Segoe UI', sans-serif; font-size: 8.5pt; white-space: nowrap; }}
+        code {{ font-family: 'Consolas', monospace; font-size: 9pt; color: {H(p.Text)}; background: {H(codeBg)}; border-radius: 3px; padding: 1px 4px; }}
+        ::selection {{ background: {H(ThemePalette.Blend(p.Background, p.Accent, 0.45f))}; }}
+        ");
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Returns <paramref name="html"/> (a page built with <see cref="Wrap"/>) styled for
+    /// <paramref name="p"/>: the static style sheet is replaced by <see cref="ThemedCss"/> and the
+    /// page is rendered in the current IE document mode (rounded boxes, colors).
+    /// </summary>
+    public static string ApplyTheme(string html, ThemePalette p)
+    {
+        const string ieMode = "<meta http-equiv='X-UA-Compatible' content='IE=edge'>";
+        string themed = html.Replace("<style>" + Css + "</style>", "<style>" + ThemedCss(p) + "</style>");
+        if (!themed.Contains("X-UA-Compatible", StringComparison.Ordinal))
+            themed = themed.Replace("<head>", "<head>" + ieMode);
+        return themed;
+    }
 
     /// <summary>Wraps body content in a full HTML document with CSS.</summary>
     private static string Wrap(string title, string body) =>

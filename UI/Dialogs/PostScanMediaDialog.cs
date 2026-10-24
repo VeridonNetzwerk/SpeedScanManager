@@ -7,7 +7,8 @@ namespace SpeedScanManager;
 /// <summary>
 /// Post-scan media selection dialog shown when Quick-Menü is enabled.
 /// Offers 8 actions: Scan to Folder, E-mail, Print, Word, Excel, PowerPoint, Picture Folder, PDF Edit.
-/// Styled to match the rest of SpeedScan Manager (blue gradient header, rounded window, accent-blue selection).
+/// Themed (light/dark, Discord style): borderless rounded window with a header zone, a grid of
+/// action tiles (hover, accent selection) and a footer bar with the buttons.
 /// </summary>
 internal class PostScanMediaDialog : Form
 {
@@ -25,16 +26,8 @@ internal class PostScanMediaDialog : Form
 
     public MediaAction SelectedMediaAction { get; private set; } = MediaAction.ScanToFolder;
 
-    private readonly List<Panel> _itemPanels = new();
+    private readonly List<MediaTile> _itemPanels = new();
     private int _selectedIndex = 0;
-    private static readonly Color AccentBlue = Color.FromArgb(45, 90, 170);
-    private static readonly Color HeaderTop = Color.FromArgb(70, 110, 175);
-    private static readonly Color HeaderBottom = Color.FromArgb(40, 75, 140);
-    private static readonly Color SelectedBg = Color.FromArgb(220, 230, 245);
-    private static readonly Color SelectedBorder = AccentBlue;
-    private static readonly Color NormalBg = Color.White;
-    private static readonly Color NormalBorder = Color.FromArgb(210, 210, 210);
-    private static readonly Color PanelGray = Color.FromArgb(240, 240, 240);
 
     private readonly string[] _labels =
     {
@@ -48,11 +41,13 @@ internal class PostScanMediaDialog : Form
         "Mit PDF Edit bearbeiten"
     };
 
-    private static readonly Font TitleFont = new("Microsoft Sans Serif", 10f, FontStyle.Bold);
-    private static readonly Font CircleFont = new("Microsoft Sans Serif", 9f, FontStyle.Bold);
+    private static readonly Font TitleFont = new("Segoe UI Semibold", 12f);
 
+    private const int CornerRadius = 8;
+    private readonly bool _useRegion = !ThemeNative.IsWindows11;
     private readonly Bitmap[] _icons;
-    private readonly List<Image> _ownedImages = new();
+    private readonly Panel _headerBar;
+    private readonly string _subtitle;
     private Point? _dragStart;
 
     /// <param name="pageCount">Number of pages in the output (not the number of files).</param>
@@ -69,7 +64,9 @@ internal class PostScanMediaDialog : Form
             PostScanIcons.CreatePictureFolderIcon(),
             PostScanIcons.CreatePdfEditIcon()
         };
+        _subtitle = pageCount == 1 ? "1 Seite gescannt" : $"{pageCount} Seiten gescannt";
 
+        SuspendLayout();
         FormBorderStyle = FormBorderStyle.None;
         // The owner is the invisible tray window: center on screen, stay on top and show in
         // the taskbar so the Quick Menu can't get lost behind other windows.
@@ -80,103 +77,61 @@ internal class PostScanMediaDialog : Form
         Icon = TrayIcons.GetAppIcon();
         ShowInTaskbar = true;
         AutoScaleMode = AutoScaleMode.None;
-        Font = UiFonts.Default;
-        BackColor = PanelGray;
+        Font = ThemeFonts.Regular;
+        KeyPreview = true;
 
-        // Rounded window outline + thin border
-        using (var outline = RoundedRect(new Rectangle(0, 0, ClientSize.Width, ClientSize.Height), 8))
-            Region = new Region(outline);
-        Paint += (_, e) =>
+        // Windows 11 rounds the borderless window itself (DWM, anti-aliased, with border);
+        // older versions get a clipping region and a painted outline.
+        if (_useRegion)
         {
-            using var pen = new Pen(Color.FromArgb(140, 150, 165), 1f);
-            var rect = new Rectangle(0, 0, ClientSize.Width - 1, ClientSize.Height - 1);
-            using var path = RoundedRect(rect, 8);
-            e.Graphics.DrawPath(pen, path);
-        };
+            using (var outline = RoundedRect(new Rectangle(0, 0, ClientSize.Width, ClientSize.Height), CornerRadius))
+                Region = new Region(outline);
+            Paint += (_, e) =>
+            {
+                var p = ThemeManager.Current;
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using var pen = new Pen(p.IsDark ? p.Tertiary : p.Border, 1f);
+                using var path = RoundedRect(new Rectangle(0, 0, ClientSize.Width - 1, ClientSize.Height - 1), CornerRadius);
+                e.Graphics.DrawPath(pen, path);
+            };
+        }
 
-        // === Custom gradient header bar ===
-        var headerBar = new Panel
-        {
-            Dock = DockStyle.Top,
-            Height = 44,
-            BackColor = HeaderTop
-        };
-        headerBar.Paint += (_, e) =>
-        {
-            var rect = new Rectangle(0, 0, headerBar.Width, headerBar.Height);
-            using var brush = new LinearGradientBrush(rect, HeaderTop, HeaderBottom, LinearGradientMode.Vertical);
-            e.Graphics.FillRectangle(brush, rect);
-        };
-        headerBar.MouseDown += (s, e) => _dragStart = e.Location;
-        headerBar.MouseMove += (s, e) =>
+        // === Header: logo, title, page count, help and close ===
+        _headerBar = new DoubleBufferedPanel { Dock = DockStyle.Top, Height = 60 };
+        ThemeManager.SetRole(_headerBar, ThemeRole.Header);
+        _headerBar.Paint += PaintHeader;
+        _headerBar.MouseDown += (_, e) => { if (e.Button == MouseButtons.Left) _dragStart = e.Location; };
+        _headerBar.MouseMove += (_, e) =>
         {
             if (_dragStart.HasValue && e.Button == MouseButtons.Left)
-            {
                 Location = new Point(Location.X + (e.X - _dragStart.Value.X), Location.Y + (e.Y - _dragStart.Value.Y));
-            }
         };
-        headerBar.MouseUp += (s, e) => _dragStart = null;
+        _headerBar.MouseUp += (_, _) => _dragStart = null;
 
-        var pbLogo = new PictureBox
+        var btnHelp = new HeaderButton(HeaderButton.Kind.Help)
         {
-            Image = AppResources.Logo,
-            SizeMode = PictureBoxSizeMode.Zoom,
-            Size = new Size(24, 24),
-            Location = new Point(12, 10),
-            BackColor = Color.Transparent
+            Size = new Size(30, 30),
+            Location = new Point(ClientSize.Width - 76, 15),
+            AccessibleName = "Hilfe"
         };
+        btnHelp.Click += (_, _) => { using var h = new HelpForm("postscan-media"); h.ShowDialog(this); };
 
-        var lblTitle = new Label
+        var btnClose = new HeaderButton(HeaderButton.Kind.Close)
         {
-            Text = "Wohin möchtest du scannen?",
-            Font = TitleFont,
-            ForeColor = Color.White,
-            Location = new Point(44, 6),
-            AutoSize = true,
-            BackColor = Color.Transparent
-        };
-
-        var lblSubtitle = new Label
-        {
-            Text = pageCount == 1 ? "1 Seite gescannt" : $"{pageCount} Seiten gescannt",
-            Font = UiFonts.Default,
-            ForeColor = Color.FromArgb(215, 225, 245),
-            Location = new Point(45, 24),
-            AutoSize = true,
-            BackColor = Color.Transparent
-        };
-
-        var btnHelp = new CircleButton("?", Color.FromArgb(80, 130, 195))
-        {
-            Size = new Size(22, 22),
-            Location = new Point(ClientSize.Width - 58, 11)
-        };
-        btnHelp.Click += (s, e) => { using var h = new HelpForm("postscan-media"); h.ShowDialog(this); };
-
-        var btnClose = new CircleButton("\u2715", Color.FromArgb(190, 70, 70))
-        {
-            Size = new Size(22, 22),
-            Location = new Point(ClientSize.Width - 30, 11)
+            Size = new Size(30, 30),
+            Location = new Point(ClientSize.Width - 42, 15),
+            AccessibleName = "Schließen"
         };
         btnClose.Click += (_, _) => Close();
+        _headerBar.Controls.AddRange(new Control[] { btnHelp, btnClose });
 
-        headerBar.Controls.AddRange(new Control[] { pbLogo, lblTitle, lblSubtitle, btnHelp, btnClose });
-
-        // === Content area with grid ===
-        var contentPanel = new Panel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = PanelGray,
-            Padding = new Padding(0)
-        };
-
+        // === Content: 4 x 2 grid of action tiles ===
         var grid = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 4,
             RowCount = 2,
-            Padding = new Padding(16, 20, 16, 20),
-            BackColor = PanelGray,
+            Padding = new Padding(14, 14, 14, 14),
             CellBorderStyle = TableLayoutPanelCellBorderStyle.None
         };
         for (int i = 0; i < 4; i++)
@@ -186,38 +141,23 @@ internal class PostScanMediaDialog : Form
 
         for (int i = 0; i < 8; i++)
         {
-            var panel = CreateItemPanel(i);
-            _itemPanels.Add(panel);
-            grid.Controls.Add(panel, i % 4, i / 4);
+            var tile = CreateItemPanel(i);
+            _itemPanels.Add(tile);
+            grid.Controls.Add(tile, i % 4, i / 4);
         }
 
-        contentPanel.Controls.Add(grid);
-
         // === Footer ===
-        var footerPanel = new Panel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 40,
-            BackColor = PanelGray
-        };
-        footerPanel.Paint += (_, e) =>
-        {
-            using var pen = new Pen(Color.FromArgb(200, 200, 200), 1f);
-            e.Graphics.DrawLine(pen, 0, 0, footerPanel.Width, 0);
-        };
+        var footerPanel = new Panel { Dock = DockStyle.Bottom, Height = 56 };
+        ThemeManager.SetRole(footerPanel, ThemeRole.Secondary);
 
         var btnSave = new Button
         {
             Text = "Speichern",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Size = new Size(116, 26),
-            Font = UiFonts.Default,
-            Image = Own(TabIcons.CreateCheckIcon()),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
-            Location = new Point(ClientSize.Width - 244, 7)
+            Size = new Size(124, 32),
+            Location = new Point(ClientSize.Width - 140, 12)
         };
+        ThemeManager.SetRole(btnSave, ThemeRole.Primary);
+        ThemeManager.SetGlyph(btnSave, Glyph.Check);
         btnSave.Click += (_, _) =>
         {
             SelectedMediaAction = (MediaAction)_selectedIndex;
@@ -228,32 +168,43 @@ internal class PostScanMediaDialog : Form
         var btnCancel = new Button
         {
             Text = "Abbrechen",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Size = new Size(116, 26),
-            Font = UiFonts.Default,
-            Image = Own(TabIcons.CreateCrossIcon()),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
-            Location = new Point(ClientSize.Width - 122, 7),
+            Size = new Size(124, 32),
+            Location = new Point(ClientSize.Width - 272, 12),
             DialogResult = DialogResult.Cancel
         };
+        ThemeManager.SetRole(btnCancel, ThemeRole.Secondary);
+        ThemeManager.SetGlyph(btnCancel, Glyph.Cross);
 
-        footerPanel.Controls.AddRange(new Control[] { btnCancel, btnSave });
+        var lblHint = new Label
+        {
+            Text = "Doppelklick startet direkt",
+            AutoSize = true,
+            Location = new Point(18, 20)
+        };
+        ThemeManager.SetRole(lblHint, ThemeRole.Muted);
+
+        footerPanel.Controls.AddRange(new Control[] { lblHint, btnCancel, btnSave });
 
         // Add Fill control first so Top/Bottom docked controls correctly reserve their space
-        Controls.AddRange(new Control[] { contentPanel, footerPanel, headerBar });
+        Controls.AddRange(new Control[] { grid, footerPanel, _headerBar });
 
         AcceptButton = btnSave;
         CancelButton = btnCancel;
 
         UpdateSelection();
+        ThemeManager.Apply(this);
+        ResumeLayout(true);
     }
 
-    private Image Own(Image image)
+    protected override CreateParams CreateParams
     {
-        _ownedImages.Add(image);
-        return image;
+        get
+        {
+            const int CS_DROPSHADOW = 0x00020000;
+            var cp = base.CreateParams;
+            cp.ClassStyle |= CS_DROPSHADOW;
+            return cp;
+        }
     }
 
     protected override void OnShown(EventArgs e)
@@ -262,16 +213,61 @@ internal class PostScanMediaDialog : Form
         WindowActivation.BringToFront(this);
     }
 
+    /// <summary>Arrow keys move the selection through the grid.</summary>
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        int next = keyData switch
+        {
+            Keys.Left => _selectedIndex % 4 > 0 ? _selectedIndex - 1 : _selectedIndex,
+            Keys.Right => _selectedIndex % 4 < 3 ? _selectedIndex + 1 : _selectedIndex,
+            Keys.Up => _selectedIndex >= 4 ? _selectedIndex - 4 : _selectedIndex,
+            Keys.Down => _selectedIndex < 4 ? _selectedIndex + 4 : _selectedIndex,
+            _ => -1
+        };
+        if (next >= 0)
+        {
+            _selectedIndex = next;
+            UpdateSelection();
+            return true;
+        }
+        return base.ProcessCmdKey(ref msg, keyData);
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
             foreach (var icon in _icons) icon.Dispose();
-            foreach (var img in _ownedImages) img.Dispose();
-            _ownedImages.Clear();
             Region?.Dispose();
         }
         base.Dispose(disposing);
+    }
+
+    private void PaintHeader(object? sender, PaintEventArgs e)
+    {
+        var p = ThemeManager.Current;
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+        // Logo in a rounded accent-tinted tile
+        var tile = new RectangleF(16, 12, 36, 36);
+        using (var path = ThemeGlyphs.Rounded(tile, 8))
+        using (var brush = new SolidBrush(p.IsDark ? p.Background : p.Secondary))
+            g.FillPath(brush, path);
+        g.DrawImage(AppResources.Logo, new RectangleF(tile.X + 6, tile.Y + 6, 24, 24));
+
+        TextRenderer.DrawText(g, "Wohin möchtest du scannen?", TitleFont, new Point(62, 10), p.Text,
+            TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, _subtitle, ThemeFonts.Regular, new Point(63, 33), p.TextMuted,
+            TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
+
+        if (!p.IsDark)
+        {
+            using var pen = new Pen(p.Border);
+            g.DrawLine(pen, 0, _headerBar.Height - 1, _headerBar.Width, _headerBar.Height - 1);
+        }
     }
 
     private static GraphicsPath RoundedRect(Rectangle bounds, int radius)
@@ -286,130 +282,201 @@ internal class PostScanMediaDialog : Form
         return path;
     }
 
-    private Panel CreateItemPanel(int index)
+    private MediaTile CreateItemPanel(int index)
     {
-        var panel = new Panel
+        var tile = new MediaTile(_icons[index], _labels[index])
         {
             Dock = DockStyle.Fill,
-            BorderStyle = BorderStyle.None,
-            BackColor = NormalBg,
-            Margin = new Padding(4),
-            Padding = new Padding(2),
+            Margin = new Padding(5),
             Tag = index
         };
-        panel.Paint += (_, e) => PaintItemBorder(panel, index, e.Graphics);
-
-        var imgBox = new PictureBox
-        {
-            SizeMode = PictureBoxSizeMode.Zoom,
-            Size = new Size(40, 40),
-            Image = _icons[index],
-            Dock = DockStyle.Top,
-            Margin = Padding.Empty,
-            BackColor = Color.Transparent
-        };
-
-        var lblText = new Label
-        {
-            Text = _labels[index],
-            Font = UiFonts.Default,
-            ForeColor = Color.FromArgb(50, 50, 50),
-            TextAlign = ContentAlignment.MiddleCenter,
-            Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
-            BackColor = Color.Transparent
-        };
-
-        panel.Controls.Add(lblText);
-        panel.Controls.Add(imgBox);
-
-        // Forward clicks from child controls to panel
-        foreach (Control c in panel.Controls)
-        {
-            c.Click += (_, _) =>
-            {
-                _selectedIndex = index;
-                UpdateSelection();
-            };
-        }
-        panel.Click += (_, _) =>
+        tile.Click += (_, _) =>
         {
             _selectedIndex = index;
             UpdateSelection();
         };
-
         // Double-click to select and confirm
-        panel.DoubleClick += (_, _) =>
+        tile.DoubleClick += (_, _) =>
         {
             _selectedIndex = index;
             SelectedMediaAction = (MediaAction)index;
             DialogResult = DialogResult.OK;
             Close();
         };
-        foreach (Control c in panel.Controls)
-        {
-            c.DoubleClick += (_, _) =>
-            {
-                _selectedIndex = index;
-                SelectedMediaAction = (MediaAction)index;
-                DialogResult = DialogResult.OK;
-                Close();
-            };
-        }
-
-        return panel;
-    }
-
-    private void PaintItemBorder(Panel panel, int index, Graphics g)
-    {
-        bool selected = index == _selectedIndex;
-        var rect = new Rectangle(0, 0, panel.Width - 1, panel.Height - 1);
-        using var path = RoundedRect(rect, 6);
-        using var pen = new Pen(selected ? SelectedBorder : NormalBorder, selected ? 2f : 1f);
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.DrawPath(pen, path);
+        return tile;
     }
 
     private void UpdateSelection()
     {
         for (int i = 0; i < _itemPanels.Count; i++)
+            _itemPanels[i].Selected = i == _selectedIndex;
+    }
+
+    private sealed class DoubleBufferedPanel : Panel
+    {
+        public DoubleBufferedPanel()
         {
-            var panel = _itemPanels[i];
-            panel.BackColor = i == _selectedIndex ? SelectedBg : NormalBg;
-            panel.Invalidate();
+            DoubleBuffered = true;
+            ResizeRedraw = true;
         }
     }
 
-    /// <summary>
-    /// Small circular icon button used for Help/Close in the header bar.
-    /// </summary>
-    private class CircleButton : Button
+    /// <summary>Action tile: rounded surface with icon and label; hover and accent selection.</summary>
+    private sealed class MediaTile : Control, IThemeAware
     {
-        private readonly Color _bg;
+        private readonly Image _icon;
+        private bool _selected;
+        private bool _hover;
+        private bool _pressed;
 
-        public CircleButton(string text, Color bg)
+        public MediaTile(Image icon, string text)
         {
-            _bg = bg;
+            _icon = icon;
             Text = text;
-            FlatStyle = FlatStyle.Flat;
-            FlatAppearance.BorderSize = 0;
-            ForeColor = Color.White;
-            Font = CircleFont;
-            BackColor = Color.Transparent;
+            Font = ThemeFonts.Regular;
             Cursor = Cursors.Hand;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
+                     | ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.StandardDoubleClick, true);
+            SetStyle(ControlStyles.Selectable, false);
+            AccessibleRole = AccessibleRole.PushButton;
+            AccessibleName = text;
         }
 
-        protected override void OnPaint(PaintEventArgs pevent)
+        public bool Selected
         {
-            var g = pevent.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            var rect = new Rectangle(0, 0, Width - 1, Height - 1);
-            using var brush = new SolidBrush(_bg);
-            g.FillEllipse(brush, rect);
-            TextRenderer.DrawText(g, Text, Font, rect, ForeColor,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            get => _selected;
+            set
+            {
+                if (_selected == value) return;
+                _selected = value;
+                Invalidate();
+            }
         }
 
-        protected override void OnParentBackColorChanged(EventArgs e) { }
+        public void ApplyTheme(ThemePalette palette) => Invalidate();
+
+        protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
+        protected override void OnMouseLeave(EventArgs e) { _hover = false; _pressed = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnMouseDown(MouseEventArgs e) { if (e.Button == MouseButtons.Left) { _pressed = true; Invalidate(); } base.OnMouseDown(e); }
+        protected override void OnMouseUp(MouseEventArgs e) { _pressed = false; Invalidate(); base.OnMouseUp(e); }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var p = ThemeManager.Current;
+            var g = e.Graphics;
+            var parentBg = Parent?.BackColor ?? p.Background;
+            g.Clear(parentBg);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+
+            Color fill = _selected
+                ? ThemePalette.Blend(p.Secondary, p.Accent, p.IsDark ? 0.22f : 0.12f)
+                : _pressed ? p.Selected : _hover ? p.Hover : p.Secondary;
+            Color border = _selected ? p.Accent
+                : _hover ? (p.IsDark ? p.ButtonSecondary : p.TextMuted)
+                : p.IsDark ? p.Border : p.InputBorder;
+
+            var rect = new RectangleF(1f, 1f, Width - 2f, Height - 2f);
+            using (var path = ThemeGlyphs.Rounded(rect, 8))
+            {
+                using (var brush = new SolidBrush(fill))
+                    g.FillPath(brush, path);
+                using var pen = new Pen(border, _selected ? 2f : 1f);
+                g.DrawPath(pen, path);
+            }
+
+            // Icon
+            const int iconSize = 44;
+            int iconY = Math.Max(10, (Height - iconSize - 40) / 2);
+            var iconRect = new Rectangle((Width - iconSize) / 2, iconY, iconSize, iconSize);
+            if (_pressed) iconRect.Offset(0, 1);
+            g.DrawImage(_icon, iconRect);
+
+            // Label (up to two lines)
+            var textRect = new Rectangle(4, iconRect.Bottom + 8, Width - 8, Height - iconRect.Bottom - 12);
+            var font = _selected ? ThemeFonts.Semibold : ThemeFonts.Regular;
+            TextRenderer.DrawText(g, Text, font, textRect, _selected ? p.Text : p.TextSecondary,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.Top | TextFormatFlags.WordBreak
+                | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
+
+            // Check badge of the selected tile
+            if (_selected)
+            {
+                var badge = new RectangleF(Width - 25f, 7f, 18f, 18f);
+                using (var brush = new SolidBrush(p.Accent))
+                    g.FillEllipse(brush, badge);
+                using var pen = new Pen(p.TextOnAccent, 1.8f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+                g.DrawLines(pen, new[]
+                {
+                    new PointF(badge.X + 5f, badge.Y + 9.5f),
+                    new PointF(badge.X + 8f, badge.Y + 12.5f),
+                    new PointF(badge.X + 13f, badge.Y + 6.5f)
+                });
+            }
+        }
+    }
+
+    /// <summary>Round icon button of the header (help "?", close "x").</summary>
+    private sealed class HeaderButton : Control, IThemeAware
+    {
+        public enum Kind { Help, Close }
+
+        private readonly Kind _kind;
+        private bool _hover;
+        private bool _pressed;
+
+        public HeaderButton(Kind kind)
+        {
+            _kind = kind;
+            Cursor = Cursors.Hand;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
+                     | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.Selectable, false);
+            AccessibleRole = AccessibleRole.PushButton;
+        }
+
+        public void ApplyTheme(ThemePalette palette) => Invalidate();
+
+        protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
+        protected override void OnMouseLeave(EventArgs e) { _hover = false; _pressed = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnMouseDown(MouseEventArgs e) { if (e.Button == MouseButtons.Left) { _pressed = true; Invalidate(); } base.OnMouseDown(e); }
+        protected override void OnMouseUp(MouseEventArgs e) { _pressed = false; Invalidate(); base.OnMouseUp(e); }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var p = ThemeManager.Current;
+            var g = e.Graphics;
+            g.Clear(Parent?.BackColor ?? p.Header);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+            Color fore = p.TextMuted;
+            if (_hover || _pressed)
+            {
+                Color bg = _kind == Kind.Close
+                    ? (_pressed ? p.DangerHover : p.Danger)
+                    : (_pressed ? p.Selected : p.IsDark ? p.ButtonSecondary : p.Hover);
+                using var brush = new SolidBrush(bg);
+                g.FillEllipse(brush, 0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
+                fore = _kind == Kind.Close ? p.TextOnAccent : p.Text;
+            }
+
+            float size = 16;
+            var r = new RectangleF((Width - size) / 2f, (Height - size) / 2f, size, size);
+            if (_kind == Kind.Close)
+            {
+                using var pen = new Pen(fore, 1.8f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+                g.DrawLine(pen, r.X + 4f, r.Y + 4f, r.Right - 4f, r.Bottom - 4f);
+                g.DrawLine(pen, r.Right - 4f, r.Y + 4f, r.X + 4f, r.Bottom - 4f);
+            }
+            else
+            {
+                using var pen = new Pen(fore, 1.6f);
+                g.DrawEllipse(pen, r.X + 0.5f, r.Y + 0.5f, r.Width - 1f, r.Height - 1f);
+                TextRenderer.DrawText(g, "?", ThemeFonts.Semibold, Rectangle.Round(new RectangleF(r.X, r.Y - 0.5f, r.Width + 1, r.Height + 1)), fore,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
+            }
+        }
     }
 }
