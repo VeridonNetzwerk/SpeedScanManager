@@ -397,19 +397,22 @@ internal static class HelpContent
         <b>Scanner auswählen...</b> erreichbar (nicht während eines Scans).</p>
 
         <h2>Elemente</h2>
-        <p><b>Auswahlliste</b> – Zeigt alle verfügbaren TWAIN-Quellen an. Die Einträge sind mit
+        <p><b>Auswahlliste [Scanner]</b> – Zeigt alle verfügbaren TWAIN-Quellen an. Die Einträge sind mit
         <b>(USB)</b> bzw. <b>(Netzwerk)</b> gekennzeichnet, USB-Scanner stehen bevorzugt oben.
         Der erste Eintrag <b>(Automatisch)</b> überlässt die Wahl dem Programm.</p>
 
-        <p><b>[OK] Taste</b> – Übernimmt die Auswahl. Sie wird gespeichert und beim nächsten Start wieder verwendet.
+        <p><b>[Abbrechen] Taste</b> (unten, links von OK) und das Schließen-Symbol – Schließen den Dialog ohne Änderung.
+        Die Kopfzeile enthält kein Hilfe-Symbol.</p>
+
+        <p><b>[OK] Taste</b> (unten rechts) – Übernimmt die Auswahl. Sie wird gespeichert und beim nächsten Start wieder verwendet.
         Ist der gewählte Scanner nicht erreichbar, zeigt der Hinweistext des Tray-Symbols
         „Auswahl: ... (offline)“ an.</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
             <p>Der Dialog aktualisiert sich automatisch, wenn neue Scanner erkannt werden.
-            Es ist kein manueller Aktualisieren-Knopf erforderlich. Wird kein Scanner gefunden, kann trotzdem
-            <b>(Automatisch)</b> bestätigt werden.</p>
+            Es ist kein manueller Aktualisieren-Knopf erforderlich. Wird kein Scanner gefunden, erscheint der Hinweis
+            „Kein Scanner gefunden“, und es kann trotzdem <b>(Automatisch)</b> bestätigt werden.</p>
         </div>
 
         <div class='see-also'>Siehe auch:
@@ -1064,33 +1067,43 @@ internal static class HelpContent
 
     private static HelpTopic TopicScanModeOptionsDialog() => new("scanmode-options", "[Scanmodus Option] Dialogfeld",
         Wrap("[Scanmodus Option] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie die Einstellungen der Scanmodus-Optionen festlegen.</p>
+        <p>In diesem Dialogfeld können Sie die Einstellungen der Scanmodus-Optionen festlegen
+        (Titel „Scanmodus-Optionen“, Untertitel „Helligkeit und Bildverarbeitung“). Es hat zwei Gruppen
+        (Karten): <b>Helligkeit</b> und <b>Bildverarbeitung</b>. Das <b>Hilfe-Symbol (?)</b> in der Kopfzeile
+        öffnet diese Hilfe. Unten rechts stehen die Tasten <b>[Abbrechen]</b> und <b>[OK]</b>.</p>
 
-        <h2>Elemente</h2>
-        <p><b>[Helligkeit (nur Schwarzweiß-Scan)] Regler</b><br>
-        Sieben Stufen von „Dunkler -3“ bis „Heller +3“, Mitte = Normal (Grundeinstellung).
-        Der Regler ist nur verfügbar, wenn [Schwarzweiß] als Farbmodus gewählt wurde.</p>
+        <h2>Gruppe [Helligkeit]</h2>
+        <p><b>Helligkeits-Regler</b> (Beschriftung „Dunkel“ links, „Hell“ rechts)<br>
+        Sieben Stufen von „Dunkler -3“ bis „Heller +3“, Mitte = Normal (Grundeinstellung); der aktuelle Wert
+        steht neben dem Regler. Der Regler ist nur verfügbar, wenn [Schwarzweiß] als Farbmodus gewählt wurde
+        (Hinweis in der Gruppe: „Nur für Schwarzweiß-Scans“).</p>
 
-        <p><b>[Einstellung nur für Textdokumente] Kontrollkästchen</b><br>
+        <h2>Gruppe [Bildverarbeitung]</h2>
+        <p>Jede Zeile hat rechts einen Schalter.</p>
+
+        <p><b>[Einstellung nur für Textdokumente] Schalter</b><br>
         Betont den Kontrast der gescannten Bilder (bei Schwarzweiß-Scans und bei der Umwandlung in
-        Schwarzweiß). Wählen Sie dieses für Dokumente mit Text oder handschriftlichen Texten.</p>
+        Schwarzweiß). Schalten Sie ihn für Dokumente mit Text oder handschriftlichen Texten ein.</p>
 
-        <p><b>[Automatisches Löschen leerer Seiten zulassen] Kontrollkästchen</b><br>
-        Leere Seiten werden automatisch erkannt und aus dem Ausgabebild gelöscht (Grundeinstellung: markiert).
+        <p><b>[Automatisches Löschen leerer Seiten zulassen] Schalter</b><br>
+        Leere Seiten werden automatisch erkannt und aus dem Ausgabebild gelöscht (Grundeinstellung: eingeschaltet).
         Sind alle Seiten leer, wird keine Datei gespeichert. Bei Scan-Seite „Automatisch“ im Duplex-Modus werden
         leere Rückseiten auch ohne diese Option entfernt.</p>
 
-        <p><b>[Schräglauf automatisch korrigieren] Kontrollkästchen</b><br>
-        Richtet schief eingezogene Seiten gerade aus (Grundeinstellung: nicht markiert).</p>
+        <p><b>[Schräglauf automatisch korrigieren] Schalter</b><br>
+        Richtet schief eingezogene Seiten gerade aus (Grundeinstellung: ausgeschaltet).</p>
 
-        <p><b>[Automatische Bilddrehung zulassen] Kontrollkästchen</b><br>
+        <p><b>[Automatische Bilddrehung zulassen] Schalter</b><br>
         Dokumente, die seitlich oder kopfüber gescannt wurden, werden in der korrekten
-        Richtung ausgegeben (Grundeinstellung: markiert). Die Ausrichtung wird mittels Tesseract OSD erkannt;
+        Richtung ausgegeben (Grundeinstellung: eingeschaltet). Die Ausrichtung wird mittels Tesseract OSD erkannt;
         bei zu unsicherer Erkennung wird nicht gedreht.</p>
 
-        <p><b>[Dokumente mit der Vorderseite nach oben einlegen] Kontrollkästchen</b><br>
-        Wählen Sie dies, wenn der Stapel mit der Vorderseite nach oben eingelegt wird. Die Seitenreihenfolge
+        <p><b>[Dokumente mit der Vorderseite nach oben einlegen] Schalter</b><br>
+        Schalten Sie ihn ein, wenn der Stapel mit der Vorderseite nach oben eingelegt wird. Die Seitenreihenfolge
         wird dann umgekehrt, sodass die Seiten in Lesereihenfolge gespeichert werden.</p>
+
+        <p><b>[Abbrechen] Taste</b> – Verwirft die Änderungen und schließt das Dialogfeld.<br>
+        <b>[OK] Taste</b> – Übernimmt die Einstellungen und schließt das Dialogfeld.</p>
 
         <div class='see-also'>Siehe auch:
             <ul>
@@ -1101,24 +1114,31 @@ internal static class HelpContent
 
     private static HelpTopic TopicPdfOptionsDialog() => new("pdf-options", "[PDF-Dateiformat Option] Dialogfeld",
         Wrap("[PDF-Dateiformat Option] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie die PDF-Dateiformate bestimmen.</p>
+        <p>In diesem Dialogfeld können Sie die PDF-Dateiformate bestimmen (Untertitel „Seiten teilen und
+        Kennwortschutz“). Es hat zwei Gruppen (Karten): <b>PDF-Seiten teilen</b> und <b>Kennwort</b>.
+        Die Kopfzeile enthält nur das Schließen-Symbol; unten rechts stehen die Tasten <b>[Abbrechen]</b> und
+        <b>[OK]</b>. Das Schließen-Symbol und [Abbrechen] verwerfen die Änderungen.</p>
 
-        <h2>PDF-Seiten teilen</h2>
+        <h2>Gruppe [PDF-Seiten teilen]</h2>
+        <p>Die beiden Optionen sind Auswahlknöpfe (es gilt immer genau eine).</p>
         <p><b>[Mehrseitige PDF-Datei (gesamter Stapel in einer PDF)]</b><br>
         Alle gescannten Bilder werden in einer PDF-Datei zusammengefasst.</p>
 
         <p><b>[Seitenzahl, für die jeweils eine neue PDF-Datei erstellt werden soll]</b><br>
-        Erstellt nach dem Erreichen der festgelegten Seitenzahl (1 bis 999) jeweils eine neue PDF-Datei.
+        Erstellt nach dem Erreichen der festgelegten Seitenzahl (1 bis 999, Eingabefeld mit „Seite(n)“ darunter, nur
+        bei dieser Option aktiv) jeweils eine neue PDF-Datei.
         Die Dateien erhalten eine laufende Nummer (z. B. <code>Name_001.pdf</code>, <code>Name_002.pdf</code>).</p>
 
-        <h2>Kennwort</h2>
-        <p><b>[Kennwort für PDF-Datei einstellen] Kontrollkästchen</b><br>
-        Aktiviert den Kennwortschutz für die erstellten PDF-Dateien.</p>
+        <h2>Gruppe [Kennwort]</h2>
+        <p><b>[Kennwort für PDF-Datei einstellen] Schalter</b><br>
+        Schaltet den Kennwortschutz für die erstellten PDF-Dateien ein. Ohne den Schalter sind die Felder
+        <b>Kennwort</b> und <b>Bestätigen</b> deaktiviert.</p>
 
         <p><b>Kennwort / Bestätigen</b><br>
         Geben Sie das gewünschte Kennwort ein und bestätigen Sie es. Es wird für das Öffnen
         des Dokuments verwendet. Das Kennwort wird verschlüsselt (nur für Ihr Windows-Benutzerkonto lesbar)
-        in den Einstellungen gespeichert. Kann es nicht gelesen werden (z. B. Einstellungen von einem anderen
+        in den Einstellungen gespeichert. Fehlt das Kennwort oder stimmen beide Eingaben nicht überein, erscheint beim
+        Bestätigen mit [OK] eine Meldung und das Dialogfeld bleibt geöffnet. Kann es nicht gelesen werden (z. B. Einstellungen von einem anderen
         Benutzer oder PC), bleibt der Kennwortschutz eingeschaltet und SpeedScan Manager fragt vor dem nächsten
         Scan nach; geben Sie das Kennwort dann hier neu ein.</p>
 
@@ -1132,7 +1152,10 @@ internal static class HelpContent
     private static HelpTopic TopicFileNameFormatDialog() => new("filename-format", "[Dateinamenformat] Dialogfeld",
         Wrap("[Dateinamenformat] Dialogfeld", @"
         <p>In diesem Dialogfeld kann das Dateinamenformat bestimmt werden, in dem die Dateien
-        automatisch gespeichert werden. Unten wird ein Beispiel für den Dateinamen angezeigt.</p>
+        automatisch gespeichert werden (Untertitel „Benennung der gescannten Dateien“). Die erste Gruppe (Karte)
+        enthält die Auswahlknöpfe und die Eingaben für den benutzerdefinierten Namen, die zweite Gruppe zeigt als
+        „Beispiel: ...“ den Dateinamen zur aktuellen Auswahl. Das <b>Hilfe-Symbol (?)</b> in der Kopfzeile öffnet
+        diese Hilfe.</p>
 
         <h2>Datum und Uhrzeit</h2>
         <p><b>[Benutzen Sie die Einstellung Ihres Betriebssystems]</b><br>
@@ -1144,10 +1167,12 @@ internal static class HelpContent
         z. B. <code>20260412153045.pdf</code> (Grundeinstellung).</p>
         <p>Bei einem bereits vorhandenen Namen wird <code>_1</code>, <code>_2</code> usw. angehängt.</p>
 
-        <h2>Benutzerdefinierter Dateiname</h2>
+        <h2>Benutzerdefiniert</h2>
+        <p><b>[Benutzerdefinierter Dateiname]</b> – Auswahlknopf; nur dann sind die Felder <b>Dateiname</b> und
+        <b>Zähler</b> aktiv.</p>
         <p><b>Dateiname</b> – Bis zu 30 Zeichen für den Anfang des Dateinamens (Grundeinstellung „unbenannt“).
         Nicht erlaubt sind die Zeichen \ / : * ? "" &lt; &gt; |, ein Punkt am Ende sowie reservierte Windows-Namen (z. B. CON, NUL, COM1).</p>
-        <p><b>[Zähler] Auswahlliste</b> – Stellenanzahl für die Seriennummer: 3, 4 oder 5 Ziffern (Grundeinstellung 3).</p>
+        <p><b>[Zähler] Auswahlliste</b> – Stellenanzahl für die Seriennummer: „3 Ziffern“, „4 Ziffern“ oder „5 Ziffern“ (Grundeinstellung 3).</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
@@ -1157,20 +1182,25 @@ internal static class HelpContent
             in einem Scan (z. B. ein Bild pro Seite) werden die Dateien fortlaufend nummeriert.</p>
         </div>
 
-        <p><b>[OK]</b> übernimmt die Einstellung und schließt das Dialogfeld, <b>[Übernehmen]</b> übernimmt sie, ohne
-        zu schließen, <b>[Abbrechen]</b> verwirft die Änderungen. Ein ungültiger Dateiname wird mit einer Meldung abgewiesen.</p>
+        <h2>Tasten</h2>
+        <p>Unten links steht <b>[Übernehmen]</b>: übernimmt die Einstellung, ohne zu schließen (nur aktiv, wenn es
+        Änderungen gibt). Unten rechts stehen <b>[Abbrechen]</b> (verwirft die Änderungen) und <b>[OK]</b>
+        (übernimmt die Einstellung und schließt das Dialogfeld). Ein ungültiger Dateiname wird mit einer Meldung abgewiesen.</p>
     "));
 
     private static HelpTopic TopicNewProfileDialog() => new("new-profile", "[Neues Profil hinzufügen] Dialogfeld",
         Wrap("[Neues Profil hinzufügen] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Namen für neue Profile vergeben werden.
-        Insgesamt können bis zu 20 Profile (einschließlich der Standardprofile) vorhanden sein.</p>
+        <p>In diesem kleinen Dialogfeld können Namen für neue Profile vergeben werden.
+        Insgesamt können bis zu 20 Profile (einschließlich der Standardprofile) vorhanden sein.
+        Dasselbe Eingabefenster erscheint auch beim Umbenennen eines Profils (Titel „Profil umbenennen“, Feld „Neuer Name“)
+        und beim Hinzufügen in der Profilverwaltung (Titel „Neues Profil“, Feld „Name des neuen Profils“).</p>
 
         <h2>Elemente</h2>
-        <p><b>Profilname</b> – Geben Sie den Namen für das neue Profil ein (höchstens 64 Zeichen).
-        Der Name muss eindeutig sein; die Groß-/Kleinschreibung wird nicht unterschieden.</p>
-        <p><b>[OK] Taste</b> – Profil anlegen und Dialogfeld schließen.</p>
-        <p><b>[Abbrechen] Taste</b> – Dialogfeld schließen, ohne ein Profil anzulegen.</p>
+        <p><b>Profilname</b> – Eingabefeld mit der Beschriftung über dem Feld. Geben Sie den Namen für das neue Profil ein
+        (höchstens 64 Zeichen). Der Name muss eindeutig sein; die Groß-/Kleinschreibung wird nicht unterschieden.
+        Ein ungültiger oder doppelter Name wird mit einer Meldung abgewiesen.</p>
+        <p><b>[Abbrechen] Taste</b> (unten, links von OK) – Dialogfeld schließen, ohne ein Profil anzulegen.</p>
+        <p><b>[OK] Taste</b> (unten rechts) – Profil anlegen und Dialogfeld schließen.</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
@@ -1182,7 +1212,9 @@ internal static class HelpContent
     private static HelpTopic TopicProfileManagementDialog() => new("profile-mgmt-dialog", "[Profilverwaltung] Dialogfeld",
         Wrap("[Profilverwaltung] Dialogfeld", @"
         <p>In diesem Dialogfeld können Sie Profile hinzufügen, umbenennen, löschen sowie die
-        Reihenfolge der Auflistung ändern.</p>
+        Reihenfolge der Auflistung ändern (Untertitel „Profile hinzufügen, umbenennen, löschen und sortieren“).
+        Links steht die Liste der Profile, rechts daneben die Tasten. Die Kopfzeile enthält nur das
+        Schließen-Symbol. Unten links zeigt ein Hinweis „Höchstens 20 Profile“.</p>
 
         <h2>Elemente</h2>
         <p><b>[Hinzufügen...] Taste</b> – Legt ein neues Profil mit den Grundeinstellungen an (höchstens 20 Profile).</p>
@@ -1195,7 +1227,7 @@ internal static class HelpContent
 
         <p><b>[Nach oben] Taste</b> – Verschiebt das Profil um eine Position nach oben.</p>
         <p><b>[Nach unten] Taste</b> – Verschiebt das Profil um eine Position nach unten.</p>
-        <p><b>[Schließen] Taste</b> – Schließt das Dialogfeld.</p>
+        <p><b>[Schließen] Taste</b> (unten rechts) – Schließt das Dialogfeld.</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
@@ -1208,7 +1240,9 @@ internal static class HelpContent
     private static HelpTopic TopicAppManageDialog() => new("app-manage", "[Installieren/Deinstallieren] Dialogfeld",
         Wrap("[Installieren/Deinstallieren] Dialogfeld", @"
         <p>In diesem Dialogfeld können Sie eigene Anwendungen hinzufügen, entfernen
-        oder ändern, die nach dem Scan gestartet werden. Bis zu zehn Anwendungen können hinzugefügt werden.</p>
+        oder ändern, die nach dem Scan gestartet werden (Untertitel „Eigene Anwendungen hinzufügen, ändern oder
+        entfernen“). Bis zu zehn Anwendungen können hinzugefügt werden. Das <b>Hilfe-Symbol (?)</b> in der Kopfzeile
+        öffnet diese Hilfe.</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
@@ -1217,17 +1251,22 @@ internal static class HelpContent
         </div>
 
         <h2>Elemente</h2>
-        <p><b>Hinzugefügt</b> – Liste der hinzugefügten Anwendungen (Name und Programmpfad).</p>
-        <p><b>[Hinzufügen...] Taste</b> – Fügt eine neue Anwendung hinzu. Angegeben werden:</p>
+        <p>In der Gruppe <b>Hinzugefügt</b> stehen oben die Tasten <b>[Hinzufügen...]</b>, <b>[Ändern...]</b> und
+        <b>[Entfernen]</b>, darunter die Liste der hinzugefügten Anwendungen (Name und Programmpfad).</p>
+        <p><b>[Hinzufügen...] Taste</b> – Fügt eine neue Anwendung hinzu. Es öffnet sich das Fenster „Anwendung hinzufügen“
+        (Untertitel „Programm, das die gescannten Dateien öffnet“) mit den Feldern:</p>
         <ul>
             <li><b>Name</b> – Anzeigename in der [Anwendung] Auswahlliste (eindeutig, bis 64 Zeichen)</li>
-            <li><b>Programm</b> – Programmdatei (*.exe), über [Durchsuchen...] auswählbar</li>
+            <li><b>Programm</b> – Programmdatei (*.exe), über die Taste [Durchsuchen...] neben dem Feld auswählbar.
+            Ist das Feld Name noch leer, wird der Dateiname übernommen.</li>
             <li><b>Argumente</b> – Optional. Die gescannten Dateien werden danach (in Anführungszeichen) angehängt.</li>
         </ul>
+        <p>Das Fenster hat in der Kopfzeile nur das Schließen-Symbol und unten rechts die Tasten <b>[Abbrechen]</b> und
+        <b>[OK]</b>. Fehlt der Name oder die Programmdatei, erscheint eine Meldung.</p>
+        <p><b>[Ändern...] Taste</b> – Ändert die Einstellungen der ausgewählten Anwendung (gleiches Fenster, Titel
+        „Anwendung ändern“). Ein Doppelklick auf einen Listeneintrag wirkt genauso.</p>
         <p><b>[Entfernen] Taste</b> – Entfernt die ausgewählte Anwendung.</p>
-        <p><b>[Ändern...] Taste</b> – Ändert die Einstellungen einer Anwendung.</p>
-        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
-        <p><b>[Schließen] Taste</b> – Schließt das Dialogfeld.</p>
+        <p><b>[Schließen] Taste</b> (unten rechts) – Schließt das Dialogfeld.</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
@@ -1238,16 +1277,18 @@ internal static class HelpContent
 
     private static HelpTopic TopicEmailOptionsDialog() => new("email-options", "[Scan to E-Mail-Optionen] Dialogfeld",
         Wrap("[Scan to E-Mail-Optionen] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie Einstellungen für die Verwendung von Scan to E-Mail
-        konfigurieren. Es ist über die Seite [Anwendung] oder das Tray-Menü
-        (<b>E-Mail-Einstellungen...</b>) erreichbar.</p>
+        <p>In diesem Dialogfeld (Titel „Scan to E-Mail“, Untertitel „Optionen für den E-Mail-Versand“) können Sie
+        Einstellungen für die Verwendung von Scan to E-Mail konfigurieren. Es ist über die Seite [Anwendung] oder das
+        Tray-Menü (<b>E-Mail-Einstellungen...</b>) erreichbar. Die Kopfzeile enthält nur das Schließen-Symbol.</p>
 
         <h2>Elemente</h2>
         <p><b>Standard-Empfänger</b> – E-Mail-Adresse des Standardempfängers.
         Wird beim Erstellen einer E-Mail automatisch eingetragen.</p>
 
         <p><b>Betreff-Vorlage</b> – Betreff der E-Mail.
-        Standard: „Gescanntes Dokument“.</p>
+        Standard: „Gescanntes Dokument“ (auch, wenn das Feld leer bleibt).</p>
+
+        <p><b>[Abbrechen] Taste</b> verwirft die Änderungen, <b>[OK] Taste</b> (unten rechts) übernimmt sie.</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
@@ -1259,13 +1300,15 @@ internal static class HelpContent
 
     private static HelpTopic TopicPrintOptionsDialog() => new("print-options", "[Scan to Print-Optionen] Dialogfeld",
         Wrap("[Scan to Print-Optionen] Dialogfeld", @"
-        <p>In diesem Dialogfeld können die Optionen der Funktion Scan to Print eingestellt werden.
-        Es ist über die Seite [Anwendung] oder das Tray-Menü
-        (<b>Druckeinstellungen...</b>) erreichbar.</p>
+        <p>In diesem Dialogfeld (Titel „Scan to Print“, Untertitel „Optionen für den Druck“) können die Optionen der
+        Funktion Scan to Print eingestellt werden. Es ist über die Seite [Anwendung] oder das Tray-Menü
+        (<b>Druckeinstellungen...</b>) erreichbar. Die Kopfzeile enthält nur das Schließen-Symbol.</p>
 
         <h2>Elemente</h2>
         <p><b>Zieldrucker</b> – Auswahlliste aller im Betriebssystem erkannten Drucker.
         Der Eintrag <b>(Standarddrucker)</b> verwendet jeweils den aktuellen Windows-Standarddrucker.</p>
+
+        <p><b>[Abbrechen] Taste</b> verwirft die Änderungen, <b>[OK] Taste</b> (unten rechts) übernimmt sie.</p>
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
@@ -1278,12 +1321,13 @@ internal static class HelpContent
     private static HelpTopic TopicCarrierSheetDialog() => new("carrier-sheet-dialog", "[Trägerblatteinstellungen] Dialogfeld",
         Wrap("[Trägerblatteinstellungen] Dialogfeld", @"
         <p>In diesem Dialogfeld können Sie Einstellungen für das Scannen mit dem Trägerblatt
-        vornehmen. Das Dialogfeld enthält außerdem eine kurze Anleitung (Dokument falten,
-        in das Trägerblatt einlegen, in den Scanner führen).</p>
+        vornehmen. Es hat zwei Gruppen (Karten): oben die Einstellungen, darunter die <b>Anleitung</b> mit einer kurzen
+        Beschreibung und Abbildungen (1 Dokument falten, 2 in das Trägerblatt einlegen, 3 in den Scanner führen).
+        Die Kopfzeile enthält nur das Schließen-Symbol; unten rechts stehen <b>[Abbrechen]</b> und <b>[OK]</b>.</p>
 
         <h2>Elemente</h2>
-        <p><b>[Trägerblatt-Modus aktivieren] Kontrollkästchen</b><br>
-        Schaltet die Trägerblatt-Verarbeitung ein. Ohne Markierung sind die übrigen Elemente deaktiviert.</p>
+        <p><b>[Trägerblatt-Modus aktivieren] Schalter</b><br>
+        Schaltet die Trägerblatt-Verarbeitung ein. Ist der Schalter aus, sind die übrigen Elemente deaktiviert.</p>
 
         <p><b>[Modus] Auswahlliste</b><br>
         Es gibt den Modus <b>Zwei Seiten in einem Bild erstellen</b>: Vorder- und Rückseite (Duplex-Scan)
@@ -1299,8 +1343,8 @@ internal static class HelpContent
             <li>Trägerblattgröße (220 × 297 mm)</li>
             <li>Benutzerdefiniert...</li>
         </ul>
-        <p>Bei <b>Benutzerdefiniert...</b> geben Sie Breite und Höhe in mm ein (50 bis 2000 mm).
-        Es kann eine benutzerdefinierte Ausgabegröße gespeichert werden.</p>
+        <p>Bei <b>Benutzerdefiniert...</b> erscheint eine zusätzliche Zeile <b>Benutzerdefinierte Größe</b>, in der Sie
+        Breite und Höhe in mm eingeben (50 bis 2000 mm). Es kann eine benutzerdefinierte Ausgabegröße gespeichert werden.</p>
 
         <div class='warning'>
             <div class='warning-title'>ACHTUNG</div>
@@ -1310,19 +1354,23 @@ internal static class HelpContent
 
     private static HelpTopic TopicCustomSizeDialog() => new("custom-size-dialog", "[Hinzufügen oder Entfernen von benutzerdefinierten Größen] Dialogfeld",
         Wrap("[Hinzufügen oder Entfernen von benutzerdefinierten Größen] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Einstellungen von benutzerdefinierten Dokumentengrößen
-        hinzugefügt, gelöscht oder geändert werden. Bis zu zehn benutzerdefinierte
-        Dokumentengrößen können hinzugefügt werden. Sie erscheinen in der [Papiergröße] Auswahlliste.</p>
+        <p>In diesem Dialogfeld (Titel „Benutzerdefinierte Größen“) können Einstellungen von benutzerdefinierten
+        Dokumentengrößen hinzugefügt, gelöscht oder geändert werden. Bis zu zehn benutzerdefinierte
+        Dokumentengrößen können hinzugefügt werden. Sie erscheinen in der [Papiergröße] Auswahlliste.
+        Das <b>Hilfe-Symbol (?)</b> in der Kopfzeile öffnet diese Hilfe.</p>
 
         <h2>Elemente</h2>
-        <p><b>Benutzerdefinierte Größen</b> – Liste der benutzerdefinierten Größen; darunter werden Breite und Länge der gewählten Größe angezeigt.</p>
-        <p><b>[Hinzufügen...] Taste</b> – Öffnet das Dialogfeld für eine zusätzliche benutzerdefinierte Größe.</p>
+        <p>In der Gruppe <b>Größen</b> stehen oben die Tasten <b>[Hinzufügen...]</b>, <b>[Ändern...]</b> und
+        <b>[Entfernen]</b>, darunter die Liste der benutzerdefinierten Größen und die Zeile <b>Ausgewählte Größe</b>, die
+        Breite × Länge der gewählten Größe in mm anzeigt (nur Anzeige).</p>
+        <p><b>[Hinzufügen...] Taste</b> – Öffnet das Fenster für eine zusätzliche benutzerdefinierte Größe (siehe unten).</p>
+        <p><b>[Ändern...] Taste</b> – Ändert die Einstellungen der gewählten Größe (gleiches Fenster).</p>
         <p><b>[Entfernen] Taste</b> – Entfernt die gewählte Größe.</p>
-        <p><b>[Ändern...] Taste</b> – Ändert die Einstellungen der gewählten Größe.</p>
-        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
-        <p><b>[Schließen] Taste</b> – Schließt das Dialogfeld.</p>
+        <p><b>[Schließen] Taste</b> (unten rechts) – Schließt das Dialogfeld.</p>
 
-        <h2>Benutzerdefinierte Größe</h2>
+        <h2>Fenster „Benutzerdefinierte Größe“</h2>
+        <p>Untertitel „Name und Abmessungen in Millimetern“; in der Kopfzeile nur das Schließen-Symbol, unten rechts die
+        Tasten <b>[Abbrechen]</b> und <b>[OK]</b>.</p>
         <p><b>Name</b> – Name für die Papiergröße (bis zu 62 Zeichen).</p>
         <p><b>Breite (mm) / Länge (mm)</b> – Abmessungen in Millimetern (1 bis 9999).</p>
     "));
@@ -1330,32 +1378,34 @@ internal static class HelpContent
     private static HelpTopic TopicVersionInfoDialog() => new("version-info", "[Versionsinformationen] Dialogfeld",
         Wrap("[Versionsinformationen] Dialogfeld", @"
         <p>In diesem Dialogfeld werden Versionsinformationen zu SpeedScan Manager und den
-        verwendeten Komponenten angezeigt. Es wird über <b>Hilfe &gt; Versionsinformationen</b> im Tray-Menü geöffnet.</p>
+        verwendeten Komponenten angezeigt. Es wird über <b>Hilfe &gt; Versionsinformationen</b> im Tray-Menü geöffnet.
+        Das <b>Hilfe-Symbol (?)</b> in der Kopfzeile öffnet diese Hilfe.</p>
 
         <h2>Elemente</h2>
-        <p><b>Logo und Versionsnummer</b> – Zeigt das SpeedScan Manager Logo und die aktuelle
+        <p><b>Logo und Versionsnummer</b> – Die oberste Gruppe zeigt das SpeedScan Manager Logo und die aktuelle
         Version an.</p>
-        <p><b>Lizenzinformationen</b> – Zeigt Informationen zur GPL-3.0-Lizenz und die
-        Copyright-Hinweise an.</p>
-        <p><b>Verwendete Komponenten</b> – Nennt die verwendeten Bibliotheken:</p>
+        <p><b>Gruppe [Lizenz und Credits]</b> – Zeigt Informationen zur GPL-3.0-Lizenz und die
+        Copyright-Hinweise an und nennt die verwendeten Bibliotheken:</p>
         <ul>
             <li>NTwain (TWAIN-Unterstützung)</li>
             <li>Tesseract.NET (OCR-Engine)</li>
             <li>PdfSharpCore (PDF-Verarbeitung)</li>
         </ul>
-        <p><b>GitHub- und Discord-Symbole</b> – Öffnen die Projektseite bzw. den Discord-Server im Browser.</p>
-        <p><b>[Detail...] Taste</b> – Öffnet das Dialogfeld für <a href='#driver-info'>Scanner- und Treiberinformationen</a>.</p>
-        <p><b>[OK] Taste</b> – Schließt das Dialogfeld.</p>
-        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
+        <p><b>GitHub- und Discord-Symbole</b> (Zeile „Projekt und Community“) – Öffnen die Projektseite bzw. den
+        Discord-Server im Browser.</p>
+        <p><b>[Detail...] Taste</b> (Zeile „Scanner- und Treiberinformationen“) – Öffnet das Dialogfeld für
+        <a href='#driver-info'>Scanner- und Treiberinformationen</a>.</p>
+        <p><b>[OK] Taste</b> (unten rechts) – Schließt das Dialogfeld.</p>
     "));
 
     private static HelpTopic TopicPostScanMediaDialog() => new("postscan-media", "[Quick-Menü] Dialogfeld",
         Wrap("[Quick-Menü] Dialogfeld", @"
         <p>Nach dem Scannen wird dieses Dialogfeld angezeigt, wenn das Quick-Menü aktiviert ist.
-        Es nennt die Seitenzahl und fragt, wohin gescannt werden soll. Die Datei ist zu diesem Zeitpunkt
-        bereits im Speicherordner abgelegt.</p>
+        Die Kopfzeile fragt „Wohin möchtest du scannen?“ und nennt als Untertitel die Seitenzahl. Die Datei ist zu diesem
+        Zeitpunkt bereits im Speicherordner abgelegt. Das Fenster bleibt im Vordergrund.</p>
 
         <h2>Verfügbare Aktionen</h2>
+        <p>Die Aktionen sind als Kacheln in einem Raster angeordnet (zwei Reihen mit je vier Kacheln):</p>
         <ul>
             <li><b>In Ordner speichern</b> (Scan to Folder) – Öffnet das Dialogfeld zum Festlegen von Titel und Zielordner.</li>
             <li><b>Per E-Mail versenden</b> (Scan to E-Mail) – Öffnet das E-Mail-Programm mit der Datei als Anhang.</li>
@@ -1368,14 +1418,14 @@ internal static class HelpContent
         </ul>
 
         <h2>Bedienung</h2>
-        <p>Klicken Sie auf eine Aktion, um sie auszuwählen. Doppelklicken Sie, um die Aktion
-        direkt auszuführen. Alternativ wählen Sie eine Aktion aus und klicken Sie auf
-        <b>[Speichern]</b>.</p>
+        <p>Klicken Sie auf eine Kachel, um die Aktion auszuwählen; die Pfeiltasten bewegen die Auswahl durch das Raster.
+        Doppelklicken Sie auf eine Kachel, um die Aktion direkt auszuführen (Hinweis unten links: „Doppelklick startet
+        direkt“). Alternativ wählen Sie eine Kachel aus und klicken Sie auf <b>[Speichern]</b>.</p>
 
-        <p><b>[Speichern] Taste</b> – Führt die ausgewählte Aktion aus.</p>
-        <p><b>[Abbrechen] Taste</b> und <b>Schließen-Symbol</b> – Schließen das Dialogfeld. Die bereits gespeicherte
-        Datei bleibt erhalten (Sprechblase „Scan gespeichert“).</p>
-        <p><b>Hilfe-Symbol</b> – Öffnet diese Hilfe.</p>
+        <p><b>[Abbrechen] Taste</b> (unten, links von Speichern) und <b>Schließen-Symbol</b> – Schließen das Dialogfeld. Die
+        bereits gespeicherte Datei bleibt erhalten (Sprechblase „Scan gespeichert“).</p>
+        <p><b>[Speichern] Taste</b> (unten rechts) – Führt die ausgewählte Aktion aus.</p>
+        <p><b>Hilfe-Symbol (?)</b> in der Kopfzeile – Öffnet diese Hilfe.</p>
 
         <div class='see-also'>Siehe auch:
             <ul>
@@ -1391,22 +1441,26 @@ internal static class HelpContent
         das Speichern Dateiname und Zielordner bestimmt werden. Die Datei wurde zuvor bereits im Speicherordner
         abgelegt; das Dialogfeld benennt sie um bzw. verschiebt sie.</p>
 
+        <p>Links steht die <b>Vorschau</b>, rechts stehen die Gruppen mit Titel, Zielordner und Scaneinstellungen.
+        Der Untertitel in der Kopfzeile nennt die Seitenzahl.</p>
+
         <h2>Elemente</h2>
         <p><b>Vorschau</b> – Zeigt das gescannte Dokumentenbild an. Bei mehreren Seiten kann
         durch die Seiten navigiert werden.</p>
-        <p><b>Seitennavigation</b> (unten links) – Zeigt die aktuelle Seite („Seite 2 von 3“) und ermöglicht das
-        Durchblättern der gescannten Seiten mit den Pfeilschaltflächen.</p>
+        <p><b>Seitennavigation</b> (unten links) – Pfeiltasten und die Anzeige der aktuellen Seite („Seite 2 von 3“)
+        zum Durchblättern der gescannten Seiten.</p>
         <p><b>Titel festlegen</b> – Zeigt den vorgeschlagenen Dateinamen an. Kann geändert werden.
         Ungültige Zeichen werden ersetzt.</p>
-        <p><b>Zielordner festlegen</b> – Zeigt den Zielordner an. Er wird über
-        [Durchsuchen...] geändert.</p>
-        <p><b>Scaneinstellungen</b> – Zeigt eine Übersicht der verwendeten Einstellungen (Voreinstellung, Auflösung,
-        Farbmodus, Scan-Seite, Dateiformat, Kompression).</p>
-        <p><b>[Speichern] Taste</b> – Übernimmt Titel und Zielordner. Bei mehreren Dateien wird eine Seriennummer
+        <p><b>Zielordner festlegen</b> – Zeigt den Zielordner an (nicht direkt bearbeitbar). Er wird über die Taste
+        [Durchsuchen...] neben dem Feld geändert.</p>
+        <p><b>Gruppe [Scaneinstellungen]</b> – Zeigt eine Übersicht der verwendeten Einstellungen (Voreinstellung, Auflösung,
+        Farbmodus, Scanseite, Dateiformat, Kompression).</p>
+        <p><b>[Abbrechen] Taste</b> (unten, links von Speichern), <span class='kbd'>Esc</span> und <b>Schließen-Symbol</b> –
+        Fragen „Scan verwerfen?“. Bei <b>Ja</b> werden die bereits erstellten Dateien gelöscht, bei <b>Nein</b> kehren
+        Sie zum Dialogfeld zurück.</p>
+        <p><b>[Speichern] Taste</b> (unten rechts) – Übernimmt Titel und Zielordner. Bei mehreren Dateien wird eine Seriennummer
         angefügt. Bestehende Dateien werden nie überschrieben (es wird <code>_1</code> usw. angehängt).</p>
-        <p><b>[Abbrechen] Taste</b>, <span class='kbd'>Esc</span> und <b>Schließen-Symbol</b> – Fragen „Scan verwerfen?“.
-        Bei <b>Ja</b> werden die bereits erstellten Dateien gelöscht, bei <b>Nein</b> kehren Sie zum Dialogfeld zurück.</p>
-        <p><b>Hilfe-Symbol (?)</b> – Öffnet diese Hilfe.</p>
+        <p><b>Hilfe-Symbol (?)</b> in der Kopfzeile – Öffnet diese Hilfe.</p>
     "));
 
     private static HelpTopic TopicScannerDriverInfoDialog() => new("driver-info", "[Scanner- und Treiberinformationen] Dialogfeld",
@@ -1415,17 +1469,18 @@ internal static class HelpContent
         und den verwendeten Programmkomponenten angezeigt.</p>
 
         <h2>Elemente</h2>
-        <p><b>Scanner-Informationen</b> – Zeigt Scannername, Hersteller, Produktfamilie und
-        Treiberversion des angeschlossenen Scanners an. Ist kein Scanner verbunden, wird „Kein Scanner verbunden“ angezeigt.</p>
-        <p><b>Dateiversion</b> – Listet Version und Datum der Programmdatei sowie der Bibliotheken auf:</p>
+        <p><b>Gruppe [Scanner]</b> – Zeigt Scannername, Hersteller, Produktfamilie und
+        Treiberversion des angeschlossenen Scanners an (die Werte lassen sich markieren und kopieren).
+        Ist kein Scanner verbunden, wird „Kein Scanner verbunden“ angezeigt.</p>
+        <p><b>Gruppe [Dateiversion]</b> – Tabelle mit den Spalten Dateiname, Version und Zeit der Programmdatei sowie der Bibliotheken:</p>
         <ul>
             <li>NTwain (TWAIN-Bibliothek)</li>
             <li>Tesseract (OCR-Engine)</li>
             <li>PdfSharpCore (PDF-Verarbeitung)</li>
             <li>DocumentFormat.OpenXml (Word-, Excel- und PowerPoint-Dateien)</li>
         </ul>
-        <p><b>[OK] Taste</b> – Schließt das Dialogfeld.</p>
-        <p><b>[Hilfe] Taste</b> – Öffnet diese Hilfe.</p>
+        <p><b>[OK] Taste</b> (unten rechts) – Schließt das Dialogfeld.</p>
+        <p><b>Hilfe-Symbol (?)</b> in der Kopfzeile – Öffnet diese Hilfe.</p>
     "));
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -1536,6 +1591,9 @@ internal static class HelpContent
         <h2>Elemente</h2>
         <p><b>Vorschaubilder</b> – Zeigt die vorherige Seite und die aktuelle Seite (mit Mehrfacheinzug, rot markiert)
         zur Beurteilung. Gibt es keine vorherige Seite, steht dort „Kein Vorschaubild verfügbar“.</p>
+
+        <p>Unten rechts stehen <b>[So übernehmen]</b> und <b>[Wiederholen]</b> (Standardtaste), unten links
+        <b>[Erkennung ausschalten]</b>. Esc schließt das Dialogfeld nicht.</p>
 
         <p><b>[Wiederholen] Taste</b> – Verwirft die in diesem Durchgang gescannten Bilder und bricht den Scan ab
         (Sprechblase „Scan verworfen“). Legen Sie das Dokument erneut ein und starten Sie einen neuen Scan.
