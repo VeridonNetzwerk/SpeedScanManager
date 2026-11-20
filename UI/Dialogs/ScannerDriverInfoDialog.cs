@@ -4,121 +4,54 @@ using System.Windows.Forms;
 
 namespace SpeedScanManager;
 
-internal class ScannerDriverInfoDialog : Form
+/// <summary>
+/// Scanner and driver information (opened from the version info via "Detail..."):
+/// scanner name, manufacturer, product family, driver version and the file versions of the
+/// program files. Modern layout: two cards, help in the header, OK in the footer.
+/// </summary>
+internal class ScannerDriverInfoDialog : ModernWindow
 {
     public ScannerDriverInfoDialog(ScannerState? scannerState = null)
     {
+        SuspendLayout();
         Text = "SpeedScan Manager - Scanner- und Treiberinformationen";
-        Icon = TrayIcons.GetAppIcon();
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
+        Title = "Scanner- und Treiberinformationen";
+        Subtitle = "SpeedScan Manager";
+        HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
+        HelpTopic = "driver-info";
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
-        ClientSize = new Size(460, 340);
-        Font = new Font("Microsoft Sans Serif", 8.25f);
-
-        var font = new Font("Microsoft Sans Serif", 8.25f);
+        AutoSizeToContent = true;
+        MinimumContentWidth = 540;
 
         // === Scanner info rows ===
-        var lblScannerName = new Label
-        {
-            Text = "Scannername:",
-            Location = new Point(20, 24),
-            AutoSize = true,
-            Font = font
-        };
-
-        var txtScannerName = new TextBox
-        {
-            Text = scannerState?.SourceName ?? "Kein Scanner verbunden",
-            ReadOnly = true,
-            TabStop = false,
-            Font = font,
-            Location = new Point(108, 22),
-            Size = new Size(326, 22)
-        };
-
-        var lblManufacturer = new Label
-        {
-            Text = "Hersteller:",
-            Location = new Point(20, 50),
-            AutoSize = true,
-            Font = font
-        };
-
-        var txtManufacturer = new TextBox
-        {
-            Text = scannerState?.Manufacturer ?? "—",
-            ReadOnly = true,
-            TabStop = false,
-            Font = font,
-            Location = new Point(108, 48),
-            Size = new Size(326, 22)
-        };
-
-        var lblProductFamily = new Label
-        {
-            Text = "Produktfamilie:",
-            Location = new Point(20, 76),
-            AutoSize = true,
-            Font = font
-        };
-
-        var txtProductFamily = new TextBox
-        {
-            Text = scannerState?.ProductFamily ?? "—",
-            ReadOnly = true,
-            TabStop = false,
-            Font = font,
-            Location = new Point(108, 74),
-            Size = new Size(326, 22)
-        };
-
-        var lblDriverVersion = new Label
-        {
-            Text = "Treiberversion:",
-            Location = new Point(20, 102),
-            AutoSize = true,
-            Font = font
-        };
-
-        var txtDriverVersion = new TextBox
-        {
-            Text = scannerState?.DriverVersion ?? "—",
-            ReadOnly = true,
-            TabStop = false,
-            Font = font,
-            Location = new Point(108, 100),
-            Size = new Size(326, 22)
-        };
+        var cardScanner = new SettingsCard("Scanner");
+        cardScanner.AddRow("Scannername", null, InfoBox(scannerState?.SourceName ?? "Kein Scanner verbunden"), 300);
+        cardScanner.AddRow("Hersteller", null, InfoBox(scannerState?.Manufacturer ?? "—"), 300);
+        cardScanner.AddRow("Produktfamilie", null, InfoBox(scannerState?.ProductFamily ?? "—"), 300);
+        cardScanner.AddRow("Treiberversion", null, InfoBox(scannerState?.DriverVersion ?? "—"), 300);
 
         // === File version section ===
-        var lblDateiversion = new Label
-        {
-            Text = "Dateiversion:",
-            Location = new Point(30, 138),
-            Size = new Size(90, 16),
-            AutoSize = false,
-            Font = new Font("Microsoft Sans Serif", 8.25f, FontStyle.Bold)
-        };
-
         var lvwVersions = new ListView
         {
-            Location = new Point(28, 160),
-            Size = new Size(404, 122),
+            Height = 128,
             View = View.Details,
             FullRowSelect = false,
             HideSelection = true,
             GridLines = false,
             BorderStyle = BorderStyle.FixedSingle,
-            Font = font
+            Margin = Padding.Empty
         };
 
-        lvwVersions.Columns.Add("Dateiname", 180, HorizontalAlignment.Left);
-        lvwVersions.Columns.Add("Version", 70, HorizontalAlignment.Center);
-        lvwVersions.Columns.Add("Zeit", 148, HorizontalAlignment.Right);
+        lvwVersions.Columns.Add("Dateiname", 200, HorizontalAlignment.Left);
+        lvwVersions.Columns.Add("Version", 90, HorizontalAlignment.Center);
+        lvwVersions.Columns.Add("Zeit", 150, HorizontalAlignment.Right);
+        // "Dateiname" takes the remaining width of the card.
+        lvwVersions.Resize += (s, e) =>
+        {
+            int rest = lvwVersions.ClientSize.Width - lvwVersions.Columns[1].Width - lvwVersions.Columns[2].Width;
+            if (rest > 0) lvwVersions.Columns[0].Width = rest;
+        };
 
         var asm = Assembly.GetExecutingAssembly();
         var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
@@ -136,73 +69,33 @@ internal class ScannerDriverInfoDialog : Form
         foreach (var dll in new[] { "NTwain.dll", "Tesseract.dll", "PdfSharpCore.dll", "DocumentFormat.OpenXml.dll" })
             lvwVersions.Items.Add(new ListViewItem(GetFileVersionRow(dll)));
 
-        // === Footer (OK + Hilfe) ===
-        var footerTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 36,
-            ColumnCount = 5,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Percent, 100f),
-                new ColumnStyle(SizeType.Absolute, 75f),
-                new ColumnStyle(SizeType.Absolute, 12f),
-                new ColumnStyle(SizeType.Absolute, 75f),
-                new ColumnStyle(SizeType.Percent, 100f)
-            },
-            RowCount = 1,
-            RowStyles = { new RowStyle(SizeType.Percent, 100f) }
-        };
-        ThemeManager.SetRole(footerTable, ThemeRole.Secondary);
+        var cardFiles = new SettingsCard("Dateiversion") { ShowDividers = false };
+        cardFiles.Add(lvwVersions);
+        // Space below the list inside the card.
+        cardFiles.Add(new Panel { Height = 12 });
 
-        var btnOk = new Button
-        {
-            Text = "OK",
-            DialogResult = DialogResult.OK,
-            Size = new Size(75, 24),
-            Font = font,
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Anchor = AnchorStyles.None
-        };
+        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(20, 18, 20, 20) };
+        stack.Controls.Add(cardScanner);
+        stack.Controls.Add(cardFiles);
+        Body.Controls.Add(stack);
 
-        var btnHelp = new Button
-        {
-            Text = "Hilfe",
-            Size = new Size(75, 24),
-            Font = font,
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Anchor = AnchorStyles.None
-        };
-        btnHelp.Click += (s, e) =>
-        {
-            using var help = new HelpForm("driver-info");
-            help.ShowDialog(this);
-        };
-
-        footerTable.Controls.Add(new Panel(), 0, 0);
-        footerTable.Controls.Add(btnOk, 1, 0);
-        footerTable.Controls.Add(new Panel(), 2, 0);
-        footerTable.Controls.Add(btnHelp, 3, 0);
-        footerTable.Controls.Add(new Panel(), 4, 0);
-
-        Controls.Add(footerTable);
-        Controls.Add(lvwVersions);
-        Controls.Add(lblDateiversion);
-        Controls.Add(txtDriverVersion);
-        Controls.Add(lblDriverVersion);
-        Controls.Add(txtProductFamily);
-        Controls.Add(lblProductFamily);
-        Controls.Add(txtManufacturer);
-        Controls.Add(lblManufacturer);
-        Controls.Add(txtScannerName);
-        Controls.Add(lblScannerName);
-
+        // === Footer (OK; help is the header's "?" button) ===
+        var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
         AcceptButton = btnOk;
 
         ThemeManager.Apply(this);
+        ResumeLayout(true);
     }
+
+    /// <summary>Read-only, selectable value box (the values can be copied).</summary>
+    private static TextBox InfoBox(string text) => new()
+    {
+        Text = text,
+        ReadOnly = true,
+        TabStop = false,
+        AutoSize = false,
+        Size = new Size(300, 28)
+    };
 
     /// <summary>File name, file version and modification time of a DLL next to the exe.</summary>
     private static string[] GetFileVersionRow(string fileName)

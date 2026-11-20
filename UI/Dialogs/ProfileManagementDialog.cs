@@ -5,8 +5,10 @@ namespace SpeedScanManager;
 
 /// <summary>
 /// Profile management window: list profiles, rename, delete, reorder.
+/// Modern layout (<see cref="ModernWindow"/>): the profile list on the left, the actions as a
+/// button column on the right, "Schließen" in the footer.
 /// </summary>
-internal class ProfileManagementDialog : Form
+internal class ProfileManagementDialog : ModernWindow
 {
     private readonly ListBox _listBox;
     private readonly Button _btnAdd;
@@ -22,100 +24,90 @@ internal class ProfileManagementDialog : Form
         _manager = manager;
 
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "SpeedScan Manager – Profilverwaltung";
-        Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(411, 304);
+        Title = "Profilverwaltung";
+        Subtitle = "Profile hinzufügen, umbenennen, löschen und sortieren";
+        HeaderButtons = ModernHeaderButtons.Close;
+        ClientSize = new Size(500, 420);
         ShowInTaskbar = false;
-
-        var font = UiFonts.Default;
-        Font = font;
 
         // === List ===
         _listBox = new ListBox
         {
-            Location = new Point(12, 12),
-            Size = new Size(260, 280),
-            Font = font
+            Dock = DockStyle.Fill,
+            IntegralHeight = false,
+            Margin = new Padding(0, 0, 16, 0)
         };
         _listBox.SelectedIndexChanged += (s, e) => UpdateButtonStates();
 
         // === Buttons ===
-        _btnAdd = new Button
-        {
-            Text = "Hinzufügen...",
-            Location = new Point(299, 12),
-            Size = new Size(100, 28),
-            Font = font
-        };
+        _btnAdd = CreateActionButton("Hinzufügen...", Glyph.Plus);
         _btnAdd.Click += (s, e) => AddProfile();
 
-        _btnRename = new Button
-        {
-            Text = "Umbenennen...",
-            Location = new Point(299, 46),
-            Size = new Size(100, 28),
-            Font = font
-        };
+        _btnRename = CreateActionButton("Umbenennen...", Glyph.Sliders);
         _btnRename.Click += (s, e) => RenameProfile();
 
-        _btnDelete = new Button
-        {
-            Text = "Löschen",
-            Location = new Point(299, 80),
-            Size = new Size(100, 28),
-            Font = font
-        };
+        _btnDelete = CreateActionButton("Löschen", Glyph.Cross);
+        ThemeManager.SetRole(_btnDelete, ThemeRole.Danger);
         _btnDelete.Click += (s, e) => DeleteProfile();
 
-        _btnUp = new Button
-        {
-            Text = "Nach oben",
-            Location = new Point(299, 114),
-            Size = new Size(100, 28),
-            Font = font
-        };
+        _btnUp = CreateActionButton("Nach oben", Glyph.ChevronUp);
         _btnUp.Click += (s, e) => MoveUp();
 
-        _btnDown = new Button
-        {
-            Text = "Nach unten",
-            Location = new Point(299, 148),
-            Size = new Size(100, 28),
-            Font = font
-        };
+        _btnDown = CreateActionButton("Nach unten", Glyph.ChevronDown);
         _btnDown.Click += (s, e) => MoveDown();
 
-        _btnClose = new Button
+        // Same tab order as before: list, Hinzufügen, Umbenennen, Löschen, Nach oben, Nach unten, Schließen.
+        var actions = new FlowLayoutPanel
         {
-            Text = "Schließen",
-            DialogResult = DialogResult.OK,
-            Location = new Point(299, 264),
-            Size = new Size(100, 28),
-            Font = font
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
+        actions.Controls.AddRange(new Control[] { _btnAdd, _btnRename, _btnDelete, _btnUp, _btnDown });
+        _btnDelete.Margin = new Padding(0, 0, 0, 20);
 
-        Controls.AddRange(new Control[]
+        var layout = new TableLayoutPanel
         {
-            _listBox,
-            _btnAdd, _btnRename, _btnDelete, _btnUp, _btnDown,
-            _btnClose
-        });
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
+            Margin = Padding.Empty,
+            Padding = new Padding(20, 18, 20, 20)
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150f));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        layout.Controls.Add(_listBox, 0, 0);
+        layout.Controls.Add(actions, 1, 0);
+        Body.Controls.Add(layout);
+
+        // === Footer ===
+        FooterHint = $"Höchstens {ProfileManager.MaxProfiles} Profile";
+        _btnClose = AddFooterButton("Schließen", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = _btnClose;
         CancelButton = _btnClose;
 
         RefreshList();
-        ResumeLayout(false);
-        PerformLayout();
-
-        ThemeManager.SetRole(_btnDelete, ThemeRole.Danger);
         ThemeManager.Apply(this);
+        ResumeLayout(true);
+    }
+
+    private static Button CreateActionButton(string text, Glyph glyph)
+    {
+        var button = new Button
+        {
+            Text = text,
+            Size = new Size(150, 32),
+            Margin = new Padding(0, 0, 0, 8)
+        };
+        ThemeManager.SetRole(button, ThemeRole.Secondary);
+        ThemeManager.SetGlyph(button, glyph);
+        return button;
     }
 
     private void RefreshList()
@@ -229,30 +221,36 @@ internal static class ProfileNameInput
     public static string? Show(IWin32Window owner, ProfileManager manager, string title, string label,
         string defaultValue, ScanProfile? except)
     {
-        using var dlg = new Form
+        using var dlg = new ModernWindow
         {
             Text = title,
-            FormBorderStyle = FormBorderStyle.FixedDialog,
-            MaximizeBox = false,
-            MinimizeBox = false,
             StartPosition = FormStartPosition.CenterParent,
             ShowInTaskbar = false
         };
         dlg.SuspendLayout();
-        dlg.AutoScaleDimensions = new SizeF(96F, 96F);
-        dlg.AutoScaleMode = AutoScaleMode.Dpi;
-        dlg.ClientSize = new Size(320, 110);
+        dlg.Title = title;
+        dlg.HeaderHeight = 52;
+        dlg.HeaderButtons = ModernHeaderButtons.Close;
+        dlg.AutoSizeToContent = true;
+        dlg.MinimumContentWidth = 380;
 
-        var dlgFont = UiFonts.Default;
-        dlg.Font = dlgFont;
-        var lbl = new Label { Text = label, Location = new Point(12, 12), AutoSize = true, Font = dlgFont };
-        var txt = new TextBox { Text = defaultValue, Location = new Point(12, 34), Size = new Size(280, 24), Font = dlgFont, MaxLength = ProfileManager.MaxNameLength };
-        var btnOk = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(130, 68), Size = new Size(75, 28), Font = dlgFont };
-        var btnCancel = new Button { Text = "Abbrechen", DialogResult = DialogResult.Cancel, Location = new Point(217, 68), Size = new Size(75, 28), Font = dlgFont };
+        var txt = new TextBox { Text = defaultValue, AutoSize = false, Height = 28, MaxLength = ProfileManager.MaxNameLength };
+        var card = new SettingsCard();
+        var row = card.AddRow(label.TrimEnd(':'), null, txt);
+        row.Stacked = true;
+        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(20, 18, 20, 20) };
+        stack.Controls.Add(card);
+        dlg.Body.Controls.Add(stack);
 
-        dlg.Controls.AddRange(new Control[] { lbl, txt, btnOk, btnCancel });
+        var btnCancel = dlg.AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        var btnOk = dlg.AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
         dlg.AcceptButton = btnOk;
         dlg.CancelButton = btnCancel;
+        dlg.Shown += (s, e) =>
+        {
+            txt.Focus();
+            txt.SelectAll();
+        };
         dlg.FormClosing += (s, e) =>
         {
             if (dlg.DialogResult != DialogResult.OK) return;
@@ -263,9 +261,8 @@ internal static class ProfileNameInput
                 e.Cancel = true;
             }
         };
-        dlg.ResumeLayout(false);
-        dlg.PerformLayout();
         ThemeManager.Apply(dlg);
+        dlg.ResumeLayout(true);
 
         return dlg.ShowDialog(owner) == DialogResult.OK ? txt.Text.Trim() : null;
     }

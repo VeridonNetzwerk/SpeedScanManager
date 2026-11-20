@@ -10,7 +10,7 @@ namespace SpeedScanManager;
 /// "(Standarddrucker)" is stored as an empty name, so the current Windows default printer
 /// is used at print time.
 /// </summary>
-internal class ScanToPrintOptionsDialog : Form
+internal class ScanToPrintOptionsDialog : ModernWindow
 {
     private const string DefaultPrinterEntry = "(Standarddrucker)";
 
@@ -24,34 +24,18 @@ internal class ScanToPrintOptionsDialog : Form
     public ScanToPrintOptionsDialog()
     {
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Scan to Print – Optionen";
-        Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(380, 120);
+        Title = "Scan to Print";
+        Subtitle = "Optionen für den Druck";
+        HeaderButtons = ModernHeaderButtons.Close;
         ShowInTaskbar = false;
-
-        var font = UiFonts.Default;
-        Font = font;
-
-        var lblPrinter = new Label
-        {
-            Text = "Zieldrucker:",
-            Location = new Point(12, 16),
-            AutoSize = true,
-            Font = font
-        };
+        AutoSizeToContent = true;
+        MinimumContentWidth = 500;
 
         _cbPrinter = new ComboBox
         {
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(120, 13),
-            Size = new Size(240, 24),
-            Font = font
+            DropDownStyle = ComboBoxStyle.DropDownList
         };
 
         _cbPrinter.Items.Add(DefaultPrinterEntry);
@@ -66,35 +50,21 @@ internal class ScanToPrintOptionsDialog : Form
         }
         _cbPrinter.SelectedIndex = 0;
 
-        _btnOk = new Button
-        {
-            Text = "OK",
-            DialogResult = DialogResult.OK,
-            Location = new Point(190, 74),
-            Size = new Size(75, 28),
-            Font = font
-        };
+        var card = new SettingsCard();
+        card.AddRow("Zieldrucker", "Drucker für den Ausdruck.", _cbPrinter, 260);
 
-        _btnCancel = new Button
-        {
-            Text = "Abbrechen",
-            DialogResult = DialogResult.Cancel,
-            Location = new Point(285, 74),
-            Size = new Size(75, 28),
-            Font = font
-        };
+        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(20, 18, 20, 20) };
+        stack.Controls.Add(card);
+        Body.Controls.Add(stack);
 
-        Controls.AddRange(new Control[]
-        {
-            lblPrinter, _cbPrinter,
-            _btnOk, _btnCancel
-        });
+        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        _btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = _btnOk;
         CancelButton = _btnCancel;
-        ResumeLayout(false);
 
         ThemeManager.Apply(this);
+        ResumeLayout(true);
     }
 
     protected override void OnShown(EventArgs e)

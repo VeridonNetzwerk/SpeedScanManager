@@ -7,7 +7,7 @@ namespace SpeedScanManager;
 /// Options dialog for "Scan to E-Mail" application.
 /// Allows configuring default recipient and subject template.
 /// </summary>
-internal class ScanToEmailOptionsDialog : Form
+internal class ScanToEmailOptionsDialog : ModernWindow
 {
     public const string DefaultSubject = "Gescanntes Dokument";
 
@@ -22,80 +22,34 @@ internal class ScanToEmailOptionsDialog : Form
     public ScanToEmailOptionsDialog()
     {
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         Text = "Scan to E-Mail – Optionen";
-        Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(380, 150);
+        Title = "Scan to E-Mail";
+        Subtitle = "Optionen für den E-Mail-Versand";
+        HeaderButtons = ModernHeaderButtons.Close;
         ShowInTaskbar = false;
+        AutoSizeToContent = true;
+        MinimumContentWidth = 500;
 
-        var font = UiFonts.Default;
-        Font = font;
+        _txtRecipient = new TextBox { AutoSize = false, Size = new Size(260, 28) };
+        _txtSubject = new TextBox { AutoSize = false, Size = new Size(260, 28) };
 
-        var lblRecipient = new Label
-        {
-            Text = "Standard-Empfänger:",
-            Location = new Point(12, 16),
-            AutoSize = true,
-            Font = font
-        };
+        var card = new SettingsCard();
+        card.AddRow("Standard-Empfänger", "Empfänger der E-Mail.", _txtRecipient, 260);
+        card.AddRow("Betreff-Vorlage", "Betreff der E-Mail.", _txtSubject, 260);
 
-        _txtRecipient = new TextBox
-        {
-            Location = new Point(140, 13),
-            Size = new Size(220, 24),
-            Font = font
-        };
+        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(20, 18, 20, 20) };
+        stack.Controls.Add(card);
+        Body.Controls.Add(stack);
 
-        var lblSubject = new Label
-        {
-            Text = "Betreff-Vorlage:",
-            Location = new Point(12, 48),
-            AutoSize = true,
-            Font = font
-        };
-
-        _txtSubject = new TextBox
-        {
-            Location = new Point(140, 45),
-            Size = new Size(220, 24),
-            Font = font
-        };
-
-        _btnOk = new Button
-        {
-            Text = "OK",
-            DialogResult = DialogResult.OK,
-            Location = new Point(190, 104),
-            Size = new Size(75, 28),
-            Font = font
-        };
-
-        _btnCancel = new Button
-        {
-            Text = "Abbrechen",
-            DialogResult = DialogResult.Cancel,
-            Location = new Point(285, 104),
-            Size = new Size(75, 28),
-            Font = font
-        };
-
-        Controls.AddRange(new Control[]
-        {
-            lblRecipient, _txtRecipient,
-            lblSubject, _txtSubject,
-            _btnOk, _btnCancel
-        });
+        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        _btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = _btnOk;
         CancelButton = _btnCancel;
-        ResumeLayout(false);
 
         ThemeManager.Apply(this);
+        ResumeLayout(true);
     }
 
     protected override void OnShown(EventArgs e)

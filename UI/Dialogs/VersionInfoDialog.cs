@@ -4,7 +4,12 @@ using System.Windows.Forms;
 
 namespace SpeedScanManager;
 
-internal class VersionInfoDialog : Form
+/// <summary>
+/// Version information (tray menu "Versionsinformationen"): logo, version, license and credits,
+/// GitHub/Discord links and "Detail..." (scanner and driver information). Modern layout: cards
+/// in the body, help in the header, OK in the footer.
+/// </summary>
+internal class VersionInfoDialog : ModernWindow
 {
     private readonly ScannerState? _scannerState;
     private readonly Bitmap _githubSource;
@@ -13,43 +18,18 @@ internal class VersionInfoDialog : Form
     public VersionInfoDialog(ScannerState? scannerState = null)
     {
         _scannerState = scannerState;
-        Text = "SpeedScan Manager \u2013 Versionsinformationen";
-        Icon = TrayIcons.GetAppIcon();
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
+        SuspendLayout();
+        Text = "SpeedScan Manager – Versionsinformationen";
+        Title = "Versionsinformationen";
+        Subtitle = "SpeedScan Manager";
+        HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
+        HelpTopic = "version-info";
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
-        ClientSize = new Size(390, 390);
-        Font = new Font("Microsoft Sans Serif", 8.25f);
+        AutoSizeToContent = true;
+        MinimumContentWidth = 460;
 
-        var font = new Font("Microsoft Sans Serif", 8.25f);
-
-        // === Logo line: logo icon + text wordmark ===
-        var logoBmp = AppResources.Logo;
-        var textBmp = AppResources.TextLogo;
-        int logoH = 36;
-        int logoW = (int)(logoBmp.Width * (logoH / (double)logoBmp.Height));
-        int textH = 28;
-        int textW = (int)(textBmp.Width * (textH / (double)textBmp.Height));
-
-        var pbLogo = new PictureBox
-        {
-            Image = logoBmp,
-            SizeMode = PictureBoxSizeMode.Zoom,
-            Location = new Point(24, 12),
-            Size = new Size(logoW, logoH)
-        };
-        var pbText = new PictureBox
-        {
-            Image = textBmp,
-            SizeMode = PictureBoxSizeMode.Zoom,
-            Location = new Point(24 + logoW + 6, 16),
-            Size = new Size(textW, textH)
-        };
-
-        // === Version title line ===
+        // === Version ===
         var asm = Assembly.GetExecutingAssembly();
         var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
         var version = !string.IsNullOrEmpty(exePath)
@@ -65,60 +45,65 @@ internal class VersionInfoDialog : Form
             parts = displayVersion.Split('.');
         }
 
+        // === Logo line: logo icon + text wordmark, version below the wordmark ===
+        var logoBmp = AppResources.Logo;
+        var textBmp = AppResources.TextLogo;
+        int logoH = 52;
+        int logoW = (int)(logoBmp.Width * (logoH / (double)logoBmp.Height));
+        int textH = 26;
+        int textW = (int)(textBmp.Width * (textH / (double)textBmp.Height));
+
+        var hero = new Panel { Height = 84, Margin = Padding.Empty };
+        var pbLogo = new PictureBox
+        {
+            Image = logoBmp,
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Location = new Point(0, 16),
+            Size = new Size(logoW, logoH)
+        };
+        var pbText = new PictureBox
+        {
+            Image = textBmp,
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Location = new Point(logoW + 14, 16),
+            Size = new Size(textW, textH)
+        };
         var lblVersionTitle = new Label
         {
             Text = $"SpeedScan Manager Version {displayVersion}",
-            Font = new Font("Microsoft Sans Serif", 9f, FontStyle.Bold),
-            Location = new Point(24, 58),
-            AutoSize = true
+            Font = ModernFonts.RowTitle,
+            Location = new Point(logoW + 14, 46),
+            AutoSize = true,
+            UseMnemonic = false
         };
+        ThemeManager.SetRole(lblVersionTitle, ThemeRole.Muted);
+        hero.Controls.AddRange(new Control[] { pbLogo, pbText, lblVersionTitle });
 
-        // === Info text block ===
-        var lblLicense = new Label
-        {
-            Text = "SpeedScan Manager\n\n" +
-                   "Open-Source TWAIN-Scanning-Software.\n\n" +
-                   "Lizenziert unter GNU General Public License v3 (GPL-3.0).\n" +
-                   "Dieses Programm ist freie Software: Sie können es weitergeben und/oder " +
-                   "modifizieren unter Beachtung der GPL-3.0-Bedingungen.\n" +
-                   "Credits müssen in allen Kopien und abgeleiteten Werken erhalten bleiben.\n\n" +
-                   "TWAIN-Unterstützung durch NTwain.\n" +
-                   "OCR-Engine: Tesseract.NET.\n" +
-                   "PDF-Verarbeitung: PdfSharpCore.\n\n" +
-                   "Copyright © 2026 VeridonNetzwerk",
-            Font = font,
-            Location = new Point(20, 90),
-            Size = new Size(350, 256),
-            Padding = new Padding(8, 6, 8, 6),
-            AutoSize = false
-        };
-        // Former white info box: secondary surface in both themes.
-        ThemeManager.SetRole(lblLicense, ThemeRole.Secondary);
+        var cardHero = new SettingsCard { ShowDividers = false };
+        cardHero.Add(hero);
 
-        // === Detail button (right of text block) ===
-        var btnDetail = new Button
-        {
-            Text = "Detail...",
-            Location = new Point(305, 56),
-            Size = new Size(65, 22),
-            Font = font,
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true
-        };
-        btnDetail.Click += (s, e) =>
-        {
-            using var dlg = new ScannerDriverInfoDialog(_scannerState);
-            dlg.ShowDialog(this);
-        };
+        // === License and credits ===
+        var license = new WrapText(
+            "Open-Source TWAIN-Scanning-Software.\n\n" +
+            "Lizenziert unter GNU General Public License v3 (GPL-3.0).\n" +
+            "Dieses Programm ist freie Software: Sie können es weitergeben und/oder " +
+            "modifizieren unter Beachtung der GPL-3.0-Bedingungen.\n" +
+            "Credits müssen in allen Kopien und abgeleiteten Werken erhalten bleiben.\n\n" +
+            "TWAIN-Unterstützung durch NTwain.\n" +
+            "OCR-Engine: Tesseract.NET.\n" +
+            "PDF-Verarbeitung: PdfSharpCore.\n\n" +
+            "Copyright © 2026 VeridonNetzwerk");
 
-        // === GitHub + Discord link icons (inside white box, below text) ===
+        // === GitHub + Discord link icons ===
         _githubSource = CreateGithubIcon();
         var pbGithub = _pbGithub = new PictureBox
         {
             Image = TintGithubIcon(),
-            SizeMode = PictureBoxSizeMode.AutoSize,
-            Location = new Point(350 - 8 - 28 - 8 - 28, 256 - 8 - 28),
-            Cursor = Cursors.Hand
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Size = new Size(28, 28),
+            Location = new Point(0, 0),
+            Cursor = Cursors.Hand,
+            AccessibleName = "GitHub"
         };
         pbGithub.Click += (s, e) =>
         {
@@ -132,9 +117,11 @@ internal class VersionInfoDialog : Form
         var pbDiscord = new PictureBox
         {
             Image = CreateDiscordIcon(),
-            SizeMode = PictureBoxSizeMode.AutoSize,
-            Location = new Point(350 - 8 - 28, 256 - 8 - 28),
-            Cursor = Cursors.Hand
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Size = new Size(28, 28),
+            Location = new Point(40, 0),
+            Cursor = Cursors.Hand,
+            AccessibleName = "Discord"
         };
         pbDiscord.Click += (s, e) =>
         {
@@ -145,71 +132,42 @@ internal class VersionInfoDialog : Form
             }); } catch { }
         };
 
-        // === Footer (OK + Hilfe) ===
-        var footerTable = new TableLayoutPanel
+        var links = new Panel { Size = new Size(68, 28), Margin = Padding.Empty };
+        links.Controls.Add(pbGithub);
+        links.Controls.Add(pbDiscord);
+
+        var cardLicense = new SettingsCard("Lizenz und Credits");
+        cardLicense.Add(license);
+        cardLicense.AddRow("Projekt und Community", "Quellcode auf GitHub, Austausch auf Discord.", links, 68);
+
+        // === Detail button: scanner and driver information ===
+        var btnDetail = new Button
         {
-            Dock = DockStyle.Bottom,
-            Height = 36,
-            ColumnCount = 5,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Percent, 100f),
-                new ColumnStyle(SizeType.Absolute, 75f),
-                new ColumnStyle(SizeType.Absolute, 12f),
-                new ColumnStyle(SizeType.Absolute, 75f),
-                new ColumnStyle(SizeType.Percent, 100f)
-            },
-            RowCount = 1,
-            RowStyles = { new RowStyle(SizeType.Percent, 100f) }
+            Text = "Detail...",
+            Size = new Size(120, 32)
         };
-        ThemeManager.SetRole(footerTable, ThemeRole.Secondary);
-
-        var btnOk = new Button
+        ThemeManager.SetGlyph(btnDetail, Glyph.Scanner);
+        btnDetail.Click += (s, e) =>
         {
-            Text = "OK",
-            DialogResult = DialogResult.OK,
-            Size = new Size(75, 24),
-            Font = font,
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Anchor = AnchorStyles.None
+            using var dlg = new ScannerDriverInfoDialog(_scannerState);
+            dlg.ShowDialog(this);
         };
+        var cardDetail = new SettingsCard();
+        cardDetail.AddRow("Scanner- und Treiberinformationen", "Scanner, Treiber und Dateiversionen.", btnDetail);
 
-        var btnHelp = new Button
-        {
-            Text = "Hilfe",
-            Size = new Size(75, 24),
-            Font = font,
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Anchor = AnchorStyles.None
-        };
-        btnHelp.Click += (s, e) =>
-        {
-            using var help = new HelpForm("version-info");
-            help.ShowDialog(this);
-        };
+        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(20, 18, 20, 20) };
+        stack.Controls.Add(cardHero);
+        stack.Controls.Add(cardLicense);
+        stack.Controls.Add(cardDetail);
+        Body.Controls.Add(stack);
 
-        footerTable.Controls.Add(new Panel(), 0, 0);
-        footerTable.Controls.Add(btnOk, 1, 0);
-        footerTable.Controls.Add(new Panel(), 2, 0);
-        footerTable.Controls.Add(btnHelp, 3, 0);
-        footerTable.Controls.Add(new Panel(), 4, 0);
-
-        lblLicense.Controls.Add(pbDiscord);
-        lblLicense.Controls.Add(pbGithub);
-
-        Controls.Add(footerTable);
-        Controls.Add(lblLicense);
-        Controls.Add(btnDetail);
-        Controls.Add(lblVersionTitle);
-        Controls.Add(pbText);
-        Controls.Add(pbLogo);
-
+        // === Footer (OK; help is the header's "?" button) ===
+        var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
         AcceptButton = btnOk;
 
         ThemeManager.Apply(this);
         ThemeManager.ThemeChanged += OnThemeChanged;
+        ResumeLayout(true);
     }
 
     /// <summary>The GitHub mark is near-black: recolor it to the theme text color (visible in dark mode).</summary>
@@ -267,5 +225,41 @@ internal class VersionInfoDialog : Form
         }
         catch { }
         return new Bitmap(width, height);
+    }
+
+    /// <summary>Word-wrapped paragraph text whose height follows the available width.</summary>
+    private sealed class WrapText : Control, IHeightForWidth, IThemeAware
+    {
+        private const TextFormatFlags Flags = TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
+
+        public WrapText(string text)
+        {
+            Text = text;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
+                     | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.Selectable, false);
+            AccessibleRole = AccessibleRole.StaticText;
+        }
+
+        public void ApplyTheme(ThemePalette palette) => Invalidate();
+
+        private int Pad => ModernLayout.Scale(this, 12);
+
+        public int GetHeightForWidth(int width)
+            => TextRenderer.MeasureText(Text, ModernFonts.RowTitle, new Size(Math.Max(1, width), 0), Flags).Height + 2 * Pad;
+
+        public override Size GetPreferredSize(Size proposedSize)
+        {
+            int w = proposedSize.Width > 0 && proposedSize.Width < int.MaxValue / 2 ? proposedSize.Width : Width;
+            return new Size(w, GetHeightForWidth(w));
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var p = ThemeManager.Current;
+            e.Graphics.Clear(ModernLayout.ParentBack(this));
+            TextRenderer.DrawText(e.Graphics, Text, ModernFonts.RowTitle,
+                new Rectangle(0, Pad, Width, Height - 2 * Pad), p.Text, Flags);
+        }
     }
 }

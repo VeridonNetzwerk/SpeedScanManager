@@ -9,14 +9,18 @@ namespace SpeedScanManager;
 /// Dialog that lets the user pick a TWAIN data source (scanner).
 /// USB-connected scanners are sorted to the top of the list.
 /// </summary>
-internal class ScannerSelectionDialog : Form
+internal class ScannerSelectionDialog : ModernWindow
 {
+    private const string HintText = "USB-verbundene Scanner werden bevorzugt oben angezeigt.";
+    private const string NoScannerText = "Kein Scanner gefunden. Die Liste wird automatisch aktualisiert, sobald ein Scanner erkannt wird.";
+
     private readonly ComboBox _combo;
     private readonly TwainSession _twain;
     private readonly string? _currentSelection;
     private readonly Button _btnOk;
     private readonly Button _btnCancel;
-    private readonly Label _lblHint;
+    /// <summary>Hint below the scanner list (muted, red when no scanner was found).</summary>
+    private readonly SettingRow _rowHint;
     private readonly System.Windows.Forms.Timer _pollTimer;
     private List<DataSource> _sorted = new();
     private bool _isAutoSelected = true;
@@ -32,55 +36,35 @@ internal class ScannerSelectionDialog : Form
         _twain = twain;
         _currentSelection = currentSelection;
 
+        SuspendLayout();
         Text = "SpeedScan Manager – Scanner auswählen";
-        Icon = TrayIcons.GetAppIcon();
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
+        Title = "Scanner auswählen";
+        Subtitle = "Bitte wählen Sie einen Scanner:";
+        HeaderButtons = ModernHeaderButtons.Close;
         StartPosition = FormStartPosition.CenterScreen;
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.None;
-        ClientSize = new Size(420, 176);
-        Font = new Font("Microsoft Sans Serif", 8.25f);
-
-        var lbl = new Label
-        {
-            Text = "Bitte wählen Sie einen Scanner:",
-            Location = new Point(16, 18),
-            AutoSize = true,
-            Font = Font
-        };
+        AutoSizeToContent = true;
+        MinimumContentWidth = 460;
 
         _combo = new ComboBox
         {
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(16, 42),
-            Size = new Size(388, 24),
-            Font = Font
+            DropDownStyle = ComboBoxStyle.DropDownList
         };
         _combo.SelectedIndexChanged += (s, e) =>
         {
             _isAutoSelected = _combo.SelectedIndex == 0;
         };
 
-        _lblHint = new Label
-        {
-            Text = "USB-verbundene Scanner werden bevorzugt oben angezeigt.",
-            Location = new Point(16, 78),
-            AutoSize = true,
-            MaximumSize = new Size(388, 0),
-            Font = Font
-        };
-        ThemeManager.SetRole(_lblHint, ThemeRole.Muted);
+        // The hint is a row of its own below the list, so it isn't drawn disabled with the list.
+        var card = new SettingsCard { ShowDividers = false };
+        card.AddRow("Scanner", null, _combo).Stacked = true;
+        _rowHint = card.AddRow("", HintText);
+        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(20, 18, 20, 20) };
+        stack.Controls.Add(card);
+        Body.Controls.Add(stack);
 
-        _btnOk = new Button
-        {
-            Text = "OK",
-            DialogResult = DialogResult.OK,
-            Location = new Point(230, 132),
-            Size = new Size(80, 28),
-            Font = Font
-        };
+        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        _btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
         _btnOk.Click += (s, e) =>
         {
             // Index 0 = "Automatisch" -> null (auto selection)
@@ -96,16 +80,6 @@ internal class ScannerSelectionDialog : Form
             Close();
         };
 
-        _btnCancel = new Button
-        {
-            Text = "Abbrechen",
-            DialogResult = DialogResult.Cancel,
-            Location = new Point(324, 132),
-            Size = new Size(80, 28),
-            Font = Font
-        };
-
-        Controls.AddRange(new Control[] { lbl, _combo, _lblHint, _btnOk, _btnCancel });
         AcceptButton = _btnOk;
         CancelButton = _btnCancel;
 
@@ -116,6 +90,7 @@ internal class ScannerSelectionDialog : Form
 
         RefreshSources();
         ThemeManager.Apply(this);
+        ResumeLayout(true);
     }
 
     private void RefreshSources(bool autoRefresh = false)
@@ -174,16 +149,14 @@ internal class ScannerSelectionDialog : Form
             _combo.SelectedIndex = 0;
             _combo.Enabled = false;
             _btnOk.Enabled = true; // OK still works for "Automatisch"
-            _lblHint.Text = "Kein Scanner gefunden. Die Liste wird automatisch aktualisiert, sobald ein Scanner erkannt wird.";
-            ThemeManager.SetRole(_lblHint, ThemeRole.Danger);
+            SetHint(NoScannerText, ThemeRole.Danger);
             _isAutoSelected = true;
         }
         else
         {
             _combo.Enabled = true;
             _btnOk.Enabled = true;
-            _lblHint.Text = "USB-verbundene Scanner werden bevorzugt oben angezeigt.";
-            ThemeManager.SetRole(_lblHint, ThemeRole.Muted);
+            SetHint(HintText, ThemeRole.Muted);
 
             // Restore selection
             if (wasAuto)
@@ -227,6 +200,16 @@ internal class ScannerSelectionDialog : Form
                 _isAutoSelected = true;
             }
         }
+    }
+
+    /// <summary>Sets the hint below the list; the window height follows the (one or two line) text.</summary>
+    private void SetHint(string text, ThemeRole role)
+    {
+        bool changed = _rowHint.Description != text;
+        _rowHint.Description = text;
+        _rowHint.DescriptionRole = role;
+        if (changed && IsLayoutScaled)
+            FitToContent();
     }
 
     protected override void Dispose(bool disposing)
