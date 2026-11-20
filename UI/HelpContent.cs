@@ -289,7 +289,7 @@ internal static class HelpContent
             ("Beenden", "Beendet das Programm. Läuft gerade ein Scan, werden Sie vorher gefragt; wird er gerade gespeichert, beendet sich das Programm erst danach.")) + @"
 
         <h2>Mit Windows starten</h2>
-        <p>Der Schalter <b>SpeedScan Manager beim Anmelden starten</b> auf der Seite <b>Allgemein</b> der Einstellungen legt fest,
+        <p>Der Schalter <b>Mit Windows starten</b> auf der Seite <b>Allgemein</b> der Einstellungen legt fest,
         ob das Programm automatisch startet. Nach einer Neuinstallation ist er eingeschaltet; nach einem Update von Version 0.1.x
         bleibt er aus, bis Sie ihn einschalten.</p>
         " + Note("Das Programm läuft immer nur einmal. Starten Sie es ein zweites Mal, öffnen sich stattdessen die Einstellungen. " +
@@ -305,8 +305,8 @@ internal static class HelpContent
             Icon("trayicon_connected", "bereit") + ", und oben im Menü erscheint der Name des Scanners mit grünem Punkt.") + @"
 
         <h2>Was im Hintergrund passiert</h2>
-        <p>Wird ein Gerät angeschlossen oder getrennt, prüft das Programm den Scanner sofort. Zusätzlich prüft es etwa alle
-        10 Sekunden. Ein getrennter Scanner wird erst nach zwei fehlgeschlagenen Prüfungen gemeldet – einmalig mit der Sprechblase
+        <p>Wird ein Gerät angeschlossen oder getrennt, prüft das Programm den Scanner sofort. Nach dem Programmstart fragt es den
+        Scanner nach wenigen Sekunden zum ersten Mal ab. Ist der Scanner getrennt, erscheint einmalig die Sprechblase
         „Der Scanner ist nicht angeschlossen oder ausgeschaltet.“</p>
         " + Tip("Schließen Sie möglichst nur einen Scanner an. Sind mehrere angeschlossen, legen Sie unter " +
                 "<a href='#scanner-selection'>Scanner auswählen</a> fest, welcher verwendet wird.") +
@@ -506,7 +506,7 @@ internal static class HelpContent
         " + Shot("page_general", "Seite „Allgemein“") +
         Items(
             ("Quick-Menü verwenden", "An: Nach jedem Scan wählen Sie das Ziel (<a href='#scan-quick'>mehr</a>). Dann sind die Seite „Anwendung“ und die Gruppe „Profil“ ausgegraut."),
-            ("Beim Anmelden starten", "Startet das Programm mit Windows (Grundeinstellung: an)."),
+            ("Mit Windows starten", "Startet das Programm mit Windows (Grundeinstellung: an)."),
             ("Scanqualität", "<b>Empfohlen</b>, <b>Kleine Datei</b> und <b>Hohe Bildqualität</b> setzen Bildqualität und Komprimierung. Die passende Kachel trägt ein Häkchen. " +
                              "<b>Benutzerdefiniert</b> ist markiert, wenn Ihre Werte zu keiner Kachel passen – ein Klick öffnet die Seite „Scanmodus“. " +
                              "Bedienbar auch mit <span class='kbd'>Tab</span> und <span class='kbd'>Leertaste</span>."),
@@ -539,7 +539,7 @@ internal static class HelpContent
         "Wohin die Scans gespeichert werden und wie die Dateien heißen.",
         Shot("page_save", "Seite „Speichern“") +
         Items(
-            ("Speicherordner für Bilddaten", "Der Zielordner. Ändern Sie ihn mit <b>Durchsuchen...</b> (das Feld selbst ist nicht editierbar). Grundeinstellung: <code>Dokumente\\SpeedScanManager</code>."),
+            ("Speicherordner für Bilddaten", "Der Zielordner. Ändern Sie ihn mit <b>Durchsuchen...</b> (das Feld selbst ist nicht editierbar). Das Symbol daneben öffnet den Ordner im Explorer, ein Rechtsklick kopiert den Pfad. Grundeinstellung: <code>Dokumente\\SpeedScanManager</code>."),
             ("Dateinamenformat...", "Öffnet das Fenster <a href='#filename-format'>Dateinamenformat</a>. Daneben sehen Sie ein Beispiel für den nächsten Dateinamen."),
             ("Datei nach Scan umbenennen", "An: Nach dem Scan erscheint das Fenster <a href='#postscan-save'>In Ordner speichern</a>, in dem Sie Name und Ordner noch ändern können.")) +
         Note("Bei Scan to Folder und bei „In Ordner speichern“ im Quick-Menü erscheint dieses Fenster immer, unabhängig vom Schalter.") +
@@ -579,7 +579,7 @@ internal static class HelpContent
         <h2>Weitere Einstellungen</h2>
         " + Items(
             ("Scanvorgang nach aktuellem Scan fortsetzen", "Fragt nach jedem Durchgang „Weitere Dokumente scannen?“ (<a href='#scan-continue'>mehr</a>)."),
-            ("Option...", "Helligkeit, leere Seiten, Schräglauf, Drehung, Reihenfolge – im Fenster <a href='#scanmode-options'>Scanmodus-Optionen</a>.")) +
+            ("Optionen...", "Helligkeit, leere Seiten, Schräglauf, Drehung, Reihenfolge – im Fenster <a href='#scanmode-options'>Scanmodus-Optionen</a>.")) +
         Tip("Die Seite öffnet sich auch über die Kachel <b>Benutzerdefiniert</b> auf der Seite <b>Allgemein</b>."),
         "scanmode-options", "paper-tab", "filesize-tab");
 
@@ -588,7 +588,7 @@ internal static class HelpContent
         Shot("page_filetype", "Seite „Dateiart“") + @"
         <h2>Dateiformat</h2>
         " + Items(
-            ("PDF (*.pdf)", "Alle Seiten in einer PDF-Datei – oder aufgeteilt nach den <a href='#pdf-options'>PDF-Optionen</a> (Schaltfläche <b>Option...</b>)."),
+            ("PDF (*.pdf)", "Alle Seiten in einer PDF-Datei – oder aufgeteilt nach den <a href='#pdf-options'>PDF-Optionen</a> (Schaltfläche <b>Optionen...</b>)."),
             ("JPEG (*.jpg)", "Eine Bilddatei pro Seite. Nicht verfügbar bei Farbmodus „Schwarzweiß“."),
             ("PNG (*.png)", "Eine verlustfreie Bilddatei pro Seite.")) + @"
 
@@ -697,7 +697,7 @@ internal static class HelpContent
         "save-tab", "filename-format", "postscan-media");
 
     private static HelpTopic TopicScanModeOptionsDialog() => Page("scanmode-options", "Scanmodus-Optionen",
-        "Helligkeit und automatische Bildverbesserungen. Öffnen über <b>Option...</b> auf der Seite „Scanmodus“.",
+        "Helligkeit und automatische Bildverbesserungen. Öffnen über <b>Optionen...</b> auf der Seite „Scanmodus“.",
         Shot("dlg_scanmode_options", "Das Fenster „Scanmodus-Optionen“") + @"
         <h2>Helligkeit</h2>
         <p>Sieben Stufen von „Dunkler -3“ bis „Heller +3“ (Mitte = Normal). Der Regler wirkt nur beim Farbmodus <b>Schwarzweiß</b> –
@@ -714,7 +714,7 @@ internal static class HelpContent
         "scanmode-tab");
 
     private static HelpTopic TopicPdfOptionsDialog() => Page("pdf-options", "PDF-Optionen",
-        "PDF aufteilen und mit Kennwort schützen. Öffnen über <b>Option...</b> auf der Seite „Dateiart“ (nur bei PDF).",
+        "PDF aufteilen und mit Kennwort schützen. Öffnen über <b>Optionen...</b> auf der Seite „Dateiart“ (nur bei PDF).",
         Shot("dlg_pdf_options", "Das Fenster „PDF-Optionen“") + @"
         <h2>PDF-Seiten teilen</h2>
         " + Items(
@@ -933,7 +933,7 @@ internal static class HelpContent
             "<ul><li>Ist der Scanner eingeschaltet und per USB oder Netzwerk verbunden?</li>" +
             "<li>Ist der TWAIN-Treiber des Herstellers installiert (32-Bit-TWAIN-Quelle)?</li>" +
             "<li>Sind mehrere Scanner angeschlossen? Wählen Sie den richtigen unter <a href='#scanner-selection'>Scanner auswählen</a>.</li>" +
-            "<li>Warten Sie einige Sekunden – das Programm prüft den Scanner etwa alle 10 Sekunden.</li></ul>") +
+            "<li>Warten Sie nach dem Programmstart einige Sekunden – erst dann wird der Scanner abgefragt. Ziehen Sie ggf. das USB-Kabel kurz ab und stecken Sie es wieder ein.</li></ul>") +
         QA("Die Taste am Scanner startet keinen Scan",
             "<p>Wählen Sie im Tray-Menü <b>Scan-Taste einrichten...</b> und bestätigen Sie die Windows-Abfrage mit <b>Ja</b>. " +
             "Läuft gerade ein Scan oder ist noch ein Fenster danach offen (z. B. das Quick-Menü), wird die Taste ignoriert. " +
