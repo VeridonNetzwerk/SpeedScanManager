@@ -25,14 +25,18 @@ internal sealed class PaperSizeItem
     public override string ToString() => DisplayText;
 }
 
-internal class PaperTabContent : Panel
+/// <summary>
+/// Content of the "Papier" settings page: paper size (with the flatbed hint), custom sizes,
+/// carrier sheet settings and multi-feed detection, grouped in settings cards.
+/// </summary>
+internal class PaperTabContent : ModernStack
 {
     private readonly ComboBox _cbPaperSize;
     private readonly Button _btnCustomSize;
     private readonly Button _btnCarrierSheet;
     private readonly ComboBox _cbMultiFeed;
     private readonly ScanSettings _settings;
-    private readonly Label _lblFlatbedHint;
+    private readonly SettingRow _rowPaperSize;
     private bool _ultrasoundSupported = true;
     private bool _lengthSupported = true;
     private bool _loading;
@@ -58,69 +62,20 @@ internal class PaperTabContent : Panel
     {
         _settings = settings;
 
-        var font = UiFonts.Default;
-        Dock = DockStyle.Fill;
-
-        // === Info bar ===
-        var infoBar = new GradientInfoBar("Wählen Sie ein Papier.");
-
-        // === Paper size row ===
-        // Container with Padding to create left/right offsets (Margin is ignored on Dock=Fill)
-        var lblPaperSize = new Label
-        {
-            Text = "Papiergröße:",
-            AutoSize = true,
-            Font = font,
-            Anchor = AnchorStyles.Left,
-            Margin = Padding.Empty
-        };
-
         _cbPaperSize = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Font = font,
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
-            Margin = Padding.Empty,
-            DropDownWidth = 450,
+            Size = new Size(300, 24),
+            DropDownWidth = 360,
             MaxDropDownItems = 16,
             IntegralHeight = false
         };
         _cbPaperSize.SelectedIndexChanged += (s, e) => OnPaperSizeChanged();
 
-        var paperSizeContainer = new Panel
-        {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(92, 6, 24, 0)
-        };
-        var paperSizeTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 2,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Absolute, 84f),
-                new ColumnStyle(SizeType.Percent, 100f)
-            },
-            RowCount = 1,
-            RowStyles = { new RowStyle(SizeType.Percent, 100f) },
-            Margin = Padding.Empty
-        };
-        paperSizeTable.Controls.Add(lblPaperSize, 0, 0);
-        paperSizeTable.Controls.Add(_cbPaperSize, 1, 0);
-        paperSizeContainer.Controls.Add(paperSizeTable);
-
-        // === Button row ===
-        // 3-column TableLayoutPanel: left padding | carrier button | flexible | custom button | right padding
         _btnCarrierSheet = new Button
         {
             Text = "Trägerblatteinstellungen...",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Size = new Size(200, 25),
-            Font = font,
-            Padding = new Padding(2, 0, 4, 0),
-            Anchor = AnchorStyles.Left,
-            Margin = Padding.Empty
+            Size = new Size(220, 32)
         };
         ThemeManager.SetGlyph(_btnCarrierSheet, Glyph.Carrier);
         _btnCarrierSheet.Click += (s, e) => OpenCarrierSheetDialog();
@@ -128,61 +83,18 @@ internal class PaperTabContent : Panel
         _btnCustomSize = new Button
         {
             Text = "Benutzerdefiniert...",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Size = new Size(160, 25),
-            Font = font,
-            Enabled = true,
-            Padding = new Padding(2, 0, 4, 0),
-            Anchor = AnchorStyles.Right,
-            Margin = Padding.Empty,
-            AutoSize = false
+            Size = new Size(180, 32),
+            Enabled = true
         };
         ThemeManager.SetGlyph(_btnCustomSize, Glyph.Ruler);
         _btnCustomSize.Click += (s, e) => OpenCustomSizeDialog();
 
-        var buttonTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 5,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Absolute, 176f),  // left padding
-                new ColumnStyle(SizeType.Absolute, 200f),  // carrier button
-                new ColumnStyle(SizeType.Percent, 100f),   // flexible gap
-                new ColumnStyle(SizeType.Absolute, 160f),  // custom button
-                new ColumnStyle(SizeType.Absolute, 19f)    // right padding
-            },
-            RowCount = 1,
-            RowStyles = { new RowStyle(SizeType.Percent, 100f) },
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
-        buttonTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 0, 0);
-        buttonTable.Controls.Add(_btnCarrierSheet, 1, 0);
-        buttonTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 2, 0);
-        buttonTable.Controls.Add(_btnCustomSize, 3, 0);
-        buttonTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 4, 0);
-
-        // === Multi-feed row ===
-        var lblMultiFeed = new Label
-        {
-            Text = "Mehrfacheinzugserkennung:",
-            AutoSize = true,
-            Font = font,
-            Anchor = AnchorStyles.Left,
-            Margin = Padding.Empty
-        };
-
         _cbMultiFeed = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Font = font,
             DrawMode = DrawMode.OwnerDrawFixed,
-            Size = new Size(230, 24),
-            Anchor = AnchorStyles.Left,
-            Margin = Padding.Empty,
-            DropDownWidth = 230
+            Size = new Size(300, 24),
+            DropDownWidth = 380
         };
         _cbMultiFeed.DrawItem += (s, e) => DrawMultiFeedItem(e);
         _cbMultiFeed.Items.AddRange(new object[]
@@ -205,66 +117,18 @@ internal class PaperTabContent : Panel
             _settings.MultiFeedDetection = selected;
         };
 
-        var multiFeedContainer = new Panel
-        {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(92, 4, 24, 0)
-        };
-        var multiFeedTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 2,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Absolute, 175f),
-                new ColumnStyle(SizeType.Absolute, 190f)
-            },
-            RowCount = 1,
-            RowStyles = { new RowStyle(SizeType.Percent, 100f) },
-            Margin = Padding.Empty
-        };
-        multiFeedTable.Controls.Add(lblMultiFeed, 0, 0);
-        multiFeedTable.Controls.Add(_cbMultiFeed, 1, 0);
-        multiFeedContainer.Controls.Add(multiFeedTable);
+        var cardPaper = new SettingsCard();
+        _rowPaperSize = cardPaper.AddRow("Papiergröße",
+            "Die automatische Papiergrößenerkennung steht für das Flachbettscannen nicht zur Verfügung.",
+            _cbPaperSize, 300);
+        cardPaper.AddRow("Benutzerdefinierte Papiergrößen", "Eigene Papiergrößen anlegen, ändern oder löschen.", _btnCustomSize);
+        cardPaper.AddRow("Trägerblatt", "Trägerblatt-Modus und Ausgabebildgröße.", _btnCarrierSheet);
 
-        // === Main layout: TableLayoutPanel with 6 rows ===
-        // Fixed rows for controls, flexible space only at the bottom.
-        var mainTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            ColumnStyles = { new ColumnStyle(SizeType.Percent, 100f) },
-            RowCount = 6,
-            RowStyles =
-            {
-                new RowStyle(SizeType.Absolute, 20f),   // Row 0: Info bar
-                new RowStyle(SizeType.Absolute, 36f),   // Row 1: Paper size
-                new RowStyle(SizeType.Absolute, 36f),   // Row 2: Hint text (may wrap)
-                new RowStyle(SizeType.Absolute, 35f),   // Row 3: Button row
-                new RowStyle(SizeType.Absolute, 38f),   // Row 4: Multi-feed row
-                new RowStyle(SizeType.Percent, 100f)    // Row 5: Flexible remainder at bottom
-            },
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
+        var cardFeed = new SettingsCard("Einzug");
+        cardFeed.AddRow("Mehrfacheinzugserkennung", "Erkennt, wenn mehrere Blätter gleichzeitig eingezogen werden.", _cbMultiFeed, 300);
 
-        var lblHint = _lblFlatbedHint = new Label
-        {
-            Text = "Die automatische Papiergrößenerkennung steht für das Flachbettscannen nicht zur Verfügung.",
-            Font = font,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(176, 0, 0, 0)
-        };
-
-        mainTable.Controls.Add(infoBar, 0, 0);
-        mainTable.Controls.Add(paperSizeContainer, 0, 1);
-        mainTable.Controls.Add(lblHint, 0, 2);
-        mainTable.Controls.Add(buttonTable, 0, 3);
-        mainTable.Controls.Add(multiFeedContainer, 0, 4);
-        mainTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 0, 5);
-
-        Controls.Add(mainTable);
+        Controls.Add(cardPaper);
+        Controls.Add(cardFeed);
         LoadFromSettings();
     }
 
@@ -357,7 +221,7 @@ internal class PaperTabContent : Panel
     private void UpdateFlatbedHint()
     {
         bool flatbed = _settings.ScanSide == ScanSide.Flatbed;
-        ThemeManager.SetRole(_lblFlatbedHint, flatbed ? ThemeRole.Danger : ThemeRole.Muted);
+        _rowPaperSize.DescriptionRole = flatbed ? ThemeRole.Danger : ThemeRole.Muted;
     }
 
     private void OpenCustomSizeDialog()

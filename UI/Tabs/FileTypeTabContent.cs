@@ -5,17 +5,17 @@ using System.Windows.Forms;
 namespace SpeedScanManager;
 
 /// <summary>
-/// Content panel for the "Dateiart" tab (base, without OCR).
-/// Contains file format dropdown, PDF options button, and reserved space for OCR (Phase 11).
+/// Content of the "Dateiart" settings page: file format (with the JPEG hint), PDF options,
+/// keyword marking and OCR (searchable PDF) with its options, grouped in settings cards.
 /// </summary>
-internal class FileTypeTabContent : Panel
+internal class FileTypeTabContent : ModernStack
 {
     private readonly ComboBox _cbFileFormat;
     private readonly Button _btnOptions;
     private readonly ScanSettings _settings;
     private bool _jpegAvailable = true;
     private bool _loading;
-    private readonly Label _lblJpegHint;
+    private readonly SettingRow _rowFileFormat;
 
     /// <summary>Raised when the user picks another file format.</summary>
     public event Action<FileFormat>? FileFormatChanged;
@@ -72,7 +72,7 @@ internal class FileTypeTabContent : Panel
 
     // Keyword marking controls
     private readonly CheckBox _chkAddKeyword;
-    private readonly Label _lblKeywordTarget;
+    private readonly SettingRow _lblKeywordTarget;
     private readonly RadioButton _rbFirstSection;
     private readonly RadioButton _rbAllSections;
 
@@ -81,37 +81,21 @@ internal class FileTypeTabContent : Panel
     private readonly ComboBox _cbOcrLanguage;
     private readonly RadioButton _rbFirstPage;
     private readonly RadioButton _rbAllPages;
-    private readonly Label _lblOcrLanguage;
-    private readonly Label _lblOcrTarget;
+    private readonly SettingRow _lblOcrLanguage;
+    private readonly SettingRow _lblOcrTarget;
 
-    // GroupBoxes for enable/disable
-    private readonly GroupBox _grpOcrOptions;
+    // Card of the OCR options (enabled for PDF only)
+    private readonly SettingsCard _grpOcrOptions;
 
     public FileTypeTabContent(ScanSettings settings)
     {
         _settings = settings;
 
-        var font = UiFonts.Default;
-        Dock = DockStyle.Fill;
-
-        // === Info bar ===
-        var infoBar = new GradientInfoBar("Geben Sie die gewünschten Dateioptionen an.");
-
         // === File format dropdown ===
-        var lblFileFormat = new Label
-        {
-            Text = "Dateiformat:",
-            Location = new Point(92, 24),
-            AutoSize = true,
-            Font = font
-        };
-
         _cbFileFormat = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(176, 21),
-            Size = new Size(435, 24),
-            Font = font,
+            Size = new Size(300, 24),
             DrawMode = DrawMode.OwnerDrawFixed
         };
         _cbFileFormat.Items.AddRange(new object[] { "PDF (*.pdf)", "JPEG (*.jpg)", "PNG (*.png)" });
@@ -131,33 +115,17 @@ internal class FileTypeTabContent : Panel
             FileFormatChanged?.Invoke(fmt);
         };
 
-        // === JPEG hint text ===
-        _lblJpegHint = new Label
+        // === PDF options button ===
+        _btnOptions = new Button
         {
-            Text = "JPEG steht nicht zur Verfügung, wenn \"Schwarzweiß\" unter [Farbmodus]\ngewählt wurde.",
-            Location = new Point(176, 50),
-            Size = new Size(420, 32),
-            AutoSize = false,
-            Font = font
+            Text = "Option...",
+            Size = new Size(130, 32)
         };
-        ThemeManager.SetRole(_lblJpegHint, ThemeRole.Muted);
+        ThemeManager.SetGlyph(_btnOptions, Glyph.Gear);
+        _btnOptions.Click += (s, e) => OpenPdfOptionsDialog();
 
-        // === GroupBox: Texterkennung wählen ===
-        var grpChoose = new GroupBox
-        {
-            Text = "Texterkennung wählen",
-            Location = new Point(38, 86),
-            Size = new Size(598, 92),
-            Font = font
-        };
-
-        _chkAddKeyword = new CheckBox
-        {
-            Text = "Markierten Text als Schlüsselwort der PDF-Datei hinzufügen",
-            Location = new Point(10, 22),
-            AutoSize = true,
-            Font = font
-        };
+        // === Keyword marking ===
+        _chkAddKeyword = new ToggleSwitch();
         _chkAddKeyword.CheckedChanged += (s, e) =>
         {
             if (!_loading)
@@ -165,20 +133,11 @@ internal class FileTypeTabContent : Panel
             UpdateKeywordControlsEnabled();
         };
 
-        _lblKeywordTarget = new Label
-        {
-            Text = "Zielmarkierung:",
-            Location = new Point(10, 47),
-            AutoSize = true,
-            Font = font
-        };
-
         _rbFirstSection = new RadioButton
         {
             Text = "Erste markierte Sektion",
-            Location = new Point(110, 45),
             AutoSize = true,
-            Font = font
+            Margin = new Padding(0, 0, 14, 0)
         };
         _rbFirstSection.CheckedChanged += (s, e) =>
         {
@@ -189,9 +148,8 @@ internal class FileTypeTabContent : Panel
         _rbAllSections = new RadioButton
         {
             Text = "Alle markierten Sektionen",
-            Location = new Point(270, 45),
             AutoSize = true,
-            Font = font
+            Margin = Padding.Empty
         };
         _rbAllSections.CheckedChanged += (s, e) =>
         {
@@ -199,13 +157,8 @@ internal class FileTypeTabContent : Panel
                 _settings.KeywordTarget = KeywordTarget.AllMarkedSections;
         };
 
-        _chkOcr = new CheckBox
-        {
-            Text = "In durchsuchbare PDF konvertieren",
-            Location = new Point(10, 68),
-            AutoSize = true,
-            Font = font
-        };
+        // === OCR ===
+        _chkOcr = new ToggleSwitch();
         _chkOcr.CheckedChanged += (s, e) =>
         {
             if (!_loading)
@@ -213,36 +166,10 @@ internal class FileTypeTabContent : Panel
             UpdateOcrSubControlsEnabled();
         };
 
-        grpChoose.Controls.AddRange(new Control[]
-        {
-            _chkAddKeyword,
-            _lblKeywordTarget, _rbFirstSection, _rbAllSections,
-            _chkOcr
-        });
-
-        // === GroupBox: Texterkennungsoptionen ===
-        _grpOcrOptions = new GroupBox
-        {
-            Text = "Texterkennungsoptionen",
-            Location = new Point(38, 183),
-            Size = new Size(598, 72),
-            Font = font
-        };
-
-        _lblOcrLanguage = new Label
-        {
-            Text = "Sprache:",
-            Location = new Point(12, 25),
-            AutoSize = true,
-            Font = font
-        };
-
         _cbOcrLanguage = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(100, 21),
-            Size = new Size(320, 24),
-            Font = font,
+            Size = new Size(260, 24),
             DrawMode = DrawMode.OwnerDrawFixed,
             ItemHeight = 18
         };
@@ -254,20 +181,11 @@ internal class FileTypeTabContent : Panel
                 _settings.OcrLanguage = item.Language;
         };
 
-        _lblOcrTarget = new Label
-        {
-            Text = "Zielseiten:",
-            Location = new Point(12, 50),
-            AutoSize = true,
-            Font = font
-        };
-
         _rbFirstPage = new RadioButton
         {
             Text = "Erste Seite",
-            Location = new Point(100, 48),
             AutoSize = true,
-            Font = font
+            Margin = new Padding(0, 0, 14, 0)
         };
         _rbFirstPage.CheckedChanged += (s, e) =>
         {
@@ -278,9 +196,8 @@ internal class FileTypeTabContent : Panel
         _rbAllPages = new RadioButton
         {
             Text = "Alle Seiten",
-            Location = new Point(200, 48),
             AutoSize = true,
-            Font = font
+            Margin = Padding.Empty
         };
         _rbAllPages.CheckedChanged += (s, e) =>
         {
@@ -288,44 +205,45 @@ internal class FileTypeTabContent : Panel
                 _settings.OcrTargetPages = OcrTargetPages.AllPages;
         };
 
-        _grpOcrOptions.Controls.AddRange(new Control[]
-        {
-            _lblOcrLanguage, _cbOcrLanguage,
-            _lblOcrTarget, _rbFirstPage, _rbAllPages
-        });
+        // === Cards ===
+        var cardFormat = new SettingsCard();
+        _rowFileFormat = cardFormat.AddRow("Dateiformat",
+            "JPEG steht nicht zur Verfügung, wenn \"Schwarzweiß\" unter [Farbmodus] gewählt wurde.",
+            _cbFileFormat, 300);
+        cardFormat.AddRow("PDF-Optionen", "PDF-Seiten teilen und Kennwort für die PDF-Datei (nur PDF).", _btnOptions);
 
-        // === Options button (bottom-right, anchored) ===
-        _btnOptions = new Button
-        {
-            Text = "Option...",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Size = new Size(90, 24),
-            Font = font,
-            Padding = new Padding(2, 0, 4, 0),
-            Anchor = AnchorStyles.Bottom | AnchorStyles.Right
-        };
-        ThemeManager.SetGlyph(_btnOptions, Glyph.Gear);
-        _btnOptions.Click += (s, e) => OpenPdfOptionsDialog();
+        var cardChoose = new SettingsCard("Texterkennung wählen");
+        cardChoose.AddRow("Markierten Text als Schlüsselwort der PDF-Datei hinzufügen",
+            "Mit Textmarker hervorgehobene Textstellen werden als Schlüsselwörter in die PDF-Eigenschaften eingetragen.", _chkAddKeyword);
+        _lblKeywordTarget = cardChoose.AddRow("Zielmarkierung", null, RadioGroup(_rbFirstSection, _rbAllSections));
+        cardChoose.AddRow("In durchsuchbare PDF konvertieren",
+            "Texterkennung (OCR): Der erkannte Text wird als unsichtbare Schicht über das Bild gelegt.", _chkOcr);
 
-        Layout += (s, e) =>
-        {
-            _btnOptions.Location = new Point(
-                ClientSize.Width - _btnOptions.Width - 12,
-                ClientSize.Height - _btnOptions.Height - 8);
-        };
+        _grpOcrOptions = new SettingsCard("Texterkennungsoptionen");
+        _lblOcrLanguage = _grpOcrOptions.AddRow("Sprache", "Sprache des Dokuments für die Texterkennung.", _cbOcrLanguage, 260);
+        _lblOcrTarget = _grpOcrOptions.AddRow("Zielseiten", null, RadioGroup(_rbFirstPage, _rbAllPages));
 
-        Controls.AddRange(new Control[]
-        {
-            infoBar,
-            lblFileFormat, _cbFileFormat,
-            _lblJpegHint,
-            grpChoose,
-            _grpOcrOptions,
-            _btnOptions
-        });
+        Controls.Add(cardFormat);
+        Controls.Add(cardChoose);
+        Controls.Add(_grpOcrOptions);
 
         LoadFromSettings();
+    }
+
+    /// <summary>Horizontal group of radio buttons (one group per container).</summary>
+    private static FlowLayoutPanel RadioGroup(params RadioButton[] buttons)
+    {
+        var flow = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+        flow.Controls.AddRange(buttons);
+        return flow;
     }
 
     /// <summary>
@@ -369,7 +287,7 @@ internal class FileTypeTabContent : Panel
     {
         ColorMode cm = mode ?? _settings.ColorMode;
         _jpegAvailable = cm != ColorMode.BlackWhite;
-        ThemeManager.SetRole(_lblJpegHint, _jpegAvailable ? ThemeRole.Muted : ThemeRole.Danger);
+        _rowFileFormat.DescriptionRole = _jpegAvailable ? ThemeRole.Muted : ThemeRole.Danger;
 
         if (!_jpegAvailable && _cbFileFormat.SelectedIndex == (int)FileFormat.Jpeg)
         {

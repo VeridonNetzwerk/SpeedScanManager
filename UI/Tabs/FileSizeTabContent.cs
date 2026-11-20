@@ -5,11 +5,11 @@ using System.Windows.Forms;
 namespace SpeedScanManager;
 
 /// <summary>
-/// Content panel for the "Dateigröße" tab.
-/// Compression rate slider (1-5) with wedge-shaped gradient indicators,
-/// matching the ScanSnap Manager reference layout.
+/// Content of the "Dateigröße" settings page: compression rate slider (1-5) with
+/// wedge-shaped gradient indicators (ScanSnap Manager layout) in a settings card, plus the
+/// hint why the rate is not used (black and white / PNG).
 /// </summary>
-internal class FileSizeTabContent : Panel
+internal class FileSizeTabContent : ModernStack
 {
     private readonly TrackBar _slider;
     private readonly NumericUpDown _numValue;
@@ -21,7 +21,8 @@ internal class FileSizeTabContent : Panel
     private readonly Panel _numBox;
     private readonly Panel _separatorLine;
     private readonly Label _numDisplay;
-    private readonly Label _lblDisabledHint;
+    private readonly SettingRow _lblDisabledHint;
+    private readonly Panel _sliderHost;
     private bool _loading;
 
     // Layout constants — exact pixel positions per ScanSnap reference
@@ -101,7 +102,7 @@ internal class FileSizeTabContent : Panel
                 ? "PNG-Dateien werden verlustfrei gespeichert; die Komprimierungsrate wird nicht verwendet."
                 : null;
         _centerPanel.Enabled = reason == null;
-        _lblDisabledHint.Text = reason ?? "";
+        _lblDisabledHint.Description = reason ?? "";
         _lblDisabledHint.Visible = reason != null;
     }
 
@@ -112,11 +113,6 @@ internal class FileSizeTabContent : Panel
         var font = UiFonts.Default;
         var smallFont = UiFonts.Default;
         var boldFont = UiFonts.Bold;
-        Dock = DockStyle.Fill;
-
-        // === Info bar ===
-        var infoBar = new GradientInfoBar("Geben Sie die Komprimierungsrate an (nur für Farb- und Graustufenbilder).");
-
         // === Centered container ===
         _centerPanel = new Panel
         {
@@ -133,6 +129,8 @@ internal class FileSizeTabContent : Panel
             Font = boldFont,
             BackColor = Color.Transparent
         };
+        // The card title replaces this header (kept for the layout reference).
+        lblHeader.Visible = false;
         _centerPanel.Controls.Add(lblHeader);
 
         // === Row 2: (Niedrig) + top wedge + (Hoch) ===
@@ -328,33 +326,31 @@ internal class FileSizeTabContent : Panel
             NormalY);
         _centerPanel.Controls.Add(lblNormal);
 
-        _lblDisabledHint = new Label
-        {
-            AutoSize = false,
-            Size = new Size(GroupWidth, 30),
-            Font = font,
-            Visible = false
-        };
-        ThemeManager.SetRole(_lblDisabledHint, ThemeRole.Danger);
+        _lblDisabledHint = new SettingRow("", "") { DescriptionRole = ThemeRole.Danger, Visible = false };
 
-        Controls.AddRange(new Control[] { infoBar, _centerPanel, _lblDisabledHint });
+        // The fixed ScanSnap-style group is centered in a host row of the card.
+        _sliderHost = new Panel { Size = new Size(GroupWidth, GroupHeight + 24) };
+        _sliderHost.Controls.Add(_centerPanel);
+        _sliderHost.Resize += (s, e) => CenterPanel();
+
+        var card = new SettingsCard("Komprimierungsrate",
+            "Eine höhere Komprimierung ergibt kleinere Dateien, aber eine geringere Bildqualität.");
+        card.Add(_sliderHost);
+        card.Add(_lblDisabledHint);
+        Controls.Add(card);
 
         // Ensure the slider card and number box are always on top of decorative panels
         sliderFrame.BringToFront();
         _numBox.BringToFront();
 
-        Dock = DockStyle.Fill;
-        Resize += (s, e) => CenterPanel();
-        HandleCreated += (s, e) => CenterPanel();
         LoadFromSettings();
     }
 
     private void CenterPanel()
     {
-        int x = (ClientSize.Width - _centerPanel.Width) / 2;
-        int y = 28;
-        _centerPanel.Location = new Point(Math.Max(0, x), y);
-        _lblDisabledHint.Location = new Point(Math.Max(0, x), _centerPanel.Bottom + 6);
+        int x = (_sliderHost.ClientSize.Width - _centerPanel.Width) / 2;
+        int y = (_sliderHost.ClientSize.Height - _centerPanel.Height) / 2;
+        _centerPanel.Location = new Point(Math.Max(0, x), Math.Max(0, y));
     }
 
     /// <summary>

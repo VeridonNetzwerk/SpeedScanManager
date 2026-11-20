@@ -4,15 +4,15 @@ using System.Windows.Forms;
 namespace SpeedScanManager;
 
 /// <summary>
-/// Content panel for the "Speichern" tab.
-/// Contains folder selection, file name format configuration, and rename checkbox.
+/// Content of the "Speichern" settings page: folder selection, file name format (with an
+/// example file name) and the rename option, grouped in settings cards.
 /// </summary>
-internal class SaveTabContent : Panel
+internal class SaveTabContent : ModernStack
 {
     private readonly TextBox _txtFolderPath;
     private readonly Button _btnBrowse;
     private readonly Button _btnFileNameFormat;
-    private readonly Label _lblFilePreview;
+    private readonly SettingRow _rowFileName;
     private readonly CheckBox _chkRenameAfterScan;
     private readonly ScanSettings _settings;
     private bool _loading;
@@ -41,96 +41,67 @@ internal class SaveTabContent : Panel
         if (string.IsNullOrEmpty(_settings.FolderPath))
             _settings.FolderPath = ScanSettings.DefaultFolderPath;
 
-        var font = UiFonts.Default;
-        Dock = DockStyle.Fill;
-
-        // === Blue gradient info bar (Dock.Top) ===
-        var infoBar = new GradientInfoBar("Geben Sie den zu benutzenden Ordner und das gewünschte Dateinamenformat an.");
-
-        // === Content panel below info bar ===
-        var contentPanel = new Panel
-        {
-            Dock = DockStyle.Fill
-        };
-
-        // === Folder selection ===
-        var lblFolder = new Label
-        {
-            Text = "Speicherordner für Bilddaten:",
-            Location = new Point(16, 11),
-            AutoSize = true,
-            Font = font
-        };
-
+        // === Folder selection: path box + Durchsuchen ===
         _txtFolderPath = new TextBox
         {
             Text = _settings.FolderPath,
-            Location = new Point(176, 8),
             ReadOnly = true,
-            Font = font,
             AutoSize = false,
-            Size = new Size(438, 22)
+            Size = new Size(300, 28),
+            Anchor = AnchorStyles.Left | AnchorStyles.Right,
+            Margin = new Padding(0, 2, 8, 2)
         };
-
-        // Browse button positioned BELOW the textbox, right-aligned to its right edge
         _btnBrowse = new Button
         {
             Text = "Durchsuchen...",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Location = new Point(514, 39),
-            Size = new Size(100, 25),
-            Font = font
+            Size = new Size(140, 32),
+            Anchor = AnchorStyles.Right,
+            Margin = Padding.Empty
         };
+        ThemeManager.SetGlyph(_btnBrowse, Glyph.Folder);
         _btnBrowse.Click += (s, e) => BrowseFolder();
+
+        var folderBox = new TableLayoutPanel
+        {
+            ColumnCount = 2,
+            RowCount = 1,
+            Size = new Size(400, 32),
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+        folderBox.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        folderBox.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        folderBox.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        folderBox.Controls.Add(_txtFolderPath, 0, 0);
+        folderBox.Controls.Add(_btnBrowse, 1, 0);
 
         // === File name format ===
         _btnFileNameFormat = new Button
         {
             Text = "Dateinamenformat...",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Location = new Point(176, 79),
-            Size = new Size(165, 26),
-            Font = font
+            Size = new Size(180, 32)
         };
+        ThemeManager.SetGlyph(_btnFileNameFormat, Glyph.FileType);
         _btnFileNameFormat.Click += (s, e) => OpenFileNameFormatDialog();
 
-        // Preview label directly under the button
-        _lblFilePreview = new Label
-        {
-            Text = "",
-            Location = new Point(176, 116),
-            AutoSize = true,
-            Font = font
-        };
-        ThemeManager.SetRole(_lblFilePreview, ThemeRole.Muted);
-
-        // === Rename checkbox ===
-        _chkRenameAfterScan = new CheckBox
-        {
-            Text = "Datei nach Scan umbenennen",
-            Location = new Point(176, 141),
-            AutoSize = true,
-            Font = font
-        };
+        // === Rename after scan ===
+        _chkRenameAfterScan = new ToggleSwitch();
         _chkRenameAfterScan.CheckedChanged += (s, e) =>
         {
             if (!_loading)
                 _settings.RenameAfterScan = _chkRenameAfterScan.Checked;
         };
 
-        contentPanel.Controls.AddRange(new Control[]
-        {
-            lblFolder,
-            _txtFolderPath,
-            _btnBrowse,
-            _btnFileNameFormat,
-            _lblFilePreview,
-            _chkRenameAfterScan
-        });
+        var cardFolder = new SettingsCard();
+        var rowFolder = cardFolder.AddRow("Speicherordner für Bilddaten", "Die gescannten Dateien werden in diesem Ordner gespeichert.", folderBox);
+        rowFolder.Stacked = true;
 
-        Controls.AddRange(new Control[] { contentPanel, infoBar });
+        var cardName = new SettingsCard("Dateiname");
+        _rowFileName = cardName.AddRow("Dateinamenformat", "", _btnFileNameFormat);
+        cardName.AddRow("Datei nach Scan umbenennen", "Nach dem Scan können Sie einen eigenen Dateinamen eingeben.", _chkRenameAfterScan);
+
+        Controls.Add(cardFolder);
+        Controls.Add(cardName);
         LoadFromSettings();
     }
 
@@ -157,7 +128,7 @@ internal class SaveTabContent : Panel
     /// </summary>
     public void UpdatePreview()
     {
-        _lblFilePreview.Text = $"z. B. {GenerateExampleFileName()}{FileNamePattern.GetExtension(_settings.FileFormat)}";
+        _rowFileName.Description = $"z. B. {GenerateExampleFileName()}{FileNamePattern.GetExtension(_settings.FileFormat)}";
     }
 
     private void BrowseFolder()

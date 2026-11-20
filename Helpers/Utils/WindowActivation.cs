@@ -114,33 +114,31 @@ internal static class TrayMessageBox
 }
 
 /// <summary>
-/// WinForms replacement for the native message box (see <see cref="TrayMessageBox"/>):
-/// themed modal (Discord style) with a colored symbol badge, the text and a footer bar with
-/// OK or Ja/Nein; top-most, centered on the screen, brought to the foreground when shown.
+/// WinForms replacement for the native message box (see <see cref="TrayMessageBox"/>): a
+/// <see cref="ModernWindow"/> (header with logo and caption, close button) with a colored
+/// symbol badge, the text and a footer bar with OK, Ja/Nein or Ja/Nein/Abbrechen; top-most,
+/// centered on the screen, brought to the foreground when shown, sized to the text.
 /// </summary>
-internal sealed class TrayPromptForm : Form
+internal sealed class TrayPromptForm : ModernWindow
 {
     public TrayPromptForm(string text, string caption, MessageBoxButtons buttons, MessageBoxIcon icon, bool defaultSecondButton)
     {
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
         Text = caption;
-        Font = ThemeFonts.Regular;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        ShowIcon = false;
+        Title = caption;
+        HeaderHeight = 52;
+        HeaderButtons = ModernHeaderButtons.Close;
         ShowInTaskbar = true;
         StartPosition = FormStartPosition.CenterScreen;
         TopMost = true;
-        AutoSize = true;
-        AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        AutoSizeToContent = true;
+        MinimumContentWidth = 340;
 
         var layout = new TableLayoutPanel
         {
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Dock = DockStyle.Fill,
             ColumnCount = 2,
             RowCount = 1,
             Padding = new Padding(20, 20, 24, 8),
@@ -217,76 +215,37 @@ internal sealed class TrayPromptForm : Form
             };
         }
         layout.Controls.Add(content, kind != PromptBadge.Kind.None ? 1 : 0, 0);
+        Body.Controls.Add(layout);
 
-        var buttonPanel = new FlowLayoutPanel
-        {
-            FlowDirection = FlowDirection.RightToLeft,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
-            Padding = new Padding(16, 12, 6, 12)
-        };
-        ThemeManager.SetRole(buttonPanel, ThemeRole.Secondary);
-
-        Button MakeButton(string caption2, DialogResult result) => new()
-        {
-            Text = caption2,
-            DialogResult = result,
-            MinimumSize = new Size(90, 32),
-            AutoSize = true,
-            Margin = new Padding(0, 0, 10, 0)
-        };
-
+        // Footer buttons (left to right; the last one is the rightmost)
         Button first, second;
-        Button? third = null;
         if (buttons == MessageBoxButtons.YesNoCancel)
         {
-            first = MakeButton("&Ja", DialogResult.Yes);
-            second = MakeButton("&Nein", DialogResult.No);
-            third = MakeButton("Abbrechen", DialogResult.Cancel);
-            buttonPanel.Controls.Add(third);
-            buttonPanel.Controls.Add(second);
-            buttonPanel.Controls.Add(first);
+            first = AddFooterButton("&Ja", ThemeRole.Secondary, Glyph.None, DialogResult.Yes);
+            second = AddFooterButton("&Nein", ThemeRole.Secondary, Glyph.None, DialogResult.No);
+            var third = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
             CancelButton = third;
-            ThemeManager.SetRole(third, ThemeRole.Secondary);
         }
         else if (buttons == MessageBoxButtons.YesNo)
         {
-            first = MakeButton("&Ja", DialogResult.Yes);
-            second = MakeButton("&Nein", DialogResult.No);
-            buttonPanel.Controls.Add(second);
-            buttonPanel.Controls.Add(first);
+            first = AddFooterButton("&Ja", ThemeRole.Secondary, Glyph.None, DialogResult.Yes);
+            second = AddFooterButton("&Nein", ThemeRole.Secondary, Glyph.None, DialogResult.No);
             CancelButton = second;
         }
         else
         {
-            first = MakeButton("OK", DialogResult.OK);
+            first = AddFooterButton("OK", ThemeRole.Secondary, Glyph.None, DialogResult.OK);
             second = first;
-            buttonPanel.Controls.Add(first);
             CancelButton = first;
         }
+        foreach (Control c in Footer.Controls)
+            if (c is Button b) b.Size = new Size(Math.Max(90, b.Width - 34), 32);
         var defaultButton = defaultSecondButton ? second : first;
         AcceptButton = defaultButton;
         ThemeManager.SetRole(first, ReferenceEquals(first, defaultButton) ? ThemeRole.Primary : ThemeRole.Secondary);
         if (!ReferenceEquals(first, second))
             ThemeManager.SetRole(second, ReferenceEquals(second, defaultButton) ? ThemeRole.Primary : ThemeRole.Secondary);
 
-        var outer = new TableLayoutPanel
-        {
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 1,
-            RowCount = 2,
-            Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
-        outer.Controls.Add(layout, 0, 0);
-        outer.Controls.Add(buttonPanel, 0, 1);
-        Controls.Add(outer);
-
-        MinimumSize = new Size(300, 0);
         ThemeManager.Apply(this);
         ResumeLayout(true);
     }
@@ -294,7 +253,6 @@ internal sealed class TrayPromptForm : Form
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
-        WindowActivation.BringToFront(this);
         (AcceptButton as Control)?.Focus();
     }
 

@@ -27,15 +27,18 @@ internal enum ApplicationType
 internal record ApplicationEntry(string Name, ApplicationType Type, string? ExePath = null, string? Arguments = null);
 
 /// <summary>
-/// Content panel for the "Anwendung" tab.
-/// Contains application dropdown and manage-applications button.
+/// Content of the "Anwendung" settings page: application dropdown, e-mail/print options
+/// (shown for Scan to E-Mail / Scan to Print) and the manage-applications button, grouped in
+/// settings cards.
 /// </summary>
-internal class ApplicationTabContent : Panel
+internal class ApplicationTabContent : ModernStack
 {
     private readonly ComboBox _cbApplication;
     private readonly Button _btnManage;
     private readonly Button _btnEmailOptions;
     private readonly Button _btnPrintOptions;
+    private readonly SettingRow _rowEmailOptions;
+    private readonly SettingRow _rowPrintOptions;
     private readonly ScanSettings _settings;
     private readonly List<CustomApplication> _customApps;
     private bool _loading;
@@ -66,27 +69,11 @@ internal class ApplicationTabContent : Panel
         _customApps = customApps;
         SelectedApplication = BuiltInApps[0];
 
-        var font = UiFonts.Default;
-        Dock = DockStyle.Fill;
-
-        // === Info bar ===
-        var infoBar = new GradientInfoBar("Wählen Sie eine Anwendung.");
-
-        // === Application dropdown ===
-        var lblApplication = new Label
-        {
-            Text = "Anwendung:",
-            Location = new Point(92, 30),
-            AutoSize = true,
-            Font = font
-        };
-
         _cbApplication = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(176, 27),
-            Size = new Size(435, 24),
-            Font = font
+            Size = new Size(300, 24),
+            MaxDropDownItems = 16
         };
         _cbApplication.SelectedIndexChanged += (s, e) =>
         {
@@ -102,56 +89,31 @@ internal class ApplicationTabContent : Panel
             UpdatePrintOptionsVisibility();
         };
 
-        // === Email options button ===
-        _btnEmailOptions = new Button
-        {
-            Text = "E-Mail-Optionen...",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Location = new Point(176, 64),
-            Size = new Size(140, 26),
-            Font = font,
-            Visible = false
-        };
+        _btnEmailOptions = new Button { Text = "E-Mail-Optionen...", Size = new Size(170, 32) };
+        ThemeManager.SetGlyph(_btnEmailOptions, Glyph.Mail);
         _btnEmailOptions.Click += (s, e) => OpenEmailOptionsDialog();
 
-        // === Print options button ===
-        _btnPrintOptions = new Button
-        {
-            Text = "Druck-Optionen...",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Location = new Point(176, 64),
-            Size = new Size(140, 26),
-            Font = font,
-            Visible = false
-        };
+        _btnPrintOptions = new Button { Text = "Druck-Optionen...", Size = new Size(170, 32) };
+        ThemeManager.SetGlyph(_btnPrintOptions, Glyph.Printer);
         _btnPrintOptions.Click += (s, e) => OpenPrintOptionsDialog();
 
-        // === Manage button ===
-        _btnManage = new Button
-        {
-            Text = "Installieren/Deinstallieren...",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Location = new Point(176, 112),
-            Size = new Size(160, 26),
-            Font = font,
-            Padding = new Padding(2, 0, 4, 0)
-        };
+        _btnManage = new Button { Text = "Installieren/Deinstallieren...", Size = new Size(230, 32) };
         ThemeManager.SetGlyph(_btnManage, Glyph.PlusMinus);
         _btnManage.Click += (s, e) => OpenManageDialog();
 
-        Controls.AddRange(new Control[]
-        {
-            infoBar,
-            lblApplication, _cbApplication,
-            _btnEmailOptions,
-            _btnPrintOptions,
-            _btnManage
-        });
+        var cardApp = new SettingsCard("Anwendung nach dem Scan",
+            "Die gescannten Dateien werden an diese Anwendung übergeben.");
+        cardApp.AddRow("Anwendung", "Programm, das nach dem Scan gestartet wird.", _cbApplication, 300);
+        _rowEmailOptions = cardApp.AddRow("E-Mail-Optionen", "Empfänger und Betreff der E-Mail.", _btnEmailOptions);
+        _rowPrintOptions = cardApp.AddRow("Druck-Optionen", "Drucker, auf dem gedruckt wird.", _btnPrintOptions);
+        _rowEmailOptions.Visible = false;
+        _rowPrintOptions.Visible = false;
 
-        Dock = DockStyle.Fill;
+        var cardManage = new SettingsCard();
+        cardManage.AddRow("Anwendungen verwalten", "Eigene Programme zur Liste hinzufügen oder daraus entfernen.", _btnManage);
+
+        Controls.Add(cardApp);
+        Controls.Add(cardManage);
         LoadFromSettings();
     }
 
@@ -252,12 +214,12 @@ internal class ApplicationTabContent : Panel
 
     private void UpdateEmailOptionsVisibility()
     {
-        _btnEmailOptions.Visible = SelectedApplication.Type == ApplicationType.ScanToEmail;
+        _rowEmailOptions.Visible = SelectedApplication.Type == ApplicationType.ScanToEmail;
     }
 
     private void UpdatePrintOptionsVisibility()
     {
-        _btnPrintOptions.Visible = SelectedApplication.Type == ApplicationType.ScanToPrint;
+        _rowPrintOptions.Visible = SelectedApplication.Type == ApplicationType.ScanToPrint;
     }
 
     public void SetApplicationType(ApplicationType type)

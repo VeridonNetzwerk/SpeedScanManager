@@ -96,6 +96,7 @@ internal class TrayApplicationContext : ApplicationContext
     private ToolStripMenuItem _miDesign = null!;
     private ToolStripMenuItem _miHelp = null!;
     private ToolStripMenuItem _miExit = null!;
+    private TrayMenuHeaderItem _menuHeader = null!;
 
     private readonly System.Windows.Forms.Timer _pollTimer;
     private readonly System.Windows.Forms.Timer _deviceChangeTimer;
@@ -233,8 +234,9 @@ internal class TrayApplicationContext : ApplicationContext
         _contextMenu = new ContextMenuStrip
         {
             Font = SystemFonts.MenuFont,
-            ShowImageMargin = false
+            ShowImageMargin = true // column for the item glyphs
         };
+        _menuHeader = new TrayMenuHeaderItem();
         _contextMenu.Opening += OnContextMenuOpening;
 
         _miScan = new ToolStripMenuItem("Scan");
@@ -281,8 +283,23 @@ internal class TrayApplicationContext : ApplicationContext
             designMenu.ShowCheckMargin = true;
         }
 
+        ThemeManager.SetMenuItemGlyph(_miScan, Glyph.Scanner);
+        ThemeManager.SetMenuItemGlyph(_miCancelScan, Glyph.Cross);
+        ThemeManager.SetMenuItemGlyph(_miSelectScanner, Glyph.Apps);
+        ThemeManager.SetMenuItemGlyph(_miScanKeySettings, Glyph.Gear);
+        ThemeManager.SetMenuItemGlyph(_miSetupScanButton, Glyph.Sliders);
+        ThemeManager.SetMenuItemGlyph(_miProfileManagement, Glyph.User);
+        ThemeManager.SetMenuItemGlyph(_miEmailSettings, Glyph.Mail);
+        ThemeManager.SetMenuItemGlyph(_miPrintSettings, Glyph.Printer);
+        ThemeManager.SetMenuItemGlyph(_miScanResult, Glyph.Folder);
+        ThemeManager.SetMenuItemGlyph(_miDesign, Glyph.Palette);
+        ThemeManager.SetMenuItemGlyph(_miHelp, Glyph.Question);
+        ThemeManager.SetMenuItemGlyph(_miExit, Glyph.Power);
+
         _contextMenu.Items.AddRange(new ToolStripItem[]
         {
+            _menuHeader,
+            new ToolStripSeparator(),
             _miScan,
             _miCancelScan,
             new ToolStripSeparator(),
@@ -337,6 +354,25 @@ internal class TrayApplicationContext : ApplicationContext
         _miCancelScan.Visible = _busy && _activePipeline != null;
         _miSelectScanner.Enabled = !_busy && _twainInitialized;
         _miScanResult.Enabled = _lastScanFiles.Count > 0; // no File.Exists here: a lost network share would block the menu
+        UpdateMenuHeader();
+    }
+
+    /// <summary>Status line of the menu header (cached state only, like the tray tooltip).</summary>
+    private void UpdateMenuHeader()
+    {
+        string selected = _appSettings?.SelectedSourceName ?? "";
+        if (_busy)
+            _menuHeader.SetStatus(_activePipeline != null ? "Scannt…" : "Scan wird bearbeitet…", TrayMenuHeaderItem.State.Busy);
+        else if (!_twainInitialized)
+            _menuHeader.SetStatus("Wird gestartet…", TrayMenuHeaderItem.State.Busy);
+        else if (_scannerStatus == ScannerStatus.Connected)
+            _menuHeader.SetStatus(string.IsNullOrEmpty(_currentScannerName) ? "Scanner verbunden" : _currentScannerName, TrayMenuHeaderItem.State.Ready);
+        else if (!string.IsNullOrEmpty(selected))
+            _menuHeader.SetStatus($"Auswahl: {selected} (offline)", TrayMenuHeaderItem.State.Offline);
+        else if (_scannerStatus == ScannerStatus.Disconnected)
+            _menuHeader.SetStatus("Kein Scanner verbunden", TrayMenuHeaderItem.State.Offline);
+        else
+            _menuHeader.SetStatus("Scanner wird gesucht…", TrayMenuHeaderItem.State.Busy);
     }
 
     private void OnTrayMouseUp(object? sender, MouseEventArgs e)
@@ -1868,61 +1904,40 @@ internal class TrayApplicationContext : ApplicationContext
     /// <summary>
     /// "Scanvorgang fortsetzen": asks whether more documents should be appended to this scan.
     /// </summary>
-    private sealed class ContinueScanDialog : Form
+    private sealed class ContinueScanDialog : ModernWindow
     {
         public ContinueScanDialog(int pagesSoFar)
         {
             SuspendLayout();
-            AutoScaleDimensions = new SizeF(96F, 96F);
-            AutoScaleMode = AutoScaleMode.Dpi;
             Text = AppTitle;
-            Icon = TrayIcons.GetAppIcon();
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
+            Title = "Weitere Dokumente scannen?";
+            Subtitle = pagesSoFar == 1 ? "Bisher wurde 1 Seite gescannt." : $"Bisher wurden {pagesSoFar} Seiten gescannt.";
+            HeaderButtons = ModernHeaderButtons.Close;
             StartPosition = FormStartPosition.CenterScreen;
             TopMost = true;
             ShowInTaskbar = true;
-            ClientSize = new Size(360, 120);
-            Font = UiFonts.Default;
+            AutoSizeToContent = true;
+            MinimumContentWidth = 380;
 
             var lbl = new Label
             {
-                Text = (pagesSoFar == 1 ? "Bisher wurde 1 Seite gescannt." : $"Bisher wurden {pagesSoFar} Seiten gescannt.")
-                       + "\n\nWeitere Dokumente scannen? Legen Sie dazu die nächsten Seiten in den Scanner ein.",
-                Location = new Point(14, 12),
-                Size = new Size(332, 60),
-                Font = UiFonts.Default
+                Text = "Legen Sie dazu die nächsten Seiten in den Scanner ein.",
+                AutoSize = true,
+                MaximumSize = new Size(380, 0),
+                Dock = DockStyle.Fill,
+                Padding = new Padding(20, 18, 20, 20),
+                UseMnemonic = false
             };
+            Body.Controls.Add(lbl);
 
-            var btnContinue = new Button
-            {
-                Text = "Fortsetzen",
-                DialogResult = DialogResult.OK,
-                Location = new Point(150, 80),
-                Size = new Size(95, 28),
-                Font = UiFonts.Default
-            };
-            var btnFinish = new Button
-            {
-                Text = "Scan beenden",
-                DialogResult = DialogResult.Cancel,
-                Location = new Point(251, 80),
-                Size = new Size(95, 28),
-                Font = UiFonts.Default
-            };
+            // Same order as before: Fortsetzen (default) left of Scan beenden.
+            var btnContinue = AddFooterButton("Fortsetzen", ThemeRole.Primary, Glyph.Scanner, DialogResult.OK);
+            var btnFinish = AddFooterButton("Scan beenden", ThemeRole.Secondary, Glyph.Check, DialogResult.Cancel);
 
-            Controls.AddRange(new Control[] { lbl, btnContinue, btnFinish });
             AcceptButton = btnContinue;
             CancelButton = btnFinish;
             ThemeManager.Apply(this);
             ResumeLayout(false);
-        }
-
-        protected override void OnShown(EventArgs e)
-        {
-            base.OnShown(e);
-            WindowActivation.BringToFront(this);
         }
     }
 }

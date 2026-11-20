@@ -23,11 +23,11 @@ internal sealed class ComboItem
 }
 
 /// <summary>
-/// Content panel for the "Scanmodus" tab.
-/// Contains image quality, color mode, scan side dropdowns with icons,
-/// continue-scan checkbox, and an options sub-dialog.
+/// Content of the "Scanmodus" settings page: image quality, color mode and scan side
+/// dropdowns with icons, the continue-scan switch and the options sub-dialog, grouped in
+/// settings cards.
 /// </summary>
-internal class ScanModeTabContent : Panel
+internal class ScanModeTabContent : ModernStack
 {
     private readonly ComboBox _cbImageQuality;
     private readonly ComboBox _cbColorMode;
@@ -106,22 +106,7 @@ internal class ScanModeTabContent : Panel
     {
         _settings = settings;
 
-        var font = UiFonts.Default;
-        Dock = DockStyle.Fill;
-
-        // === Info bar ===
-        var infoBar = new GradientInfoBar("Wählen Sie den gewünschten Scanmodus.");
-
-        // === Image Quality ===
-        var lblImageQuality = new Label
-        {
-            Text = "Bildqualität:",
-            Location = new Point(92, 30),
-            AutoSize = true,
-            Font = font
-        };
-
-        _cbImageQuality = CreateIconComboBox(QualityItems, new Point(176, 27));
+        _cbImageQuality = CreateIconComboBox(QualityItems);
         _cbImageQuality.SelectedIndexChanged += (s, e) =>
         {
             if (_loading) return;
@@ -129,16 +114,7 @@ internal class ScanModeTabContent : Panel
                 _settings.ImageQuality = (ImageQuality)QualityItems[_cbImageQuality.SelectedIndex].Value;
         };
 
-        // === Color Mode ===
-        var lblColorMode = new Label
-        {
-            Text = "Farbmodus:",
-            Location = new Point(92, 62),
-            AutoSize = true,
-            Font = font
-        };
-
-        _cbColorMode = CreateIconComboBox(ColorItems, new Point(176, 59));
+        _cbColorMode = CreateIconComboBox(ColorItems);
         _cbColorMode.SelectedIndexChanged += (s, e) =>
         {
             if (_loading) return;
@@ -149,16 +125,7 @@ internal class ScanModeTabContent : Panel
             }
         };
 
-        // === Scan Side ===
-        var lblScanSide = new Label
-        {
-            Text = "Scan-Seite:",
-            Location = new Point(92, 94),
-            AutoSize = true,
-            Font = font
-        };
-
-        _cbScanSide = CreateIconComboBox(ScanSideItems, new Point(176, 91));
+        _cbScanSide = CreateIconComboBox(ScanSideItems);
         _cbScanSide.SelectedIndexChanged += (s, e) =>
         {
             if (_loading) return;
@@ -169,58 +136,42 @@ internal class ScanModeTabContent : Panel
             }
         };
 
-        // === Hint label under Scan-Seite ===
-        var lblHint = new Label
-        {
-            Text = "Die automatische Papiergrößenerkennung steht für das\r\nFlachbettscannen nicht zur Verfügung.",
-            Location = new Point(176, 119),
-            Size = new Size(420, 34),
-            AutoSize = false,
-            Font = font
-        };
-        ThemeManager.SetRole(lblHint, ThemeRole.Muted);
-
-        // === Continue scanning checkbox ===
-        _chkContinueScanning = new CheckBox
-        {
-            Text = "Scanvorgang nach aktuellem Scan fortsetzen",
-            Location = new Point(176, 155),
-            AutoSize = true,
-            Font = font
-        };
+        _chkContinueScanning = new ToggleSwitch();
         _chkContinueScanning.CheckedChanged += (s, e) =>
         {
             if (!_loading)
                 _settings.ContinueScanning = _chkContinueScanning.Checked;
         };
 
-        // === Options button (right-aligned) ===
         _btnOptions = new Button
         {
             Text = "Option...",
-            FlatStyle = FlatStyle.Standard,
-            UseVisualStyleBackColor = true,
-            Location = new Point(511, 174),
-            Size = new Size(84, 26),
-            Font = font
+            Size = new Size(130, 32)
         };
+        ThemeManager.SetGlyph(_btnOptions, Glyph.Gear);
         _btnOptions.Click += (s, e) => OpenOptionsDialog();
 
-        Controls.AddRange(new Control[]
-        {
-            infoBar,
-            lblImageQuality, _cbImageQuality,
-            lblColorMode, _cbColorMode,
-            lblScanSide, _cbScanSide,
-            lblHint,
-            _chkContinueScanning,
-            _btnOptions
-        });
+        var cardMode = new SettingsCard();
+        cardMode.AddRow("Bildqualität", "Eine höhere Auflösung ergibt schärfere Bilder und größere Dateien.", _cbImageQuality, ComboWidth);
+        cardMode.AddRow("Farbmodus", "Farbe, Graustufen oder Schwarzweiß.", _cbColorMode, ComboWidth);
+        cardMode.AddRow("Scan-Seite",
+            "Die automatische Papiergrößenerkennung steht für das Flachbettscannen nicht zur Verfügung.",
+            _cbScanSide, ComboWidth);
 
+        var cardOptions = new SettingsCard("Weitere Einstellungen");
+        cardOptions.AddRow("Scanvorgang nach aktuellem Scan fortsetzen",
+            "Nach dem Scan fragen, ob weitere Dokumente an diesen Scan angehängt werden sollen.", _chkContinueScanning);
+        cardOptions.AddRow("Optionen für den Scanmodus",
+            "Helligkeit, Textdokumente, leere Seiten, Schräglauf, Bilddrehung und Einlegerichtung.", _btnOptions);
+
+        Controls.Add(cardMode);
+        Controls.Add(cardOptions);
         LoadFromSettings();
     }
 
-    private static ComboBox CreateIconComboBox(List<ComboItem> items, Point location)
+    private const int ComboWidth = 330;
+
+    private static ComboBox CreateIconComboBox(List<ComboItem> items)
     {
         var cb = new ComboBox
         {
@@ -229,10 +180,8 @@ internal class ScanModeTabContent : Panel
             DrawMode = DrawMode.OwnerDrawFixed,
             ItemHeight = 18,
             IntegralHeight = true,
-            Location = location,
-            Size = new Size(420, 24),
-            DropDownWidth = 420,
-            Font = UiFonts.Default
+            Size = new Size(ComboWidth, 24),
+            DropDownWidth = 400
         };
 
         foreach (var item in items)

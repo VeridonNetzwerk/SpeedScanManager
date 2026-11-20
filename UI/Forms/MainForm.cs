@@ -1,35 +1,45 @@
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace SpeedScanManager;
 
 /// <summary>
-/// Main settings form with collapsed/expanded modes.
-/// Collapsed: header + quick-menu checkbox + preset buttons + action buttons.
-/// Expanded: additionally shows a TabControl with 6 tabs.
-/// All tabs edit a cloned working copy of the settings; only OK/Übernehmen copy it into
+/// Settings window (Discord settings style, <see cref="ModernWindow"/>): sidebar navigation on
+/// the left, one page per area on the right (Allgemein, Anwendung, Speichern, Scanmodus,
+/// Dateiart, Papier, Dateigröße), footer with Abbrechen / Übernehmen / OK.
+/// All pages edit a cloned working copy of the settings; only OK/Übernehmen copy it into
 /// the live settings and raise <see cref="SettingsApplied"/>. Abbrechen, Esc and the
 /// window's close button discard unapplied changes.
 /// </summary>
-internal class MainForm : Form
+internal class MainForm : ModernWindow
 {
+    private const int PageGeneral = 0;
+    private const int PageApplication = 1;
+    private const int PageSave = 2;
+    private const int PageScanMode = 3;
+    private const int PageFileType = 4;
+    private const int PagePaper = 5;
+    private const int PageFileSize = 6;
+
+    private static readonly string[] PageHelpTopics =
+    {
+        "settings", "app-tab", "save-tab", "scanmode-tab", "filetype-tab", "paper-tab", "filesize-tab"
+    };
+
     private readonly CheckBox _quickMenuCheckBox;
     private readonly CheckBox _autoStartCheckBox;
 
-    private readonly Panel _presetPanel;
-    private readonly Button _btnRecommended;
-    private readonly Button _btnSmallFile;
-    private readonly Button _btnHighQuality;
-    private readonly Button _btnCustom;
+    private readonly TileButton _btnRecommended;
+    private readonly TileButton _btnSmallFile;
+    private readonly TileButton _btnHighQuality;
+    private readonly TileButton _btnCustom;
 
     private readonly ComboBox _profileDropdown;
-    private readonly Label _profileLabel;
-    private readonly Panel _profileSelectorPanel;
+    private readonly SettingsCard _profileCard;
 
-    private readonly TabControl _tabControl;
-    private readonly ImageList _tabImageList;
-    private readonly List<Image> _ownedImages = new();
+    private readonly NavSidebar _nav;
+    private readonly Panel _pageHost;
+    private readonly List<Panel> _pages = new();
     private readonly SaveTabContent _saveTabContent;
     private readonly ApplicationTabContent _applicationTabContent;
     private readonly ScanModeTabContent _scanModeTabContent;
@@ -39,7 +49,7 @@ internal class MainForm : Form
 
     /// <summary>Live settings owned by the tray (only written on OK/Übernehmen).</summary>
     private readonly ScanSettings _liveSettings;
-    /// <summary>Working copy edited by all tabs.</summary>
+    /// <summary>Working copy edited by all pages.</summary>
     private readonly ScanSettings _working;
     /// <summary>
     /// The working copy as it was when this editing session started (window opened, OK/
@@ -70,35 +80,15 @@ internal class MainForm : Form
     /// </summary>
     public event EventHandler? CustomApplicationsChanged;
 
-    private readonly Button _detailButton;
     private readonly Button _okButton;
     private readonly Button _cancelButton;
     private readonly Button _applyButton;
 
-    private readonly PictureBox _headerLogo;
     private readonly ComboBox _themeDropdown;
-    private Bitmap? _headerLogoImage;
 
-    private bool _expanded;
     private bool _suppressChange;
     private bool _suppressProfileEvent;
     private bool _suppressThemeEvent;
-
-    // Layout constants (96 dpi; use Px() for values applied after construction)
-    private const int ClientWidth = 686;
-    private const int ExpandedClientHeight = 503; // Segoe UI needs a little more room than the old 8.25 pt font
-    private const int CollapsedClientHeight = 173; // 133 top + 40 footer
-    private const int HeaderHeight = 44; // logo zone
-    private const int TopPanelHeight = 133; // 44 header + 89 control zone
-    private const int BottomBarHeight = 40;
-    private const int SeparatorHeight = 1;
-    private const int HeaderLogoHeight = 26;
-    private const int PresetMargin = 18;
-    private const int PresetSpacing = 8;
-
-    private readonly Panel _topPanel;
-    private readonly Panel _separatorPanel;
-    private readonly Panel _bottomPanel;
 
     public MainForm(ScanSettings liveSettings, ProfileManager profileManager, AppSettings appSettings)
     {
@@ -111,63 +101,98 @@ internal class MainForm : Form
         _activeProfile = _profileManager.GetByName(_appSettings.SelectedProfileName);
 
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.FixedSingle;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        HelpButton = true;
-        HelpButtonClicked += (s, e) =>
-        {
-            e.Cancel = true;
-            using var help = new HelpForm("settings");
-            help.ShowDialog(this);
-        };
         StartPosition = FormStartPosition.CenterScreen;
         Text = "SpeedScan Manager – Einstellungen";
-        Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(ClientWidth, CollapsedClientHeight);
+        Title = "Einstellungen";
+        Subtitle = "SpeedScan Manager";
+        HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Minimize | ModernHeaderButtons.Close;
+        HelpClicked += (s, e) =>
+        {
+            int page = Math.Max(0, _nav!.SelectedIndex);
+            using var help = new HelpForm(PageHelpTopics[page]);
+            help.ShowDialog(this);
+        };
         ShowInTaskbar = true;
-        Font = UiFonts.Default;
+        ClientSize = new Size(900, 620);
 
-        var contentFont = UiFonts.Default;
-        var presetFont = UiFonts.Default;
+        // === Sidebar + page area ===
+        _nav = new NavSidebar { Dock = DockStyle.Left, Width = 212 };
+        _pageHost = new Panel { Dock = DockStyle.Fill };
+        Body.Controls.Add(_pageHost);
+        Body.Controls.Add(_nav);
 
-        // === Top panel (control zone, contains header + checkbox + presets + separator) ===
-        _topPanel = new Panel
+        _nav.AddHeading("SpeedScan Manager");
+        _nav.AddItem("Allgemein", Glyph.Sliders);
+        _nav.AddHeading("Scaneinstellungen");
+        _nav.AddItem("Anwendung", Glyph.Apps);
+        _nav.AddItem("Speichern", Glyph.Folder);
+        _nav.AddItem("Scanmodus", Glyph.Scanner);
+        _nav.AddItem("Dateiart", Glyph.FileType);
+        _nav.AddItem("Papier", Glyph.Paper);
+        _nav.AddItem("Dateigröße", Glyph.Compress);
+
+        // === Page "Allgemein" ===
+        _quickMenuCheckBox = new ToggleSwitch { Checked = _appSettings.QuickMenuEnabled };
+        _autoStartCheckBox = new ToggleSwitch { Checked = _appSettings.AutoStart };
+
+        var cardStart = new SettingsCard();
+        cardStart.AddRow("Quick-Menü verwenden",
+            "Nach jedem Scan auswählen, was mit dem Ergebnis geschehen soll. Die Seite „Anwendung“ ist dann nicht verfügbar.",
+            _quickMenuCheckBox);
+        cardStart.AddRow("SpeedScan Manager beim Anmelden starten",
+            "Startet automatisch nach der Anmeldung bei Windows.", _autoStartCheckBox);
+
+        _btnRecommended = CreatePresetTile("Empfohlen", Glyph.Star, "Automatisch\nKomprimierung 3");
+        _btnSmallFile = CreatePresetTile("Kleine Datei", Glyph.Compress, "Normal\nKomprimierung 5");
+        _btnHighQuality = CreatePresetTile("Hohe Bildqualität", Glyph.Sparkle, "Fein\nKomprimierung 1");
+        _btnCustom = CreatePresetTile("Benutzerdefiniert", Glyph.Sliders, "Eigene\nEinstellungen");
+        var presetGroup = new TileGroup { Columns = 4, TileHeight = 118, VerticalPadding = 4 };
+        presetGroup.Controls.AddRange(new Control[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom });
+        foreach (var tile in new[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom })
         {
-            Dock = DockStyle.Top,
-            Height = TopPanelHeight
-        };
-        ThemeManager.SetRole(_topPanel, ThemeRole.Secondary);
+            tile.Click += PresetButton_Click;
+            tile.Click += (s, e) => OnSettingsChanged();
+        }
+        var cardQuality = new SettingsCard("Scanqualität", "Voreinstellungen für Bildqualität und Komprimierungsrate.") { ShowDividers = false };
+        cardQuality.Add(presetGroup);
+        cardQuality.Add(new Panel { Height = 12 });
 
-        // === Logo area ===
-        var headerPanel = new Panel
+        _profileDropdown = new ComboBox
         {
-            Location = new Point(0, 0),
-            Size = new Size(ClientWidth, HeaderHeight)
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Size = new Size(260, 24),
+            DropDownWidth = 260,
+            MaxDropDownItems = 16
         };
-        ThemeManager.SetRole(headerPanel, ThemeRole.Header);
+        RefreshProfileDropdown();
+        _profileDropdown.SelectedIndexChanged += (s, e) => OnProfileSelected();
 
-        var textBmp = AppResources.TextLogo;
-        int hdrTextW = (int)(textBmp.Width * (HeaderLogoHeight / (double)textBmp.Height));
-        _headerLogo = new PictureBox
+        var btnAddProfile = new Button { Text = "Profil hinzufügen...", Size = new Size(170, 32), Margin = new Padding(0, 0, 8, 0) };
+        ThemeManager.SetGlyph(btnAddProfile, Glyph.Plus);
+        btnAddProfile.Click += (s, e) => AddProfile();
+        var btnManageProfiles = new Button { Text = "Profilverwaltung...", Size = new Size(170, 32), Margin = Padding.Empty };
+        ThemeManager.SetGlyph(btnManageProfiles, Glyph.User);
+        btnManageProfiles.Click += (s, e) => OpenProfileManagement();
+        var profileButtons = new FlowLayoutPanel
         {
-            SizeMode = PictureBoxSizeMode.Zoom,
-            AutoSize = false,
-            Location = new Point(16, 9),
-            Size = new Size(hdrTextW, HeaderLogoHeight)
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
-        headerPanel.Controls.Add(_headerLogo);
+        profileButtons.Controls.Add(btnAddProfile);
+        profileButtons.Controls.Add(btnManageProfiles);
 
-        // === Design selection (System / Hell / Dunkel), applied immediately ===
-        const int themeDropdownWidth = 110;
+        _profileCard = new SettingsCard("Profil", "Profile speichern alle Scaneinstellungen. Sie werden nur ohne Quick-Menü verwendet.");
+        _profileCard.AddRow("Aktives Profil", "Die Einstellungen des gewählten Profils werden geladen.", _profileDropdown, 260);
+        _profileCard.AddRow("Profile", "Neues Profil aus den aktuellen Einstellungen anlegen oder Profile bearbeiten.", profileButtons);
+
+        // Design selection (System / Hell / Dunkel), applied immediately
         _themeDropdown = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Font = contentFont,
-            Size = new Size(themeDropdownWidth, 24),
-            Location = new Point(ClientWidth - 18 - themeDropdownWidth, 10)
+            Size = new Size(180, 24)
         };
         foreach (ThemeMode mode in Enum.GetValues<ThemeMode>())
             _themeDropdown.Items.Add(ThemeManager.GetModeName(mode));
@@ -177,216 +202,31 @@ internal class MainForm : Form
             if (!_suppressThemeEvent && _themeDropdown.SelectedIndex >= 0)
                 ThemeManager.SetMode((ThemeMode)_themeDropdown.SelectedIndex);
         };
-        var themeLabel = new Label
-        {
-            Text = "Design:",
-            AutoSize = true,
-            Font = contentFont
-        };
-        int themeLabelWidth = TextRenderer.MeasureText(themeLabel.Text, ThemeFonts.Regular).Width;
-        themeLabel.Location = new Point(_themeDropdown.Left - 6 - themeLabelWidth, 14);
-        ThemeManager.SetRole(themeLabel, ThemeRole.Muted);
-        headerPanel.Controls.Add(themeLabel);
-        headerPanel.Controls.Add(_themeDropdown);
-        _topPanel.Controls.Add(headerPanel);
+        var cardDesign = new SettingsCard();
+        cardDesign.AddRow("Design", "„System“ folgt der Windows-Einstellung für helle und dunkle Apps.", _themeDropdown, 180);
 
-        // === Quick-Menü checkbox (in gray zone) ===
-        _quickMenuCheckBox = new CheckBox
-        {
-            Text = "Quick-Menü verwenden",
-            Checked = _appSettings.QuickMenuEnabled,
-            Location = new Point(18, 56), // 44px header + 12px into gray zone
-            AutoSize = true,
-            Font = contentFont
-        };
-        _topPanel.Controls.Add(_quickMenuCheckBox);
+        var general = new ModernStack { Spacing = 16 };
+        general.Controls.AddRange(new Control[] { cardStart, cardQuality, _profileCard, cardDesign });
 
-        // === Autostart checkbox (same row) ===
-        _autoStartCheckBox = new CheckBox
-        {
-            Text = "SpeedScan Manager beim Anmelden starten",
-            Checked = _appSettings.AutoStart,
-            Location = new Point(200, 56),
-            AutoSize = true,
-            Font = contentFont
-        };
-        _topPanel.Controls.Add(_autoStartCheckBox);
-
-        // === Preset buttons (TableLayoutPanel for equal width/spacing) ===
-        _presetPanel = new TableLayoutPanel
-        {
-            Location = new Point(0, 86), // 44px header + 42px into gray zone
-            Size = new Size(ClientWidth, 25),
-            ColumnCount = 9,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Absolute, PresetMargin),
-                new ColumnStyle(SizeType.Percent, 25f),
-                new ColumnStyle(SizeType.Absolute, PresetSpacing),
-                new ColumnStyle(SizeType.Percent, 25f),
-                new ColumnStyle(SizeType.Absolute, PresetSpacing),
-                new ColumnStyle(SizeType.Percent, 25f),
-                new ColumnStyle(SizeType.Absolute, PresetSpacing),
-                new ColumnStyle(SizeType.Percent, 25f),
-                new ColumnStyle(SizeType.Absolute, PresetMargin)
-            },
-            RowCount = 1,
-            RowStyles = { new RowStyle(SizeType.Percent, 100f) },
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
-
-        _btnRecommended = CreatePresetButton("Empfohlen", 0, 0, presetFont);
-        _btnSmallFile = CreatePresetButton("Kleine Datei", 0, 0, presetFont);
-        _btnHighQuality = CreatePresetButton("Hohe Bildqualität", 0, 0, presetFont);
-        _btnCustom = CreatePresetButton("Benutzerdefiniert", 0, 0, presetFont);
-
-        _btnRecommended.Dock = DockStyle.Fill;
-        _btnSmallFile.Dock = DockStyle.Fill;
-        _btnHighQuality.Dock = DockStyle.Fill;
-        _btnCustom.Dock = DockStyle.Fill;
-
-        var presetTable = (TableLayoutPanel)_presetPanel;
-        presetTable.Controls.Add(_btnRecommended, 1, 0);
-        presetTable.Controls.Add(_btnSmallFile, 3, 0);
-        presetTable.Controls.Add(_btnHighQuality, 5, 0);
-        presetTable.Controls.Add(_btnCustom, 7, 0);
-
-        foreach (var btn in new[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom })
-        {
-            btn.Click += PresetButton_Click;
-            btn.Click += (s, e) => OnSettingsChanged();
-        }
-        _topPanel.Controls.Add(_presetPanel);
-
-        // === Separator line under preset buttons ===
-        _separatorPanel = new Panel
-        {
-            Location = new Point(0, 124), // still at bottom of top panel
-            Size = new Size(ClientWidth, SeparatorHeight)
-        };
-        ThemeManager.SetRole(_separatorPanel, ThemeRole.Divider);
-        _topPanel.Controls.Add(_separatorPanel);
-
-        // === Profile dropdown (shown in 4th column when Quick-Menü is off) ===
-        _profileLabel = new Label
-        {
-            Text = "Profil:",
-            AutoSize = true,
-            Font = contentFont,
-            Visible = false
-        };
-
-        _profileDropdown = new ComboBox
-        {
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            Font = contentFont,
-            Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-            Visible = false,
-            DropDownWidth = 220
-        };
-
-        _profileSelectorPanel = new Panel
-        {
-            Dock = DockStyle.Fill,
-            Visible = false
-        };
-
-        RefreshProfileDropdown();
-        _profileDropdown.SelectedIndexChanged += (s, e) => OnProfileSelected();
-
-        // Add profile selector to the 4th column (replaces Benutzerdefiniert when Quick-Menü is off)
-        presetTable.Controls.Add(_profileSelectorPanel, 7, 0);
-
-        // Position profile label and dropdown above/in the 4th preset column
-        _topPanel.Layout += (s, e) =>
-        {
-            if (_presetPanel.Width > 0)
-            {
-                var widths = ((TableLayoutPanel)_presetPanel).GetColumnWidths();
-                int x = 0;
-                for (int i = 0; i < 7; i++) x += widths[i];
-                int colWidth = widths.Length > 7 ? widths[7] : Px(100);
-                int presetTop = _presetPanel.Top;
-                _profileLabel.Location = new Point(x, presetTop - Px(18));
-                _profileDropdown.Location = new Point(x, presetTop + Px(2));
-                _profileDropdown.Width = colWidth;
-                _profileDropdown.BringToFront();
-                _profileLabel.BringToFront();
-            }
-        };
-        _topPanel.Controls.Add(_profileDropdown);
-        _topPanel.Controls.Add(_profileLabel);
-        Load += (s, e) => _topPanel.PerformLayout();
-        _tabControl = new TabControl
-        {
-            Dock = DockStyle.Fill,
-            Visible = false,
-            Font = contentFont,
-            Appearance = TabAppearance.FlatButtons,
-            DrawMode = TabDrawMode.OwnerDrawFixed,
-            // Normal lets WinForms size every tab independently from its own text
-            // (plus the ImageList width). The tab strip itself is painted by the theme
-            // (TabControlSubclass), each tab by TabControl_DrawItem.
-            SizeMode = TabSizeMode.Normal,
-            Padding = new Point(20, 5)
-        };
-        _tabControl.DrawItem += TabControl_DrawItem;
-        _tabControl.Selecting += TabControl_Selecting;
-
-        // Create ImageList with 16x16 icons for tabs
-        _tabImageList = new ImageList
-        {
-            ImageSize = new Size(16, 16),
-            ColorDepth = ColorDepth.Depth32Bit
-        };
-        AddTabIcon("app", TabIcons.CreateAppIcon());
-        AddTabIcon("save", TabIcons.CreateSaveIcon());
-        AddTabIcon("scan", TabIcons.CreateScanIcon());
-        AddTabIcon("file", TabIcons.CreateFileIcon());
-        AddTabIcon("paper", TabIcons.CreatePaperIcon());
-        AddTabIcon("size", TabIcons.CreateSizeIcon());
-        _tabControl.ImageList = _tabImageList;
-
-        var tabDefs = new[]
-        {
-            ("Anwendung", "app"),
-            ("Speichern", "save"),
-            ("Scanmodus", "scan"),
-            ("Dateiart", "file"),
-            ("Papier", "paper"),
-            ("Dateigröße", "size")
-        };
-        foreach (var (name, key) in tabDefs)
-        {
-            var page = new TabPage(name)
-            {
-                ImageKey = key
-            };
-            _tabControl.TabPages.Add(page);
-        }
-
-        // Populate each tab with content wrapped in an inner panel
+        // === Scan setting pages ===
         _applicationTabContent = new ApplicationTabContent(_working, _appSettings.CustomApplications);
-        WrapTabContent(_tabControl.TabPages[0], _applicationTabContent);
         _applicationTabContent.CustomApplicationsChanged += (s, e) => CustomApplicationsChanged?.Invoke(this, EventArgs.Empty);
-
         _saveTabContent = new SaveTabContent(_working);
-        WrapTabContent(_tabControl.TabPages[1], _saveTabContent);
-
         _scanModeTabContent = new ScanModeTabContent(_working);
-        WrapTabContent(_tabControl.TabPages[2], _scanModeTabContent);
-
         _fileTypeTabContent = new FileTypeTabContent(_working);
-        WrapTabContent(_tabControl.TabPages[3], _fileTypeTabContent);
-
         _paperTabContent = new PaperTabContent(_working);
-        WrapTabContent(_tabControl.TabPages[4], _paperTabContent);
-
         _fileSizeTabContent = new FileSizeTabContent(_working);
-        WrapTabContent(_tabControl.TabPages[5], _fileSizeTabContent);
 
-        // Cross-tab dependencies
+        AddPage("Allgemein", "Start, Quick-Menü, Scanqualität, Profile und Design.", general);
+        AddPage("Anwendung", "Wählen Sie eine Anwendung.", _applicationTabContent);
+        AddPage("Speichern", "Geben Sie den zu benutzenden Ordner und das gewünschte Dateinamenformat an.", _saveTabContent);
+        AddPage("Scanmodus", "Wählen Sie den gewünschten Scanmodus.", _scanModeTabContent);
+        AddPage("Dateiart", "Geben Sie die gewünschten Dateioptionen an.", _fileTypeTabContent);
+        AddPage("Papier", "Wählen Sie ein Papier.", _paperTabContent);
+        AddPage("Dateigröße", "Geben Sie die Komprimierungsrate an (nur für Farb- und Graustufenbilder).", _fileSizeTabContent);
+        _nav.SelectedIndexChanged += (s, e) => ShowPage(_nav.SelectedIndex);
+
+        // Cross-page dependencies
         _scanModeTabContent.ColorModeChanged += (mode) =>
         {
             _fileTypeTabContent.OnColorModeChanged(mode);
@@ -399,124 +239,33 @@ internal class MainForm : Form
             _saveTabContent.UpdatePreview();
         };
 
-        // === Bottom bar ===
-        _bottomPanel = new Panel
-        {
-            Dock = DockStyle.Bottom,
-            Height = BottomBarHeight
-        };
-        ThemeManager.SetRole(_bottomPanel, ThemeRole.Secondary);
-        _bottomPanel.Paint += (s, e) =>
-        {
-            using var pen = new Pen(ThemeManager.Current.Border);
-            e.Graphics.DrawLine(pen, 0, 0, _bottomPanel.Width, 0);
-        };
-
-        _detailButton = new Button
-        {
-            Text = "Detail",
-            Size = new Size(125, 28),
-            Font = contentFont,
-            Dock = DockStyle.Fill,
-            Margin = new Padding(18, 6, 0, 6)
-        };
-        ThemeManager.SetGlyph(_detailButton, Glyph.ChevronDown);
-        _detailButton.Click += (s, e) => ToggleExpanded();
-
-        _okButton = new Button
-        {
-            Text = "OK",
-            Size = new Size(116, 28),
-            Font = contentFont,
-            Dock = DockStyle.Fill,
-            Margin = new Padding(8, 6, 0, 6)
-        };
-        ThemeManager.SetRole(_okButton, ThemeRole.Primary);
-        ThemeManager.SetGlyph(_okButton, Glyph.Check);
-        _okButton.Click += (s, e) => { if (ApplySettings()) Close(); };
-
-        _cancelButton = new Button
-        {
-            Text = "Abbrechen",
-            Size = new Size(116, 28),
-            Font = contentFont,
-            Dock = DockStyle.Fill,
-            Margin = new Padding(8, 6, 0, 6)
-        };
-        ThemeManager.SetGlyph(_cancelButton, Glyph.Cross);
+        // === Footer: Abbrechen / Übernehmen / OK ===
+        _cancelButton = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross);
         _cancelButton.Click += (s, e) => { CancelSettings(); Close(); };
 
-        _applyButton = new Button
-        {
-            Text = "Übernehmen",
-            Size = new Size(116, 28),
-            Font = contentFont,
-            Enabled = false,
-            Dock = DockStyle.Fill,
-            Margin = new Padding(8, 6, 0, 6)
-        };
-        ThemeManager.SetGlyph(_applyButton, Glyph.Apply);
+        _applyButton = AddFooterButton("Übernehmen", ThemeRole.Secondary, Glyph.Apply);
+        _applyButton.Enabled = false;
         _applyButton.Click += (s, e) => ApplySettings();
 
-        // Wire tab content changes to enable Apply button
+        _okButton = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check);
+        _okButton.Click += (s, e) => { if (ApplySettings()) Close(); };
+
+        // Wire page content changes to enable the Apply button
         WireTabContentChanges();
-
-        var bottomTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 6,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Absolute, 143f),  // detail button + left margin
-                new ColumnStyle(SizeType.Percent, 100f),   // flexible gap
-                new ColumnStyle(SizeType.Absolute, 116f),  // OK
-                new ColumnStyle(SizeType.Absolute, 116f),  // Abbrechen
-                new ColumnStyle(SizeType.Absolute, 116f),  // Übernehmen
-                new ColumnStyle(SizeType.Absolute, 18f)    // right margin
-            },
-            RowCount = 1,
-            RowStyles = { new RowStyle(SizeType.Percent, 100f) },
-            Margin = Padding.Empty,
-            Padding = new Padding(0, 1, 0, 0) // keep the divider line drawn by _bottomPanel visible
-        };
-
-        bottomTable.Controls.Add(_detailButton, 0, 0);
-        bottomTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 1, 0);
-        bottomTable.Controls.Add(_okButton, 2, 0);
-        bottomTable.Controls.Add(_cancelButton, 3, 0);
-        bottomTable.Controls.Add(_applyButton, 4, 0);
-        bottomTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 5, 0);
-
-        _bottomPanel.Controls.Add(bottomTable);
-
-        // Add controls in docking order (first = docked last = Fill)
-        Controls.AddRange(new Control[]
-        {
-            _tabControl,
-            _bottomPanel,
-            _topPanel
-        });
 
         AcceptButton = _okButton;
         CancelButton = _cancelButton; // Esc = Abbrechen
 
         LoadAllTabs();
+        _nav.SelectedIndex = PageGeneral;
         OnQuickMenuToggled();
         UpdateApplyButton();
 
         ThemeManager.Apply(this);
-        UpdateHeaderLogo();
-        ThemeManager.ThemeChanged += OnThemeChanged;
         ThemeManager.ModeChanged += OnThemeModeChanged;
 
         ResumeLayout(false);
         PerformLayout();
-    }
-
-    private void OnThemeChanged(object? sender, EventArgs e)
-    {
-        UpdateHeaderLogo();
-        UpdatePresetHighlight();
     }
 
     private void OnThemeModeChanged(object? sender, EventArgs e)
@@ -526,74 +275,68 @@ internal class MainForm : Form
         finally { _suppressThemeEvent = false; }
     }
 
-    /// <summary>
-    /// Logo wordmark pre-scaled to its display size (crisp at any DPI); in dark mode it is
-    /// drawn in white instead of blue for contrast.
-    /// </summary>
-    private void UpdateHeaderLogo()
+    /// <summary>Adds a scrollable page: title, description and the page content.</summary>
+    private void AddPage(string title, string description, Control content)
     {
-        var src = AppResources.TextLogo;
-        int h = Px(HeaderLogoHeight);
-        int w = Math.Max(1, (int)Math.Round(src.Width * (h / (double)src.Height)));
-        var bmp = new Bitmap(w, h, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-        using (var g = Graphics.FromImage(bmp))
+        var host = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Visible = false };
+        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(32, 24, 32, 28), Spacing = 18 };
+        stack.Controls.Add(new PageHeader(title, description));
+        stack.Controls.Add(content);
+        host.Controls.Add(stack);
+        _pages.Add(host);
+        _pageHost.Controls.Add(host);
+    }
+
+    private void ShowPage(int index)
+    {
+        if (index < 0 || index >= _pages.Count) return;
+        _pageHost.SuspendLayout();
+        for (int i = 0; i < _pages.Count; i++)
         {
-            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.Clear(Color.Transparent);
-            if (ThemeManager.IsDark)
+            if (i == index)
             {
-                // Keep the shape (alpha), replace the color.
-                using var ia = new System.Drawing.Imaging.ImageAttributes();
-                ia.SetColorMatrix(new System.Drawing.Imaging.ColorMatrix(new[]
-                {
-                    new float[] { 0, 0, 0, 0, 0 },
-                    new float[] { 0, 0, 0, 0, 0 },
-                    new float[] { 0, 0, 0, 0, 0 },
-                    new float[] { 0, 0, 0, 1, 0 },
-                    new float[] { 0.95f, 0.95f, 0.97f, 0, 1 }
-                }));
-                g.DrawImage(src, new Rectangle(0, 0, w, h), 0, 0, src.Width, src.Height, GraphicsUnit.Pixel, ia);
-            }
-            else
-            {
-                g.DrawImage(src, new Rectangle(0, 0, w, h));
+                _pages[i].AutoScrollPosition = Point.Empty;
+                _pages[i].Visible = true;
             }
         }
-        var old = _headerLogoImage;
-        _headerLogoImage = bmp;
-        _headerLogo.Image = bmp;
-        old?.Dispose();
+        for (int i = 0; i < _pages.Count; i++)
+            if (i != index) _pages[i].Visible = false;
+        _pageHost.ResumeLayout(true);
     }
 
-    /// <summary>
-    /// Converts a 96-dpi layout value to device pixels (for values applied after construction).
-    /// </summary>
-    private int Px(int value) => (int)Math.Round(value * DeviceDpi / 96f);
-
-    private void AddTabIcon(string key, Image image)
+    /// <summary>Ctrl+Tab / Ctrl+Shift+Tab / Ctrl+PageDown / Ctrl+PageUp switch pages (like the former tabs).</summary>
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
-        _ownedImages.Add(image);
-        _tabImageList.Images.Add(key, image);
-    }
-
-    private static Button CreatePresetButton(string text, int x, int width, Font font)
-    {
-        return new Button
+        int step = keyData switch
         {
-            Text = text,
-            Location = new Point(x, 0),
-            Size = new Size(width, 23),
-            Font = font,
-            TextAlign = ContentAlignment.MiddleCenter,
-            Margin = new Padding(0, 0, 0, 0)
+            Keys.Control | Keys.Tab or Keys.Control | Keys.PageDown => 1,
+            Keys.Control | Keys.Shift | Keys.Tab or Keys.Control | Keys.PageUp => -1,
+            _ => 0
         };
+        if (step != 0)
+        {
+            int count = _nav.ItemCount;
+            int i = _nav.SelectedIndex;
+            for (int n = 0; n < count; n++)
+            {
+                i = (i + step + count) % count;
+                if (_nav.IsItemEnabled(i))
+                {
+                    _nav.SelectedIndex = i;
+                    break;
+                }
+            }
+            return true;
+        }
+        return base.ProcessCmdKey(ref msg, keyData);
     }
+
+    private static TileButton CreatePresetTile(string text, Glyph glyph, string description)
+        => new(text, null, glyph, description) { Focusable = true };
 
     private void PresetButton_Click(object? sender, EventArgs e)
     {
-        if (sender is Button btn)
+        if (sender is TileButton btn)
         {
             if (btn == _btnRecommended)
             {
@@ -609,8 +352,8 @@ internal class MainForm : Form
             }
             else if (btn == _btnCustom)
             {
-                if (!_expanded)
-                    ToggleExpanded();
+                // Formerly expanded the detail view; the detailed settings are the scan pages.
+                _nav.SelectedIndex = PageScanMode;
             }
             UpdatePresetHighlight();
         }
@@ -634,12 +377,12 @@ internal class MainForm : Form
     }
 
     /// <summary>
-    /// Highlights the preset button that matches the current settings
+    /// Highlights the preset tile that matches the current settings
     /// (Benutzerdefiniert when no preset matches).
     /// </summary>
     private void UpdatePresetHighlight()
     {
-        Button? active = (_working.ImageQuality, _working.CompressionRate) switch
+        TileButton active = (_working.ImageQuality, _working.CompressionRate) switch
         {
             (ImageQuality.Automatic, 3) => _btnRecommended,
             (ImageQuality.Normal, 5) => _btnSmallFile,
@@ -647,31 +390,23 @@ internal class MainForm : Form
             _ => _btnCustom
         };
 
-        // The active preset is shown as primary (accent) button.
         foreach (var b in new[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom })
-            ThemeManager.SetRole(b, b == active ? ThemeRole.Primary : ThemeRole.Secondary);
+            b.Selected = b == active;
     }
 
     private void OnQuickMenuToggled()
     {
         bool useQuick = _quickMenuCheckBox.Checked;
-        // Preset buttons (first 3) are always visible
-        _btnRecommended.Visible = true;
-        _btnSmallFile.Visible = true;
-        _btnHighQuality.Visible = true;
-        // 4th column: Benutzerdefiniert (Quick on) vs Profil dropdown (Quick off)
-        _btnCustom.Visible = useQuick;
-        _profileSelectorPanel.Visible = !useQuick;
-        _profileLabel.Visible = !useQuick;
-        _profileDropdown.Visible = !useQuick;
+        // Profiles are only used when the Quick-Menü is off
+        _profileCard.Enabled = !useQuick;
 
-        // Disable Anwendung tab when Quick-Menü is on
+        // Disable the Anwendung page when Quick-Menü is on
         _applicationTabContent.Enabled = !useQuick;
-        _tabControl.Invalidate();
+        _nav.SetItemEnabled(PageApplication, !useQuick);
 
-        // If Anwendung tab is selected while Quick-Menü turns on, switch to Speichern
-        if (useQuick && _tabControl.SelectedIndex == 0)
-            _tabControl.SelectedIndex = 1;
+        // If Anwendung is shown while Quick-Menü turns on, switch to Speichern
+        if (useQuick && _nav.SelectedIndex == PageApplication)
+            _nav.SelectedIndex = PageSave;
     }
 
     /// <summary>
@@ -690,10 +425,6 @@ internal class MainForm : Form
             {
                 _profileDropdown.Items.Add(profile.DisplayName);
             }
-            // Add separator items
-            _profileDropdown.Items.Add("-");
-            _profileDropdown.Items.Add("Profil hinzufügen...");
-            _profileDropdown.Items.Add("Profilverwaltung...");
             RestoreProfileSelection();
         }
         finally
@@ -720,28 +451,7 @@ internal class MainForm : Form
     {
         if (_suppressProfileEvent) return;
         int idx = _profileDropdown.SelectedIndex;
-        if (idx < 0) return;
-
-        int profileCount = _profileManager.Profiles.Count;
-
-        if (idx == profileCount + 1) // "Profil hinzufügen..."
-        {
-            // Defer so the dropdown has closed before the dialog opens
-            BeginInvoke(() => { RestoreProfileSelection(); AddProfile(); });
-            return;
-        }
-
-        if (idx == profileCount + 2) // "Profilverwaltung..."
-        {
-            BeginInvoke(() => { RestoreProfileSelection(); OpenProfileManagement(); });
-            return;
-        }
-
-        if (idx == profileCount) // separator
-        {
-            RestoreProfileSelection();
-            return;
-        }
+        if (idx < 0 || idx >= _profileManager.Profiles.Count) return;
 
         var profile = _profileManager.Profiles[idx];
         if (!ReferenceEquals(profile, _activeProfile))
@@ -787,44 +497,8 @@ internal class MainForm : Form
         UpdateApplyButton();
     }
 
-    private void ToggleExpanded()
-    {
-        _expanded = !_expanded;
-
-        if (_expanded)
-        {
-            ClientSize = new Size(Px(ClientWidth), Px(ExpandedClientHeight));
-            _detailButton.Text = "Ausblenden";
-            ThemeManager.SetGlyph(_detailButton, Glyph.ChevronUp);
-            _tabControl.Visible = true;
-
-            // When Quick-Menü is on, never show the Anwendung tab
-            if (_quickMenuCheckBox.Checked && _tabControl.SelectedIndex == 0)
-                _tabControl.SelectedIndex = 1; // Speichern
-        }
-        else
-        {
-            ClientSize = new Size(Px(ClientWidth), Px(CollapsedClientHeight));
-            _detailButton.Text = "Detail";
-            ThemeManager.SetGlyph(_detailButton, Glyph.ChevronDown);
-            _tabControl.Visible = false;
-        }
-    }
-
-    private static void WrapTabContent(TabPage page, Control content)
-    {
-        var innerPanel = new Panel
-        {
-            Dock = DockStyle.Fill,
-            Margin = new Padding(8),
-            Padding = new Padding(0)
-        };
-        innerPanel.Controls.Add(content);
-        page.Controls.Add(innerPanel);
-    }
-
     /// <summary>
-    /// Refreshes every tab from the working copy without triggering change handling.
+    /// Refreshes every page from the working copy without triggering change handling.
     /// </summary>
     private void LoadAllTabs()
     {
@@ -930,7 +604,7 @@ internal class MainForm : Form
     }
 
     /// <summary>
-    /// Discards unapplied edits and reloads all tabs from the live settings.
+    /// Discards unapplied edits and reloads all pages from the live settings.
     /// </summary>
     private void CancelSettings()
     {
@@ -952,7 +626,9 @@ internal class MainForm : Form
 
     private void UpdateApplyButton()
     {
-        _applyButton.Enabled = HasUnappliedChanges();
+        bool changed = HasUnappliedChanges();
+        _applyButton.Enabled = changed;
+        FooterHint = changed ? "Nicht übernommene Änderungen" : "";
     }
 
     private void OnSettingsChanged()
@@ -999,92 +675,25 @@ internal class MainForm : Form
 
     private void WireTabContentChanges()
     {
-        // Wire quick-menu and autostart checkboxes
+        // Wire quick-menu and autostart switches
         _quickMenuCheckBox.CheckedChanged += (s, e) => { OnQuickMenuToggled(); OnSettingsChanged(); };
         _autoStartCheckBox.CheckedChanged += (s, e) => OnSettingsChanged();
 
-        // Wire all tab pages
-        foreach (TabPage page in _tabControl.TabPages)
+        // Wire the scan setting pages (the Allgemein page is wired explicitly above)
+        foreach (var content in new Control[]
+                 {
+                     _applicationTabContent, _saveTabContent, _scanModeTabContent,
+                     _fileTypeTabContent, _paperTabContent, _fileSizeTabContent
+                 })
         {
-            WireControlChanges(page);
+            WireControlChanges(content);
         }
-    }
-
-    private void TabControl_Selecting(object? sender, TabControlCancelEventArgs e)
-    {
-        // Prevent selecting the Anwendung tab when Quick-Menü is on
-        if (e.TabPageIndex == 0 && _quickMenuCheckBox.Checked)
-        {
-            e.Cancel = true;
-            // Use BeginInvoke to switch to Speichern after the event completes
-            _tabControl.BeginInvoke(() => _tabControl.SelectedIndex = 1);
-        }
-    }
-
-    private static readonly Glyph[] TabGlyphs =
-    {
-        Glyph.Apps, Glyph.Folder, Glyph.Scanner, Glyph.FileType, Glyph.Paper, Glyph.Compress
-    };
-
-    /// <summary>
-    /// Draws one tab (called by the themed tab strip): rounded pill for the selected / hovered
-    /// tab, monochrome glyph and text in the theme colors.
-    /// </summary>
-    private void TabControl_DrawItem(object? sender, DrawItemEventArgs e)
-    {
-        if (e.Index < 0 || e.Index >= _tabControl.TabPages.Count) return;
-
-        var p = ThemeManager.Current;
-        var g = e.Graphics;
-        var page = _tabControl.TabPages[e.Index];
-        var tabRect = e.Bounds;
-        bool isSelected = _tabControl.SelectedIndex == e.Index;
-        // Anwendung is not available while the Quick-Menü is on
-        bool isDisabled = e.Index == 0 && _quickMenuCheckBox.Checked;
-        bool isHot = !isDisabled && (e.State & DrawItemState.HotLight) != 0;
-
-        if (isSelected || isHot)
-        {
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            var pill = RectangleF.Inflate(tabRect, -Px(2), -Px(3));
-            using var path = ThemeGlyphs.Rounded(pill, Px(4));
-            using var brush = new SolidBrush(isSelected ? p.Selected : p.Hover);
-            g.FillPath(brush, path);
-        }
-
-        Color textColor = isDisabled ? ThemePalette.Blend(p.TextMuted, _tabControl.Parent?.BackColor ?? p.Background, 0.5f)
-                        : isSelected ? p.Text
-                        : isHot ? p.TextSecondary
-                        : p.TextMuted;
-
-        // Glyph at x+10 (16px), text starts at x+32; the tab width includes the ImageList image.
-        int iconSize = Px(16);
-        if (e.Index < TabGlyphs.Length)
-        {
-            var iconRect = new RectangleF(tabRect.X + Px(10), tabRect.Y + (tabRect.Height - iconSize) / 2f, iconSize, iconSize);
-            ThemeGlyphs.Draw(g, TabGlyphs[e.Index], iconRect, isSelected ? p.Accent : textColor);
-        }
-
-        int textLeft = tabRect.Left + Px(32);
-        var textRect = new Rectangle(textLeft, tabRect.Top, Math.Max(0, tabRect.Right - textLeft - Px(4)), tabRect.Height);
-        // Same font as TabControl.Font, which WinForms uses to size the tabs
-        TextRenderer.DrawText(g, page.Text, _tabControl.Font, textRect, textColor,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
     }
 
     protected override void Dispose(bool disposing)
     {
         if (disposing)
-        {
-            ThemeManager.ThemeChanged -= OnThemeChanged;
             ThemeManager.ModeChanged -= OnThemeModeChanged;
-            _tabImageList.Dispose();
-            foreach (var img in _ownedImages)
-                img.Dispose();
-            _headerLogo.Image = null;
-            _headerLogoImage?.Dispose();
-        }
         base.Dispose(disposing);
     }
 }
@@ -1101,8 +710,8 @@ internal static class UiFonts
 }
 
 /// <summary>
-/// Info bar at the top of tab content panels and dialogs. Formerly a blue gradient; now
-/// the flat themed banner (<see cref="ThemedBanner"/>).
+/// Info bar at the top of dialogs. Formerly a blue gradient; now the flat themed banner
+/// (<see cref="ThemedBanner"/>).
 /// </summary>
 internal class GradientInfoBar : ThemedBanner
 {
