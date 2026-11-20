@@ -35,6 +35,8 @@
     <EmbeddedResource Include="assets\SpeedScanManager_Text.png" LogicalName="SpeedScanManager_Text.png" />
     <EmbeddedResource Include="assets\github_logo.svg" LogicalName="github_logo.svg" />
     <EmbeddedResource Include="assets\discord_logo.svg" LogicalName="discord_logo.svg" />
+    <!-- Help pictures (generated screenshots, NAME_light.png / NAME_dark.png), see HelpRenderer -->
+    <EmbeddedResource Include="Resources\Help\*.png" LogicalName="Help.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

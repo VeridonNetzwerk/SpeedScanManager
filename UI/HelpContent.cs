@@ -1,187 +1,106 @@
-using System.Drawing;
 using System.Text;
 
 namespace SpeedScanManager;
 
 /// <summary>
-/// Represents a single help topic in the navigation tree.
+/// One help topic: a group (with <see cref="Children"/>) or a page (with <see cref="Html"/>,
+/// the body fragment below the title). Pages are rendered by <see cref="HelpRenderer"/>.
 /// </summary>
 internal class HelpTopic
 {
     public string Id { get; }
     public string Title { get; }
+    /// <summary>One sentence: lead text below the title and description on cards / in lists.</summary>
+    public string Summary { get; }
+    /// <summary>Body HTML of a page (empty for groups). Pictures as <c>help-img:NAME</c>.</summary>
     public string Html { get; }
+    public Glyph Glyph { get; init; } = Glyph.None;
+    /// <summary>Topic ids shown as "Passende Themen" below the page.</summary>
+    public string[] Related { get; init; } = Array.Empty<string>();
     public List<HelpTopic> Children { get; } = new();
+    public HelpTopic? Parent { get; private set; }
 
-    /// <summary>Leaf topic with content.</summary>
-    public HelpTopic(string id, string title, string html)
+    public HelpTopic Root => Parent?.Root ?? this;
+
+    /// <summary>Page.</summary>
+    public HelpTopic(string id, string title, string summary, string html)
     {
         Id = id;
         Title = title;
+        Summary = summary;
         Html = html;
     }
 
-    /// <summary>Branch topic (no content, only children).</summary>
-    public HelpTopic(string id, string title, params HelpTopic[] children)
+    /// <summary>Group (no content of its own, only children).</summary>
+    public HelpTopic(string id, string title, string summary, Glyph glyph, params HelpTopic[] children)
     {
         Id = id;
         Title = title;
+        Summary = summary;
         Html = "";
-        Children.AddRange(children);
+        Glyph = glyph;
+        foreach (var child in children)
+        {
+            child.Parent = this;
+            Children.Add(child);
+        }
+    }
+
+    public HelpTopic? Find(string id)
+    {
+        if (Id == id) return this;
+        foreach (var child in Children)
+            if (child.Find(id) is { } found) return found;
+        return null;
     }
 }
 
 /// <summary>
-/// Static class that builds the help topic tree and provides HTML content
-/// for the SpeedScan Manager help system.
-/// All content reflects the actual implemented features of the application.
+/// The help topics of SpeedScan Manager (German, "Sie" form, task oriented). The text describes
+/// the actual behaviour of the program; pictures are generated screenshots (see
+/// <see cref="HelpRenderer"/>). Topic ids are opened directly by the windows ("?" button) and must
+/// stay stable: root, settings, app-tab, save-tab, scanmode-tab, filetype-tab, paper-tab,
+/// filesize-tab, app-manage, custom-size-dialog, filename-format, multifeed-dialog,
+/// postscan-media, postscan-save, scanmode-options, driver-info, version-info.
 /// </summary>
 internal static class HelpContent
 {
-    public const string Css = @"
-        body { font-family: 'Microsoft Sans Serif', Verdana, sans-serif; font-size: 9pt; color: #000; margin: 8px 16px 16px 16px; }
-        h1 { color: #2B579A; font-size: 14pt; margin: 0 0 12px 0; }
-        h2 { color: #2B579A; font-size: 11pt; margin: 16px 0 6px 0; }
-        h3 { color: #333; font-size: 10pt; margin: 12px 0 4px 0; }
-        p { margin: 4px 0 6px 0; line-height: 1.4; }
-        ul, ol { margin: 4px 0 8px 0; padding-left: 24px; }
-        li { margin: 2px 0; line-height: 1.4; }
-        a { color: #0000CC; text-decoration: underline; }
-        a:visited { color: #660066; }
-        .note { background: #FFFCE6; border: 1px solid #E0D890; padding: 6px 10px; margin: 8px 0; }
-        .note-title { font-weight: bold; color: #8B7500; }
-        .warning { background: #FFF0F0; border: 1px solid #E09090; padding: 6px 10px; margin: 8px 0; }
-        .warning-title { font-weight: bold; color: #CC0000; }
-        .see-also { margin: 12px 0 4px 0; font-style: italic; color: #555; }
-        .see-also ul { font-style: normal; color: #000; padding-left: 16px; margin-top: 4px; }
-        table { border-collapse: collapse; margin: 8px 0; }
-        td, th { border: 1px solid #999; padding: 4px 8px; font-size: 9pt; }
-        th { background: #E8E8E8; }
-        .kbd { background: #F0F0F0; border: 1px solid #CCC; padding: 1px 4px; font-family: monospace; }
-        code { font-family: 'Consolas', monospace; font-size: 9pt; background-color: #F6F6F6; padding: 1px 4px; }
-        kbd { background: #E8E8E8; border: 1px solid #CCC; padding: 1px 6px; font-family: 'Microsoft Sans Serif', monospace; font-size: 9pt; white-space: nowrap; }
-    ";
-
-    /// <summary>
-    /// Style sheet for <paramref name="p"/> (light or dark). The WebBrowser control is Internet
-    /// Explorer, which has no CSS custom properties, so the theme colors are written into the
-    /// rules directly.
-    /// </summary>
-    public static string ThemedCss(ThemePalette p)
+    /// <summary>Questions on the start page (topic id, question).</summary>
+    public static readonly (string Id, string Question)[] StartQuestions =
     {
-        static string H(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
-        bool dark = p.IsDark;
-        var link = dark ? Color.FromArgb(0x00, 0xA8, 0xFC) : Color.FromArgb(0x00, 0x5F, 0xCC);
-        var noteText = dark ? p.Warning : Color.FromArgb(0x8A, 0x5A, 0x00);
-        var dangerText = dark ? Color.FromArgb(0xF2, 0x6B, 0x6E) : Color.FromArgb(0xC0, 0x24, 0x29);
-        // Cards like the settings window (SettingsCard): card surface, subtle border, 8 px radius.
-        var card = p.Card;
-        var cardBorder = p.CardBorder;
-        var divider = p.CardDivider;
-        var noteBg = ThemePalette.Blend(card, p.Warning, dark ? 0.08f : 0.07f);
-        var warnBg = ThemePalette.Blend(card, p.Danger, dark ? 0.08f : 0.05f);
-        var codeBg = dark ? p.Tertiary : p.Tertiary;
-        var thumb = dark ? Color.FromArgb(0x1A, 0x1B, 0x1E) : Color.FromArgb(0xC4, 0xC9, 0xCE);
-        var track = p.Background;
-        var hover = dark ? ThemePalette.Blend(card, Color.White, 0.04f) : p.Hover;
-        var sb = new StringBuilder();
-        sb.Append($@"
-        html, body {{ scrollbar-face-color: {H(thumb)}; scrollbar-track-color: {H(track)}; scrollbar-arrow-color: {H(p.TextMuted)};
-            scrollbar-shadow-color: {H(thumb)}; scrollbar-highlight-color: {H(thumb)}; scrollbar-3dlight-color: {H(track)};
-            scrollbar-darkshadow-color: {H(track)}; scrollbar-base-color: {H(track)};
-            -ms-scrollbar-face-color: {H(thumb)}; -ms-scrollbar-track-color: {H(track)}; -ms-scrollbar-arrow-color: {H(p.TextMuted)};
-            -ms-scrollbar-shadow-color: {H(thumb)}; -ms-scrollbar-highlight-color: {H(thumb)}; -ms-scrollbar-3dlight-color: {H(track)};
-            -ms-scrollbar-darkshadow-color: {H(track)}; -ms-scrollbar-base-color: {H(track)}; background: {H(p.Background)}; }}
-        body {{ font-family: 'Segoe UI', Tahoma, Verdana, sans-serif; font-size: 9.5pt; color: {H(p.TextSecondary)}; background: {H(p.Background)};
-            margin: 22px 30px 30px 30px; line-height: 1.5; max-width: 900px; }}
-        h1 {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(p.Text)}; font-size: 15pt;
-            margin: 0 0 14px 0; padding: 0; border: 0; }}
-        h2 {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(p.Text)}; font-size: 11pt;
-            margin: 22px 0 8px 0; }}
-        h3 {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(p.TextSecondary)}; font-size: 10pt; margin: 14px 0 4px 0; }}
-        p {{ margin: 4px 0 10px 0; line-height: 1.5; }}
-        b, strong {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(p.Text)}; }}
-        ul, ol {{ margin: 4px 0 12px 0; padding-left: 22px; }}
-        li {{ margin: 4px 0; line-height: 1.5; }}
-        a {{ color: {H(link)}; text-decoration: none; }}
-        a:visited {{ color: {H(link)}; }}
-        a:hover {{ text-decoration: underline; }}
-        .note, .warning, .see-also {{ background: {H(card)}; border: 1px solid {H(cardBorder)}; border-radius: 8px; padding: 10px 16px; margin: 14px 0; }}
-        .note {{ background: {H(noteBg)}; border-color: {H(ThemePalette.Blend(cardBorder, p.Warning, 0.30f))}; border-left: 4px solid {H(p.Warning)}; }}
-        .warning {{ background: {H(warnBg)}; border-color: {H(ThemePalette.Blend(cardBorder, p.Danger, 0.30f))}; border-left: 4px solid {H(p.Danger)}; }}
-        .note p, .warning p {{ margin: 2px 0 4px 0; }}
-        .note ul, .warning ul {{ margin: 4px 0 2px 0; }}
-        .note-title, .warning-title {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; font-size: 8pt;
-            letter-spacing: 0.04em; margin-bottom: 2px; }}
-        .note-title {{ color: {H(noteText)}; }}
-        .warning-title {{ color: {H(dangerText)}; }}
-        .see-also {{ margin-top: 22px; color: {H(p.TextMuted)}; font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-size: 8pt;
-            letter-spacing: 0.04em; text-transform: uppercase; }}
-        .see-also ul {{ list-style: none; padding-left: 0; margin: 6px 0 0 0; font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 9.5pt;
-            letter-spacing: 0; text-transform: none; }}
-        .see-also li {{ margin: 0; padding: 6px 0; border-top: 1px solid {H(divider)}; }}
-        .see-also li:first-child {{ border-top: 0; }}
-        table {{ border-collapse: separate; border-spacing: 0; margin: 12px 0; border: 1px solid {H(cardBorder)}; border-radius: 8px; background: {H(card)}; }}
-        td, th {{ border: 0; border-top: 1px solid {H(divider)}; padding: 6px 12px; font-size: 9pt; text-align: left; color: {H(p.TextSecondary)}; }}
-        th {{ border-top: 0; background: {H(dark ? p.Tertiary : p.Secondary)}; color: {H(p.Text)}; font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; }}
-        tr:first-child th:first-child, tr:first-child td:first-child {{ border-top-left-radius: 7px; }}
-        tr:first-child th:last-child, tr:first-child td:last-child {{ border-top-right-radius: 7px; }}
-        tr:first-child td {{ border-top: 0; }}
-        .kbd, kbd {{ background: {H(codeBg)}; color: {H(p.Text)}; border: 1px solid {H(dark ? p.Border : p.InputBorder)}; border-bottom-width: 2px; border-radius: 4px;
-            padding: 0 5px; font-family: 'Segoe UI', sans-serif; font-size: 8.5pt; white-space: nowrap; }}
-        code {{ font-family: 'Consolas', monospace; font-size: 9pt; color: {H(p.Text)}; background: {H(codeBg)}; border-radius: 4px; padding: 1px 5px; }}
-        .lead {{ color: {H(p.TextMuted)}; margin: -6px 0 14px 0; }}
-        .topic-list {{ background: {H(card)}; border: 1px solid {H(cardBorder)}; border-radius: 8px; padding: 4px 0; }}
-        a.topic {{ display: block; padding: 10px 16px; border-top: 1px solid {H(divider)}; color: {H(p.Text)}; text-decoration: none; }}
-        a.topic:first-child {{ border-top: 0; }}
-        a.topic:hover {{ background: {H(hover)}; text-decoration: none; }}
-        .topic-title {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; color: {H(p.Text)}; }}
-        .topic-meta {{ float: right; color: {H(p.TextMuted)}; font-size: 8.5pt; }}
-        ::selection {{ background: {H(ThemePalette.Blend(p.Background, p.Accent, 0.45f))}; }}
-        ");
-        return sb.ToString();
-    }
-
-    /// <summary>
-    /// Returns <paramref name="html"/> (a page built with <see cref="Wrap"/>) styled for
-    /// <paramref name="p"/>: the static style sheet is replaced by <see cref="ThemedCss"/> and the
-    /// page is rendered in the current IE document mode (rounded boxes, colors).
-    /// </summary>
-    public static string ApplyTheme(string html, ThemePalette p)
-    {
-        const string ieMode = "<meta http-equiv='X-UA-Compatible' content='IE=edge'>";
-        string themed = html.Replace("<style>" + Css + "</style>", "<style>" + ThemedCss(p) + "</style>");
-        if (!themed.Contains("X-UA-Compatible", StringComparison.Ordinal))
-            themed = themed.Replace("<head>", "<head>" + ieMode);
-        return themed;
-    }
-
-    /// <summary>Wraps body content in a full HTML document with CSS.</summary>
-    private static string Wrap(string title, string body) =>
-        $"<html><head><meta charset='utf-8'><style>{Css}</style></head><body>" +
-        $"<h1>{title}</h1>{body}</body></html>";
+        ("scan-quick", "Wie scanne ich ein Dokument?"),
+        ("save-tab", "Wo werden meine Scans gespeichert?"),
+        ("filename-format", "Wie ändere ich den Dateinamen?"),
+        ("filetype-tab", "Wie erstelle ich eine durchsuchbare PDF?"),
+        ("faq", "Der Scanner wird nicht gefunden – was tun?"),
+    };
 
     /// <summary>Builds the complete help topic tree.</summary>
     public static HelpTopic BuildTree()
     {
         return new HelpTopic("root", "SpeedScan Manager Hilfe",
+            "Scannen Sie Dokumente auf Knopfdruck und entscheiden Sie danach, wohin sie sollen – in einen Ordner, per E-Mail, auf den Drucker oder in ein Office-Dokument.",
+            Glyph.Question,
             new HelpTopic("getting-started", "Erste Schritte",
+                "Was das Programm kann, wo Sie es finden und wie Sie Ihren Scanner verbinden.", Glyph.Star,
                 TopicOverview(),
-                TopicSystemRequirements(),
                 TopicStarting(),
                 TopicScannerConnection(),
-                TopicScannerSelection()
+                TopicScannerSelection(),
+                TopicSystemRequirements()
             ),
-            new HelpTopic("scanning", "Scannen von Dokumenten",
+            new HelpTopic("scanning", "Scannen",
+                "Dokumente scannen, Scan-Taste nutzen, lange Seiten und das Trägerblatt.", Glyph.Scanner,
                 TopicScanQuickMenu(),
-                TopicScanWithoutQuickMenu(),
                 TopicScanButton(),
-                TopicScanLongPages(),
-                TopicScanContinue(),
+                TopicScanWithoutQuickMenu(),
                 TopicScanDisplay(),
+                TopicScanContinue(),
+                TopicScanLongPages(),
                 TopicScanCarrierSheet()
             ),
-            new HelpTopic("settings-group", "Einstellungsdialogfeld",
+            new HelpTopic("settings-group", "Einstellungen",
+                "Das Einstellungsfenster und alle seine Seiten Schritt für Schritt erklärt.", Glyph.Gear,
                 TopicSettingsDialog(),
                 TopicApplicationTab(),
                 TopicSaveTab(),
@@ -190,7 +109,10 @@ internal static class HelpContent
                 TopicPaperTab(),
                 TopicFileSizeTab()
             ),
-            new HelpTopic("dialogs", "Dialogfelder",
+            new HelpTopic("dialogs", "Fenster und Dialoge",
+                "Quick-Menü, Speichern-Fenster und alle weiteren Dialoge mit Bild.", Glyph.Apps,
+                TopicPostScanMediaDialog(),
+                TopicPostScanSaveDialog(),
                 TopicScanModeOptionsDialog(),
                 TopicPdfOptionsDialog(),
                 TopicFileNameFormatDialog(),
@@ -202,1564 +124,28 @@ internal static class HelpContent
                 TopicCarrierSheetDialog(),
                 TopicCustomSizeDialog(),
                 TopicVersionInfoDialog(),
-                TopicPostScanMediaDialog(),
-                TopicPostScanSaveDialog(),
                 TopicScannerDriverInfoDialog()
             ),
             new HelpTopic("profiles", "Profile",
+                "Feste Einstellungen für wiederkehrende Aufgaben speichern und auswählen.", Glyph.User,
                 TopicProfileManagement(),
                 TopicDefaultSettings()
             ),
-            new HelpTopic("troubleshooting", "Fehlerbehebung",
+            new HelpTopic("troubleshooting", "Probleme lösen",
+                "Häufige Probleme, Mehrfacheinzug und alle Meldungen des Programms.", Glyph.Sliders,
+                TopicFaq(),
                 TopicMultiFeedDialog(),
                 TopicMultiFeedMeasures(),
                 TopicMessageList()
             ),
             new HelpTopic("reference", "Anhang",
+                "Abkürzungen und Fachbegriffe kurz erklärt.", Glyph.FileType,
                 TopicAbbreviations()
             )
         );
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Erste Schritte
-    // ═══════════════════════════════════════════════════════════════════════
-
-    private static HelpTopic TopicOverview() => new("overview", "Überblick",
-        Wrap("Überblick", @"
-        <p>SpeedScan Manager ist eine Software für den Betrieb von TWAIN-kompatiblen Scannern.
-        Mit SpeedScan Manager können Sie Dokumente einfach und schnell scannen und die gescannten
-        Bilder in verschiedenen Formaten speichern oder weiterverarbeiten.</p>
-
-        <h2>Hauptfunktionen</h2>
-        <ul>
-            <li><b>Quick-Menü</b> – Nach dem Scannen wählen Sie, was mit dem Scan geschehen soll. Die Voreinstellungen
-            [Empfohlen], [Kleine Datei], [Hohe Bildqualität] und [Benutzerdefiniert] legen Bildqualität und Komprimierungsrate fest.</li>
-            <li><b>Profile</b> – Bis zu 20 Profile mit individuellen Einstellungen können verwaltet werden</li>
-            <li><b>Scan-Taste am Scanner</b> – Scannen durch Drücken der Hardware-Taste am Scanner</li>
-            <li><b>Scan to Folder</b> – Gescannte Bilder in einem Ordner speichern</li>
-            <li><b>Scan to E-Mail</b> – Gescannte Dateien als Anhang einer E-Mail versenden</li>
-            <li><b>Scan to Print</b> – Gescannte Bilder direkt drucken</li>
-            <li><b>Scan to Word / Excel / PowerPoint</b> – Gescannte Bilder in ein Office-Dokument einfügen (die Datei wird neben dem Scan gespeichert)</li>
-            <li><b>Scan Picture Folder</b> – Bilder (JPEG) im Bilderordner speichern</li>
-            <li><b>Edit with PDF</b> – Gescannte Datei mit dem dafür eingestellten Windows-Programm öffnen</li>
-            <li><b>Eigene Anwendungen</b> – Bis zu zehn eigene Programme (mit optionalen Argumenten) nach dem Scan starten</li>
-            <li><b>OCR-Texterkennung</b> – Durchsuchbare PDF-Dateien erstellen, optional mit Schlüsselwörtern aus markiertem Text</li>
-            <li><b>Trägerblatt-Unterstützung</b> – Zwei Seiten eines gefalteten Dokuments in einem Bild zusammenfügen</li>
-            <li><b>Automatische Bilddrehung</b> – Korrektur der Ausrichtung mittels Tesseract OSD</li>
-            <li><b>Leere Seiten entfernen</b> und <b>Schräglauf korrigieren</b></li>
-            <li><b>Scanvorgang fortsetzen</b> – Weitere Dokumente an denselben Scan anhängen</li>
-        </ul>
-
-        <h2>Unterstützte Dateiformate</h2>
-        <ul>
-            <li>PDF (*.pdf) – mit Kennwortschutz und OCR-Optionen</li>
-            <li>JPEG (*.jpg) – nicht bei Farbmodus Schwarzweiß</li>
-            <li>PNG (*.png) – verlustfrei</li>
-        </ul>
-    "));
-
-    private static HelpTopic TopicSystemRequirements() => new("sysreq", "Systemanforderungen",
-        Wrap("Systemanforderungen", @"
-        <h2>Betriebssystem</h2>
-        <ul>
-            <li>Windows 10 (64-bit)</li>
-            <li>Windows 11 (64-bit)</li>
-        </ul>
-
-        <h2>Scanner</h2>
-        <ul>
-            <li>TWAIN-kompatibler Scanner (USB oder Netzwerk) mit installiertem TWAIN-Treiber</li>
-            <li>SpeedScan Manager läuft als 32-Bit-Anwendung und benötigt daher einen
-            Scannertreiber, der eine 32-Bit-TWAIN-Quelle bereitstellt.</li>
-        </ul>
-
-        <h2>Software</h2>
-        <ul>
-            <li>Eine separate Installation der .NET-Laufzeit ist beim Installationspaket nicht erforderlich.</li>
-            <li>E-Mail-Programm mit MAPI-Unterstützung (für Scan to E-Mail)</li>
-            <li>Drucker-Treiber (für Scan to Print)</li>
-            <li>Word, Excel bzw. PowerPoint (oder ein anderes Programm für diese Dateitypen), um die erstellten
-            Office-Dateien zu öffnen. Die Dateien selbst werden ohne Office erstellt.</li>
-        </ul>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Mitgeliefert sind die Texterkennungs-Sprachdaten für Deutsch und Englisch sowie die Daten
-            für die automatische Bilddrehung. Weitere Sprachen siehe
-            <a href='#filetype-tab'>[Dateiart] Seite</a>.</p>
-        </div>
-    "));
-
-    private static HelpTopic TopicStarting() => new("starting", "Starten von SpeedScan Manager",
-        Wrap("Starten von SpeedScan Manager", @"
-        <p>SpeedScan Manager wird als Tray-Anwendung ausgeführt. Nach dem Start erscheint
-        ein Symbol im Benachrichtigungsbereich der Taskleiste. Das Programm kann nur einmal
-        gleichzeitig laufen: Wenn Sie es ein zweites Mal starten, wird stattdessen das
-        Einstellungsdialogfeld der laufenden Instanz geöffnet.</p>
-
-        <h2>Tray-Symbol</h2>
-        <p>Das Tray-Symbol zeigt den aktuellen Status an:</p>
-        <ul>
-            <li><b>Normales Symbol</b> – Scanner ist verbunden und einsatzbereit</li>
-            <li><b>Abgeblendetes Symbol mit rotem Strich</b> – Scanner ist nicht verbunden oder ausgeschaltet</li>
-            <li><b>Symbol mit orangem Punkt</b> – Ein Scan läuft bzw. wird gerade verarbeitet</li>
-        </ul>
-        <p>Der Hinweistext des Symbols (Maus darüberhalten) zeigt den Namen des Scanners, bei einem
-        laufenden Scan die Anzahl der bisher gescannten Seiten.</p>
-
-        <h2>Klick auf das Tray-Symbol</h2>
-        <ul>
-            <li><b>Linksklick</b> – Öffnet das Menü (wie bei ScanSnap Manager)</li>
-            <li><b>Rechtsklick</b> – Öffnet ebenfalls das Menü</li>
-            <li><b>Doppelklick</b> – Öffnet das Einstellungsdialogfeld</li>
-        </ul>
-
-        <h2>Menü</h2>
-        <p>Oben im Menü stehen das Logo, „SpeedScan Manager“ und der Scannerstatus mit farbigem Punkt:
-        grün mit dem Namen des verbundenen Scanners, orange bei „Scannt…“, „Scan wird bearbeitet…“,
-        „Wird gestartet…“ oder „Scanner wird gesucht…“, rot bei „Kein Scanner verbunden“ bzw.
-        „Auswahl: ... (offline)“. Darunter folgen die Befehle:</p>
-        <ul>
-            <li><b>Scan</b> – Startet einen Scan mit den aktuell übernommenen Einstellungen
-            (nur verfügbar, wenn der Scanner nicht als getrennt erkannt wurde und kein Scan läuft)</li>
-            <li><b>Scan abbrechen</b> – Nur sichtbar, solange ein Scan läuft</li>
-            <li><b>Scanner auswählen...</b> – Öffnet den Dialog zur Scanner-Auswahl</li>
-            <li><b>Einstellungen der SCAN Taste...</b> – Öffnet das Einstellungsdialogfeld</li>
-            <li><b>Scan-Taste einrichten...</b> – Richtet die Scan-Taste am Scanner (erneut) ein, z. B. nach dem
-            Anschließen eines weiteren Scanners oder wenn die Administrator-Abfrage abgelehnt wurde
-            (siehe <a href='#scan-button'>Scan-Taste am Scanner</a>)</li>
-            <li><b>Profilverwaltung...</b> – Verwaltung der Scan-Profile</li>
-            <li><b>E-Mail-Einstellungen...</b> – Öffnet die <a href='#email-options'>Scan to E-Mail-Optionen</a>
-            (auch bei aktivem Quick-Menü erreichbar)</li>
-            <li><b>Druckeinstellungen...</b> – Öffnet die <a href='#print-options'>Scan to Print-Optionen</a></li>
-            <li><b>Scan-Ergebnis anzeigen</b> – Zeigt die zuletzt gespeicherte Datei im Explorer an
-            (erst nach einem Scan verfügbar)</li>
-            <li><b>Design</b> – Untermenü <b>System</b> / <b>Hell</b> / <b>Dunkel</b> (Erscheinungsbild aller Fenster, wirkt sofort)</li>
-            <li><b>Hilfe</b> – Untermenü mit <b>Hilfethemen</b> und <b>Versionsinformationen</b></li>
-            <li><b>Beenden</b> – Beendet SpeedScan Manager (bei laufendem Scan nach Rückfrage; wird der Scan
-            gerade gespeichert, beendet sich das Programm erst danach)</li>
-        </ul>
-
-        <h2>Autostart</h2>
-        <p>Im Einstellungsdialogfeld legt der Schalter <b>SpeedScan Manager beim Anmelden starten</b> auf der Seite
-        [Allgemein] fest, ob das Programm mit Windows startet. Bei einer Neuinstallation ist die Option aktiviert;
-        nach einem Update von Version 0.1.x bleibt sie ausgeschaltet, bis Sie sie aktivieren.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Beim Start prüft SpeedScan Manager, ob die Scan-Taste in Windows eingerichtet ist. Falls nicht,
-            erscheint einmalig eine Administrator-Abfrage (UAC). Details siehe
-            <a href='#scan-button'>Scan-Taste am Scanner</a>.</p>
-            <p>Einstellungen und Profile werden im Ordner <code>%AppData%\SpeedScanManager</code> gespeichert.</p>
-        </div>
-    "));
-
-    private static HelpTopic TopicScannerConnection() => new("scanner-connection", "Scanner verbinden",
-        Wrap("Scanner verbinden", @"
-        <p>SpeedScan Manager unterstützt sowohl USB- als auch Netzwerk-Scanner. Der Scanner wird
-        automatisch erkannt, sobald er eingeschaltet und mit dem Computer verbunden ist.</p>
-
-        <h2>Schritte zum Verbinden</h2>
-        <ol>
-            <li>Schalten Sie den Scanner ein.</li>
-            <li>Verbinden Sie den Scanner über USB oder Netzwerk mit dem Computer.</li>
-            <li>SpeedScan Manager erkennt den Scanner automatisch und aktualisiert das Tray-Symbol.</li>
-        </ol>
-
-        <p>Beim Anschließen oder Trennen eines Geräts wird der Scannerstatus sofort neu geprüft.
-        Zusätzlich erfolgt etwa alle 10 Sekunden eine einfache Prüfung im Hintergrund. Ein Trennen wird erst
-        nach zwei aufeinanderfolgenden fehlgeschlagenen Prüfungen gemeldet; die Meldung
-        „Der Scanner ist nicht angeschlossen oder ausgeschaltet.“ erscheint dabei nur einmal als Sprechblase.</p>
-
-        <div class='warning'>
-            <div class='warning-title'>ACHTUNG</div>
-            <ul>
-                <li>Schließen Sie nach Möglichkeit nur einen Scanner gleichzeitig an den Computer an
-                oder wählen Sie den gewünschten Scanner im Dialog <b>Scanner auswählen</b>.</li>
-                <li>Wenn der Scanner nicht erkannt wird, prüfen Sie die Verbindung und stellen Sie
-                sicher, dass der Scanner eingeschaltet ist.</li>
-                <li>Stellen Sie sicher, dass der TWAIN-Treiber des Scanners installiert ist.</li>
-            </ul>
-        </div>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#scanner-selection'>Scanner auswählen</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicScannerSelection() => new("scanner-selection", "Scanner auswählen",
-        Wrap("Scanner auswählen", @"
-        <p>Im Dialog <b>Scanner auswählen</b> können Sie festlegen, welcher TWAIN-Scanner
-        verwendet werden soll. Der Dialog ist über das Tray-Menü unter
-        <b>Scanner auswählen...</b> erreichbar (nicht während eines Scans).</p>
-
-        <h2>Elemente</h2>
-        <p><b>Auswahlliste [Scanner]</b> – Zeigt alle verfügbaren TWAIN-Quellen an. Die Einträge sind mit
-        <b>(USB)</b> bzw. <b>(Netzwerk)</b> gekennzeichnet, USB-Scanner stehen bevorzugt oben.
-        Der erste Eintrag <b>(Automatisch)</b> überlässt die Wahl dem Programm.</p>
-
-        <p><b>[Abbrechen] Taste</b> (unten, links von OK) und das Schließen-Symbol – Schließen den Dialog ohne Änderung.
-        Die Kopfzeile enthält kein Hilfe-Symbol.</p>
-
-        <p><b>[OK] Taste</b> (unten rechts) – Übernimmt die Auswahl. Sie wird gespeichert und beim nächsten Start wieder verwendet.
-        Ist der gewählte Scanner nicht erreichbar, zeigt der Hinweistext des Tray-Symbols
-        „Auswahl: ... (offline)“ an.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Der Dialog aktualisiert sich automatisch, wenn neue Scanner erkannt werden.
-            Es ist kein manueller Aktualisieren-Knopf erforderlich. Wird kein Scanner gefunden, erscheint der Hinweis
-            „Kein Scanner gefunden“, und es kann trotzdem <b>(Automatisch)</b> bestätigt werden.</p>
-        </div>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#scanner-connection'>Scanner verbinden</a></li>
-            </ul>
-        </div>
-    "));
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Scannen von Dokumenten
-    // ═══════════════════════════════════════════════════════════════════════
-
-    private static HelpTopic TopicScanQuickMenu() => new("scan-quick", "Scannen mit dem Quick-Menü",
-        Wrap("Scannen mit dem Quick-Menü", @"
-        <p>Wenn das Quick-Menü aktiviert ist (Grundeinstellung), scannen Sie mit den Einstellungen der
-        Seiten des Einstellungsdialogfelds und wählen erst nach dem Scan, was mit den Seiten geschehen soll.</p>
-
-        <h2>Schritte</h2>
-        <ol>
-            <li>Legen Sie die Dokumente in den Scanner ein.</li>
-            <li>Drücken Sie die Scan-Taste am Scanner oder wählen Sie <b>Scan</b> im Tray-Menü.</li>
-            <li>Die Seiten werden verarbeitet und in den Speicherordner gespeichert.</li>
-            <li>Das <a href='#postscan-media'>[Quick-Menü] Dialogfeld</a> erscheint. Wählen Sie die gewünschte Aktion:</li>
-        </ol>
-        <ul>
-            <li>Scan to Folder (im Dialogfeld „In Ordner speichern“)</li>
-            <li>Scan to E-Mail (im Dialogfeld „Per E-Mail versenden“)</li>
-            <li>Scan to Print („Drucken“)</li>
-            <li>Scan to Word („Nach Word“)</li>
-            <li>Scan to Excel („Nach Excel“)</li>
-            <li>Scan to PowerPoint („Nach PowerPoint“)</li>
-            <li>Scan Picture Folder („In Bilderordner“)</li>
-            <li>Edit with PDF („Mit PDF Edit bearbeiten“)</li>
-        </ul>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Wenn das Quick-Menü aktiviert ist, ist die Seite [Anwendung] im
-            Einstellungsdialogfeld deaktiviert (in der Seitenleiste ausgegraut). Die Aktion wird stattdessen nach dem Scannen
-            im Quick-Menü ausgewählt. Wird das Quick-Menü über [Abbrechen] oder das Schließen-Symbol beendet,
-            bleibt die bereits gespeicherte Datei erhalten.</p>
-        </div>
-
-        <h2>Voreinstellungen</h2>
-        <p>Die Kacheln unter [Scanqualität] auf der Seite [Allgemein] des Einstellungsdialogfelds setzen
-        Bildqualität und Komprimierungsrate:</p>
-        <ul>
-            <li><b>Empfohlen</b> – Bildqualität Automatisch, Komprimierungsrate 3</li>
-            <li><b>Kleine Datei</b> – Bildqualität Normal, Komprimierungsrate 5</li>
-            <li><b>Hohe Bildqualität</b> – Bildqualität Fein, Komprimierungsrate 1</li>
-            <li><b>Benutzerdefiniert</b> – Öffnet die Seite [Scanmodus] mit den Detaileinstellungen; hervorgehoben,
-            sobald die Werte keiner der drei Voreinstellungen entsprechen</li>
-        </ul>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#settings'>Einstellungsdialogfeld</a></li>
-                <li><a href='#scan-no-quick'>Scannen ohne Quick-Menü</a></li>
-                <li><a href='#postscan-media'>[Quick-Menü] Dialogfeld</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicScanWithoutQuickMenu() => new("scan-no-quick", "Scannen ohne Quick-Menü",
-        Wrap("Scannen ohne Quick-Menü", @"
-        <p>Wenn das Quick-Menü deaktiviert ist, können Sie detaillierte Scaneinstellungen
-        über das Einstellungsdialogfeld vornehmen und Profile verwenden. Die nach dem Scan
-        ausgeführte Aktion wird durch die Seite <b>[Anwendung]</b> bestimmt (bzw. durch das gewählte Profil).</p>
-
-        <h2>Schritte</h2>
-        <ol>
-            <li>Wählen Sie auf der Seite [Allgemein] des Einstellungsdialogfelds ein Profil unter [Aktives Profil].</li>
-            <li>Passen Sie die Einstellungen auf den Seiten an (Anwendung, Speichern, Scanmodus, Dateiart, Papier, Dateigröße).</li>
-            <li>Schließen Sie das Einstellungsdialogfeld mit <span class='kbd'>OK</span>.</li>
-            <li>Legen Sie die Dokumente in den Scanner ein und starten Sie den Scan über das Tray-Menü oder die Scan-Taste.</li>
-        </ol>
-
-        <h2>Was nach dem Scan geschieht</h2>
-        <ul>
-            <li><b>Scan to Folder</b> – Es erscheint das <a href='#postscan-save'>[In Ordner speichern] Dialogfeld</a>.</li>
-            <li><b>Andere Anwendungen</b> – Die Aktion wird sofort ausgeführt. Ist [Datei nach Scan umbenennen]
-            eingeschaltet, erscheint vorher das [In Ordner speichern] Dialogfeld.</li>
-        </ul>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#settings'>Einstellungsdialogfeld</a></li>
-                <li><a href='#profile-mgmt'>Profile verwalten</a></li>
-                <li><a href='#app-tab'>[Anwendung] Seite</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicScanButton() => new("scan-button", "Scan-Taste am Scanner",
-        Wrap("Scan-Taste am Scanner", @"
-        <p>SpeedScan Manager unterstützt die Hardware-Scan-Taste am Scanner. Wird die Taste gedrückt,
-        startet ein Scanvorgang mit den aktuell übernommenen Einstellungen.</p>
-
-        <h2>Funktionsweise</h2>
-        <ul>
-            <li>SpeedScan Manager trägt sich in Windows als Programm für das Ereignis „Scan-Taste“ des
-            Scanners ein (Windows-Schnittstelle für Still-Image-/WIA-Geräte). Dabei wird der
-            Standardhandler von Windows ersetzt.</li>
-            <li>Beim Tastendruck startet Windows <code>SpeedScanManager.exe</code> direkt mit einem
-            Scan-Befehl. Läuft SpeedScan Manager bereits, wird der Befehl an die laufende Instanz weitergegeben;
-            andernfalls startet das Programm und scannt sofort, sobald es bereit ist.</li>
-            <li>Beim Deinstallieren wird der ursprüngliche Windows-Handler wiederhergestellt.</li>
-        </ul>
-
-        <h2>Einrichtung</h2>
-        <p>Die Einrichtung erfordert Administratorrechte und erfolgt beim Start einmalig mit einer
-        UAC-Abfrage. Danach sind keine Administratorrechte mehr nötig. Wird später ein weiterer Scanner
-        angeschlossen, erscheint die Abfrage beim nächsten Start noch einmal, damit auch seine Taste eingerichtet wird.
-        Wenn Sie die Abfrage ablehnen, wird die Scan-Taste nicht eingerichtet und die Abfrage nicht erneut angezeigt;
-        Sie können weiterhin über das Tray-Menü scannen. Mit <b>Scan-Taste einrichten...</b> im Tray-Menü
-        starten Sie die Einrichtung jederzeit erneut (eine UAC-Abfrage).</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Während ein Scan läuft (einschließlich aller Dialogfelder nach dem Scan), wird die Taste ignoriert.
-            Zwei Tastendrücke innerhalb von etwa 1,5 Sekunden zählen als ein Druck. Die Taste funktioniert
-            nicht, wenn das Programm den Scanner nicht verwenden kann (z. B. TWAIN nicht initialisiert).</p>
-        </div>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#scanner-connection'>Scanner verbinden</a></li>
-                <li><a href='#starting'>Starten von SpeedScan Manager</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicScanLongPages() => new("scan-long", "Scannen langer Seiten",
-        Wrap("Scannen langer Seiten", @"
-        <p>Lange Dokumente (z. B. Quittungen oder Endlosdokumente) können gescannt werden,
-        wenn für die Papiergröße <b>Automatische Erkennung</b> ausgewählt ist und die
-        Mehrfacheinzugserkennung nicht auf <b>Überprüfung der Länge</b> oder
-        <b>Überprüfung von Überlappung und Länge</b> steht.</p>
-
-        <p>In diesem Modus (Langseitenmodus) gilt Folgendes:</p>
-        <ul>
-            <li>Der Scanbereich wird auf bis zu 8,5 × 125 Zoll gesetzt.</li>
-            <li>Bei Scannern der Hersteller Fujitsu, PFU und Ricoh (PaperStream IP) werden zusätzlich
-            herstellerspezifische Einstellungen für lange Seiten gesetzt.</li>
-            <li>Ob das Ergebnis auf die tatsächliche Papiergröße zugeschnitten wird, hängt vom Scannertreiber ab.</li>
-        </ul>
-
-        <div class='warning'>
-            <div class='warning-title'>ACHTUNG</div>
-            <ul>
-                <li>Die maximale Länge hängt vom angeschlossenen Scannermodell ab.</li>
-                <li>Lange Dokumente können zu einer größeren Dateigröße führen.</li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicScanContinue() => new("scan-continue", "Scan abbrechen und fortsetzen",
-        Wrap("Scan abbrechen und fortsetzen", @"
-        <h2>Scan abbrechen</h2>
-        <p>Solange ein Scan läuft, steht im Tray-Menü der Eintrag <b>Scan abbrechen</b> zur Verfügung.
-        Die bis dahin gescannten Seiten werden verworfen; es erscheint die Sprechblase „Scan abgebrochen“.
-        Das gilt auch, während die Meldung zum Mehrfacheinzug oder die Frage „Weitere Dokumente scannen?“ angezeigt wird.
-        Wenn Sie <b>Beenden</b> wählen, während ein Scan läuft, werden Sie gefragt, ob der Scan abgebrochen
-        und das Programm beendet werden soll. Wird der Scan bereits verarbeitet und gespeichert, beendet sich
-        SpeedScan Manager erst, wenn die Datei vollständig geschrieben ist; bereits gespeicherte Scans werden
-        beim Beenden (auch beim Abmelden von Windows) nie gelöscht.</p>
-
-        <h2>Scanvorgang fortsetzen</h2>
-        <p>Ist auf der Seite [Scanmodus] der Schalter
-        <b>Scanvorgang nach aktuellem Scan fortsetzen</b> eingeschaltet, fragt SpeedScan Manager nach jedem
-        Durchgang „Weitere Dokumente scannen?“ und nennt die bisherige Seitenzahl.</p>
-        <ul>
-            <li><b>Fortsetzen</b> – Legen Sie die nächsten Seiten ein; sie werden an die bisherigen Seiten angehängt.</li>
-            <li><b>Scan beenden</b> – Alle Seiten werden gemeinsam verarbeitet und gespeichert.</li>
-        </ul>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Wird bei einem Durchgang ein Mehrfacheinzug mit [Wiederholen] verworfen, bleiben bereits
-            gescannte frühere Durchgänge erhalten.</p>
-        </div>
-    "));
-
-    private static HelpTopic TopicScanDisplay() => new("scan-display", "Aktionen nach dem Scannen",
-        Wrap("Aktionen nach dem Scannen", @"
-        <p>Nach Abschluss des Scans werden die Seiten verarbeitet und als Datei(en) im Speicherordner abgelegt.
-        Ist der Zielordner nicht beschreibbar, wird stattdessen in <code>Dokumente\SpeedScanManager</code> gespeichert
-        und eine Meldung angezeigt. Vorhandene Dateien werden nie überschrieben.
-        Danach wird die gewählte Aktion ausgeführt.</p>
-
-        <h2>Bei aktivem Quick-Menü</h2>
-        <p>Das <a href='#postscan-media'>[Quick-Menü] Dialogfeld</a> erscheint und bietet folgende Aktionen:</p>
-        <ul>
-            <li><b>Scan to Folder</b> – Öffnet das <a href='#postscan-save'>[In Ordner speichern] Dialogfeld</a></li>
-            <li><b>Scan to E-Mail</b> – Öffnet das E-Mail-Programm (MAPI) mit der Datei als Anhang</li>
-            <li><b>Scan to Print</b> – Druckt die gescannten Seiten in Originalgröße</li>
-            <li><b>Scan to Word / Excel / PowerPoint</b> – Erstellt ein Office-Dokument aus den Seiten
-            (JPEG-Bilder in Originalgröße), speichert es neben dem Scan und öffnet es</li>
-            <li><b>Scan Picture Folder</b> – Speichert die Seiten als JPEG-Dateien in
-            <code>Bilder\SpeedScanManager</code> und zeigt die erste im Explorer an</li>
-            <li><b>Edit with PDF</b> – Öffnet die gescannte(n) Datei(en) mit dem in Windows zugeordneten Programm</li>
-        </ul>
-
-        <h2>Bei deaktiviertem Quick-Menü</h2>
-        <p>Die in der <a href='#app-tab'>[Anwendung] Seite</a> ausgewählte Aktion (einschließlich
-        eigener Anwendungen) wird direkt ausgeführt. Bei Scan to Folder erscheint das
-        [In Ordner speichern] Dialogfeld; bei anderen Anwendungen nur, wenn [Datei nach Scan umbenennen] eingeschaltet ist.</p>
-
-        <h2>Nachverarbeitung</h2>
-        <p>Vor dem Speichern werden folgende Schritte angewendet (je nach Einstellungen):</p>
-        <ul>
-            <li><b>Trägerblatt</b> – Vorder- und Rückseite werden nebeneinander zusammengefügt, Ausgabegröße angewendet</li>
-            <li><b>Leere Seiten entfernen</b> – Wenn alle Seiten leer sind, wird nichts gespeichert und eine Meldung angezeigt</li>
-            <li><b>Schräglauf korrigieren</b> (falls aktiviert)</li>
-            <li><b>Automatische Bilddrehung</b> mittels Tesseract OSD (falls aktiviert)</li>
-            <li><b>Automatische Farberkennung</b> – Seiten werden in Farbe, Grau oder Schwarzweiß umgewandelt (bei Farbmodus „Automatische Farberkennung“)</li>
-            <li><b>Texterkennung (OCR)</b> und PDF-Erstellung bzw. Speichern als JPEG/PNG</li>
-        </ul>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Mit <b>Scan-Ergebnis anzeigen</b> im Tray-Menü zeigen Sie die zuletzt gespeicherte Datei im Explorer an.</p>
-        </div>
-    "));
-
-    private static HelpTopic TopicScanCarrierSheet() => new("scan-carrier", "Scannen mit dem Trägerblatt",
-        Wrap("Scannen mit dem Trägerblatt", @"
-        <p>Mit dem Trägerblatt können Sie Dokumente scannen, die größer als das normale Scanformat sind
-        (z. B. A3). Das Dokument wird in der Mitte gefaltet und in das Trägerblatt eingelegt.
-        Beide Seiten werden gescannt und im Ausgabebild nebeneinander zusammengefügt.</p>
-
-        <h2>Ablauf</h2>
-        <ol>
-            <li>Aktivieren Sie auf der Seite [Papier] in der Zeile [Trägerblatt] (Taste [Trägerblatteinstellungen...]) den Trägerblatt-Modus
-            und wählen Sie die Ausgabebildgröße.</li>
-            <li>Falten Sie das Dokument entlang der Mittelachse und legen Sie es in das Trägerblatt ein.</li>
-            <li>Führen Sie das Trägerblatt in den Scanner ein. Verwenden Sie dazu einen Duplex-Scan, damit
-            Vorder- und Rückseite des Trägerblatts zu einem Bild zusammengefügt werden.</li>
-        </ol>
-
-        <div class='warning'>
-            <div class='warning-title'>ACHTUNG</div>
-            <ul>
-                <li>Nur Scanner, die für das Trägerblatt ausgelegt sind, ziehen es ein.</li>
-                <li>Das Zusammenfügen von Vorder- und Rückseite erfolgt nur bei Duplex-Scan.
-                Bei einseitigem Scan wird jede Seite einzeln auf die Ausgabegröße gebracht.</li>
-            </ul>
-        </div>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#carrier-sheet-dialog'>[Trägerblatteinstellungen] Dialogfeld</a></li>
-            </ul>
-        </div>
-    "));
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Einstellungsdialogfeld
-    // ═══════════════════════════════════════════════════════════════════════
-
-    private static HelpTopic TopicSettingsDialog() => new("settings", "SpeedScan Manager Einstellungsdialogfeld",
-        Wrap("SpeedScan Manager Einstellungsdialogfeld", @"
-        <p>Im SpeedScan Manager Einstellungsdialogfeld können Sie verschiedene Einstellungen
-        für das Scannen von Dokumenten konfigurieren. Es wird durch Doppelklick auf das
-        Tray-Symbol oder über <b>Einstellungen der SCAN Taste...</b> im Tray-Menü geöffnet.
-        Die Änderungen werden erst mit [OK] oder [Übernehmen] wirksam; [Abbrechen], die Taste
-        <span class='kbd'>Esc</span> und das Schließen-Symbol verwerfen nicht übernommene Änderungen.
-        Solange es nicht übernommene Änderungen gibt, steht unten links „Nicht übernommene Änderungen“.</p>
-
-        <h2>Aufbau</h2>
-        <p>Links befindet sich die <b>Seitenleiste</b> mit den Seiten des Dialogfelds, rechts die Einstellungen
-        der gewählten Seite in Gruppen (Karten). Ist eine Seite länger als das Fenster, kann sie gescrollt werden.</p>
-        <ul>
-            <li><b>SpeedScan Manager</b>: Allgemein (Quick-Menü, Autostart, Scanqualität, Profil, Design)</li>
-            <li><b>Scaneinstellungen</b>: <a href='#app-tab'>Anwendung</a>, <a href='#save-tab'>Speichern</a>,
-            <a href='#scanmode-tab'>Scanmodus</a>, <a href='#filetype-tab'>Dateiart</a>, <a href='#paper-tab'>Papier</a>,
-            <a href='#filesize-tab'>Dateigröße</a></li>
-        </ul>
-        <p>Die Seiten wechseln Sie per Mausklick in der Seitenleiste, mit den Pfeiltasten (wenn die Seitenleiste den
-        Fokus hat) oder mit <span class='kbd'>Strg</span>+<span class='kbd'>Tab</span> /
-        <span class='kbd'>Strg</span>+<span class='kbd'>Umschalt</span>+<span class='kbd'>Tab</span>
-        (bzw. <span class='kbd'>Strg</span>+<span class='kbd'>Bild ab</span> / <span class='kbd'>Bild auf</span>).
-        Bei aktivem Quick-Menü ist die Seite [Anwendung] ausgegraut und kann nicht gewählt werden.</p>
-        <p>Das <b>Hilfe-Symbol (?)</b> oben rechts öffnet die Hilfe zur gerade angezeigten Seite. Mit dem
-        <b>Minimieren-Symbol</b> legen Sie das Fenster in die Taskleiste.</p>
-
-        <h2>Seite [Allgemein]</h2>
-        <p><b>[Quick-Menü verwenden] Schalter</b><br>
-        Schalten Sie das Quick-Menü ein, um nach jedem Scan auszuwählen, was mit dem Ergebnis geschehen soll
-        (siehe <a href='#scan-quick'>Scannen mit dem Quick-Menü</a>). Ist es eingeschaltet, sind die Seite [Anwendung]
-        und die Gruppe [Profil] deaktiviert.</p>
-
-        <p><b>[SpeedScan Manager beim Anmelden starten] Schalter</b><br>
-        Startet das Programm automatisch bei der Windows-Anmeldung (Grundeinstellung: eingeschaltet).</p>
-
-        <p><b>[Scanqualität] Kacheln</b><br>
-        <b>Empfohlen</b>, <b>Kleine Datei</b> und <b>Hohe Bildqualität</b> setzen Bildqualität und Komprimierungsrate
-        (siehe <a href='#scan-quick'>Scannen mit dem Quick-Menü</a>). Die Kachel, die den aktuellen Werten entspricht,
-        ist hervorgehoben (mit Häkchen). <b>Benutzerdefiniert</b> ist hervorgehoben, wenn die Werte keiner Voreinstellung
-        entsprechen; ein Klick darauf öffnet die Seite [Scanmodus] mit den Detaileinstellungen. Die Kacheln sind mit und
-        ohne Quick-Menü verfügbar und lassen sich auch mit <span class='kbd'>Tab</span> und
-        <span class='kbd'>Leertaste</span> bedienen.</p>
-
-        <p><b>[Profil] Gruppe</b><br>
-        Nur verfügbar, wenn das Quick-Menü nicht verwendet wird (sonst ausgegraut).</p>
-        <ul>
-            <li><b>Aktives Profil</b> – Auswahlliste; das gewählte Profil wird geladen.</li>
-            <li><b>Profil hinzufügen...</b> – Legt ein neues Profil aus den aktuellen Einstellungen an
-            (<a href='#new-profile'>[Neues Profil hinzufügen] Dialogfeld</a>).</li>
-            <li><b>Profilverwaltung...</b> – Öffnet das <a href='#profile-mgmt-dialog'>[Profilverwaltung] Dialogfeld</a>.</li>
-        </ul>
-        <p>Änderungen an einem eigenen Profil werden beim Übernehmen in diesem Profil gespeichert. Die Standardprofile
-        können nicht geändert werden: Es wird gefragt, ob die Einstellungen als neues Profil gespeichert oder nur als
-        aktuelle Einstellungen übernommen werden sollen.</p>
-
-        <p><b>[Design] Auswahlliste</b><br>
-        <b>System</b> folgt der Windows-Einstellung für helle und dunkle Apps, <b>Hell</b> und <b>Dunkel</b> legen das
-        Erscheinungsbild fest. Die Auswahl wirkt sofort (auch ohne [OK]); sie ist auch im Tray-Menü unter <b>Design</b> erreichbar.</p>
-
-        <h2>Schaltflächen</h2>
-        <p><b>[Abbrechen] Taste</b> – Änderungen verwerfen und Dialogfeld schließen.<br>
-        <b>[Übernehmen] Taste</b> – Änderungen übernehmen, ohne das Dialogfeld zu schließen.
-        Die Taste ist nur aktiv, wenn es nicht übernommene Änderungen gibt.<br>
-        <b>[OK] Taste</b> – Einstellungen übernehmen und Dialogfeld schließen (auch mit <span class='kbd'>Enter</span>).</p>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#app-tab'>[Anwendung] Seite</a></li>
-                <li><a href='#save-tab'>[Speichern] Seite</a></li>
-                <li><a href='#scanmode-tab'>[Scanmodus] Seite</a></li>
-                <li><a href='#filetype-tab'>[Dateiart] Seite</a></li>
-                <li><a href='#paper-tab'>[Papier] Seite</a></li>
-                <li><a href='#filesize-tab'>[Dateigröße] Seite</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicApplicationTab() => new("app-tab", "[Anwendung] Seite",
-        Wrap("[Anwendung] Seite", @"
-        <p>Auf der Seite [Anwendung] können Sie eine Anwendung wählen, die nach dem
-        Scannen zur Weiterverarbeitung der Bilddaten verwendet werden soll.</p>
-
-        <div class='warning'>
-            <div class='warning-title'>ACHTUNG</div>
-            <p>Die Seite [Anwendung] ist deaktiviert (in der Seitenleiste ausgegraut), wenn das Quick-Menü verwendet wird.
-            Wählen Sie die auszuführende Aktion dann im Quick-Menü nach dem Scannen.</p>
-        </div>
-
-        <h2>Elemente</h2>
-        <p><b>[Anwendung] Auswahlliste</b><br>
-        Zeigt eine Liste der verfügbaren Anwendungen:</p>
-        <ul>
-            <li>Scan to Folder</li>
-            <li>Scan to E-Mail</li>
-            <li>Scan to Print</li>
-            <li>Scan to Word</li>
-            <li>Scan to Excel</li>
-            <li>Scan to PowerPoint</li>
-            <li>Scan Picture Folder</li>
-            <li>Edit with PDF</li>
-        </ul>
-        <p>Darunter erscheinen die eigenen Anwendungen, die über das [Installieren/Deinstallieren]
-        Dialogfeld hinzugefügt wurden. Nach dem Scan wird eine eigene Anwendung mit ihren Argumenten und
-        den gespeicherten Dateien als weiteren Argumenten gestartet.</p>
-
-        <p><b>[E-Mail-Optionen...] Taste</b> (Zeile „E-Mail-Optionen“)<br>
-        Erscheint, wenn Scan to E-Mail ausgewählt wurde. Öffnet das
-        <a href='#email-options'>[Scan to E-Mail-Optionen] Dialogfeld</a>.</p>
-
-        <p><b>[Druck-Optionen...] Taste</b> (Zeile „Druck-Optionen“)<br>
-        Erscheint, wenn Scan to Print ausgewählt wurde. Öffnet das
-        <a href='#print-options'>[Scan to Print-Optionen] Dialogfeld</a>.</p>
-
-        <p><b>[Installieren/Deinstallieren...] Taste</b> (Zeile „Anwendungen verwalten“)<br>
-        Öffnet das <a href='#app-manage'>[Installieren/Deinstallieren] Dialogfeld</a>.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Die E-Mail- und Druckeinstellungen sind auch im Tray-Menü erreichbar
-            (<b>E-Mail-Einstellungen...</b>, <b>Druckeinstellungen...</b>), z. B. bei aktivem Quick-Menü.
-            Dort geänderte Werte gelten sofort und werden auch im aktiven eigenen Profil gespeichert
-            (Standardprofile bleiben unverändert).</p>
-        </div>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#settings'>Einstellungsdialogfeld</a></li>
-                <li><a href='#app-manage'>[Installieren/Deinstallieren] Dialogfeld</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicSaveTab() => new("save-tab", "[Speichern] Seite",
-        Wrap("[Speichern] Seite", @"
-        <p>Auf der Seite [Speichern] können Sie den Zielordner für die gescannten
-        Bilder und den Dateinamen bestimmen.</p>
-
-        <h2>Elemente</h2>
-        <p><b>Speicherordner für Bilddaten</b><br>
-        Zeigt den aktuellen Zielordner an. Das Verzeichnis kann nicht direkt bearbeitet werden.
-        Verwenden Sie die [Durchsuchen...] Taste, um einen Ordner zu wählen.</p>
-
-        <p><b>[Durchsuchen...] Taste</b><br>
-        Zeigt einen Ordner-Dialog, in dem Sie einen Ordner für das Speichern der Bilder auswählen können.</p>
-
-        <p><b>[Dateinamenformat...] Taste</b> (Gruppe „Dateiname“)<br>
-        Zeigt das <a href='#filename-format'>[Dateinamenformat] Dialogfeld</a> an, in dem das
-        Dateinamenformat bestimmt werden kann. Daneben wird ein Beispiel für den nächsten Dateinamen angezeigt.</p>
-
-        <p><b>[Datei nach Scan umbenennen] Schalter</b><br>
-        Wenn eingeschaltet, erscheint nach dem Scannen das <a href='#postscan-save'>[In Ordner speichern]
-        Dialogfeld</a>, in dem Ziel oder Dateiname geändert werden können. Bei Scan to Folder und bei
-        aktivem Quick-Menü wird dieses Dialogfeld unabhängig von diesem Schalter angezeigt, wenn „In Ordner speichern“
-        gewählt wird.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Der Standard-Speicherordner ist <code>Dokumente\SpeedScanManager</code> im
-            Benutzerprofil. Wenn mehrere Dateien erstellt werden (z. B. ein Bild pro Seite oder eine
-            geteilte PDF-Datei), wird dem Dateinamen eine Seriennummer angefügt. Bestehende Dateien werden
-            nie überschrieben; bei gleichem Namen wird <code>_1</code>, <code>_2</code> usw. angehängt.</p>
-        </div>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#filename-format'>[Dateinamenformat] Dialogfeld</a></li>
-                <li><a href='#postscan-save'>[In Ordner speichern] Dialogfeld</a></li>
-                <li><a href='#settings'>Einstellungsdialogfeld</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicScanModeTab() => new("scanmode-tab", "[Scanmodus] Seite",
-        Wrap("[Scanmodus] Seite", @"
-        <p>Auf der Seite [Scanmodus] können Sie die Scanmodi für den Scanner festlegen. Sie öffnet sich auch
-        über die Kachel [Benutzerdefiniert] auf der Seite [Allgemein].</p>
-
-        <h2>[Bildqualität] Auswahlliste</h2>
-        <table>
-            <tr><th>Bildqualität</th><th>Farbe / Grau</th><th>Schwarzweiß</th></tr>
-            <tr><td>Automatisch</td><td>200 dpi</td><td>400 dpi</td></tr>
-            <tr><td>Normal</td><td>150 dpi</td><td>300 dpi</td></tr>
-            <tr><td>Fein</td><td>200 dpi</td><td>400 dpi</td></tr>
-            <tr><td>Beste</td><td>300 dpi</td><td>600 dpi</td></tr>
-            <tr><td>Hervorragend</td><td>600 dpi</td><td>1200 dpi</td></tr>
-        </table>
-        <p>„Automatisch“ verwendet dieselbe Auflösung wie „Fein“. Unterstützt der Scanner die gewünschte
-        Auflösung nicht, wird die nächstliegende verwendet und eine Sprechblase weist darauf hin.</p>
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Mit höherer Auflösung nimmt die benötigte Zeit zum Scannen zu und die Dateigröße wird größer.</p>
-        </div>
-
-        <h2>[Farbmodus] Auswahlliste</h2>
-        <ul>
-            <li><b>Automatische Farberkennung</b> – Die Seiten werden in Farbe gescannt und anschließend einzeln als Farbe, Grau oder Schwarzweiß erkannt und umgewandelt</li>
-            <li><b>Farbe</b> – Dokumente werden immer als Farbbilder gespeichert</li>
-            <li><b>Grau</b> – Dokumente werden immer als Graubilder gespeichert</li>
-            <li><b>Schwarzweiß</b> – Dokumente werden immer als Schwarzweiß-Bilder gespeichert</li>
-        </ul>
-        <div class='warning'>
-            <div class='warning-title'>ACHTUNG</div>
-            <p>Bei der [Automatische Farberkennung] können Dokumente mit wenig Farbanteil als Grau oder
-            Schwarzweiß erkannt werden. Die Grundeinstellung ist [Farbe].</p>
-        </div>
-
-        <h2>[Scan-Seite] Auswahlliste</h2>
-        <ul>
-            <li><b>Duplex-Scan (doppelseitig)</b> – Scannt beide Seiten des Dokuments</li>
-            <li><b>Simplex-Scan (einseitig)</b> – Scannt nur eine Seite des Dokuments</li>
-            <li><b>Flachbettscannen</b> – Scannen über das Flachbett</li>
-            <li><b>Automatisch</b> (Grundeinstellung) – Ist Papier im Einzug eingelegt, wird im Duplex-Modus
-            eingezogen und leere Rückseiten werden entfernt; sonst wird, falls vorhanden, das Flachbett verwendet</li>
-        </ul>
-        <p>Unterstützt der Scanner Duplex bzw. Flachbett nicht, wird einseitig gescannt bzw. der Einzug verwendet
-        und eine Sprechblase weist darauf hin. Für das Flachbettscannen steht die automatische
-        Papiergrößenerkennung nicht zur Verfügung; die Papiergröße wird dann auf A4 gesetzt.</p>
-
-        <p><b>[Scanvorgang nach aktuellem Scan fortsetzen] Schalter</b> (Gruppe „Weitere Einstellungen“)<br>
-        Ist dieser Schalter eingeschaltet, erscheint nach dem Scannen die Abfrage „Weitere Dokumente scannen?“
-        (siehe <a href='#scan-continue'>Scan abbrechen und fortsetzen</a>).</p>
-
-        <p><b>[Option...] Taste</b> (Zeile „Optionen für den Scanmodus“)<br>
-        Zeigt das <a href='#scanmode-options'>[Scanmodus Option] Dialogfeld</a> an.</p>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#scanmode-options'>[Scanmodus Option] Dialogfeld</a></li>
-                <li><a href='#paper-tab'>[Papier] Seite</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicFileTypeTab() => new("filetype-tab", "[Dateiart] Seite",
-        Wrap("[Dateiart] Seite", @"
-        <p>Auf der Seite [Dateiart] können Sie das Dateiformat für die gescannten
-        Bilder festlegen.</p>
-
-        <h2>[Dateiformat] Auswahlliste</h2>
-        <ul>
-            <li><b>PDF (*.pdf)</b> – Alle Bilder werden in einer PDF-Datei zusammengefasst (oder gemäß den PDF-Optionen aufgeteilt)</li>
-            <li><b>JPEG (*.jpg)</b> – Für jede gescannte Seite wird eine JPEG-Datei erstellt</li>
-            <li><b>PNG (*.png)</b> – Für jede gescannte Seite wird eine PNG-Datei erstellt</li>
-        </ul>
-        <div class='warning'>
-            <div class='warning-title'>ACHTUNG</div>
-            <p>JPEG steht nicht zur Verfügung, wenn [Schwarzweiß] unter [Farbmodus]
-            auf der Seite [Scanmodus] gewählt wurde. Die Optionen zur Texterkennung und zu
-            Schlüsselwörtern sind nur bei PDF verfügbar.</p>
-        </div>
-
-        <h2>Texterkennung (OCR)</h2>
-        <p>Die Elemente stehen in den Gruppen „Texterkennung wählen“ und „Texterkennungsoptionen“.</p>
-        <p><b>[In durchsuchbare PDF konvertieren] Schalter</b><br>
-        Führt OCR durch und erstellt eine durchsuchbare PDF-Datei.
-        Der erkannte Text wird als unsichtbare Schicht über das Bild gelegt.</p>
-
-        <p><b>[Markierten Text als Schlüsselwort der PDF-Datei hinzufügen] Schalter</b><br>
-        Mit Textmarker hervorgehobene Textstellen werden als Schlüsselwörter in die PDF-Eigenschaften eingetragen.
-        Dazu ist die Texterkennung nötig; ohne sie wird die Option übersprungen und eine Sprechblase angezeigt.
-        Unter <b>Zielmarkierung</b> wählen Sie, ob nur die erste oder alle markierten Stellen verwendet werden.</p>
-
-        <p><b>[Sprache] Auswahlliste</b><br>
-        Die Liste enthält <b>Automatische Erkennung</b> und die installierten Sprachen.
-        Mitgeliefert sind die Sprachdaten für <b>Deutsch</b> und <b>Englisch</b>.
-        Weitere Sprachen (Japanisch, Französisch, Italienisch, Spanisch, Chinesisch vereinfacht/traditionell,
-        Koreanisch, Russisch, Portugiesisch, Arabisch) erscheinen in der Liste, sobald Sie die passende
-        <code>.traineddata</code>-Datei (z. B. <code>fra.traineddata</code>, <code>jpn.traineddata</code>,
-        <code>chi_sim.traineddata</code>) in den Ordner <code>tessdata</code> neben <code>SpeedScanManager.exe</code> legen.
-        Ist eine gespeicherte Sprache nicht mehr installiert, wird sie mit dem Zusatz „(nicht installiert)“ angezeigt;
-        beim Scannen erscheint dann eine Sprechblase und es werden die vorhandenen Sprachen (bevorzugt Deutsch/Englisch) verwendet.
-        Bei <b>Automatische Erkennung</b> wird anhand der erkannten Schrift pro Seite die passende installierte Sprache
-        gewählt, sonst Deutsch und Englisch.</p>
-
-        <p><b>Zielseiten</b></p>
-        <ul>
-            <li><b>Erste Seite</b> – Texterkennung nur für die erste Seite</li>
-            <li><b>Alle Seiten</b> – Texterkennung für alle Seiten</li>
-        </ul>
-
-        <p><b>[Option...] Taste</b> (Zeile „PDF-Optionen“)<br>
-        Öffnet das <a href='#pdf-options'>[PDF-Dateiformat Option] Dialogfeld</a>.
-        Nur verfügbar, wenn PDF als Dateiformat gewählt wurde.</p>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#pdf-options'>[PDF-Dateiformat Option] Dialogfeld</a></li>
-                <li><a href='#scanmode-tab'>[Scanmodus] Seite</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicPaperTab() => new("paper-tab", "[Papier] Seite",
-        Wrap("[Papier] Seite", @"
-        <p>Auf der Seite [Papier] können Sie die Papiergröße für das zu scannende
-        Dokument einstellen.</p>
-
-        <h2>[Papiergröße] Auswahlliste</h2>
-        <ul>
-            <li>Automatische Erkennung</li>
-            <li>A3 (297 × 420 mm)</li>
-            <li>A4 (210 × 297 mm)</li>
-            <li>A5 (148 × 210 mm)</li>
-            <li>A6 (105 × 148 mm)</li>
-            <li>B4(JIS) (257 × 364 mm)</li>
-            <li>B5(JIS) (182 × 257 mm)</li>
-            <li>B6(JIS) (128 × 182 mm)</li>
-            <li>Postkarte (100 × 148 mm)</li>
-            <li>Visitenkarte (55 × 91 mm)</li>
-            <li>Letter (8,5 × 11 in. / 216 × 279,4 mm)</li>
-            <li>Double Letter (11 × 17 in. / 279,4 × 431,8 mm)</li>
-            <li>Legal (8,5 × 14 in. / 216 × 355,6 mm)</li>
-            <li>Danach folgen Ihre benutzerdefinierten Größen (bis zu 10)</li>
-        </ul>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Die verfügbaren Papiergrößen hängen vom verwendeten Scannermodell ab. Wird eine Größe nicht
-            unterstützt, erscheint eine Sprechblase. Bei [Automatische Erkennung] bestimmt der Scannertreiber den
-            Scanbereich (siehe <a href='#scan-long'>Scannen langer Seiten</a>). Für das Flachbettscannen ist
-            die automatische Erkennung nicht verfügbar.</p>
-        </div>
-
-        <p><b>[Trägerblatteinstellungen...] Taste</b> (Zeile „Trägerblatt“)<br>
-        Öffnet das <a href='#carrier-sheet-dialog'>[Trägerblatteinstellungen] Dialogfeld</a>.</p>
-
-        <p><b>[Benutzerdefiniert...] Taste</b> (Zeile „Benutzerdefinierte Papiergrößen“)<br>
-        Zeigt das <a href='#custom-size-dialog'>[Hinzufügen oder Entfernen von benutzerdefinierten Größen] Dialogfeld</a> an.</p>
-
-        <h2>[Mehrfacheinzugserkennung] Auswahlliste (Gruppe „Einzug“)</h2>
-        <ul>
-            <li><b>Aus</b> – Mehrfacheinzugserkennung wird nicht ausgeführt (Grundeinstellung)</li>
-            <li><b>Überprüfung von Überlappung [Ultraschall]</b> – Überwacht die Blattstärken der eingezogenen Dokumente</li>
-            <li><b>Überprüfung der Länge</b> – Überwacht die Blattlängen der eingezogenen Dokumente</li>
-            <li><b>Überprüfung von Überlappung und Länge</b> – Beide Prüfungen kombiniert; unterstützt der Scanner nicht beide gleichzeitig, wird nur Ultraschall verwendet</li>
-        </ul>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Die verfügbaren Mehrfacheinzugserkennungs-Modi hängen vom Scannermodell ab.
-            Meldet der verbundene Scanner seine Fähigkeiten, werden nicht unterstützte Einträge
-            mit „(nicht unterstützt)“ gekennzeichnet und können nicht gewählt werden.</p>
-        </div>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#carrier-sheet-dialog'>[Trägerblatteinstellungen] Dialogfeld</a></li>
-                <li><a href='#custom-size-dialog'>[Hinzufügen oder Entfernen von benutzerdefinierten Größen] Dialogfeld</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicFileSizeTab() => new("filesize-tab", "[Dateigröße] Seite",
-        Wrap("[Dateigröße] Seite", @"
-        <p>Auf der Seite [Dateigröße] können Sie die Komprimierungsrate für die
-        gescannten Bilddaten bestimmen.</p>
-
-        <div class='warning'>
-            <div class='warning-title'>ACHTUNG</div>
-            <p>Die Einstellung ist deaktiviert (mit Hinweis), wenn [Schwarzweiß] in der
-            [Farbmodus] Auswahlliste auf der Seite [Scanmodus] ausgewählt wurde, sowie bei PNG als Dateiformat.
-            Schwarzweißbilder werden verlustfrei komprimiert, PNG-Dateien verlustfrei gespeichert.</p>
-        </div>
-
-        <h2>[Komprimierungsrate] Schieber</h2>
-        <p>Die Komprimierungsrate kann fünfstufig eingestellt werden (Grundeinstellung: 3). Sie bestimmt
-        die JPEG-Qualität der Farb- und Graubilder (auch in PDF-Dateien, Office-Dokumenten und im Bilderordner):</p>
-        <table>
-            <tr><th>Stufe</th><th>JPEG-Qualität</th></tr>
-            <tr><td>1 (Niedrig / Dateigröße groß)</td><td>100</td></tr>
-            <tr><td>2</td><td>85</td></tr>
-            <tr><td>3 (Normal)</td><td>70</td></tr>
-            <tr><td>4</td><td>50</td></tr>
-            <tr><td>5 (Hoch / Dateigröße klein)</td><td>30</td></tr>
-        </table>
-        <ul>
-            <li>Je größer der Wert, desto höher die Komprimierungsrate und desto kleiner die Dateigröße</li>
-            <li>Eine höhere Komprimierungsrate führt zu einer Verschlechterung der Bildqualität</li>
-        </ul>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#scanmode-tab'>[Scanmodus] Seite</a></li>
-            </ul>
-        </div>
-    "));
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Dialogfelder
-    // ═══════════════════════════════════════════════════════════════════════
-
-    private static HelpTopic TopicScanModeOptionsDialog() => new("scanmode-options", "[Scanmodus Option] Dialogfeld",
-        Wrap("[Scanmodus Option] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie die Einstellungen der Scanmodus-Optionen festlegen
-        (Titel „Scanmodus-Optionen“, Untertitel „Helligkeit und Bildverarbeitung“). Es hat zwei Gruppen
-        (Karten): <b>Helligkeit</b> und <b>Bildverarbeitung</b>. Das <b>Hilfe-Symbol (?)</b> in der Kopfzeile
-        öffnet diese Hilfe. Unten rechts stehen die Tasten <b>[Abbrechen]</b> und <b>[OK]</b>.</p>
-
-        <h2>Gruppe [Helligkeit]</h2>
-        <p><b>Helligkeits-Regler</b> (Beschriftung „Dunkel“ links, „Hell“ rechts)<br>
-        Sieben Stufen von „Dunkler -3“ bis „Heller +3“, Mitte = Normal (Grundeinstellung); der aktuelle Wert
-        steht neben dem Regler. Der Regler ist nur verfügbar, wenn [Schwarzweiß] als Farbmodus gewählt wurde
-        (Hinweis in der Gruppe: „Nur für Schwarzweiß-Scans“).</p>
-
-        <h2>Gruppe [Bildverarbeitung]</h2>
-        <p>Jede Zeile hat rechts einen Schalter.</p>
-
-        <p><b>[Einstellung nur für Textdokumente] Schalter</b><br>
-        Betont den Kontrast der gescannten Bilder (bei Schwarzweiß-Scans und bei der Umwandlung in
-        Schwarzweiß). Schalten Sie ihn für Dokumente mit Text oder handschriftlichen Texten ein.</p>
-
-        <p><b>[Automatisches Löschen leerer Seiten zulassen] Schalter</b><br>
-        Leere Seiten werden automatisch erkannt und aus dem Ausgabebild gelöscht (Grundeinstellung: eingeschaltet).
-        Sind alle Seiten leer, wird keine Datei gespeichert. Bei Scan-Seite „Automatisch“ im Duplex-Modus werden
-        leere Rückseiten auch ohne diese Option entfernt.</p>
-
-        <p><b>[Schräglauf automatisch korrigieren] Schalter</b><br>
-        Richtet schief eingezogene Seiten gerade aus (Grundeinstellung: ausgeschaltet).</p>
-
-        <p><b>[Automatische Bilddrehung zulassen] Schalter</b><br>
-        Dokumente, die seitlich oder kopfüber gescannt wurden, werden in der korrekten
-        Richtung ausgegeben (Grundeinstellung: eingeschaltet). Die Ausrichtung wird mittels Tesseract OSD erkannt;
-        bei zu unsicherer Erkennung wird nicht gedreht.</p>
-
-        <p><b>[Dokumente mit der Vorderseite nach oben einlegen] Schalter</b><br>
-        Schalten Sie ihn ein, wenn der Stapel mit der Vorderseite nach oben eingelegt wird. Die Seitenreihenfolge
-        wird dann umgekehrt, sodass die Seiten in Lesereihenfolge gespeichert werden.</p>
-
-        <p><b>[Abbrechen] Taste</b> – Verwirft die Änderungen und schließt das Dialogfeld.<br>
-        <b>[OK] Taste</b> – Übernimmt die Einstellungen und schließt das Dialogfeld.</p>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#scanmode-tab'>[Scanmodus] Seite</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicPdfOptionsDialog() => new("pdf-options", "[PDF-Dateiformat Option] Dialogfeld",
-        Wrap("[PDF-Dateiformat Option] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie die PDF-Dateiformate bestimmen (Untertitel „Seiten teilen und
-        Kennwortschutz“). Es hat zwei Gruppen (Karten): <b>PDF-Seiten teilen</b> und <b>Kennwort</b>.
-        Die Kopfzeile enthält nur das Schließen-Symbol; unten rechts stehen die Tasten <b>[Abbrechen]</b> und
-        <b>[OK]</b>. Das Schließen-Symbol und [Abbrechen] verwerfen die Änderungen.</p>
-
-        <h2>Gruppe [PDF-Seiten teilen]</h2>
-        <p>Die beiden Optionen sind Auswahlknöpfe (es gilt immer genau eine).</p>
-        <p><b>[Mehrseitige PDF-Datei (gesamter Stapel in einer PDF)]</b><br>
-        Alle gescannten Bilder werden in einer PDF-Datei zusammengefasst.</p>
-
-        <p><b>[Seitenzahl, für die jeweils eine neue PDF-Datei erstellt werden soll]</b><br>
-        Erstellt nach dem Erreichen der festgelegten Seitenzahl (1 bis 999, Eingabefeld mit „Seite(n)“ darunter, nur
-        bei dieser Option aktiv) jeweils eine neue PDF-Datei.
-        Die Dateien erhalten eine laufende Nummer (z. B. <code>Name_001.pdf</code>, <code>Name_002.pdf</code>).</p>
-
-        <h2>Gruppe [Kennwort]</h2>
-        <p><b>[Kennwort für PDF-Datei einstellen] Schalter</b><br>
-        Schaltet den Kennwortschutz für die erstellten PDF-Dateien ein. Ohne den Schalter sind die Felder
-        <b>Kennwort</b> und <b>Bestätigen</b> deaktiviert.</p>
-
-        <p><b>Kennwort / Bestätigen</b><br>
-        Geben Sie das gewünschte Kennwort ein und bestätigen Sie es. Es wird für das Öffnen
-        des Dokuments verwendet. Das Kennwort wird verschlüsselt (nur für Ihr Windows-Benutzerkonto lesbar)
-        in den Einstellungen gespeichert. Fehlt das Kennwort oder stimmen beide Eingaben nicht überein, erscheint beim
-        Bestätigen mit [OK] eine Meldung und das Dialogfeld bleibt geöffnet. Kann es nicht gelesen werden (z. B. Einstellungen von einem anderen
-        Benutzer oder PC), bleibt der Kennwortschutz eingeschaltet und SpeedScan Manager fragt vor dem nächsten
-        Scan nach; geben Sie das Kennwort dann hier neu ein.</p>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#filetype-tab'>[Dateiart] Seite</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicFileNameFormatDialog() => new("filename-format", "[Dateinamenformat] Dialogfeld",
-        Wrap("[Dateinamenformat] Dialogfeld", @"
-        <p>In diesem Dialogfeld kann das Dateinamenformat bestimmt werden, in dem die Dateien
-        automatisch gespeichert werden (Untertitel „Benennung der gescannten Dateien“). Die erste Gruppe (Karte)
-        enthält die Auswahlknöpfe und die Eingaben für den benutzerdefinierten Namen, die zweite Gruppe zeigt als
-        „Beispiel: ...“ den Dateinamen zur aktuellen Auswahl. Das <b>Hilfe-Symbol (?)</b> in der Kopfzeile öffnet
-        diese Hilfe.</p>
-
-        <h2>Datum und Uhrzeit</h2>
-        <p><b>[Benutzen Sie die Einstellung Ihres Betriebssystems]</b><br>
-        Der Dateiname besteht aus Datum und Uhrzeit im kurzen Datums- und im Zeitformat von Windows.
-        Zeichen, die in Dateinamen nicht erlaubt sind (z. B. <code>:</code> und <code>/</code>), werden durch
-        <code>-</code> ersetzt, z. B. <code>12.04.2026 15-30-45.pdf</code> bei deutschem Windows.</p>
-        <p><b>[JJJJMMTThhmmss]</b><br>
-        Der Dateiname besteht aus Datum und Uhrzeit im Format <code>JahrMonatTagStundeMinuteSekunde</code>,
-        z. B. <code>20260412153045.pdf</code> (Grundeinstellung).</p>
-        <p>Bei einem bereits vorhandenen Namen wird <code>_1</code>, <code>_2</code> usw. angehängt.</p>
-
-        <h2>Benutzerdefiniert</h2>
-        <p><b>[Benutzerdefinierter Dateiname]</b> – Auswahlknopf; nur dann sind die Felder <b>Dateiname</b> und
-        <b>Zähler</b> aktiv.</p>
-        <p><b>Dateiname</b> – Bis zu 30 Zeichen für den Anfang des Dateinamens (Grundeinstellung „unbenannt“).
-        Nicht erlaubt sind die Zeichen \ / : * ? "" &lt; &gt; |, ein Punkt am Ende sowie reservierte Windows-Namen (z. B. CON, NUL, COM1).</p>
-        <p><b>[Zähler] Auswahlliste</b> – Stellenanzahl für die Seriennummer: „3 Ziffern“, „4 Ziffern“ oder „5 Ziffern“ (Grundeinstellung 3).</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Der benutzerdefinierte Name wird immer mit Unterstrich und Seriennummer gespeichert. Beispiel mit
-            Dateiname „Scan“ und 3 Ziffern: <code>Scan_001.pdf</code>, <code>Scan_002.pdf</code> ... Der Zähler beginnt bei 1
-            und setzt sich nach der höchsten bereits vorhandenen Nummer im Ordner fort. Bei mehreren Dateien
-            in einem Scan (z. B. ein Bild pro Seite) werden die Dateien fortlaufend nummeriert.</p>
-        </div>
-
-        <h2>Tasten</h2>
-        <p>Unten links steht <b>[Übernehmen]</b>: übernimmt die Einstellung, ohne zu schließen (nur aktiv, wenn es
-        Änderungen gibt). Unten rechts stehen <b>[Abbrechen]</b> (verwirft die Änderungen) und <b>[OK]</b>
-        (übernimmt die Einstellung und schließt das Dialogfeld). Ein ungültiger Dateiname wird mit einer Meldung abgewiesen.</p>
-    "));
-
-    private static HelpTopic TopicNewProfileDialog() => new("new-profile", "[Neues Profil hinzufügen] Dialogfeld",
-        Wrap("[Neues Profil hinzufügen] Dialogfeld", @"
-        <p>In diesem kleinen Dialogfeld können Namen für neue Profile vergeben werden.
-        Insgesamt können bis zu 20 Profile (einschließlich der Standardprofile) vorhanden sein.
-        Dasselbe Eingabefenster erscheint auch beim Umbenennen eines Profils (Titel „Profil umbenennen“, Feld „Neuer Name“)
-        und beim Hinzufügen in der Profilverwaltung (Titel „Neues Profil“, Feld „Name des neuen Profils“).</p>
-
-        <h2>Elemente</h2>
-        <p><b>Profilname</b> – Eingabefeld mit der Beschriftung über dem Feld. Geben Sie den Namen für das neue Profil ein
-        (höchstens 64 Zeichen). Der Name muss eindeutig sein; die Groß-/Kleinschreibung wird nicht unterschieden.
-        Ein ungültiger oder doppelter Name wird mit einer Meldung abgewiesen.</p>
-        <p><b>[Abbrechen] Taste</b> (unten, links von OK) – Dialogfeld schließen, ohne ein Profil anzulegen.</p>
-        <p><b>[OK] Taste</b> (unten rechts) – Profil anlegen und Dialogfeld schließen.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Über <b>Profil hinzufügen...</b> im Einstellungsdialogfeld enthält das neue Profil die aktuell
-            eingestellten Werte. Über <b>Hinzufügen...</b> in der Profilverwaltung erhält es die Grundeinstellungen.</p>
-        </div>
-    "));
-
-    private static HelpTopic TopicProfileManagementDialog() => new("profile-mgmt-dialog", "[Profilverwaltung] Dialogfeld",
-        Wrap("[Profilverwaltung] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie Profile hinzufügen, umbenennen, löschen sowie die
-        Reihenfolge der Auflistung ändern (Untertitel „Profile hinzufügen, umbenennen, löschen und sortieren“).
-        Links steht die Liste der Profile, rechts daneben die Tasten. Die Kopfzeile enthält nur das
-        Schließen-Symbol. Unten links zeigt ein Hinweis „Höchstens 20 Profile“.</p>
-
-        <h2>Elemente</h2>
-        <p><b>[Hinzufügen...] Taste</b> – Legt ein neues Profil mit den Grundeinstellungen an (höchstens 20 Profile).</p>
-
-        <p><b>[Umbenennen...] Taste</b> – Ändert die ausgewählte Profilbezeichnung.
-        Nicht verfügbar für Standardprofile.</p>
-
-        <p><b>[Löschen] Taste</b> – Löscht das gewählte Profil nach Rückfrage.
-        Nicht verfügbar für Standardprofile.</p>
-
-        <p><b>[Nach oben] Taste</b> – Verschiebt das Profil um eine Position nach oben.</p>
-        <p><b>[Nach unten] Taste</b> – Verschiebt das Profil um eine Position nach unten.</p>
-        <p><b>[Schließen] Taste</b> (unten rechts) – Schließt das Dialogfeld.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Die acht Standardprofile (siehe <a href='#default-settings'>Grundeinstellungen der Profile</a>)
-            können nicht umbenannt oder gelöscht, aber verschoben werden. Eigene Profile können frei umbenannt,
-            gelöscht und neu angeordnet werden.</p>
-        </div>
-    "));
-
-    private static HelpTopic TopicAppManageDialog() => new("app-manage", "[Installieren/Deinstallieren] Dialogfeld",
-        Wrap("[Installieren/Deinstallieren] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie eigene Anwendungen hinzufügen, entfernen
-        oder ändern, die nach dem Scan gestartet werden (Untertitel „Eigene Anwendungen hinzufügen, ändern oder
-        entfernen“). Bis zu zehn Anwendungen können hinzugefügt werden. Das <b>Hilfe-Symbol (?)</b> in der Kopfzeile
-        öffnet diese Hilfe.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Die hier getroffenen Änderungen an der Anwendungsliste werden sofort gespeichert, unabhängig von
-            der [OK] oder [Abbrechen] Taste im Einstellungsdialogfeld.</p>
-        </div>
-
-        <h2>Elemente</h2>
-        <p>In der Gruppe <b>Hinzugefügt</b> stehen oben die Tasten <b>[Hinzufügen...]</b>, <b>[Ändern...]</b> und
-        <b>[Entfernen]</b>, darunter die Liste der hinzugefügten Anwendungen (Name und Programmpfad).</p>
-        <p><b>[Hinzufügen...] Taste</b> – Fügt eine neue Anwendung hinzu. Es öffnet sich das Fenster „Anwendung hinzufügen“
-        (Untertitel „Programm, das die gescannten Dateien öffnet“) mit den Feldern:</p>
-        <ul>
-            <li><b>Name</b> – Anzeigename in der [Anwendung] Auswahlliste (eindeutig, bis 64 Zeichen)</li>
-            <li><b>Programm</b> – Programmdatei (*.exe), über die Taste [Durchsuchen...] neben dem Feld auswählbar.
-            Ist das Feld Name noch leer, wird der Dateiname übernommen.</li>
-            <li><b>Argumente</b> – Optional. Die gescannten Dateien werden danach (in Anführungszeichen) angehängt.</li>
-        </ul>
-        <p>Das Fenster hat in der Kopfzeile nur das Schließen-Symbol und unten rechts die Tasten <b>[Abbrechen]</b> und
-        <b>[OK]</b>. Fehlt der Name oder die Programmdatei, erscheint eine Meldung.</p>
-        <p><b>[Ändern...] Taste</b> – Ändert die Einstellungen der ausgewählten Anwendung (gleiches Fenster, Titel
-        „Anwendung ändern“). Ein Doppelklick auf einen Listeneintrag wirkt genauso.</p>
-        <p><b>[Entfernen] Taste</b> – Entfernt die ausgewählte Anwendung.</p>
-        <p><b>[Schließen] Taste</b> (unten rechts) – Schließt das Dialogfeld.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Wird das Programm später nicht gefunden oder lässt es sich nicht starten, erscheint eine Meldung;
-            der Scan bleibt gespeichert.</p>
-        </div>
-    "));
-
-    private static HelpTopic TopicEmailOptionsDialog() => new("email-options", "[Scan to E-Mail-Optionen] Dialogfeld",
-        Wrap("[Scan to E-Mail-Optionen] Dialogfeld", @"
-        <p>In diesem Dialogfeld (Titel „Scan to E-Mail“, Untertitel „Optionen für den E-Mail-Versand“) können Sie
-        Einstellungen für die Verwendung von Scan to E-Mail konfigurieren. Es ist über die Seite [Anwendung] oder das
-        Tray-Menü (<b>E-Mail-Einstellungen...</b>) erreichbar. Die Kopfzeile enthält nur das Schließen-Symbol.</p>
-
-        <h2>Elemente</h2>
-        <p><b>Standard-Empfänger</b> – E-Mail-Adresse des Standardempfängers.
-        Wird beim Erstellen einer E-Mail automatisch eingetragen.</p>
-
-        <p><b>Betreff-Vorlage</b> – Betreff der E-Mail.
-        Standard: „Gescanntes Dokument“ (auch, wenn das Feld leer bleibt).</p>
-
-        <p><b>[Abbrechen] Taste</b> verwirft die Änderungen, <b>[OK] Taste</b> (unten rechts) übernimmt sie.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Es wird das E-Mail-Programm verwendet, das in Windows als MAPI-Standard festgelegt ist.
-            Die gespeicherten Dateien werden als Anhang eingefügt. Kann das E-Mail-Programm nicht geöffnet werden,
-            erscheint eine Meldung und der Ordner mit der gespeicherten Datei wird geöffnet.</p>
-        </div>
-    "));
-
-    private static HelpTopic TopicPrintOptionsDialog() => new("print-options", "[Scan to Print-Optionen] Dialogfeld",
-        Wrap("[Scan to Print-Optionen] Dialogfeld", @"
-        <p>In diesem Dialogfeld (Titel „Scan to Print“, Untertitel „Optionen für den Druck“) können die Optionen der
-        Funktion Scan to Print eingestellt werden. Es ist über die Seite [Anwendung] oder das Tray-Menü
-        (<b>Druckeinstellungen...</b>) erreichbar. Die Kopfzeile enthält nur das Schließen-Symbol.</p>
-
-        <h2>Elemente</h2>
-        <p><b>Zieldrucker</b> – Auswahlliste aller im Betriebssystem erkannten Drucker.
-        Der Eintrag <b>(Standarddrucker)</b> verwendet jeweils den aktuellen Windows-Standarddrucker.</p>
-
-        <p><b>[Abbrechen] Taste</b> verwirft die Änderungen, <b>[OK] Taste</b> (unten rechts) übernimmt sie.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Die Seiten werden in Originalgröße gedruckt; Querformat wird bei Bedarf automatisch gewählt.
-            Ist der eingestellte Drucker nicht mehr vorhanden, werden Sie gefragt, ob auf dem Standarddrucker
-            gedruckt werden soll. Ist kein Drucker installiert, wird der Scan nur gespeichert.</p>
-        </div>
-    "));
-
-    private static HelpTopic TopicCarrierSheetDialog() => new("carrier-sheet-dialog", "[Trägerblatteinstellungen] Dialogfeld",
-        Wrap("[Trägerblatteinstellungen] Dialogfeld", @"
-        <p>In diesem Dialogfeld können Sie Einstellungen für das Scannen mit dem Trägerblatt
-        vornehmen. Es hat zwei Gruppen (Karten): oben die Einstellungen, darunter die <b>Anleitung</b> mit einer kurzen
-        Beschreibung und Abbildungen (1 Dokument falten, 2 in das Trägerblatt einlegen, 3 in den Scanner führen).
-        Die Kopfzeile enthält nur das Schließen-Symbol; unten rechts stehen <b>[Abbrechen]</b> und <b>[OK]</b>.</p>
-
-        <h2>Elemente</h2>
-        <p><b>[Trägerblatt-Modus aktivieren] Schalter</b><br>
-        Schaltet die Trägerblatt-Verarbeitung ein. Ist der Schalter aus, sind die übrigen Elemente deaktiviert.</p>
-
-        <p><b>[Modus] Auswahlliste</b><br>
-        Es gibt den Modus <b>Zwei Seiten in einem Bild erstellen</b>: Vorder- und Rückseite (Duplex-Scan)
-        werden nebeneinander in einem Bild zusammengefasst. Weitere Modi stehen nicht zur Verfügung.</p>
-
-        <p><b>[Ausgabebildgröße] Auswahlliste</b></p>
-        <ul>
-            <li>Automatische Erkennung</li>
-            <li>A3, A4, A5, A6</li>
-            <li>B4(JIS), B5(JIS), B6(JIS)</li>
-            <li>Letter, Double Letter</li>
-            <li>Postkarte, Visitenkarte</li>
-            <li>Trägerblattgröße (220 × 297 mm)</li>
-            <li>Benutzerdefiniert...</li>
-        </ul>
-        <p>Bei <b>Benutzerdefiniert...</b> erscheint eine zusätzliche Zeile <b>Benutzerdefinierte Größe</b>, in der Sie
-        Breite und Höhe in mm eingeben (50 bis 2000 mm). Es kann eine benutzerdefinierte Ausgabegröße gespeichert werden.</p>
-
-        <div class='warning'>
-            <div class='warning-title'>ACHTUNG</div>
-            <p>Nur bestimmte Scannermodelle unterstützen das Scannen mit dem Trägerblatt.</p>
-        </div>
-    "));
-
-    private static HelpTopic TopicCustomSizeDialog() => new("custom-size-dialog", "[Hinzufügen oder Entfernen von benutzerdefinierten Größen] Dialogfeld",
-        Wrap("[Hinzufügen oder Entfernen von benutzerdefinierten Größen] Dialogfeld", @"
-        <p>In diesem Dialogfeld (Titel „Benutzerdefinierte Größen“) können Einstellungen von benutzerdefinierten
-        Dokumentengrößen hinzugefügt, gelöscht oder geändert werden. Bis zu zehn benutzerdefinierte
-        Dokumentengrößen können hinzugefügt werden. Sie erscheinen in der [Papiergröße] Auswahlliste.
-        Das <b>Hilfe-Symbol (?)</b> in der Kopfzeile öffnet diese Hilfe.</p>
-
-        <h2>Elemente</h2>
-        <p>In der Gruppe <b>Größen</b> stehen oben die Tasten <b>[Hinzufügen...]</b>, <b>[Ändern...]</b> und
-        <b>[Entfernen]</b>, darunter die Liste der benutzerdefinierten Größen und die Zeile <b>Ausgewählte Größe</b>, die
-        Breite × Länge der gewählten Größe in mm anzeigt (nur Anzeige).</p>
-        <p><b>[Hinzufügen...] Taste</b> – Öffnet das Fenster für eine zusätzliche benutzerdefinierte Größe (siehe unten).</p>
-        <p><b>[Ändern...] Taste</b> – Ändert die Einstellungen der gewählten Größe (gleiches Fenster).</p>
-        <p><b>[Entfernen] Taste</b> – Entfernt die gewählte Größe.</p>
-        <p><b>[Schließen] Taste</b> (unten rechts) – Schließt das Dialogfeld.</p>
-
-        <h2>Fenster „Benutzerdefinierte Größe“</h2>
-        <p>Untertitel „Name und Abmessungen in Millimetern“; in der Kopfzeile nur das Schließen-Symbol, unten rechts die
-        Tasten <b>[Abbrechen]</b> und <b>[OK]</b>.</p>
-        <p><b>Name</b> – Name für die Papiergröße (bis zu 62 Zeichen).</p>
-        <p><b>Breite (mm) / Länge (mm)</b> – Abmessungen in Millimetern (1 bis 9999).</p>
-    "));
-
-    private static HelpTopic TopicVersionInfoDialog() => new("version-info", "[Versionsinformationen] Dialogfeld",
-        Wrap("[Versionsinformationen] Dialogfeld", @"
-        <p>In diesem Dialogfeld werden Versionsinformationen zu SpeedScan Manager und den
-        verwendeten Komponenten angezeigt. Es wird über <b>Hilfe &gt; Versionsinformationen</b> im Tray-Menü geöffnet.
-        Das <b>Hilfe-Symbol (?)</b> in der Kopfzeile öffnet diese Hilfe.</p>
-
-        <h2>Elemente</h2>
-        <p><b>Logo und Versionsnummer</b> – Die oberste Gruppe zeigt das SpeedScan Manager Logo und die aktuelle
-        Version an.</p>
-        <p><b>Gruppe [Lizenz und Credits]</b> – Zeigt Informationen zur GPL-3.0-Lizenz und die
-        Copyright-Hinweise an und nennt die verwendeten Bibliotheken:</p>
-        <ul>
-            <li>NTwain (TWAIN-Unterstützung)</li>
-            <li>Tesseract.NET (OCR-Engine)</li>
-            <li>PdfSharpCore (PDF-Verarbeitung)</li>
-        </ul>
-        <p><b>GitHub- und Discord-Symbole</b> (Zeile „Projekt und Community“) – Öffnen die Projektseite bzw. den
-        Discord-Server im Browser.</p>
-        <p><b>[Detail...] Taste</b> (Zeile „Scanner- und Treiberinformationen“) – Öffnet das Dialogfeld für
-        <a href='#driver-info'>Scanner- und Treiberinformationen</a>.</p>
-        <p><b>[OK] Taste</b> (unten rechts) – Schließt das Dialogfeld.</p>
-    "));
-
-    private static HelpTopic TopicPostScanMediaDialog() => new("postscan-media", "[Quick-Menü] Dialogfeld",
-        Wrap("[Quick-Menü] Dialogfeld", @"
-        <p>Nach dem Scannen wird dieses Dialogfeld angezeigt, wenn das Quick-Menü aktiviert ist.
-        Die Kopfzeile fragt „Wohin möchtest du scannen?“ und nennt als Untertitel die Seitenzahl. Die Datei ist zu diesem
-        Zeitpunkt bereits im Speicherordner abgelegt. Das Fenster bleibt im Vordergrund.</p>
-
-        <h2>Verfügbare Aktionen</h2>
-        <p>Die Aktionen sind als Kacheln in einem Raster angeordnet (zwei Reihen mit je vier Kacheln):</p>
-        <ul>
-            <li><b>In Ordner speichern</b> (Scan to Folder) – Öffnet das Dialogfeld zum Festlegen von Titel und Zielordner.</li>
-            <li><b>Per E-Mail versenden</b> (Scan to E-Mail) – Öffnet das E-Mail-Programm mit der Datei als Anhang.</li>
-            <li><b>Drucken</b> (Scan to Print) – Druckt die gescannten Seiten.</li>
-            <li><b>Nach Word</b> (Scan to Word) – Erstellt ein Word-Dokument (.docx) mit den gescannten Bildern.</li>
-            <li><b>Nach Excel</b> (Scan to Excel) – Erstellt eine Excel-Datei (.xlsx) mit den gescannten Bildern.</li>
-            <li><b>Nach PowerPoint</b> (Scan to PowerPoint) – Erstellt eine PowerPoint-Präsentation (.pptx) mit den gescannten Bildern.</li>
-            <li><b>In Bilderordner</b> (Scan Picture Folder) – Speichert die Seiten als JPEG-Dateien in <code>Bilder\SpeedScanManager</code>.</li>
-            <li><b>Mit PDF Edit bearbeiten</b> (Edit with PDF) – Öffnet die gescannte Datei mit dem zugeordneten Programm.</li>
-        </ul>
-
-        <h2>Bedienung</h2>
-        <p>Klicken Sie auf eine Kachel, um die Aktion auszuwählen; die Pfeiltasten bewegen die Auswahl durch das Raster.
-        Doppelklicken Sie auf eine Kachel, um die Aktion direkt auszuführen (Hinweis unten links: „Doppelklick startet
-        direkt“). Alternativ wählen Sie eine Kachel aus und klicken Sie auf <b>[Speichern]</b>.</p>
-
-        <p><b>[Abbrechen] Taste</b> (unten, links von Speichern) und <b>Schließen-Symbol</b> – Schließen das Dialogfeld. Die
-        bereits gespeicherte Datei bleibt erhalten (Sprechblase „Scan gespeichert“).</p>
-        <p><b>[Speichern] Taste</b> (unten rechts) – Führt die ausgewählte Aktion aus.</p>
-        <p><b>Hilfe-Symbol (?)</b> in der Kopfzeile – Öffnet diese Hilfe.</p>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#scan-quick'>Scannen mit dem Quick-Menü</a></li>
-                <li><a href='#postscan-save'>[In Ordner speichern] Dialogfeld</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicPostScanSaveDialog() => new("postscan-save", "[In Ordner speichern] Dialogfeld",
-        Wrap("[In Ordner speichern] Dialogfeld", @"
-        <p>In diesem Dialogfeld können die Bilder der gescannten Dokumente eingesehen und für
-        das Speichern Dateiname und Zielordner bestimmt werden. Die Datei wurde zuvor bereits im Speicherordner
-        abgelegt; das Dialogfeld benennt sie um bzw. verschiebt sie.</p>
-
-        <p>Links steht die <b>Vorschau</b>, rechts stehen die Gruppen mit Titel, Zielordner und Scaneinstellungen.
-        Der Untertitel in der Kopfzeile nennt die Seitenzahl.</p>
-
-        <h2>Elemente</h2>
-        <p><b>Vorschau</b> – Zeigt das gescannte Dokumentenbild an. Bei mehreren Seiten kann
-        durch die Seiten navigiert werden.</p>
-        <p><b>Seitennavigation</b> (unten links) – Pfeiltasten und die Anzeige der aktuellen Seite („Seite 2 von 3“)
-        zum Durchblättern der gescannten Seiten.</p>
-        <p><b>Titel festlegen</b> – Zeigt den vorgeschlagenen Dateinamen an. Kann geändert werden.
-        Ungültige Zeichen werden ersetzt.</p>
-        <p><b>Zielordner festlegen</b> – Zeigt den Zielordner an (nicht direkt bearbeitbar). Er wird über die Taste
-        [Durchsuchen...] neben dem Feld geändert.</p>
-        <p><b>Gruppe [Scaneinstellungen]</b> – Zeigt eine Übersicht der verwendeten Einstellungen (Voreinstellung, Auflösung,
-        Farbmodus, Scanseite, Dateiformat, Kompression).</p>
-        <p><b>[Abbrechen] Taste</b> (unten, links von Speichern), <span class='kbd'>Esc</span> und <b>Schließen-Symbol</b> –
-        Fragen „Scan verwerfen?“. Bei <b>Ja</b> werden die bereits erstellten Dateien gelöscht, bei <b>Nein</b> kehren
-        Sie zum Dialogfeld zurück.</p>
-        <p><b>[Speichern] Taste</b> (unten rechts) – Übernimmt Titel und Zielordner. Bei mehreren Dateien wird eine Seriennummer
-        angefügt. Bestehende Dateien werden nie überschrieben (es wird <code>_1</code> usw. angehängt).</p>
-        <p><b>Hilfe-Symbol (?)</b> in der Kopfzeile – Öffnet diese Hilfe.</p>
-    "));
-
-    private static HelpTopic TopicScannerDriverInfoDialog() => new("driver-info", "[Scanner- und Treiberinformationen] Dialogfeld",
-        Wrap("[Scanner- und Treiberinformationen] Dialogfeld", @"
-        <p>In diesem Dialogfeld werden detaillierte Informationen zum angeschlossenen Scanner
-        und den verwendeten Programmkomponenten angezeigt.</p>
-
-        <h2>Elemente</h2>
-        <p><b>Gruppe [Scanner]</b> – Zeigt Scannername, Hersteller, Produktfamilie und
-        Treiberversion des angeschlossenen Scanners an (die Werte lassen sich markieren und kopieren).
-        Ist kein Scanner verbunden, wird „Kein Scanner verbunden“ angezeigt.</p>
-        <p><b>Gruppe [Dateiversion]</b> – Tabelle mit den Spalten Dateiname, Version und Zeit der Programmdatei sowie der Bibliotheken:</p>
-        <ul>
-            <li>NTwain (TWAIN-Bibliothek)</li>
-            <li>Tesseract (OCR-Engine)</li>
-            <li>PdfSharpCore (PDF-Verarbeitung)</li>
-            <li>DocumentFormat.OpenXml (Word-, Excel- und PowerPoint-Dateien)</li>
-        </ul>
-        <p><b>[OK] Taste</b> (unten rechts) – Schließt das Dialogfeld.</p>
-        <p><b>Hilfe-Symbol (?)</b> in der Kopfzeile – Öffnet diese Hilfe.</p>
-    "));
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Profile
-    // ═══════════════════════════════════════════════════════════════════════
-
-    private static HelpTopic TopicProfileManagement() => new("profile-mgmt", "Profile verwalten",
-        Wrap("Profile verwalten (Hinzufügen/Umbenennen/Löschen)", @"
-        <p>Um Einstellungen ohne das Quick-Menü festzulegen, können Sie auf der Seite [Allgemein] des
-        Einstellungsdialogfelds in der Gruppe [Profil] unter [Aktives Profil] ein Profil auswählen. Ein Profil speichert
-        die Einstellungen aller Scan-Seiten (Anwendung, Speichern, Scanmodus, Dateiart, Papier, Dateigröße).
-        Bei aktivem Quick-Menü ist die Gruppe [Profil] ausgegraut.</p>
-
-        <p>Bis zu 20 Profile, einschließlich der bereits in der Auswahlliste
-        enthaltenen, können hinzugefügt werden.</p>
-
-        <h2>Neues Profil hinzufügen</h2>
-        <ol>
-            <li>Stellen Sie die gewünschten Werte ein.</li>
-            <li>Klicken Sie in der Gruppe [Profil] auf <b>Profil hinzufügen...</b>.</li>
-            <li>Vergeben Sie im <a href='#new-profile'>[Neues Profil hinzufügen] Dialogfeld</a> einen Namen.</li>
-        </ol>
-
-        <h2>Profil ändern</h2>
-        <p>Ändern Sie die Einstellungen bei ausgewähltem eigenem Profil und übernehmen Sie sie mit [OK] oder
-        [Übernehmen]; sie werden im Profil gespeichert. Standardprofile bleiben unverändert (es wird nachgefragt,
-        ob ein neues Profil angelegt werden soll).</p>
-
-        <h2>Profile umbenennen, löschen oder sortieren</h2>
-        <p>Öffnen Sie das <a href='#profile-mgmt-dialog'>[Profilverwaltung] Dialogfeld</a> über:</p>
-        <ul>
-            <li>die Taste [Profilverwaltung...] in der Gruppe [Profil] auf der Seite [Allgemein] des Einstellungsdialogfelds</li>
-            <li>[Profilverwaltung...] im Tray-Menü</li>
-        </ul>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#new-profile'>[Neues Profil hinzufügen] Dialogfeld</a></li>
-                <li><a href='#profile-mgmt-dialog'>[Profilverwaltung] Dialogfeld</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicDefaultSettings() => new("default-settings", "Grundeinstellungen der Profile",
-        Wrap("Grundeinstellungen der Profile", @"
-        <h2>Grundeinstellungen</h2>
-        <p>Diese Werte gelten beim ersten Start, für alle Standardprofile und für neu über die Profilverwaltung angelegte Profile:</p>
-        <table>
-            <tr><th>Einstellung</th><th>Grundeinstellung</th></tr>
-            <tr><td>Quick-Menü verwenden</td><td>Aktiviert</td></tr>
-            <tr><td>Beim Anmelden starten</td><td>Aktiviert</td></tr>
-            <tr><td>Anwendung</td><td>Scan to Folder</td></tr>
-            <tr><td>Speicherordner</td><td>Dokumente\SpeedScanManager</td></tr>
-            <tr><td>Dateinamenformat</td><td>Datum und Uhrzeit (JJJJMMTThhmmss)</td></tr>
-            <tr><td>Benutzerdefinierter Dateiname</td><td>unbenannt, 3 Ziffern</td></tr>
-            <tr><td>Datei nach Scan umbenennen</td><td>Ausgeschaltet</td></tr>
-            <tr><td>Bildqualität</td><td>Automatisch (200 dpi, Schwarzweiß 400 dpi)</td></tr>
-            <tr><td>Farbmodus</td><td>Farbe</td></tr>
-            <tr><td>Scan-Seite</td><td>Automatisch</td></tr>
-            <tr><td>Scanvorgang fortsetzen</td><td>Ausgeschaltet</td></tr>
-            <tr><td>Helligkeit</td><td>Normal</td></tr>
-            <tr><td>Automatisches Löschen leerer Seiten</td><td>Aktiviert</td></tr>
-            <tr><td>Schräglauf automatisch korrigieren</td><td>Deaktiviert</td></tr>
-            <tr><td>Automatische Bilddrehung</td><td>Aktiviert</td></tr>
-            <tr><td>Dateiformat</td><td>PDF (*.pdf), mehrseitig, ohne Kennwort</td></tr>
-            <tr><td>Texterkennung (OCR)</td><td>Deaktiviert (Sprache: Automatische Erkennung, Zielseiten: Alle Seiten)</td></tr>
-            <tr><td>Papiergröße</td><td>Automatische Erkennung</td></tr>
-            <tr><td>Mehrfacheinzugserkennung</td><td>Aus</td></tr>
-            <tr><td>Trägerblatt-Modus</td><td>Deaktiviert</td></tr>
-            <tr><td>Komprimierungsrate</td><td>Stufe 3 von 5</td></tr>
-            <tr><td>E-Mail-Betreff</td><td>Gescanntes Dokument</td></tr>
-            <tr><td>Zieldrucker</td><td>(Standarddrucker)</td></tr>
-        </table>
-
-        <h2>Standardprofile</h2>
-        <p>Beim ersten Start werden acht Standardprofile erstellt, je eines pro Anwendung. Sie enthalten die
-        oben genannten Grundeinstellungen und unterscheiden sich nur in der Anwendung:</p>
-        <table>
-            <tr><th>Profilname</th><th>Anwendung</th></tr>
-            <tr><td>In Ordner speichern</td><td>Scan to Folder</td></tr>
-            <tr><td>Per E-Mail senden</td><td>Scan to E-Mail</td></tr>
-            <tr><td>Drucken</td><td>Scan to Print</td></tr>
-            <tr><td>In Word-Dokument umwandeln</td><td>Scan to Word</td></tr>
-            <tr><td>In Excel-Tabelle umwandeln</td><td>Scan to Excel</td></tr>
-            <tr><td>In PowerPoint-Präsentation umwandeln</td><td>Scan to PowerPoint</td></tr>
-            <tr><td>In Bilderordner speichern</td><td>Scan Picture Folder</td></tr>
-            <tr><td>Mit PDF-Programm bearbeiten</td><td>Edit with PDF</td></tr>
-        </table>
-        <p>Standardprofile können nicht umbenannt oder gelöscht werden, lassen sich aber in der Reihenfolge
-        verschieben. Insgesamt sind höchstens 20 Profile möglich.</p>
-
-        <div class='note'>
-            <div class='note-title'>HINWEIS</div>
-            <p>Die Kacheln [Empfohlen], [Kleine Datei] und [Hohe Bildqualität] unter [Scanqualität] sind keine Profile, sondern
-            Voreinstellungen für Bildqualität und Komprimierungsrate im Einstellungsdialogfeld.</p>
-        </div>
-    "));
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Fehlerbehebung
-    // ═══════════════════════════════════════════════════════════════════════
-
-    private static HelpTopic TopicMultiFeedDialog() => new("multifeed-dialog", "Mehrfacheinzugserkennungsdialogfeld",
-        Wrap("Mehrfacheinzugserkennungsdialogfeld", @"
-        <p>Wenn während des Scannens ein Mehrfacheinzug erkannt wurde, erscheint dieses Dialogfeld
-        („Mehrfacheinzug erkannt!“). Der Scanner hält an, bis Sie entschieden haben.</p>
-
-        <h2>Elemente</h2>
-        <p><b>Vorschaubilder</b> – Zeigt die vorherige Seite und die aktuelle Seite (mit Mehrfacheinzug, rot markiert)
-        zur Beurteilung. Gibt es keine vorherige Seite, steht dort „Kein Vorschaubild verfügbar“.</p>
-
-        <p>Unten rechts stehen <b>[So übernehmen]</b> und <b>[Wiederholen]</b> (Standardtaste), unten links
-        <b>[Erkennung ausschalten]</b>. Esc schließt das Dialogfeld nicht.</p>
-
-        <p><b>[Wiederholen] Taste</b> – Verwirft die in diesem Durchgang gescannten Bilder und bricht den Scan ab
-        (Sprechblase „Scan verworfen“). Legen Sie das Dokument erneut ein und starten Sie einen neuen Scan.
-        Dieselbe Wirkung hat das Schließen des Dialogfelds (Schließen-Symbol). [Wiederholen] ist die Standardtaste
-        (<span class='kbd'>Enter</span>).</p>
-
-        <p><b>[So übernehmen] Taste</b> – Behält die Bilder mit Mehrfacheinzug.
-        Der Scanvorgang wird fortgesetzt.</p>
-
-        <p><b>[Erkennung ausschalten] Taste</b> (unten links) – Ignoriert weitere Mehrfacheinzug-Meldungen
-        für den restlichen Scan und übernimmt die aktuelle Seite.</p>
-
-        <p><b>Hilfe-Symbol (?)</b> – Öffnet diese Hilfe.</p>
-
-        <div class='warning'>
-            <div class='warning-title'>ACHTUNG</div>
-            <ul>
-                <li>Umschläge oder Dokumente mit aufgeklebten Zetteln/Fotos/Briefmarken können vom Scanner
-                als Mehrfacheinzug erkannt werden.</li>
-                <li>Welche Erkennungsarten möglich sind, hängt vom Scannermodell ab.</li>
-            </ul>
-        </div>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#multifeed-measures'>Maßnahmen beim Auftreten eines Mehrfacheinzugs</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicMultiFeedMeasures() => new("multifeed-measures", "Maßnahmen beim Auftreten eines Mehrfacheinzugs",
-        Wrap("Maßnahmen beim Auftreten eines Mehrfacheinzugs", @"
-        <p>Wenn der Scanner einen Mehrfacheinzug erkannt hat, wird der Scanvorgang unterbrochen.</p>
-
-        <h2>Dokumente wurden in der Reihenfolge des Originaldokuments gescannt</h2>
-        <ol>
-            <li>Wählen Sie [So übernehmen] und der Scan wird fortgesetzt.</li>
-        </ol>
-        <p>Für Umschläge oder Dokumente mit Briefmarken/Klebenotizen/Fotos: Wählen Sie [So übernehmen]
-        um die Seite zu behalten und den Scan fortzusetzen, oder [Erkennung ausschalten], wenn weitere solche
-        Seiten folgen.</p>
-
-        <h2>Dokumente wurden nicht in der Reihenfolge des Originaldokuments gescannt</h2>
-        <ol>
-            <li>Wählen Sie [Wiederholen]. Die Seiten dieses Durchgangs werden verworfen.</li>
-            <li>Öffnen Sie den ADF, entnehmen Sie alle Dokumente (auch aus dem Ausgabefach) und richten Sie die Blattkanten neu aus.</li>
-            <li>Legen Sie den gesamten Stapel erneut ein und starten Sie einen neuen Scan.</li>
-        </ol>
-
-        <div class='see-also'>Siehe auch:
-            <ul>
-                <li><a href='#multifeed-dialog'>Mehrfacheinzugserkennungsdialogfeld</a></li>
-            </ul>
-        </div>
-    "));
-
-    private static HelpTopic TopicMessageList() => new("message-list", "Liste der Meldungen",
-        Wrap("Liste der Meldungen", GetMessageListHtml()));
-
-    private static string GetMessageListHtml()
-    {
-        var windows = new[]
-        {
-            "Ein Scanvorgang läuft bereits. (Scan oder Scannerauswahl wurde während eines Scans gewählt.)",
-            "TWAIN ist nicht initialisiert. Es ist kein Scanner verfügbar. (Der TWAIN-Quellmanager konnte nicht gestartet werden; prüfen Sie die Treiberinstallation.)",
-            "Der TWAIN-Quellmanager konnte nicht geöffnet werden.",
-            "Es wurde kein Scanner gefunden.",
-            "Der Scanner konnte nicht geöffnet werden. Ist er eingeschaltet und verbunden?",
-            "Der Scanvorgang konnte nicht gestartet werden.",
-            "Der Scanner hat nicht reagiert. Es wurden keine Seiten gescannt.",
-            "Es wurden keine Seiten gescannt. Bitte legen Sie das Dokument in den Scanner ein und versuchen Sie es erneut.",
-            "Alle gescannten Seiten wurden als leer erkannt und entfernt. Es wurde keine Datei gespeichert.",
-            "Es wurde keine Datei erstellt.",
-            "Der Scan konnte nicht gespeichert werden: ...",
-            "Der Scan konnte nicht im Zielordner gespeichert werden ... Er wurde stattdessen hier gespeichert: Dokumente\\SpeedScanManager",
-            "Der Zielordner konnte nicht erstellt werden ... Der Scan bleibt hier gespeichert: ...",
-            "Folgende Dateien konnten nicht nach ... verschoben werden und bleiben in ...",
-            "Scan verwerfen? Ja: Der Scan wird gelöscht. Nein: Zurück zum Dialog.",
-            "Das E-Mail-Programm konnte nicht mit der Datei als Anhang geöffnet werden. (Der Ordner mit der Datei wird geöffnet, damit Sie sie manuell anhängen können.)",
-            "Es gibt keine Seiten zum Drucken.",
-            "Es ist kein Drucker installiert. Der Scan wurde gespeichert, aber nicht gedruckt.",
-            "Der Drucker \"...\" wurde nicht gefunden. Auf dem Standarddrucker drucken?",
-            "Das Drucken ist fehlgeschlagen: ...",
-            "Die Word-/Excel-/PowerPoint-Datei konnte nicht erstellt werden: ...",
-            "Die Datei wurde erstellt, konnte aber nicht geöffnet werden (ist Word/Excel/PowerPoint installiert?)",
-            "Die Bilder konnten nicht im Bilderordner gespeichert werden: ...",
-            "Die Datei konnte nicht geöffnet werden: ...",
-            "Das Programm \"...\" wurde nicht gefunden bzw. konnte nicht gestartet werden. (Eigene Anwendung; der Scan bleibt gespeichert.)",
-            "Der Ordner \"...\" existiert nicht. (Scan-Ergebnis anzeigen)",
-            "Es läuft gerade ein Scanvorgang. Scan abbrechen und SpeedScan Manager beenden?",
-            "Der letzte Scan ist noch nicht abgeschlossen. SpeedScan Manager trotzdem beenden?",
-            "Das PDF-Passwort konnte nicht gelesen werden, bitte neu eingeben (Einstellungen > Dateiart > Option > Kennwort).",
-            "Die Einrichtung der Scan-Taste wurde abgebrochen. / Die Scan-Taste konnte nicht eingerichtet werden.",
-            "Es können höchstens 20 Profile angelegt werden.",
-            "Das Standardprofil \"...\" kann nicht geändert werden. Möchten Sie die geänderten Einstellungen als neues Profil speichern?",
-            "In SpeedScan Manager ist ein unerwarteter Fehler aufgetreten. Das Programm läuft weiter. (Details stehen in %LocalAppData%\\SpeedScanManager\\crash.log.)",
-        };
-
-        var balloons = new[]
-        {
-            "Der Scanner ist nicht angeschlossen oder ausgeschaltet.",
-            "TWAIN konnte nicht initialisiert werden. Es kann nicht gescannt werden.",
-            "Scan abgebrochen: Der Scanvorgang wurde abgebrochen.",
-            "Scan verworfen: Mehrfacheinzug: Die Seiten wurden verworfen. Bitte legen Sie das Dokument erneut ein.",
-            "Scan verworfen: Der Scan wurde gelöscht.",
-            "Scan gespeichert: Dateiname und Ordner bzw. Anzahl der Dateien.",
-            "Drucken: Das Dokument wurde an den Drucker gesendet.",
-            "Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet.",
-            "Die Scan-Taste ist eingerichtet. Ein Druck auf die Taste startet einen Scan.",
-            "Hinweis zum Scan: Der Scanner hat nicht mehr reagiert. Der Scanvorgang wurde abgebrochen.",
-            "Hinweis zum Scan: Eine oder mehrere Seiten konnten nicht übertragen werden.",
-            "Hinweis zum Scan: Der Scanner unterstützt den Farbmodus nicht / kein Flachbett (der Einzug wird verwendet) / keinen Duplex-Scan (es wurde einseitig gescannt).",
-            "Hinweis zum Scan: Die Auflösung wird nicht unterstützt, es wurde eine andere verwendet.",
-            "Hinweis zum Scan: Die Mehrfacheinzugserkennung konnte nicht (bzw. nur mit Ultraschall) aktiviert werden.",
-            "Hinweis zum Scan: Die gewählte Papiergröße wird vom Scanner nicht unterstützt / keine gültige benutzerdefinierte Papiergröße ausgewählt.",
-            "Hinweis: OCR-Sprachdaten fehlen; es wird eine andere Sprache verwendet bzw. die Texterkennung wurde übersprungen.",
-            "Hinweis: Die Texterkennung ist nicht verfügbar (tessdata fehlt) oder fehlgeschlagen.",
-            "Hinweis: Die automatische Bilddrehung ist nicht verfügbar (osd.traineddata fehlt).",
-            "Hinweis: Markierte Schlüsselwörter benötigen die Texterkennung (durchsuchbare PDF); sie wurden übersprungen.",
-            "Hinweis: Zu wenig Arbeitsspeicher für die Schräglagenkorrektur; sie wurde übersprungen.",
-        };
-
-        var sb = new StringBuilder();
-        sb.AppendLine("<p>Folgende Meldungen können während der Verwendung von SpeedScan Manager erscheinen. Auslassungspunkte (...) stehen für Namen, Pfade oder Fehlertexte.</p>");
-
-        sb.AppendLine("<h2>Meldungsfenster</h2>");
-        sb.AppendLine("<ul>");
-        foreach (var msg in windows)
-            sb.AppendLine($"  <li>{System.Net.WebUtility.HtmlEncode(msg)}</li>");
-        sb.AppendLine("</ul>");
-
-        sb.AppendLine("<h2>Sprechblasen am Tray-Symbol</h2>");
-        sb.AppendLine("<ul>");
-        foreach (var msg in balloons)
-            sb.AppendLine($"  <li>{System.Net.WebUtility.HtmlEncode(msg)}</li>");
-        sb.AppendLine("</ul>");
-        return sb.ToString();
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Anhang
-    // ═══════════════════════════════════════════════════════════════════════
-
-    private static HelpTopic TopicAbbreviations() => new("abbreviations", "In dieser Hilfe verwendete Abkürzungen",
-        Wrap("In dieser Hilfe verwendete Abkürzungen", @"
-        <table>
-            <tr><th>Abkürzung</th><th>Bedeutung</th></tr>
-            <tr><td>ADF</td><td>Automatic Document Feeder (Automatischer Dokumenteneinzug)</td></tr>
-            <tr><td>OCR</td><td>Optical Character Recognition (Optische Zeichenerkennung)</td></tr>
-            <tr><td>OSD</td><td>Orientation and Script Detection (Ausrichtungs- und Schrifterkennung)</td></tr>
-            <tr><td>PDF</td><td>Portable Document Format</td></tr>
-            <tr><td>JPEG</td><td>Joint Photographic Experts Group (Bildformat)</td></tr>
-            <tr><td>PNG</td><td>Portable Network Graphics (Bildformat)</td></tr>
-            <tr><td>dpi</td><td>dots per inch (Punkte pro Zoll)</td></tr>
-            <tr><td>USB</td><td>Universal Serial Bus</td></tr>
-            <tr><td>WIA / STI</td><td>Windows Image Acquisition / Still Image (Windows-Schnittstellen für Bilderfassungsgeräte, u. a. für die Scan-Taste)</td></tr>
-            <tr><td>TWAIN</td><td>Standard-Protokoll für die Kommunikation zwischen Scanner und Software</td></tr>
-            <tr><td>MAPI</td><td>Messaging Application Programming Interface (E-Mail-Schnittstelle)</td></tr>
-            <tr><td>UAC</td><td>User Account Control (Windows-Benutzerkontensteuerung)</td></tr>
-            <tr><td>S&amp;W</td><td>Schwarz und Weiß</td></tr>
-        </table>
-    "));
-
-    /// <summary>
-    /// Flattens the topic tree into a dictionary for quick ID lookup.
-    /// </summary>
+    /// <summary>Flattens the topic tree into a dictionary for quick ID lookup.</summary>
     public static Dictionary<string, HelpTopic> BuildTopicMap(HelpTopic root)
     {
         var map = new Dictionary<string, HelpTopic>();
@@ -1772,4 +158,942 @@ internal static class HelpContent
         Walk(root);
         return map;
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Building blocks
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static HelpTopic Page(string id, string title, string summary, string html, params string[] related)
+        => new(id, title, summary, html) { Related = related };
+
+    private static string Steps(params string[] steps)
+    {
+        var sb = new StringBuilder("<ol class='steps'>");
+        foreach (var s in steps) sb.Append("<li>").Append(s).Append("</li>");
+        return sb.Append("</ol>").ToString();
+    }
+
+    private static string Box(string kind, string title, string html) =>
+        $"<div class='box {kind}'><div class='box-title'>{title}</div><p>{html}</p></div>";
+
+    private static string Tip(string html) => Box("tip", "Tipp", html);
+    private static string Note(string html) => Box("note", "Hinweis", html);
+    private static string Warn(string html) => Box("warn", "Achtung", html);
+
+    /// <summary>Screenshot (light/dark variant chosen at render time) with caption.</summary>
+    private static string Shot(string image, string caption) =>
+        $"<div class='shot'><img src='help-img:{image}' alt='{caption}'><div class='caption'>{caption}</div></div>";
+
+    /// <summary>Explanation of the numbered markers in a screenshot.</summary>
+    private static string Legend(params string[] items)
+    {
+        var sb = new StringBuilder("<table class='legend'>");
+        for (int i = 0; i < items.Length; i++)
+            sb.Append("<tr><td><span class='num'>").Append(i + 1).Append("</span></td><td>").Append(items[i]).Append("</td></tr>");
+        return sb.Append("</table>").ToString();
+    }
+
+    /// <summary>Card with "element – explanation" rows.</summary>
+    private static string Items(params (string Term, string Text)[] rows)
+    {
+        var sb = new StringBuilder("<table class='items'>");
+        foreach (var (term, text) in rows)
+            sb.Append("<tr><td class='term'>").Append(term).Append("</td><td>").Append(text).Append("</td></tr>");
+        return sb.Append("</table>").ToString();
+    }
+
+    /// <summary>Table with a header row.</summary>
+    private static string Grid(string[] head, params string[][] rows)
+    {
+        var sb = new StringBuilder("<table class='grid'><tr>");
+        foreach (var h in head) sb.Append("<th>").Append(h).Append("</th>");
+        sb.Append("</tr>");
+        foreach (var row in rows)
+        {
+            sb.Append("<tr>");
+            foreach (var cell in row) sb.Append("<td>").Append(cell).Append("</td>");
+            sb.Append("</tr>");
+        }
+        return sb.Append("</table>").ToString();
+    }
+
+    private static string QA(string question, string answer) =>
+        $"<div class='qa'><h3>{question}</h3>{answer}</div>";
+
+    private static string Icon(string name, string alt) =>
+        $"<img src='help-img:{name}' width='16' height='16' alt='{alt}' style='vertical-align:-3px'>";
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Erste Schritte
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static HelpTopic TopicOverview() => Page("overview", "Was ist SpeedScan Manager?",
+        "SpeedScan Manager steuert Ihren TWAIN-Scanner und erledigt nach dem Scan die Arbeit für Sie.",
+        @"
+        <p>Das Programm läuft unauffällig im Infobereich der Taskleiste. Sie legen ein Dokument ein, drücken die
+        Scan-Taste – und wählen danach, was mit dem Scan passieren soll.</p>
+
+        <h2>Das können Sie damit machen</h2>
+        " + Items(
+            ("In Ordner speichern", "Als PDF, JPEG oder PNG in einem Ordner Ihrer Wahl ablegen."),
+            ("Per E-Mail versenden", "Ihr E-Mail-Programm öffnet sich mit dem Scan als Anhang."),
+            ("Drucken", "Die Seiten direkt auf einem Drucker ausgeben (Kopierer-Ersatz)."),
+            ("Word, Excel, PowerPoint", "Die Seiten als Bilder in ein neues Office-Dokument einfügen."),
+            ("Bilderordner", "Die Seiten als JPEG-Bilder in <code>Bilder\\SpeedScanManager</code> speichern."),
+            ("Mit PDF-Programm öffnen", "Den Scan im Programm öffnen, das in Windows für die Datei eingestellt ist."),
+            ("Eigene Programme", "Bis zu zehn eigene Programme mit dem Scan starten.")) + @"
+
+        <h2>Das erledigt das Programm automatisch</h2>
+        <ul>
+            <li><b>Texterkennung (OCR)</b> – macht PDFs durchsuchbar.</li>
+            <li><b>Leere Seiten entfernen</b>, <b>schiefe Seiten geraderücken</b> und <b>Seiten richtig drehen</b>.</li>
+            <li><b>Farbe erkennen</b> – jede Seite wird als Farbe, Grau oder Schwarzweiß gespeichert.</li>
+            <li><b>Trägerblatt</b> – zwei Hälften eines gefalteten A3-Blatts zu einem Bild zusammensetzen.</li>
+        </ul>
+        " + Tip("Am schnellsten starten Sie mit dem <a href='#scan-quick'>Quick-Menü</a>: Es ist bereits eingeschaltet und fragt nach jedem Scan, wohin er soll."),
+        "scan-quick", "starting", "settings");
+
+    private static HelpTopic TopicStarting() => Page("starting", "Tray-Symbol und Menü",
+        "SpeedScan Manager hat kein großes Hauptfenster – alles erreichen Sie über das Symbol in der Taskleiste.",
+        @"
+        <p>Nach dem Start erscheint das Programmsymbol im Infobereich der Taskleiste (unten rechts, ggf. hinter dem
+        Pfeil <b>˄</b>). Klicken Sie darauf, um das Menü zu öffnen.</p>
+        " + Shot("tray_menu", "Das Tray-Menü. Oben sehen Sie, ob der Scanner bereit ist.") + @"
+
+        <h2>Das Symbol zeigt den Status</h2>
+        " + Items(
+            (Icon("trayicon_connected", "Bereit") + "&nbsp; Normal", "Der Scanner ist verbunden und bereit."),
+            (Icon("trayicon_scanning", "Scannt") + "&nbsp; Mit orangem Punkt", "Ein Scan läuft oder wird gerade verarbeitet."),
+            (Icon("trayicon_disconnected", "Getrennt") + "&nbsp; Blass mit rotem Strich", "Kein Scanner verbunden oder der Scanner ist aus.")) + @"
+        <p>Halten Sie die Maus über das Symbol, sehen Sie den Namen des Scanners – während eines Scans auch die Anzahl der
+        bisher gescannten Seiten.</p>
+
+        <h2>Klicken</h2>
+        " + Items(
+            ("Linksklick oder Rechtsklick", "Öffnet das Menü."),
+            ("Doppelklick", "Öffnet die <a href='#settings'>Einstellungen</a>.")) + @"
+
+        <h2>Die Befehle im Menü</h2>
+        " + Items(
+            ("Scan", "Startet einen Scan mit den aktuellen Einstellungen. Nicht verfügbar, solange der Scanner getrennt ist oder ein Scan läuft."),
+            ("Scan abbrechen", "Nur sichtbar, während ein Scan läuft."),
+            ("Scanner auswählen...", "Den Scanner wählen, wenn mehrere angeschlossen sind (<a href='#scanner-selection'>mehr</a>)."),
+            ("Einstellungen der SCAN Taste...", "Öffnet das <a href='#settings'>Einstellungsfenster</a>."),
+            ("Scan-Taste einrichten...", "Richtet die Taste am Scanner (erneut) ein (<a href='#scan-button'>mehr</a>)."),
+            ("Profilverwaltung...", "Profile umbenennen, löschen und sortieren."),
+            ("E-Mail-Einstellungen...", "Empfänger und Betreff für Scan to E-Mail."),
+            ("Druckeinstellungen...", "Drucker für Scan to Print."),
+            ("Scan-Ergebnis anzeigen", "Zeigt die zuletzt gespeicherte Datei im Explorer (erst nach einem Scan)."),
+            ("Design", "<b>System</b>, <b>Hell</b> oder <b>Dunkel</b> – wirkt sofort auf alle Fenster."),
+            ("Hilfe", "Diese Hilfe und die Versionsinformationen."),
+            ("Beenden", "Beendet das Programm. Läuft gerade ein Scan, werden Sie vorher gefragt; wird er gerade gespeichert, beendet sich das Programm erst danach.")) + @"
+
+        <h2>Mit Windows starten</h2>
+        <p>Der Schalter <b>SpeedScan Manager beim Anmelden starten</b> auf der Seite <b>Allgemein</b> der Einstellungen legt fest,
+        ob das Programm automatisch startet. Nach einer Neuinstallation ist er eingeschaltet; nach einem Update von Version 0.1.x
+        bleibt er aus, bis Sie ihn einschalten.</p>
+        " + Note("Das Programm läuft immer nur einmal. Starten Sie es ein zweites Mal, öffnen sich stattdessen die Einstellungen. " +
+                 "Einstellungen und Profile liegen im Ordner <code>%AppData%\\SpeedScanManager</code>."),
+        "scan-quick", "settings", "scan-button");
+
+    private static HelpTopic TopicScannerConnection() => Page("scanner-connection", "Scanner verbinden",
+        "USB- und Netzwerk-Scanner werden automatisch erkannt, sobald sie eingeschaltet sind.",
+        Steps(
+            "Installieren Sie den TWAIN-Treiber des Scanners (vom Hersteller).",
+            "Schalten Sie den Scanner ein und verbinden Sie ihn per USB oder Netzwerk mit dem PC.",
+            "Warten Sie einen Moment: Das Tray-Symbol wechselt von " + Icon("trayicon_disconnected", "getrennt") + " zu " +
+            Icon("trayicon_connected", "bereit") + ", und oben im Menü erscheint der Name des Scanners mit grünem Punkt.") + @"
+
+        <h2>Was im Hintergrund passiert</h2>
+        <p>Wird ein Gerät angeschlossen oder getrennt, prüft das Programm den Scanner sofort. Zusätzlich prüft es etwa alle
+        10 Sekunden. Ein getrennter Scanner wird erst nach zwei fehlgeschlagenen Prüfungen gemeldet – einmalig mit der Sprechblase
+        „Der Scanner ist nicht angeschlossen oder ausgeschaltet.“</p>
+        " + Tip("Schließen Sie möglichst nur einen Scanner an. Sind mehrere angeschlossen, legen Sie unter " +
+                "<a href='#scanner-selection'>Scanner auswählen</a> fest, welcher verwendet wird.") +
+        Warn("Wird der Scanner nicht erkannt, prüfen Sie Kabel bzw. Netzwerk, ob er eingeschaltet ist und ob der TWAIN-Treiber installiert ist. " +
+             "Weitere Hilfe: <a href='#faq'>Häufige Probleme</a>."),
+        "scanner-selection", "sysreq", "faq");
+
+    private static HelpTopic TopicScannerSelection() => Page("scanner-selection", "Scanner auswählen",
+        "Legen Sie fest, welcher Scanner verwendet wird, wenn mehrere angeschlossen sind.",
+        Steps(
+            "Klicken Sie auf das Tray-Symbol und wählen Sie <b>Scanner auswählen...</b> (nicht während eines Scans).",
+            "Wählen Sie den Scanner in der Liste. <b>(USB)</b> bzw. <b>(Netzwerk)</b> zeigt die Verbindung; USB-Scanner stehen oben.",
+            "Klicken Sie auf <b>OK</b>. Die Auswahl gilt auch nach einem Neustart.") +
+        Shot("dlg_scanner", "Das Fenster „Scanner auswählen“") + @"
+        <p>Der erste Eintrag <b>(Automatisch)</b> überlässt die Wahl dem Programm. <b>Abbrechen</b> oder das Schließen-Symbol
+        schließen das Fenster ohne Änderung.</p>
+        " + Note("Die Liste aktualisiert sich von selbst, wenn ein Scanner hinzukommt. Wird keiner gefunden, steht dort „Kein Scanner gefunden“ – " +
+                 "<b>(Automatisch)</b> können Sie trotzdem bestätigen. Ist der gewählte Scanner nicht erreichbar, zeigt das Tray-Symbol „Auswahl: ... (offline)“."),
+        "scanner-connection");
+
+    private static HelpTopic TopicSystemRequirements() => Page("sysreq", "Systemanforderungen",
+        "Was Ihr PC und Ihr Scanner mitbringen müssen.",
+        Items(
+            ("Betriebssystem", "Windows 10 oder Windows 11 (64-Bit)."),
+            ("Scanner", "TWAIN-fähiger Scanner (USB oder Netzwerk) mit installiertem TWAIN-Treiber. Da SpeedScan Manager ein 32-Bit-Programm ist, muss der Treiber eine 32-Bit-TWAIN-Quelle mitbringen."),
+            (".NET", "Beim Installationspaket ist keine separate .NET-Installation nötig."),
+            ("Scan to E-Mail", "Ein E-Mail-Programm mit MAPI-Unterstützung (z. B. Outlook)."),
+            ("Scan to Print", "Ein installierter Drucker."),
+            ("Word, Excel, PowerPoint", "Zum Öffnen der erstellten Dateien – erstellt werden sie auch ohne Office.")) +
+        Note("Mitgeliefert sind die Sprachdaten für die Texterkennung in Deutsch und Englisch sowie die Daten für die automatische Bilddrehung. " +
+             "Weitere Sprachen: siehe <a href='#filetype-tab'>Seite „Dateiart“</a>."),
+        "scanner-connection");
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Scannen
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static HelpTopic TopicScanQuickMenu() => Page("scan-quick", "So scannen Sie ein Dokument",
+        "Mit dem Quick-Menü (Grundeinstellung) scannen Sie zuerst und entscheiden danach, wohin der Scan soll.",
+        Steps(
+            "Legen Sie die Seiten in den Scanner ein.",
+            "Drücken Sie die <b>Scan-Taste am Scanner</b> – oder klicken Sie auf das Tray-Symbol und wählen Sie <b>Scan</b>.",
+            "Warten Sie, bis alle Seiten eingezogen sind. Der Scan wird verarbeitet und im Speicherordner abgelegt.",
+            "Das <b>Quick-Menü</b> erscheint. Klicken Sie auf das gewünschte Ziel und dann auf <b>Speichern</b> – oder doppelklicken Sie einfach auf das Ziel.") +
+        Shot("quickmenu", "Das Quick-Menü nach dem Scan") +
+        Legend(
+            "Die Ziele: Ordner, E-Mail, Drucker, Word, Excel, PowerPoint, Bilderordner und PDF-Programm. Die Pfeiltasten bewegen die Auswahl.",
+            "<b>Abbrechen</b>: Das Quick-Menü schließt sich, die bereits gespeicherte Datei bleibt erhalten.",
+            "<b>Speichern</b>: Führt das gewählte Ziel aus.") +
+        Tip("Wählen Sie <b>In Ordner speichern</b>, können Sie im nächsten Fenster noch <a href='#postscan-save'>Dateiname und Ordner</a> ändern.") + @"
+
+        <h2>Qualität schnell wählen</h2>
+        <p>Auf der Seite <b>Allgemein</b> der <a href='#settings'>Einstellungen</a> stellen Sie mit einem Klick ein, wie fein gescannt wird:</p>
+        " + Grid(new[] { "Kachel", "Bildqualität", "Komprimierung", "Geeignet für" },
+            new[] { "Empfohlen", "Automatisch", "3", "die meisten Dokumente" },
+            new[] { "Kleine Datei", "Normal", "5", "E-Mail-Versand, Archiv" },
+            new[] { "Hohe Bildqualität", "Fein", "1", "Fotos, feine Details" },
+            new[] { "Benutzerdefiniert", "eigene Werte", "eigene Werte", "öffnet die Seite „Scanmodus“" }) +
+        Note("Solange das Quick-Menü eingeschaltet ist, ist die Seite <b>Anwendung</b> in den Einstellungen ausgegraut – das Ziel wählen Sie ja nach dem Scan."),
+        "postscan-media", "scan-button", "scan-no-quick", "scan-display");
+
+    private static HelpTopic TopicScanButton() => Page("scan-button", "Scan-Taste am Scanner",
+        "Ein Druck auf die Taste am Scanner startet einen Scan – auch wenn SpeedScan Manager noch nicht läuft.",
+        @"
+        <h2>Einmal einrichten</h2>
+        <p>Damit Windows die Taste an SpeedScan Manager weitergibt, muss sie einmal eingerichtet werden. Das geschieht beim
+        ersten Start automatisch:</p>
+        " + Steps(
+            "Windows fragt nach Administratorrechten (Benutzerkontensteuerung). Klicken Sie auf <b>Ja</b>.",
+            "Fertig – ab jetzt startet die Taste einen Scan. Administratorrechte sind danach nicht mehr nötig.") +
+        Tip("Haben Sie die Abfrage abgelehnt oder einen weiteren Scanner angeschlossen? Wählen Sie im Tray-Menü <b>Scan-Taste einrichten...</b> – " +
+            "die Einrichtung startet erneut, danach meldet eine Sprechblase „Die Scan-Taste ist eingerichtet.“ Für einen neu angeschlossenen Scanner erscheint die Abfrage beim nächsten Programmstart auch von selbst.") + @"
+
+        <h2>So funktioniert es</h2>
+        <ul>
+            <li>SpeedScan Manager trägt sich in Windows als Programm für die Scan-Taste ein und ersetzt dabei das Windows-Standardprogramm.
+            Beim Deinstallieren wird der ursprüngliche Zustand wiederhergestellt.</li>
+            <li>Läuft das Programm schon, scannt es sofort. Läuft es noch nicht, startet Windows es und der Scan beginnt, sobald es bereit ist.</li>
+        </ul>
+        " + Note("Während ein Scan läuft – auch solange danach noch ein Fenster wie das Quick-Menü offen ist – wird die Taste ignoriert. " +
+                 "Zwei Drücke innerhalb von etwa 1,5 Sekunden zählen als einer. Kann das Programm den Scanner nicht verwenden (z. B. TWAIN nicht bereit), reagiert die Taste nicht.") +
+        "<p>Lehnen Sie die Abfrage ab, wird sie nicht erneut angezeigt. Sie können dann weiterhin über das Tray-Menü scannen.</p>",
+        "scan-quick", "faq", "starting");
+
+    private static HelpTopic TopicScanWithoutQuickMenu() => Page("scan-no-quick", "Scannen ohne Quick-Menü",
+        "Immer dasselbe Ziel? Dann schalten Sie das Quick-Menü aus und legen das Ziel vorher fest – gern auch als Profil.",
+        Steps(
+            "Öffnen Sie die <a href='#settings'>Einstellungen</a> (Doppelklick auf das Tray-Symbol).",
+            "Schalten Sie auf der Seite <b>Allgemein</b> den Schalter <b>Quick-Menü verwenden</b> aus.",
+            "Wählen Sie unter <b>Aktives Profil</b> ein Profil – oder stellen Sie das Ziel auf der Seite <a href='#app-tab'>Anwendung</a> selbst ein.",
+            "Klicken Sie auf <b>OK</b>.",
+            "Scannen Sie wie gewohnt mit der Scan-Taste oder über <b>Scan</b> im Tray-Menü.") + @"
+
+        <h2>Was nach dem Scan passiert</h2>
+        " + Items(
+            ("Scan to Folder", "Das Fenster <a href='#postscan-save'>In Ordner speichern</a> erscheint."),
+            ("Alle anderen Ziele", "Werden sofort ausgeführt. Ist auf der Seite <b>Speichern</b> der Schalter <b>Datei nach Scan umbenennen</b> an, erscheint vorher das Fenster „In Ordner speichern“.")),
+        "profile-mgmt", "app-tab", "scan-quick");
+
+    private static HelpTopic TopicScanDisplay() => Page("scan-display", "Was nach dem Scan passiert",
+        "Jeder Scan wird zuerst als Datei gespeichert – erst dann wird das gewählte Ziel ausgeführt.",
+        @"
+        <h2>1. Die Seiten werden aufbereitet</h2>
+        <p>Je nach Einstellung, in dieser Reihenfolge:</p>
+        " + Steps(
+            "<b>Trägerblatt</b>: Vorder- und Rückseite werden nebeneinander zusammengefügt.",
+            "<b>Leere Seiten entfernen</b>. Sind alle Seiten leer, wird nichts gespeichert und eine Meldung erscheint.",
+            "<b>Schräglauf korrigieren</b> (wenn eingeschaltet).",
+            "<b>Automatische Bilddrehung</b> (wenn eingeschaltet).",
+            "<b>Farberkennung</b> bei Farbmodus „Automatische Farberkennung“: Farbe, Grau oder Schwarzweiß pro Seite.",
+            "<b>Texterkennung</b> und Speichern als PDF, JPEG oder PNG.") + @"
+
+        <h2>2. Die Datei wird gespeichert</h2>
+        <p>Im Speicherordner (Grundeinstellung <code>Dokumente\SpeedScanManager</code>). Vorhandene Dateien werden nie überschrieben.
+        Ist der Ordner nicht beschreibbar, landet der Scan in <code>Dokumente\SpeedScanManager</code> und Sie erhalten eine Meldung.</p>
+
+        <h2>3. Das Ziel wird ausgeführt</h2>
+        " + Items(
+            ("In Ordner speichern", "Öffnet das Fenster <a href='#postscan-save'>In Ordner speichern</a> für Dateiname und Ordner."),
+            ("Per E-Mail versenden", "Öffnet Ihr E-Mail-Programm (MAPI) mit der Datei als Anhang."),
+            ("Drucken", "Druckt die Seiten in Originalgröße."),
+            ("Nach Word / Excel / PowerPoint", "Erstellt ein Office-Dokument mit den Seiten als Bilder, speichert es neben dem Scan und öffnet es."),
+            ("In Bilderordner", "Speichert die Seiten als JPEG in <code>Bilder\\SpeedScanManager</code> und zeigt das erste Bild im Explorer."),
+            ("Mit PDF Edit bearbeiten", "Öffnet die Datei(en) mit dem Programm, das in Windows dafür eingestellt ist."),
+            ("Eigene Anwendung", "Startet Ihr Programm mit den gespeicherten Dateien (nur ohne Quick-Menü).")) +
+        Tip("Datei nicht gefunden? Wählen Sie im Tray-Menü <b>Scan-Ergebnis anzeigen</b> – der Explorer zeigt die zuletzt gespeicherte Datei."),
+        "scan-quick", "save-tab");
+
+    private static HelpTopic TopicScanContinue() => Page("scan-continue", "Scan abbrechen / fortsetzen",
+        "Einen laufenden Scan stoppen – oder mehrere Stapel zu einem Dokument zusammenfassen.",
+        @"
+        <h2>Scan abbrechen</h2>
+        <p>Klicken Sie auf das Tray-Symbol und wählen Sie <b>Scan abbrechen</b>. Die bis dahin gescannten Seiten werden verworfen,
+        eine Sprechblase meldet „Scan abgebrochen“. Das geht auch, während die Frage zum Mehrfacheinzug oder „Weitere Dokumente scannen?“ angezeigt wird.</p>
+        " + Note("Wählen Sie während eines Scans <b>Beenden</b>, fragt das Programm zuerst nach. Wird der Scan gerade gespeichert, " +
+                 "beendet es sich erst danach. Bereits gespeicherte Scans werden beim Beenden (auch beim Abmelden von Windows) nie gelöscht.") + @"
+
+        <h2>Mehrere Stapel zu einem Scan zusammenfassen</h2>
+        " + Steps(
+            "Schalten Sie auf der Seite <a href='#scanmode-tab'>Scanmodus</a> den Schalter <b>Scanvorgang nach aktuellem Scan fortsetzen</b> ein.",
+            "Scannen Sie den ersten Stapel.",
+            "Es erscheint die Frage „Weitere Dokumente scannen?“ mit der bisherigen Seitenzahl. Legen Sie den nächsten Stapel ein und klicken Sie auf <b>Fortsetzen</b>.",
+            "Sind alle Seiten gescannt, klicken Sie auf <b>Scan beenden</b>. Alle Seiten werden gemeinsam gespeichert.") +
+        Shot("continue_dialog", "Die Frage nach jedem Durchgang") +
+        Note("Wird in einem Durchgang ein Mehrfacheinzug mit <b>Wiederholen</b> verworfen, bleiben die früheren Durchgänge erhalten."),
+        "scanmode-tab", "multifeed-dialog");
+
+    private static HelpTopic TopicScanLongPages() => Page("scan-long", "Lange Seiten scannen",
+        "Kassenbons und andere lange Dokumente scannen Sie mit der automatischen Papiergröße.",
+        Steps(
+            "Stellen Sie auf der Seite <a href='#paper-tab'>Papier</a> die <b>Papiergröße</b> auf <b>Automatische Erkennung</b>.",
+            "Stellen Sie die <b>Mehrfacheinzugserkennung</b> nicht auf eine Variante mit <b>Länge</b> (also <b>Aus</b> oder <b>Ultraschall</b>).",
+            "Scannen Sie wie gewohnt.") + @"
+        <p>In diesem Modus erlaubt das Programm Seiten bis 8,5 × 125 Zoll (ca. 21,6 × 317 cm). Bei Scannern von Fujitsu, PFU und Ricoh
+        (PaperStream IP) setzt es zusätzlich die herstellerspezifischen Einstellungen für lange Seiten. Ob das Bild auf die echte Länge
+        zugeschnitten wird, entscheidet der Scannertreiber.</p>
+        " + Warn("Die maximale Länge hängt vom Scannermodell ab. Lange Seiten ergeben größere Dateien."),
+        "paper-tab");
+
+    private static HelpTopic TopicScanCarrierSheet() => Page("scan-carrier", "Mit dem Trägerblatt scannen",
+        "Mit einem Trägerblatt scannen Sie Dokumente, die größer als A4 sind (z. B. A3) – gefaltet in einem Durchgang.",
+        Steps(
+            "Öffnen Sie auf der Seite <a href='#paper-tab'>Papier</a> die <b>Trägerblatteinstellungen...</b>, schalten Sie den Trägerblatt-Modus ein und wählen Sie die Ausgabegröße.",
+            "Falten Sie das Dokument in der Mitte und legen Sie es in das Trägerblatt ein.",
+            "Führen Sie das Trägerblatt in den Scanner ein und scannen Sie <b>doppelseitig</b> (Duplex).",
+            "Vorder- und Rückseite werden nebeneinander zu einem Bild zusammengesetzt.") +
+        Warn("Nur Scanner, die für ein Trägerblatt gebaut sind, ziehen es ein. Zusammengesetzt wird nur bei Duplex-Scan – " +
+             "beim einseitigen Scan wird jede Seite einzeln auf die Ausgabegröße gebracht."),
+        "carrier-sheet-dialog", "paper-tab");
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Einstellungen
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static HelpTopic TopicSettingsDialog() => Page("settings", "Das Einstellungsfenster",
+        "Hier legen Sie fest, wie gescannt und gespeichert wird. Sie öffnen es per Doppelklick auf das Tray-Symbol.",
+        Shot("settings_window", "Das Einstellungsfenster mit der Seite „Allgemein“") +
+        Legend(
+            "<b>Seitenleiste</b>: Wählen Sie hier die Seite. Ist das Quick-Menü an, ist „Anwendung“ ausgegraut.",
+            "<b>Die gewählte Seite</b> mit ihren Einstellungen in Gruppen. Längere Seiten lassen sich scrollen.",
+            "<b>Hilfe</b>: öffnet die Hilfe genau zu dieser Seite.",
+            "<b>OK</b> übernimmt und schließt, <b>Übernehmen</b> übernimmt ohne zu schließen, <b>Abbrechen</b> verwirft.") + @"
+        <p>Änderungen gelten erst nach <b>OK</b> oder <b>Übernehmen</b>. Solange etwas nicht übernommen ist, steht unten links
+        „Nicht übernommene Änderungen“. <b>Abbrechen</b>, <span class='kbd'>Esc</span> und das Schließen-Symbol verwerfen diese Änderungen.</p>
+
+        <h2>Die Seiten</h2>
+        " + Items(
+            ("Allgemein", "Quick-Menü, Autostart, Scanqualität, Profil und Design (siehe unten)."),
+            ("<a href='#app-tab'>Anwendung</a>", "Was nach dem Scan passiert (nur ohne Quick-Menü)."),
+            ("<a href='#save-tab'>Speichern</a>", "Speicherordner und Dateiname."),
+            ("<a href='#scanmode-tab'>Scanmodus</a>", "Auflösung, Farbe, ein- oder doppelseitig."),
+            ("<a href='#filetype-tab'>Dateiart</a>", "PDF, JPEG oder PNG, Texterkennung."),
+            ("<a href='#paper-tab'>Papier</a>", "Papiergröße, Trägerblatt, Mehrfacheinzug."),
+            ("<a href='#filesize-tab'>Dateigröße</a>", "Komprimierung für kleinere Dateien.")) + @"
+
+        <h2>Die Seite „Allgemein“</h2>
+        " + Shot("page_general", "Seite „Allgemein“") +
+        Items(
+            ("Quick-Menü verwenden", "An: Nach jedem Scan wählen Sie das Ziel (<a href='#scan-quick'>mehr</a>). Dann sind die Seite „Anwendung“ und die Gruppe „Profil“ ausgegraut."),
+            ("Beim Anmelden starten", "Startet das Programm mit Windows (Grundeinstellung: an)."),
+            ("Scanqualität", "<b>Empfohlen</b>, <b>Kleine Datei</b> und <b>Hohe Bildqualität</b> setzen Bildqualität und Komprimierung. Die passende Kachel trägt ein Häkchen. " +
+                             "<b>Benutzerdefiniert</b> ist markiert, wenn Ihre Werte zu keiner Kachel passen – ein Klick öffnet die Seite „Scanmodus“. " +
+                             "Bedienbar auch mit <span class='kbd'>Tab</span> und <span class='kbd'>Leertaste</span>."),
+            ("Profil", "Nur ohne Quick-Menü: <b>Aktives Profil</b> wählen, mit <b>Profil hinzufügen...</b> die aktuellen Einstellungen als <a href='#new-profile'>neues Profil</a> speichern, " +
+                       "mit <b>Profilverwaltung...</b> Profile <a href='#profile-mgmt-dialog'>bearbeiten</a>."),
+            ("Design", "<b>System</b> folgt Windows, <b>Hell</b> und <b>Dunkel</b> legen das Aussehen fest. Wirkt sofort, auch ohne OK.")) +
+        Note("Ändern Sie die Einstellungen eines eigenen Profils, werden sie beim Übernehmen im Profil gespeichert. Die Standardprofile bleiben unverändert – " +
+             "Sie werden gefragt, ob die Änderungen als neues Profil gespeichert oder nur als aktuelle Einstellungen übernommen werden sollen.") +
+        Tip("Seiten wechseln per Tastatur: <span class='kbd'>Strg</span>+<span class='kbd'>Tab</span> bzw. <span class='kbd'>Strg</span>+<span class='kbd'>Umschalt</span>+<span class='kbd'>Tab</span> " +
+            "(oder <span class='kbd'>Strg</span>+<span class='kbd'>Bild ab</span> / <span class='kbd'>Bild auf</span>), in der Seitenleiste auch mit den Pfeiltasten. " +
+            "<span class='kbd'>Enter</span> entspricht <b>OK</b>. Mit dem Minimieren-Symbol legen Sie das Fenster in die Taskleiste."),
+        "scan-quick", "profile-mgmt", "default-settings");
+
+    private static HelpTopic TopicApplicationTab() => Page("app-tab", "Seite „Anwendung“",
+        "Legt fest, was nach dem Scan automatisch passiert – nur wenn das Quick-Menü ausgeschaltet ist.",
+        Shot("page_app", "Seite „Anwendung“") +
+        Items(
+            ("Anwendung", "Scan to Folder, Scan to E-Mail, Scan to Print, Scan to Word, Scan to Excel, Scan to PowerPoint, Scan Picture Folder, Edit with PDF – " +
+                          "und darunter Ihre eigenen Programme."),
+            ("E-Mail-Optionen...", "Erscheint bei Scan to E-Mail und öffnet die <a href='#email-options'>E-Mail-Optionen</a>."),
+            ("Druck-Optionen...", "Erscheint bei Scan to Print und öffnet die <a href='#print-options'>Druck-Optionen</a>."),
+            ("Installieren/Deinstallieren...", "Eigene Programme hinzufügen oder entfernen (<a href='#app-manage'>mehr</a>).")) +
+        Note("Ist das Quick-Menü eingeschaltet, ist diese Seite ausgegraut – das Ziel wählen Sie dann nach dem Scan.") +
+        Tip("E-Mail- und Druckeinstellungen erreichen Sie auch direkt im Tray-Menü – praktisch mit Quick-Menü. Dort geänderte Werte gelten sofort " +
+            "und werden auch im aktiven eigenen Profil gespeichert (Standardprofile bleiben unverändert).") +
+        "<p>Eine eigene Anwendung wird nach dem Scan mit ihren Argumenten gestartet; die gespeicherten Dateien werden als weitere Argumente angehängt.</p>",
+        "app-manage", "scan-no-quick", "settings");
+
+    private static HelpTopic TopicSaveTab() => Page("save-tab", "Seite „Speichern“",
+        "Wohin die Scans gespeichert werden und wie die Dateien heißen.",
+        Shot("page_save", "Seite „Speichern“") +
+        Items(
+            ("Speicherordner für Bilddaten", "Der Zielordner. Ändern Sie ihn mit <b>Durchsuchen...</b> (das Feld selbst ist nicht editierbar). Grundeinstellung: <code>Dokumente\\SpeedScanManager</code>."),
+            ("Dateinamenformat...", "Öffnet das Fenster <a href='#filename-format'>Dateinamenformat</a>. Daneben sehen Sie ein Beispiel für den nächsten Dateinamen."),
+            ("Datei nach Scan umbenennen", "An: Nach dem Scan erscheint das Fenster <a href='#postscan-save'>In Ordner speichern</a>, in dem Sie Name und Ordner noch ändern können.")) +
+        Note("Bei Scan to Folder und bei „In Ordner speichern“ im Quick-Menü erscheint dieses Fenster immer, unabhängig vom Schalter.") +
+        Tip("Vorhandene Dateien werden nie überschrieben: Bei gleichem Namen wird <code>_1</code>, <code>_2</code> usw. angehängt. " +
+            "Entstehen mehrere Dateien (z. B. ein Bild pro Seite), erhalten sie eine fortlaufende Nummer."),
+        "filename-format", "postscan-save");
+
+    private static HelpTopic TopicScanModeTab() => Page("scanmode-tab", "Seite „Scanmodus“",
+        "Auflösung, Farbe und ob ein- oder doppelseitig gescannt wird.",
+        Shot("page_scanmode", "Seite „Scanmodus“") + @"
+        <h2>Bildqualität</h2>
+        <p>Je höher die Auflösung, desto schärfer – aber der Scan dauert länger und die Datei wird größer.</p>
+        " + Grid(new[] { "Bildqualität", "Farbe / Grau", "Schwarzweiß" },
+            new[] { "Automatisch", "200 dpi", "400 dpi" },
+            new[] { "Normal", "150 dpi", "300 dpi" },
+            new[] { "Fein", "200 dpi", "400 dpi" },
+            new[] { "Beste", "300 dpi", "600 dpi" },
+            new[] { "Hervorragend", "600 dpi", "1200 dpi" }) + @"
+        <p>Kann der Scanner eine Auflösung nicht, nimmt das Programm die nächstliegende und weist mit einer Sprechblase darauf hin.</p>
+
+        <h2>Farbmodus</h2>
+        " + Items(
+            ("Automatische Farberkennung", "Scannt in Farbe und speichert jede Seite passend als Farbe, Grau oder Schwarzweiß."),
+            ("Farbe", "Immer in Farbe (Grundeinstellung)."),
+            ("Grau", "Immer in Graustufen."),
+            ("Schwarzweiß", "Immer schwarzweiß – ideal für Text, sehr kleine Dateien.")) +
+        Warn("Bei der automatischen Farberkennung können Seiten mit wenig Farbe als Grau oder Schwarzweiß erkannt werden.") + @"
+
+        <h2>Scan-Seite</h2>
+        " + Items(
+            ("Automatisch", "Grundeinstellung: Liegt Papier im Einzug, wird doppelseitig gescannt und leere Rückseiten werden entfernt – sonst wird, falls vorhanden, das Flachbett verwendet."),
+            ("Duplex-Scan (doppelseitig)", "Vorder- und Rückseite."),
+            ("Simplex-Scan (einseitig)", "Nur die Vorderseite."),
+            ("Flachbettscannen", "Über die Glasfläche. Die Papiergröße wird dabei auf A4 gesetzt (keine automatische Erkennung).")) + @"
+        <p>Kann der Scanner kein Duplex bzw. hat er kein Flachbett, scannt das Programm einseitig bzw. über den Einzug und meldet das per Sprechblase.</p>
+
+        <h2>Weitere Einstellungen</h2>
+        " + Items(
+            ("Scanvorgang nach aktuellem Scan fortsetzen", "Fragt nach jedem Durchgang „Weitere Dokumente scannen?“ (<a href='#scan-continue'>mehr</a>)."),
+            ("Option...", "Helligkeit, leere Seiten, Schräglauf, Drehung, Reihenfolge – im Fenster <a href='#scanmode-options'>Scanmodus-Optionen</a>.")) +
+        Tip("Die Seite öffnet sich auch über die Kachel <b>Benutzerdefiniert</b> auf der Seite <b>Allgemein</b>."),
+        "scanmode-options", "paper-tab", "filesize-tab");
+
+    private static HelpTopic TopicFileTypeTab() => Page("filetype-tab", "Seite „Dateiart“",
+        "Dateiformat (PDF, JPEG, PNG) und Texterkennung für durchsuchbare PDFs.",
+        Shot("page_filetype", "Seite „Dateiart“") + @"
+        <h2>Dateiformat</h2>
+        " + Items(
+            ("PDF (*.pdf)", "Alle Seiten in einer PDF-Datei – oder aufgeteilt nach den <a href='#pdf-options'>PDF-Optionen</a> (Schaltfläche <b>Option...</b>)."),
+            ("JPEG (*.jpg)", "Eine Bilddatei pro Seite. Nicht verfügbar bei Farbmodus „Schwarzweiß“."),
+            ("PNG (*.png)", "Eine verlustfreie Bilddatei pro Seite.")) + @"
+
+        <h2>So erstellen Sie eine durchsuchbare PDF</h2>
+        " + Steps(
+            "Wählen Sie als Dateiformat <b>PDF</b>.",
+            "Schalten Sie <b>In durchsuchbare PDF konvertieren</b> ein.",
+            "Wählen Sie unter <b>Sprache</b> die Sprache des Dokuments (oder <b>Automatische Erkennung</b>) und unter <b>Zielseiten</b> <b>Erste Seite</b> oder <b>Alle Seiten</b>.",
+            "Klicken Sie auf <b>OK</b>. Der erkannte Text liegt danach unsichtbar über dem Bild – Sie können darin suchen und Text kopieren.") + @"
+
+        <h2>Markierten Text als Schlüsselwort</h2>
+        <p>Ist <b>Markierten Text als Schlüsselwort der PDF-Datei hinzufügen</b> an, werden mit Textmarker hervorgehobene Stellen als Schlüsselwörter
+        in die PDF-Eigenschaften eingetragen. Unter <b>Zielmarkierung</b> wählen Sie die erste oder alle markierten Stellen.
+        Das funktioniert nur zusammen mit der Texterkennung – sonst wird es übersprungen und eine Sprechblase erscheint.</p>
+
+        <h2>Sprachen</h2>
+        <p>Mitgeliefert sind <b>Deutsch</b> und <b>Englisch</b>. Weitere Sprachen (Japanisch, Französisch, Italienisch, Spanisch, Chinesisch
+        vereinfacht/traditionell, Koreanisch, Russisch, Portugiesisch, Arabisch) erscheinen in der Liste, sobald Sie die passende
+        <code>.traineddata</code>-Datei (z. B. <code>fra.traineddata</code>) in den Ordner <code>tessdata</code> neben <code>SpeedScanManager.exe</code> legen.</p>
+        <p>Bei <b>Automatische Erkennung</b> wählt das Programm pro Seite anhand der Schrift eine installierte Sprache, sonst Deutsch und Englisch.</p>
+        " + Note("Ist eine gespeicherte Sprache nicht mehr installiert, steht „(nicht installiert)“ dahinter. Beim Scannen erscheint dann eine Sprechblase " +
+                 "und die vorhandenen Sprachen (bevorzugt Deutsch/Englisch) werden verwendet."),
+        "pdf-options", "scanmode-tab");
+
+    private static HelpTopic TopicPaperTab() => Page("paper-tab", "Seite „Papier“",
+        "Papiergröße, Trägerblatt und die Erkennung von doppelt eingezogenen Blättern.",
+        Shot("page_paper", "Seite „Papier“") + @"
+        <h2>Papiergröße</h2>
+        <p><b>Automatische Erkennung</b> (Grundeinstellung) lässt den Scannertreiber die Größe bestimmen – nötig auch für
+        <a href='#scan-long'>lange Seiten</a>. Außerdem wählbar:</p>
+        " + Grid(new[] { "Größe", "Maße" },
+            new[] { "A3 / A4 / A5 / A6", "297 × 420 / 210 × 297 / 148 × 210 / 105 × 148 mm" },
+            new[] { "B4 / B5 / B6 (JIS)", "257 × 364 / 182 × 257 / 128 × 182 mm" },
+            new[] { "Postkarte", "100 × 148 mm" },
+            new[] { "Visitenkarte", "55 × 91 mm" },
+            new[] { "Letter / Legal", "8,5 × 11 in. / 8,5 × 14 in." },
+            new[] { "Double Letter", "11 × 17 in." },
+            new[] { "Eigene Größen", "bis zu 10, über <b>Benutzerdefiniert...</b>" }) +
+        Note("Welche Größen funktionieren, hängt vom Scanner ab – sonst erscheint eine Sprechblase. Beim Flachbett gibt es keine automatische Erkennung.") +
+        Items(
+            ("Trägerblatteinstellungen...", "Öffnet die <a href='#carrier-sheet-dialog'>Trägerblatteinstellungen</a>."),
+            ("Benutzerdefiniert...", "Eigene Papiergrößen anlegen (<a href='#custom-size-dialog'>mehr</a>).")) + @"
+
+        <h2>Mehrfacheinzugserkennung</h2>
+        <p>Erkennt, wenn der Scanner zwei Blätter gleichzeitig einzieht.</p>
+        " + Items(
+            ("Aus", "Keine Prüfung (Grundeinstellung)."),
+            ("Überprüfung von Überlappung [Ultraschall]", "Misst die Blattstärke."),
+            ("Überprüfung der Länge", "Vergleicht die Blattlänge."),
+            ("Überprüfung von Überlappung und Länge", "Beides. Kann der Scanner das nicht gleichzeitig, wird nur Ultraschall verwendet.")) +
+        Note("Meldet der Scanner seine Fähigkeiten, sind nicht unterstützte Einträge mit „(nicht unterstützt)“ gekennzeichnet und nicht wählbar."),
+        "multifeed-dialog", "custom-size-dialog", "carrier-sheet-dialog");
+
+    private static HelpTopic TopicFileSizeTab() => Page("filesize-tab", "Seite „Dateigröße“",
+        "Wie stark Farb- und Graubilder komprimiert werden – kleinere Dateien oder bessere Qualität.",
+        Shot("page_filesize", "Seite „Dateigröße“") + @"
+        <p>Der Schieber hat fünf Stufen (Grundeinstellung 3). Er bestimmt die JPEG-Qualität – auch in PDF-Dateien, Office-Dokumenten und im Bilderordner.</p>
+        " + Grid(new[] { "Stufe", "JPEG-Qualität", "Ergebnis" },
+            new[] { "1", "100", "beste Qualität, größte Datei" },
+            new[] { "2", "85", "" },
+            new[] { "3", "70", "ausgewogen" },
+            new[] { "4", "50", "" },
+            new[] { "5", "30", "kleinste Datei, sichtbare Verluste" }) +
+        Note("Bei Farbmodus „Schwarzweiß“ und beim Format PNG ist der Schieber ausgegraut: Schwarzweißbilder und PNG werden verlustfrei gespeichert.") +
+        Tip("Für kleine Dateien zum Versenden genügt meist die Kachel <b>Kleine Datei</b> auf der Seite <b>Allgemein</b>."),
+        "scanmode-tab", "filetype-tab");
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Fenster und Dialoge
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static HelpTopic TopicPostScanMediaDialog() => Page("postscan-media", "Quick-Menü",
+        "„Wohin möchtest du scannen?“ – erscheint nach jedem Scan, wenn das Quick-Menü eingeschaltet ist.",
+        Shot("quickmenu", "Das Quick-Menü") +
+        Legend(
+            "Klicken Sie auf ein Ziel, um es auszuwählen (oder mit den Pfeiltasten). Ein <b>Doppelklick</b> startet es sofort.",
+            "<b>Abbrechen</b> oder Schließen-Symbol: Fenster schließen. Die Datei bleibt gespeichert (Sprechblase „Scan gespeichert“).",
+            "<b>Speichern</b>: das gewählte Ziel ausführen.") + @"
+        <p>Oben steht, wie viele Seiten gescannt wurden. Die Datei liegt zu diesem Zeitpunkt schon im Speicherordner. Das Fenster bleibt im Vordergrund.</p>
+        <h2>Die acht Ziele</h2>
+        " + Items(
+            ("In Ordner speichern", "Öffnet <a href='#postscan-save'>In Ordner speichern</a> für Titel und Zielordner."),
+            ("Per E-Mail versenden", "E-Mail-Programm mit der Datei als Anhang."),
+            ("Drucken", "Druckt die Seiten."),
+            ("Nach Word", "Word-Dokument (.docx) mit den Seiten als Bilder."),
+            ("Nach Excel", "Excel-Datei (.xlsx) mit den Seiten als Bilder."),
+            ("Nach PowerPoint", "Präsentation (.pptx) mit den Seiten als Bilder."),
+            ("In Bilderordner", "JPEG-Dateien in <code>Bilder\\SpeedScanManager</code>."),
+            ("Mit PDF Edit bearbeiten", "Öffnet die Datei im dafür eingestellten Programm.")),
+        "scan-quick", "postscan-save");
+
+    private static HelpTopic TopicPostScanSaveDialog() => Page("postscan-save", "In Ordner speichern",
+        "Prüfen Sie die Seiten und legen Sie Dateiname und Zielordner fest.",
+        Shot("save_dialog", "Das Fenster „In Ordner speichern“") +
+        Legend(
+            "<b>Vorschau</b> der gescannten Seite.",
+            "<b>Blättern</b> durch die Seiten („Seite 2 von 3“).",
+            "<b>Titel festlegen</b>: der vorgeschlagene Dateiname – ändern Sie ihn nach Wunsch. Ungültige Zeichen werden ersetzt.",
+            "<b>Zielordner festlegen</b>: Ordner mit <b>Durchsuchen...</b> wählen (das Feld ist nicht direkt editierbar).",
+            "<b>Speichern</b>: Name und Ordner übernehmen.") + @"
+        <p>Rechts unten fasst die Gruppe <b>Scaneinstellungen</b> zusammen, wie gescannt wurde (Voreinstellung, Auflösung, Farbmodus, Scanseite, Dateiformat, Kompression).</p>
+        " + Note("Die Datei ist schon gespeichert – das Fenster benennt sie nur um bzw. verschiebt sie. Bei mehreren Dateien wird eine Nummer angehängt; " +
+                 "vorhandene Dateien werden nie überschrieben (<code>_1</code> usw.).") +
+        Warn("<b>Abbrechen</b>, <span class='kbd'>Esc</span> oder das Schließen-Symbol fragen „Scan verwerfen?“. Mit <b>Ja</b> werden die erstellten Dateien gelöscht, " +
+             "mit <b>Nein</b> kehren Sie zum Fenster zurück."),
+        "save-tab", "filename-format", "postscan-media");
+
+    private static HelpTopic TopicScanModeOptionsDialog() => Page("scanmode-options", "Scanmodus-Optionen",
+        "Helligkeit und automatische Bildverbesserungen. Öffnen über <b>Option...</b> auf der Seite „Scanmodus“.",
+        Shot("dlg_scanmode_options", "Das Fenster „Scanmodus-Optionen“") + @"
+        <h2>Helligkeit</h2>
+        <p>Sieben Stufen von „Dunkler -3“ bis „Heller +3“ (Mitte = Normal). Der Regler wirkt nur beim Farbmodus <b>Schwarzweiß</b> –
+        sonst ist er ausgegraut („Nur für Schwarzweiß-Scans“).</p>
+        <h2>Bildverarbeitung</h2>
+        " + Items(
+            ("Einstellung nur für Textdokumente", "Verstärkt den Kontrast bei Schwarzweiß – gut für Text und Handschrift."),
+            ("Automatisches Löschen leerer Seiten zulassen", "Entfernt leere Seiten (Grundeinstellung: an). Sind alle Seiten leer, wird keine Datei gespeichert."),
+            ("Schräglauf automatisch korrigieren", "Rückt schief eingezogene Seiten gerade (Grundeinstellung: aus)."),
+            ("Automatische Bilddrehung zulassen", "Dreht seitlich oder kopfüber gescannte Seiten richtig herum (Grundeinstellung: an). Ist die Erkennung unsicher, wird nicht gedreht."),
+            ("Dokumente mit der Vorderseite nach oben einlegen", "An, wenn Sie den Stapel mit der Schrift nach oben einlegen: Die Reihenfolge wird umgedreht, damit die Seiten richtig sortiert sind.")) +
+        Note("Bei Scan-Seite „Automatisch“ werden leere Rückseiten auch ohne die Option „leere Seiten“ entfernt.") +
+        "<p><b>OK</b> übernimmt, <b>Abbrechen</b> verwirft die Änderungen.</p>",
+        "scanmode-tab");
+
+    private static HelpTopic TopicPdfOptionsDialog() => Page("pdf-options", "PDF-Optionen",
+        "PDF aufteilen und mit Kennwort schützen. Öffnen über <b>Option...</b> auf der Seite „Dateiart“ (nur bei PDF).",
+        Shot("dlg_pdf_options", "Das Fenster „PDF-Optionen“") + @"
+        <h2>PDF-Seiten teilen</h2>
+        " + Items(
+            ("Mehrseitige PDF-Datei", "Alle Seiten in eine PDF-Datei (Grundeinstellung)."),
+            ("Seitenzahl, für die jeweils eine neue PDF-Datei erstellt werden soll", "Nach jeweils so vielen Seiten (1–999) beginnt eine neue Datei, z. B. <code>Name_001.pdf</code>, <code>Name_002.pdf</code>.")) + @"
+        <h2>Kennwort</h2>
+        " + Steps(
+            "Schalten Sie <b>Kennwort für PDF-Datei einstellen</b> ein.",
+            "Geben Sie das Kennwort unter <b>Kennwort</b> ein und wiederholen Sie es unter <b>Bestätigen</b>.",
+            "Klicken Sie auf <b>OK</b>. Fehlt das Kennwort oder stimmen beide Eingaben nicht überein, erscheint eine Meldung und das Fenster bleibt offen.") +
+        Note("Das Kennwort wird verschlüsselt gespeichert und ist nur für Ihr Windows-Benutzerkonto lesbar. Kann es nicht gelesen werden (z. B. Einstellungen " +
+             "von einem anderen PC), bleibt der Schutz an und das Programm fragt vor dem nächsten Scan nach – geben Sie das Kennwort dann hier neu ein."),
+        "filetype-tab");
+
+    private static HelpTopic TopicFileNameFormatDialog() => Page("filename-format", "Dateinamenformat",
+        "Wie die gescannten Dateien automatisch benannt werden. Öffnen über <b>Dateinamenformat...</b> auf der Seite „Speichern“.",
+        Shot("dlg_filename", "Das Fenster „Dateinamenformat“ mit benutzerdefiniertem Namen") + @"
+        <p>Unten im Fenster zeigt <b>Beispiel</b>, wie der nächste Dateiname aussieht.</p>
+        " + Items(
+            ("Einstellung Ihres Betriebssystems", "Datum und Uhrzeit im Windows-Format. Unerlaubte Zeichen wie <code>:</code> und <code>/</code> werden zu <code>-</code>, z. B. <code>12.04.2026 15-30-45.pdf</code>."),
+            ("JJJJMMTThhmmss", "Datum und Uhrzeit am Stück, z. B. <code>20260412153045.pdf</code> (Grundeinstellung)."),
+            ("Benutzerdefinierter Dateiname", "Ihr eigener Name plus fortlaufende Nummer, z. B. <code>Rechnung_001.pdf</code>.")) + @"
+        <h2>Eigenen Namen festlegen</h2>
+        " + Steps(
+            "Wählen Sie <b>Benutzerdefinierter Dateiname</b>.",
+            "Geben Sie unter <b>Dateiname</b> den Anfang des Namens ein (bis 30 Zeichen).",
+            "Wählen Sie unter <b>Zähler</b>, wie viele Stellen die Nummer hat (3, 4 oder 5 Ziffern).",
+            "Klicken Sie auf <b>OK</b>.") +
+        Note("Nicht erlaubt sind die Zeichen \\ / : * ? \" &lt; &gt; |, ein Punkt am Ende und reservierte Windows-Namen (z. B. CON, NUL, COM1). " +
+             "Der Zähler beginnt bei 1 und macht nach der höchsten Nummer weiter, die schon im Ordner liegt. Gibt es einen Namen schon, wird <code>_1</code>, <code>_2</code> usw. angehängt.") +
+        "<p><b>Übernehmen</b> (unten links) übernimmt, ohne zu schließen; <b>Abbrechen</b> verwirft die Änderungen.</p>",
+        "save-tab", "postscan-save");
+
+    private static HelpTopic TopicNewProfileDialog() => Page("new-profile", "Neues Profil hinzufügen",
+        "Ein kleines Fenster für den Namen eines neuen Profils.",
+        Shot("dlg_new_profile", "Namen für ein neues Profil eingeben") + @"
+        <p>Geben Sie einen Namen ein (höchstens 64 Zeichen) und klicken Sie auf <b>OK</b>. Der Name muss eindeutig sein – Groß- und
+        Kleinschreibung zählt dabei nicht. Ein ungültiger oder doppelter Name wird mit einer Meldung abgelehnt.</p>
+        " + Items(
+            ("Über „Profil hinzufügen...“", "Seite <b>Allgemein</b> der Einstellungen: Das neue Profil übernimmt die aktuell eingestellten Werte."),
+            ("Über „Hinzufügen...“ in der Profilverwaltung", "Das neue Profil startet mit den <a href='#default-settings'>Grundeinstellungen</a>.")) +
+        Note("Dasselbe Fenster erscheint auch beim Umbenennen („Profil umbenennen“). Insgesamt sind bis zu 20 Profile möglich (einschließlich der Standardprofile)."),
+        "profile-mgmt", "profile-mgmt-dialog");
+
+    private static HelpTopic TopicProfileManagementDialog() => Page("profile-mgmt-dialog", "Profilverwaltung",
+        "Profile hinzufügen, umbenennen, löschen und sortieren.",
+        Shot("dlg_profiles", "Das Fenster „Profilverwaltung“") +
+        Items(
+            ("Hinzufügen...", "Neues Profil mit den Grundeinstellungen (höchstens 20 Profile)."),
+            ("Umbenennen...", "Neuen Namen für das gewählte Profil vergeben."),
+            ("Löschen", "Löscht das gewählte Profil nach einer Rückfrage."),
+            ("Nach oben / Nach unten", "Verschiebt das Profil in der Liste."),
+            ("Schließen", "Schließt das Fenster.")) +
+        Note("Die acht Standardprofile können nicht umbenannt oder gelöscht, aber verschoben werden. Eigene Profile können Sie frei bearbeiten."),
+        "profile-mgmt", "default-settings");
+
+    private static HelpTopic TopicAppManageDialog() => Page("app-manage", "Eigene Anwendungen",
+        "Bis zu zehn eigene Programme hinzufügen, die nach dem Scan mit den Dateien gestartet werden.",
+        Shot("dlg_apps", "Das Fenster „Installieren/Deinstallieren“") + @"
+        <h2>Programm hinzufügen</h2>
+        " + Steps(
+            "Klicken Sie auf <b>Hinzufügen...</b>.",
+            "Wählen Sie mit <b>Durchsuchen...</b> die Programmdatei (*.exe). Ist der Name noch leer, wird der Dateiname übernommen.",
+            "Passen Sie den <b>Namen</b> an (eindeutig, bis 64 Zeichen) – so erscheint das Programm in der Liste „Anwendung“.",
+            "Tragen Sie bei Bedarf <b>Argumente</b> ein. Die gescannten Dateien werden danach in Anführungszeichen angehängt.",
+            "Klicken Sie auf <b>OK</b>.") +
+        Shot("dlg_app_edit", "Ein Programm hinzufügen oder ändern") +
+        Items(
+            ("Ändern...", "Die Angaben des gewählten Programms ändern. Ein Doppelklick auf den Eintrag tut dasselbe."),
+            ("Entfernen", "Das gewählte Programm aus der Liste entfernen."),
+            ("Schließen", "Schließt das Fenster.")) +
+        Note("Änderungen an dieser Liste werden sofort gespeichert – unabhängig von OK oder Abbrechen im Einstellungsfenster. " +
+             "Findet sich ein Programm später nicht oder startet es nicht, erscheint eine Meldung; der Scan bleibt gespeichert."),
+        "app-tab");
+
+    private static HelpTopic TopicEmailOptionsDialog() => Page("email-options", "E-Mail-Optionen",
+        "Empfänger und Betreff für Scan to E-Mail. Öffnen über die Seite „Anwendung“ oder <b>E-Mail-Einstellungen...</b> im Tray-Menü.",
+        Shot("dlg_email", "Das Fenster „Scan to E-Mail“") +
+        Items(
+            ("Standard-Empfänger", "Wird in jede neue E-Mail eingetragen."),
+            ("Betreff-Vorlage", "Betreff der E-Mail. Bleibt das Feld leer, lautet er „Gescanntes Dokument“.")) +
+        Note("Verwendet wird das E-Mail-Programm, das in Windows als MAPI-Standard eingestellt ist. Lässt es sich nicht öffnen, erscheint eine Meldung " +
+             "und der Ordner mit der Datei wird geöffnet – so können Sie sie von Hand anhängen."),
+        "app-tab");
+
+    private static HelpTopic TopicPrintOptionsDialog() => Page("print-options", "Druck-Optionen",
+        "Der Drucker für Scan to Print. Öffnen über die Seite „Anwendung“ oder <b>Druckeinstellungen...</b> im Tray-Menü.",
+        Shot("dlg_print", "Das Fenster „Scan to Print“") + @"
+        <p>Wählen Sie unter <b>Zieldrucker</b> einen der installierten Drucker. <b>(Standarddrucker)</b> verwendet immer den aktuellen Windows-Standarddrucker.</p>
+        " + Note("Gedruckt wird in Originalgröße; Querformat wird bei Bedarf automatisch gewählt. Gibt es den eingestellten Drucker nicht mehr, werden Sie gefragt, " +
+                 "ob auf dem Standarddrucker gedruckt werden soll. Ist gar kein Drucker installiert, wird der Scan nur gespeichert."),
+        "app-tab");
+
+    private static HelpTopic TopicCarrierSheetDialog() => Page("carrier-sheet-dialog", "Trägerblatteinstellungen",
+        "Trägerblatt-Modus einschalten und die Größe des fertigen Bildes wählen.",
+        Shot("dlg_carrier", "Das Fenster „Trägerblatteinstellungen“ mit Anleitung") +
+        Items(
+            ("Trägerblatt-Modus aktivieren", "Schaltet das Zusammensetzen ein. Ist der Schalter aus, sind die anderen Felder gesperrt."),
+            ("Modus", "<b>Zwei Seiten in einem Bild erstellen</b>: Vorder- und Rückseite (Duplex) werden nebeneinandergesetzt."),
+            ("Ausgabebildgröße", "Automatische Erkennung, A3–A6, B4–B6 (JIS), Letter, Double Letter, Postkarte, Visitenkarte, Trägerblattgröße (220 × 297 mm) oder <b>Benutzerdefiniert...</b>"),
+            ("Benutzerdefinierte Größe", "Erscheint bei „Benutzerdefiniert...“: Breite und Höhe in mm (50–2000).")) + @"
+        <p>Die Gruppe <b>Anleitung</b> zeigt in drei Bildern, wie es geht: Dokument falten, in das Trägerblatt legen, in den Scanner führen.</p>
+        " + Warn("Nur bestimmte Scannermodelle unterstützen das Trägerblatt."),
+        "scan-carrier");
+
+    private static HelpTopic TopicCustomSizeDialog() => Page("custom-size-dialog", "Eigene Papiergrößen",
+        "Bis zu zehn eigene Papiergrößen anlegen – sie erscheinen danach in der Liste „Papiergröße“.",
+        Shot("dlg_custom_size", "Das Fenster „Benutzerdefinierte Größen“") +
+        Steps(
+            "Klicken Sie auf <b>Hinzufügen...</b>.",
+            "Geben Sie einen <b>Namen</b> (bis 62 Zeichen) sowie <b>Breite</b> und <b>Länge</b> in Millimetern (1–9999) ein.",
+            "Klicken Sie auf <b>OK</b>.") +
+        Items(
+            ("Ändern...", "Name oder Maße der gewählten Größe ändern."),
+            ("Entfernen", "Die gewählte Größe löschen."),
+            ("Ausgewählte Größe", "Zeigt Breite × Länge der gewählten Größe."),
+            ("Schließen", "Schließt das Fenster.")),
+        "paper-tab");
+
+    private static HelpTopic TopicVersionInfoDialog() => Page("version-info", "Versionsinformationen",
+        "Version, Lizenz und Links zum Projekt. Öffnen über <b>Hilfe › Versionsinformationen</b> im Tray-Menü.",
+        Shot("dlg_version", "Das Fenster „Versionsinformationen“") +
+        Items(
+            ("Logo und Version", "Die installierte Version von SpeedScan Manager."),
+            ("Lizenz und Credits", "Hinweise zur GPL-3.0-Lizenz und zu den verwendeten Bibliotheken NTwain (TWAIN), Tesseract.NET (Texterkennung) und PdfSharpCore (PDF)."),
+            ("GitHub / Discord", "Öffnen die Projektseite bzw. den Discord-Server im Browser."),
+            ("Detail...", "Zeigt die <a href='#driver-info'>Scanner- und Treiberinformationen</a>."),
+            ("OK", "Schließt das Fenster.")),
+        "driver-info");
+
+    private static HelpTopic TopicScannerDriverInfoDialog() => Page("driver-info", "Scanner- und Treiberinfos",
+        "Technische Angaben zum Scanner und zu den Programmdateien – praktisch, wenn Sie Hilfe anfragen.",
+        Shot("dlg_driver", "Das Fenster „Scanner- und Treiberinformationen“") +
+        Items(
+            ("Scanner", "Name, Hersteller, Produktfamilie und Treiberversion. Die Werte lassen sich markieren und kopieren. Ohne Scanner steht dort „Kein Scanner verbunden“."),
+            ("Dateiversion", "Name, Version und Datum der Programmdatei und der Bibliotheken NTwain, Tesseract, PdfSharpCore und DocumentFormat.OpenXml."),
+            ("OK", "Schließt das Fenster.")),
+        "version-info");
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Profile
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static HelpTopic TopicProfileManagement() => Page("profile-mgmt", "Mit Profilen arbeiten",
+        "Ein Profil speichert alle Scaneinstellungen – z. B. „Rechnungen“ als PDF in einen festen Ordner.",
+        @"
+        <p>Profile gelten nur, wenn das Quick-Menü <b>aus</b> ist. Ein Profil umfasst die Seiten Anwendung, Speichern, Scanmodus, Dateiart,
+        Papier und Dateigröße. Bis zu 20 Profile sind möglich, einschließlich der acht Standardprofile.</p>
+
+        <h2>Neues Profil anlegen</h2>
+        " + Steps(
+            "Öffnen Sie die <a href='#settings'>Einstellungen</a> und stellen Sie alles so ein, wie das Profil arbeiten soll.",
+            "Klicken Sie auf der Seite <b>Allgemein</b> in der Gruppe <b>Profil</b> auf <b>Profil hinzufügen...</b>.",
+            "Geben Sie einen <a href='#new-profile'>Namen</a> ein und klicken Sie auf <b>OK</b>.") + @"
+
+        <h2>Profil verwenden</h2>
+        <p>Wählen Sie das Profil unter <b>Aktives Profil</b> und klicken Sie auf <b>OK</b>. Ab jetzt scannt jeder Tastendruck mit diesem Profil.</p>
+
+        <h2>Profil ändern</h2>
+        <p>Wählen Sie das Profil, ändern Sie die Einstellungen und klicken Sie auf <b>OK</b> oder <b>Übernehmen</b> – die Änderungen landen im Profil.
+        Standardprofile bleiben dabei unverändert; Sie werden gefragt, ob ein neues Profil angelegt werden soll.</p>
+
+        <h2>Umbenennen, löschen, sortieren</h2>
+        <p>In der <a href='#profile-mgmt-dialog'>Profilverwaltung</a> – zu öffnen mit <b>Profilverwaltung...</b> auf der Seite <b>Allgemein</b> oder im Tray-Menü.</p>
+        " + Note("Ist das Quick-Menü eingeschaltet, ist die Gruppe „Profil“ ausgegraut."),
+        "profile-mgmt-dialog", "default-settings", "scan-no-quick");
+
+    private static HelpTopic TopicDefaultSettings() => Page("default-settings", "Grundeinstellungen",
+        "Diese Werte gelten beim ersten Start, für alle Standardprofile und für neue Profile aus der Profilverwaltung.",
+        Grid(new[] { "Einstellung", "Grundeinstellung" },
+            new[] { "Quick-Menü verwenden", "An" },
+            new[] { "Beim Anmelden starten", "An" },
+            new[] { "Anwendung", "Scan to Folder" },
+            new[] { "Speicherordner", "Dokumente\\SpeedScanManager" },
+            new[] { "Dateinamenformat", "Datum und Uhrzeit (JJJJMMTThhmmss)" },
+            new[] { "Benutzerdefinierter Dateiname", "unbenannt, 3 Ziffern" },
+            new[] { "Datei nach Scan umbenennen", "Aus" },
+            new[] { "Bildqualität", "Automatisch (200 dpi, Schwarzweiß 400 dpi)" },
+            new[] { "Farbmodus", "Farbe" },
+            new[] { "Scan-Seite", "Automatisch" },
+            new[] { "Scanvorgang fortsetzen", "Aus" },
+            new[] { "Helligkeit", "Normal" },
+            new[] { "Leere Seiten löschen", "An" },
+            new[] { "Schräglauf korrigieren", "Aus" },
+            new[] { "Automatische Bilddrehung", "An" },
+            new[] { "Dateiformat", "PDF, mehrseitig, ohne Kennwort" },
+            new[] { "Texterkennung (OCR)", "Aus (Sprache: Automatische Erkennung, Zielseiten: Alle Seiten)" },
+            new[] { "Papiergröße", "Automatische Erkennung" },
+            new[] { "Mehrfacheinzugserkennung", "Aus" },
+            new[] { "Trägerblatt-Modus", "Aus" },
+            new[] { "Komprimierungsrate", "Stufe 3 von 5" },
+            new[] { "E-Mail-Betreff", "Gescanntes Dokument" },
+            new[] { "Zieldrucker", "(Standarddrucker)" }) + @"
+
+        <h2>Die acht Standardprofile</h2>
+        <p>Je eines pro Ziel. Sie haben die Grundeinstellungen und unterscheiden sich nur in der Anwendung:</p>
+        " + Grid(new[] { "Profil", "Anwendung" },
+            new[] { "In Ordner speichern", "Scan to Folder" },
+            new[] { "Per E-Mail senden", "Scan to E-Mail" },
+            new[] { "Drucken", "Scan to Print" },
+            new[] { "In Word-Dokument umwandeln", "Scan to Word" },
+            new[] { "In Excel-Tabelle umwandeln", "Scan to Excel" },
+            new[] { "In PowerPoint-Präsentation umwandeln", "Scan to PowerPoint" },
+            new[] { "In Bilderordner speichern", "Scan Picture Folder" },
+            new[] { "Mit PDF-Programm bearbeiten", "Edit with PDF" }) +
+        Note("Die Kacheln <b>Empfohlen</b>, <b>Kleine Datei</b> und <b>Hohe Bildqualität</b> sind keine Profile, sondern Voreinstellungen für Bildqualität und Komprimierung."),
+        "profile-mgmt");
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Probleme lösen
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static HelpTopic TopicFaq() => Page("faq", "Häufige Probleme",
+        "Die häufigsten Fragen – mit der schnellsten Lösung.",
+        QA("Der Scanner wird nicht erkannt",
+            "<ul><li>Ist der Scanner eingeschaltet und per USB oder Netzwerk verbunden?</li>" +
+            "<li>Ist der TWAIN-Treiber des Herstellers installiert (32-Bit-TWAIN-Quelle)?</li>" +
+            "<li>Sind mehrere Scanner angeschlossen? Wählen Sie den richtigen unter <a href='#scanner-selection'>Scanner auswählen</a>.</li>" +
+            "<li>Warten Sie einige Sekunden – das Programm prüft den Scanner etwa alle 10 Sekunden.</li></ul>") +
+        QA("Die Taste am Scanner startet keinen Scan",
+            "<p>Wählen Sie im Tray-Menü <b>Scan-Taste einrichten...</b> und bestätigen Sie die Windows-Abfrage mit <b>Ja</b>. " +
+            "Läuft gerade ein Scan oder ist noch ein Fenster danach offen (z. B. das Quick-Menü), wird die Taste ignoriert. " +
+            "<a href='#scan-button'>Mehr zur Scan-Taste</a></p>") +
+        QA("Wo ist meine gescannte Datei?",
+            "<p>Wählen Sie im Tray-Menü <b>Scan-Ergebnis anzeigen</b>. Standardmäßig liegen Scans in <code>Dokumente\\SpeedScanManager</code>; " +
+            "den Ordner ändern Sie auf der Seite <a href='#save-tab'>Speichern</a>.</p>") +
+        QA("Es wurde keine Datei gespeichert",
+            "<p>Alle Seiten wurden als leer erkannt und entfernt – etwa wenn bei einseitigem Scan nur leere Rückseiten erfasst wurden. " +
+            "Die Option dazu finden Sie in den <a href='#scanmode-options'>Scanmodus-Optionen</a>.</p>") +
+        QA("Die Seite „Anwendung“ ist ausgegraut",
+            "<p>Das Quick-Menü ist eingeschaltet – das Ziel wählen Sie dann nach jedem Scan. Möchten Sie ein festes Ziel, " +
+            "schalten Sie <b>Quick-Menü verwenden</b> auf der Seite <b>Allgemein</b> aus.</p>") +
+        QA("JPEG lässt sich nicht auswählen",
+            "<p>Beim Farbmodus <b>Schwarzweiß</b> steht JPEG nicht zur Verfügung. Wählen Sie PDF oder PNG – oder einen anderen Farbmodus.</p>") +
+        QA("Die Dateien sind zu groß",
+            "<p>Wählen Sie auf der Seite <b>Allgemein</b> die Kachel <b>Kleine Datei</b>, oder erhöhen Sie die Stufe auf der Seite " +
+            "<a href='#filesize-tab'>Dateigröße</a>. Für reinen Text spart <b>Schwarzweiß</b> am meisten.</p>") +
+        QA("Seiten sind schief, stehen kopf oder sind falsch sortiert",
+            "<p>In den <a href='#scanmode-options'>Scanmodus-Optionen</a>: <b>Schräglauf automatisch korrigieren</b>, " +
+            "<b>Automatische Bilddrehung zulassen</b> und – wenn Sie mit der Schrift nach oben einlegen – <b>Dokumente mit der Vorderseite nach oben einlegen</b>.</p>") +
+        QA("Die Texterkennung kennt meine Sprache nicht",
+            "<p>Legen Sie die passende <code>.traineddata</code>-Datei in den Ordner <code>tessdata</code> neben <code>SpeedScanManager.exe</code> " +
+            "(<a href='#filetype-tab'>mehr</a>).</p>") +
+        QA("Der Scanner meldet „Mehrfacheinzug“",
+            "<p>Lesen Sie <a href='#multifeed-measures'>Was tun bei Mehrfacheinzug?</a></p>") +
+        Tip("Eine Liste aller Meldungen mit Erklärung finden Sie unter <a href='#message-list'>Liste der Meldungen</a>."),
+        "message-list", "scanner-connection", "scan-button");
+
+    private static HelpTopic TopicMultiFeedDialog() => Page("multifeed-dialog", "Mehrfacheinzug erkannt",
+        "Der Scanner hat vermutlich zwei Blätter auf einmal eingezogen. Er wartet, bis Sie entscheiden.",
+        Shot("multifeed_dialog", "Das Fenster „Mehrfacheinzug erkannt!“") + @"
+        <p>Sie sehen die vorherige Seite und die betroffene Seite (rot markiert). Gibt es keine vorherige Seite, steht dort „Kein Vorschaubild verfügbar“.</p>
+        " + Items(
+            ("Wiederholen", "Verwirft die Seiten dieses Durchgangs und bricht den Scan ab („Scan verworfen“). Legen Sie die Seiten neu ein und scannen Sie erneut. " +
+                            "Standardtaste (<span class='kbd'>Enter</span>); das Schließen-Symbol wirkt genauso."),
+            ("So übernehmen", "Behält die Seite und scannt weiter."),
+            ("Erkennung ausschalten", "Übernimmt die Seite und ignoriert weitere Meldungen für den Rest dieses Scans.")) +
+        Warn("Umschläge oder Blätter mit aufgeklebten Zetteln, Fotos oder Briefmarken werden oft fälschlich als Mehrfacheinzug erkannt. " +
+             "<span class='kbd'>Esc</span> schließt dieses Fenster nicht."),
+        "multifeed-measures", "paper-tab");
+
+    private static HelpTopic TopicMultiFeedMeasures() => Page("multifeed-measures", "Was tun bei Mehrfacheinzug?",
+        "So entscheiden Sie richtig, wenn das Fenster „Mehrfacheinzug erkannt!“ erscheint.",
+        @"
+        <h2>Die Seiten sind vollständig und in der richtigen Reihenfolge</h2>
+        <p>Klicken Sie auf <b>So übernehmen</b> – der Scan läuft weiter. Bei Umschlägen oder Blättern mit Klebezetteln, Fotos oder Briefmarken
+        ebenso; folgen noch mehr solche Seiten, wählen Sie <b>Erkennung ausschalten</b>.</p>
+
+        <h2>Es fehlt eine Seite oder die Reihenfolge stimmt nicht</h2>
+        " + Steps(
+            "Klicken Sie auf <b>Wiederholen</b>. Die Seiten dieses Durchgangs werden verworfen.",
+            "Nehmen Sie alle Blätter aus dem Scanner – auch aus dem Ausgabefach – und richten Sie den Stapel bündig aus.",
+            "Legen Sie den ganzen Stapel erneut ein und starten Sie einen neuen Scan.") +
+        Tip("Kommt das häufig vor, fächern Sie den Stapel vor dem Einlegen kurz auf. Welche Erkennung verwendet wird, stellen Sie auf der Seite <a href='#paper-tab'>Papier</a> ein."),
+        "multifeed-dialog");
+
+    private static HelpTopic TopicMessageList() => Page("message-list", "Liste der Meldungen",
+        "Alle Meldungen, die SpeedScan Manager anzeigen kann. „...“ steht für Namen, Pfade oder Fehlertexte.",
+        GetMessageListHtml(),
+        "faq");
+
+    private static string GetMessageListHtml()
+    {
+        var windows = new[]
+        {
+            ("Ein Scanvorgang läuft bereits.", "Scan oder Scannerauswahl wurde während eines Scans gewählt."),
+            ("TWAIN ist nicht initialisiert. Es ist kein Scanner verfügbar.", "Der TWAIN-Quellmanager konnte nicht gestartet werden – prüfen Sie die Treiberinstallation."),
+            ("Der TWAIN-Quellmanager konnte nicht geöffnet werden.", ""),
+            ("Es wurde kein Scanner gefunden.", ""),
+            ("Der Scanner konnte nicht geöffnet werden. Ist er eingeschaltet und verbunden?", ""),
+            ("Der Scanvorgang konnte nicht gestartet werden.", ""),
+            ("Der Scanner hat nicht reagiert. Es wurden keine Seiten gescannt.", ""),
+            ("Es wurden keine Seiten gescannt. Bitte legen Sie das Dokument in den Scanner ein und versuchen Sie es erneut.", ""),
+            ("Alle gescannten Seiten wurden als leer erkannt und entfernt. Es wurde keine Datei gespeichert.", ""),
+            ("Es wurde keine Datei erstellt.", ""),
+            ("Der Scan konnte nicht gespeichert werden: ...", ""),
+            ("Der Scan konnte nicht im Zielordner gespeichert werden ... Er wurde stattdessen hier gespeichert: Dokumente\\SpeedScanManager", ""),
+            ("Der Zielordner konnte nicht erstellt werden ... Der Scan bleibt hier gespeichert: ...", ""),
+            ("Folgende Dateien konnten nicht nach ... verschoben werden und bleiben in ...", ""),
+            ("Scan verwerfen?", "Ja: Der Scan wird gelöscht. Nein: Zurück zum Fenster."),
+            ("Das E-Mail-Programm konnte nicht mit der Datei als Anhang geöffnet werden.", "Der Ordner mit der Datei wird geöffnet, damit Sie sie von Hand anhängen können."),
+            ("Es gibt keine Seiten zum Drucken.", ""),
+            ("Es ist kein Drucker installiert. Der Scan wurde gespeichert, aber nicht gedruckt.", ""),
+            ("Der Drucker \"...\" wurde nicht gefunden. Auf dem Standarddrucker drucken?", ""),
+            ("Das Drucken ist fehlgeschlagen: ...", ""),
+            ("Die Word-/Excel-/PowerPoint-Datei konnte nicht erstellt werden: ...", ""),
+            ("Die Datei wurde erstellt, konnte aber nicht geöffnet werden (ist Word/Excel/PowerPoint installiert?)", ""),
+            ("Die Bilder konnten nicht im Bilderordner gespeichert werden: ...", ""),
+            ("Die Datei konnte nicht geöffnet werden: ...", ""),
+            ("Das Programm \"...\" wurde nicht gefunden bzw. konnte nicht gestartet werden.", "Eigene Anwendung – der Scan bleibt gespeichert."),
+            ("Der Ordner \"...\" existiert nicht.", "Bei „Scan-Ergebnis anzeigen“."),
+            ("Es läuft gerade ein Scanvorgang. Scan abbrechen und SpeedScan Manager beenden?", ""),
+            ("Der letzte Scan ist noch nicht abgeschlossen. SpeedScan Manager trotzdem beenden?", ""),
+            ("Das PDF-Passwort konnte nicht gelesen werden, bitte neu eingeben.", "Einstellungen › Dateiart › Option › Kennwort."),
+            ("Die Einrichtung der Scan-Taste wurde abgebrochen. / Die Scan-Taste konnte nicht eingerichtet werden.", ""),
+            ("Es können höchstens 20 Profile angelegt werden.", ""),
+            ("Das Standardprofil \"...\" kann nicht geändert werden. Möchten Sie die geänderten Einstellungen als neues Profil speichern?", ""),
+            ("In SpeedScan Manager ist ein unerwarteter Fehler aufgetreten. Das Programm läuft weiter.", "Details stehen in %LocalAppData%\\SpeedScanManager\\crash.log."),
+        };
+
+        var balloons = new[]
+        {
+            ("Der Scanner ist nicht angeschlossen oder ausgeschaltet.", ""),
+            ("TWAIN konnte nicht initialisiert werden. Es kann nicht gescannt werden.", ""),
+            ("Scan abgebrochen", "Der Scanvorgang wurde abgebrochen."),
+            ("Scan verworfen", "Mehrfacheinzug: Die Seiten wurden verworfen. Bitte legen Sie das Dokument erneut ein. – bzw. – Der Scan wurde gelöscht."),
+            ("Scan gespeichert", "Dateiname und Ordner bzw. Anzahl der Dateien."),
+            ("Drucken", "Das Dokument wurde an den Drucker gesendet."),
+            ("Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet.", ""),
+            ("Die Scan-Taste ist eingerichtet. Ein Druck auf die Taste startet einen Scan.", ""),
+            ("Hinweis zum Scan: Der Scanner hat nicht mehr reagiert.", "Der Scanvorgang wurde abgebrochen."),
+            ("Hinweis zum Scan: Eine oder mehrere Seiten konnten nicht übertragen werden.", ""),
+            ("Hinweis zum Scan: Farbmodus / Flachbett / Duplex nicht unterstützt", "Es wird der Einzug verwendet bzw. einseitig gescannt."),
+            ("Hinweis zum Scan: Die Auflösung wird nicht unterstützt", "Es wurde eine andere verwendet."),
+            ("Hinweis zum Scan: Mehrfacheinzugserkennung", "Konnte nicht bzw. nur mit Ultraschall aktiviert werden."),
+            ("Hinweis zum Scan: Papiergröße", "Die gewählte Größe wird nicht unterstützt bzw. keine gültige benutzerdefinierte Größe gewählt."),
+            ("Hinweis: OCR-Sprachdaten fehlen", "Es wird eine andere Sprache verwendet bzw. die Texterkennung übersprungen."),
+            ("Hinweis: Die Texterkennung ist nicht verfügbar", "tessdata fehlt oder die Erkennung ist fehlgeschlagen."),
+            ("Hinweis: Die automatische Bilddrehung ist nicht verfügbar", "osd.traineddata fehlt."),
+            ("Hinweis: Markierte Schlüsselwörter benötigen die Texterkennung", "Sie wurden übersprungen."),
+            ("Hinweis: Zu wenig Arbeitsspeicher für die Schräglagenkorrektur", "Sie wurde übersprungen."),
+        };
+
+        static string Rows((string Text, string Info)[] list)
+        {
+            var sb = new StringBuilder("<table class='items'>");
+            foreach (var (text, info) in list)
+            {
+                sb.Append("<tr><td>").Append("<b>").Append(System.Net.WebUtility.HtmlEncode(text)).Append("</b>");
+                if (info.Length > 0)
+                    sb.Append("<br><span style='font-size:9pt'>").Append(System.Net.WebUtility.HtmlEncode(info)).Append("</span>");
+                sb.Append("</td></tr>");
+            }
+            return sb.Append("</table>").ToString();
+        }
+
+        return "<h2>Meldungsfenster</h2>" + Rows(windows) +
+               "<h2>Sprechblasen am Tray-Symbol</h2>" + Rows(balloons);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Anhang
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static HelpTopic TopicAbbreviations() => Page("abbreviations", "Abkürzungen",
+        "Fachbegriffe, die in dieser Hilfe vorkommen.",
+        Grid(new[] { "Abkürzung", "Bedeutung" },
+            new[] { "ADF", "Automatic Document Feeder – automatischer Dokumenteneinzug" },
+            new[] { "dpi", "dots per inch – Bildpunkte pro Zoll (Auflösung)" },
+            new[] { "Duplex / Simplex", "doppelseitig / einseitig scannen" },
+            new[] { "JPEG", "verbreitetes Bildformat (verlustbehaftet)" },
+            new[] { "MAPI", "Schnittstelle, über die Programme E-Mails erstellen" },
+            new[] { "OCR", "Optical Character Recognition – Texterkennung" },
+            new[] { "OSD", "Orientation and Script Detection – Erkennung von Ausrichtung und Schrift" },
+            new[] { "PDF", "Portable Document Format" },
+            new[] { "PNG", "Portable Network Graphics – verlustfreies Bildformat" },
+            new[] { "S&amp;W", "Schwarzweiß" },
+            new[] { "TWAIN", "Standard für die Verbindung zwischen Scanner und Software" },
+            new[] { "UAC", "User Account Control – Windows-Benutzerkontensteuerung" },
+            new[] { "USB", "Universal Serial Bus" },
+            new[] { "WIA / STI", "Windows-Schnittstellen für Bildgeräte, u. a. für die Scan-Taste" }));
 }

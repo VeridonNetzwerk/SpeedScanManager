@@ -10,9 +10,9 @@ namespace SpeedScanManager;
 /// Help viewer in the modern window style (<see cref="ModernWindow"/>): header with logo, title
 /// (subtitle = current topic) and round minimize / maximize / close buttons; a resizable
 /// sidebar with the navigation "Inhalt / Index / Suchen" (NavSidebar look) above the topic tree,
-/// index list or search; on the right a toolbar (Ausblenden, Zurück, Vorwärts, Drucken,
-/// Optionen) and a WebBrowser that renders the HTML help topics with a themed style sheet
-/// (re-rendered when the theme changes).
+/// index list or search; on the right a toolbar (Ausblenden, Startseite, Zurück, Vorwärts, Drucken,
+/// Optionen) and a WebBrowser that renders the help pages of <see cref="HelpRenderer"/>
+/// (start page with topic cards, group pages, pages with pictures; re-rendered when the theme changes).
 ///
 /// The window is borderless but resizable: the edges (5 px) are hit-tested locally
 /// (WM_NCHITTEST of the form plus a message filter for the child windows, including the
@@ -79,7 +79,7 @@ internal class HelpForm : ModernWindow
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
         CloseOnEscape = false; // Esc never closed the help window
-        ClientSize = new Size(900, 620);
+        ClientSize = new Size(1000, 680);
 
         // Build help topic tree
         _rootTopic = HelpContent.BuildTree();
@@ -183,6 +183,9 @@ internal class HelpForm : ModernWindow
         _tsBtnHide = new ToolButton("Ausblenden", DrawSidebarIcon) { ToolTipText = "Navigation aus- oder einblenden" };
         _tsBtnHide.Click += (s, e) => ToggleNavigation();
 
+        var tsBtnHome = new ToolButton("Startseite", DrawHomeIcon) { ToolTipText = "Zur Startseite der Hilfe" };
+        tsBtnHome.Click += (s, e) => NavigateTo("root");
+
         _tsBtnBack = new ToolButton("Zurück", (g, c) => DrawArrowIcon(g, c, left: true)) { Enabled = false };
         _tsBtnBack.Click += (s, e) => GoBack();
 
@@ -214,6 +217,7 @@ internal class HelpForm : ModernWindow
         {
             _tsBtnHide,
             new ToolSeparator(),
+            tsBtnHome,
             _tsBtnBack,
             _tsBtnForward,
             new ToolSeparator(),
@@ -250,7 +254,7 @@ internal class HelpForm : ModernWindow
         {
             _split.Panel1MinSize = ModernLayout.Scale(this, 170);
             _split.Panel2MinSize = ModernLayout.Scale(this, 300);
-            _split.SplitterDistance = ModernLayout.Scale(this, 270);
+            _split.SplitterDistance = ModernLayout.Scale(this, 272);
             NavigateTo(_initialTopic);
         };
         ResumeLayout(false);
@@ -306,27 +310,7 @@ internal class HelpForm : ModernWindow
     private void RenderTopic(HelpTopic topic)
     {
         Subtitle = topic.Id == "root" ? "" : topic.Title;
-        if (!string.IsNullOrEmpty(topic.Html))
-        {
-            _webBrowser.DocumentText = HelpContent.ApplyTheme(topic.Html, ThemeManager.Current);
-        }
-        else
-        {
-            // Branch node: child topics as a card list (shared CSS)
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"<html><head><meta http-equiv='X-UA-Compatible' content='IE=edge'><meta charset='utf-8'><style>{HelpContent.ThemedCss(ThemeManager.Current)}</style></head><body>");
-            sb.AppendLine($"<h1>{topic.Title}</h1>");
-            sb.AppendLine("<p class='lead'>Wählen Sie ein Thema:</p>");
-            sb.AppendLine("<div class='topic-list'>");
-            foreach (var child in topic.Children)
-            {
-                string kind = child.Children.Count == 1 ? "1 Thema" : child.Children.Count > 1 ? $"{child.Children.Count} Themen" : "Thema";
-                sb.AppendLine($"  <a class='topic' href='help://{child.Id}'><span class='topic-title'>{child.Title}</span><span class='topic-meta'>{kind}</span></a>");
-            }
-            sb.AppendLine("</div>");
-            sb.AppendLine("</body></html>");
-            _webBrowser.DocumentText = sb.ToString();
-        }
+        _webBrowser.DocumentText = HelpRenderer.RenderPage(topic, ThemeManager.Current);
     }
 
     /// <summary>
@@ -619,11 +603,7 @@ internal class HelpForm : ModernWindow
         if (PlainTextCache.TryGetValue(topic.Id, out var cached))
             return cached;
 
-        var html = System.Text.RegularExpressions.Regex.Replace(
-            topic.Html, @"<(style|script)\b[^>]*>.*?</\1\s*>", " ",
-            System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"<[^>]*>", " ");
-        var text = System.Text.RegularExpressions.Regex.Replace(System.Net.WebUtility.HtmlDecode(html), @"\s+", " ").Trim();
+        var text = HelpRenderer.PlainText(topic.Summary + " " + topic.Html);
         PlainTextCache[topic.Id] = text;
         return text;
     }
@@ -874,6 +854,15 @@ internal class HelpForm : ModernWindow
         using var thin = LinePen(color, 1.25f);
         g.DrawLine(thin, 3.5f, 5.75f, 4.25f, 5.75f);
         g.DrawLine(thin, 3.5f, 8f, 4.25f, 8f);
+    }
+
+    private static void DrawHomeIcon(Graphics g, Color color)
+    {
+        using var pen = LinePen(color);
+        // roof and house body with a door
+        g.DrawLines(pen, new PointF[] { new(1.75f, 7.5f), new(8f, 2f), new(14.25f, 7.5f) });
+        g.DrawLines(pen, new PointF[] { new(3.5f, 6.25f), new(3.5f, 13.75f), new(12.5f, 13.75f), new(12.5f, 6.25f) });
+        g.DrawLines(pen, new PointF[] { new(6.5f, 13.75f), new(6.5f, 10f), new(9.5f, 10f), new(9.5f, 13.75f) });
     }
 
     private static void DrawArrowIcon(Graphics g, Color color, bool left)
