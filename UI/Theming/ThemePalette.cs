@@ -56,6 +56,14 @@ internal sealed class ThemePalette
     public Color Menu { get; init; }
     /// <summary>Thumb of sliders.</summary>
     public Color SliderThumb { get; init; }
+    /// <summary>Settings cards (<see cref="SettingsCard"/>).</summary>
+    public Color Card { get; init; }
+    /// <summary>Outline of settings cards.</summary>
+    public Color CardBorder { get; init; }
+    /// <summary>Divider lines between the rows of a card.</summary>
+    public Color CardDivider { get; init; }
+    /// <summary>Fill of a <see cref="TileButton"/> placed on a card.</summary>
+    public Color TileOnCard { get; init; }
 
     public static readonly ThemePalette Dark = new()
     {
@@ -86,7 +94,11 @@ internal sealed class ThemePalette
         ButtonSecondaryPressed = Hex(0x80848E),
         ButtonSecondaryText = Color.White,
         Menu = Hex(0x111214),
-        SliderThumb = Color.White
+        SliderThumb = Color.White,
+        Card = Hex(0x2B2D31),
+        CardBorder = Hex(0x3A3C42),
+        CardDivider = Hex(0x393B41),
+        TileOnCard = Hex(0x313338)
     };
 
     public static readonly ThemePalette Light = new()
@@ -118,7 +130,11 @@ internal sealed class ThemePalette
         ButtonSecondaryPressed = Hex(0xC4C9CE),
         ButtonSecondaryText = Hex(0x313338),
         Menu = Hex(0xFFFFFF),
-        SliderThumb = Color.White
+        SliderThumb = Color.White,
+        Card = Hex(0xF7F8F9),
+        CardBorder = Hex(0xE1E3E7),
+        CardDivider = Hex(0xE6E8EB),
+        TileOnCard = Hex(0xFFFFFF)
     };
 
     private static Color Hex(int rgb) => Color.FromArgb((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);

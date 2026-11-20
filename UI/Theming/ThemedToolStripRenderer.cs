@@ -119,6 +119,15 @@ internal sealed class ThemedToolStripRenderer : ToolStripRenderer
         else
             color = inDropDown ? p.Text : p.TextSecondary;
         e.TextColor = color;
+
+        var glyph = ThemeManager.GetMenuItemGlyph(item);
+        if (glyph != Glyph.None && inDropDown)
+        {
+            float s = Dpi(item.Owner);
+            float size = 16 * s;
+            var glyphColor = !item.Enabled || item.Selected || IsDanger(item) ? color : p.TextSecondary;
+            ThemeGlyphs.Draw(e.Graphics, glyph, new RectangleF(12 * s, (item.Height - size) / 2f, size, size), glyphColor);
+        }
         base.OnRenderItemText(e);
     }
 

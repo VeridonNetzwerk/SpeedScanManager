@@ -157,6 +157,7 @@ internal static class ThemeManager
     private static readonly ConditionalWeakTable<Control, ThemeState> States = new();
     private static readonly ConditionalWeakTable<ToolStripItem, StrongBox<ThemeRole>> ItemRoles = new();
     private static readonly ConditionalWeakTable<ToolStripItem, object> ItemsStyled = new();
+    private static readonly ConditionalWeakTable<ToolStripItem, StrongBox<Glyph>> ItemGlyphs = new();
     private static readonly ThemedToolStripRenderer Renderer = new();
 
     /// <summary>The user's choice (System/Light/Dark).</summary>
@@ -362,6 +363,19 @@ internal static class ThemeManager
 
     internal static ThemeRole GetMenuItemRole(ToolStripItem item)
         => ItemRoles.TryGetValue(item, out var box) ? box.Value : ThemeRole.Auto;
+
+    /// <summary>
+    /// Line glyph shown in the image margin of a menu item, drawn in the item's text color
+    /// (the drop-down needs ShowImageMargin = true).
+    /// </summary>
+    public static void SetMenuItemGlyph(ToolStripItem item, Glyph glyph)
+    {
+        ItemGlyphs.AddOrUpdate(item, new StrongBox<Glyph>(glyph));
+        item.Invalidate();
+    }
+
+    internal static Glyph GetMenuItemGlyph(ToolStripItem item)
+        => ItemGlyphs.TryGetValue(item, out var box) ? box.Value : Glyph.None;
 
     /// <summary>
     /// For owner-drawn ComboBox/ListBox items: fills the item background (themed, no system

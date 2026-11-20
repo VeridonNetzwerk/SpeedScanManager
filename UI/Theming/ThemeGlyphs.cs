@@ -25,7 +25,16 @@ internal enum Glyph
     Ruler,
     Mail,
     Printer,
-    Palette
+    Palette,
+    Sliders,
+    Star,
+    Sparkle,
+    User,
+    Question,
+    Minus,
+    Plus,
+    Power,
+    Image
 }
 
 internal static class ThemeGlyphs
@@ -187,6 +196,74 @@ internal static class ThemeGlyphs
                 g.FillEllipse(brush, 7.25f, 3.75f, 2f, 2f);
                 g.FillEllipse(brush, 10f, 5.75f, 2f, 2f);
                 g.FillEllipse(brush, 9f, 9.25f, 2.5f, 2.5f);
+                break;
+
+            case Glyph.Sliders:
+                g.DrawLine(pen, 2f, 4f, 14f, 4f);
+                g.DrawLine(pen, 2f, 8f, 14f, 8f);
+                g.DrawLine(pen, 2f, 12f, 14f, 12f);
+                g.FillEllipse(brush, 8.75f, 2.25f, 3.5f, 3.5f);
+                g.FillEllipse(brush, 3.75f, 6.25f, 3.5f, 3.5f);
+                g.FillEllipse(brush, 7.25f, 10.25f, 3.5f, 3.5f);
+                break;
+
+            case Glyph.Star:
+            {
+                var pts = new PointF[10];
+                for (int i = 0; i < 10; i++)
+                {
+                    double a = -Math.PI / 2 + i * Math.PI / 5;
+                    float r = i % 2 == 0 ? 6.5f : 2.9f;
+                    pts[i] = new PointF(8f + (float)Math.Cos(a) * r, 8.5f + (float)Math.Sin(a) * r);
+                }
+                g.DrawPolygon(pen, pts);
+                break;
+            }
+
+            case Glyph.Sparkle:
+                using (var p = new GraphicsPath())
+                {
+                    p.AddBezier(7f, 1.5f, 7.6f, 5.4f, 8.6f, 6.4f, 12.5f, 7f);
+                    p.AddBezier(12.5f, 7f, 8.6f, 7.6f, 7.6f, 8.6f, 7f, 12.5f);
+                    p.AddBezier(7f, 12.5f, 6.4f, 8.6f, 5.4f, 7.6f, 1.5f, 7f);
+                    p.AddBezier(1.5f, 7f, 5.4f, 6.4f, 6.4f, 5.4f, 7f, 1.5f);
+                    p.CloseFigure();
+                    g.DrawPath(pen, p);
+                }
+                g.DrawLine(pen, 12.5f, 11f, 12.5f, 14.5f);
+                g.DrawLine(pen, 10.75f, 12.75f, 14.25f, 12.75f);
+                break;
+
+            case Glyph.User:
+                g.DrawEllipse(pen, 5f, 1.75f, 6f, 6f);
+                g.DrawArc(pen, 2.25f, 9.5f, 11.5f, 9.5f, 180, 180);
+                break;
+
+            case Glyph.Question:
+                g.DrawEllipse(pen, 1.75f, 1.75f, 12.5f, 12.5f);
+                g.DrawArc(pen, 5.75f, 4f, 4.5f, 4.5f, 180, 250);
+                g.DrawLine(pen, 8f, 8.75f, 8f, 9.5f);
+                g.FillEllipse(brush, 7.1f, 10.9f, 1.8f, 1.8f);
+                break;
+
+            case Glyph.Minus:
+                g.DrawLine(thick, 3.5f, 8f, 12.5f, 8f);
+                break;
+
+            case Glyph.Plus:
+                g.DrawLine(thick, 3.5f, 8f, 12.5f, 8f);
+                g.DrawLine(thick, 8f, 3.5f, 8f, 12.5f);
+                break;
+
+            case Glyph.Power:
+                g.DrawArc(pen, 2.25f, 2.75f, 11.5f, 11.5f, -55, 290);
+                g.DrawLine(pen, 8f, 1.5f, 8f, 7.5f);
+                break;
+
+            case Glyph.Image:
+                using (var p = Rounded(new RectangleF(1.75f, 2.75f, 12.5f, 10.5f), 1.75f)) g.DrawPath(pen, p);
+                g.DrawLines(pen, new PointF[] { new(2.5f, 12f), new(6.25f, 8f), new(9f, 10.5f), new(10.75f, 9f), new(13.5f, 11.75f) });
+                g.FillEllipse(brush, 9.5f, 4.75f, 2.25f, 2.25f);
                 break;
         }
     }
