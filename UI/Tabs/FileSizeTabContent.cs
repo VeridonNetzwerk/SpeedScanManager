@@ -5,64 +5,17 @@ using System.Windows.Forms;
 namespace SpeedScanManager;
 
 /// <summary>
-/// Content of the "Dateigröße" settings page: compression rate slider (1-5) with
-/// wedge-shaped gradient indicators (ScanSnap Manager layout) in a settings card, plus the
-/// hint why the rate is not used (black and white / PNG).
+/// Content of the "Dateigröße" settings page: compression rate (1-5) on a custom-drawn
+/// themed slider with tick labels, the wedge indicators of the ScanSnap Manager layout
+/// (compression low → high, file size large → small) and the value badge, plus the hint why
+/// the rate is not used (black and white / PNG).
 /// </summary>
 internal class FileSizeTabContent : ModernStack
 {
-    private readonly TrackBar _slider;
-    private readonly NumericUpDown _numValue;
+    private readonly CompressionScale _scale;
     private readonly ScanSettings _settings;
-
-    private readonly Panel _centerPanel;
-    private readonly Panel _topWedge;
-    private readonly Panel _bottomWedge;
-    private readonly Panel _numBox;
-    private readonly Panel _separatorLine;
-    private readonly Label _numDisplay;
     private readonly SettingRow _lblDisabledHint;
-    private readonly Panel _sliderHost;
     private bool _loading;
-
-    // Layout constants — exact pixel positions per ScanSnap reference
-    private const int GroupWidth = 530;
-    private const int GroupHeight = 150;
-
-    private const int HeaderX = 0;
-    private const int HeaderY = 0;
-
-    private const int CompressionLabelX = 24;
-    private const int CompressionLabelY = 26;
-
-    private const int FileSizeLabelX = 29;
-    private const int FileSizeLabelY = 74;
-
-    private const int TopLowX = 133;
-    private const int TopLabelY = 18;
-
-    private const int WedgeX = 192;
-    private const int TopWedgeY = 9;
-    private const int BottomWedgeY = 89;
-
-    private const int TopWedgeWidth = 182;
-    private const int BottomWedgeWidth = 185;
-    private const int WedgeHeight = 18;
-
-    private const int HighLabelX = 402;
-    private const int BottomSideLabelY = 94;
-
-    private const int SliderX = 152;
-    private const int SliderY = 36;
-    private const int SliderWidth = 270;
-    private const int SliderHeight = 45;
-
-    private const int NumberX = 439;
-    private const int NumberY = 36;
-    private const int NumberWidth = 40;
-    private const int NumberHeight = 40;
-
-    private const int NormalY = 111;
 
     public void ApplyPreset(int compression)
     {
@@ -78,10 +31,7 @@ internal class FileSizeTabContent : ModernStack
         _loading = true;
         try
         {
-            int value = Math.Clamp(_settings.CompressionRate, 1, 5);
-            _slider.Value = value;
-            _numValue.Value = value;
-            _numDisplay.Text = value.ToString();
+            _scale.Slider.Value = Math.Clamp(_settings.CompressionRate, 1, 5);
         }
         finally
         {
@@ -101,7 +51,7 @@ internal class FileSizeTabContent : ModernStack
             : _settings.FileFormat == FileFormat.Png
                 ? "PNG-Dateien werden verlustfrei gespeichert; die Komprimierungsrate wird nicht verwendet."
                 : null;
-        _centerPanel.Enabled = reason == null;
+        _scale.Enabled = reason == null;
         _lblDisabledHint.Description = reason ?? "";
         _lblDisabledHint.Visible = reason != null;
     }
@@ -110,306 +60,163 @@ internal class FileSizeTabContent : ModernStack
     {
         _settings = settings;
 
-        var font = UiFonts.Default;
-        var smallFont = UiFonts.Default;
-        var boldFont = UiFonts.Bold;
-        // === Centered container ===
-        _centerPanel = new Panel
+        _scale = new CompressionScale();
+        _scale.Slider.AccessibleName = "Komprimierungsrate";
+        _scale.Slider.ValueChanged += (s, e) =>
         {
-            Size = new Size(GroupWidth, GroupHeight),
-            Anchor = AnchorStyles.None
-        };
-
-        // === Row 1: Header ===
-        var lblHeader = new Label
-        {
-            Text = "Komprimierungsrate:",
-            Location = new Point(HeaderX, HeaderY),
-            AutoSize = true,
-            Font = boldFont,
-            BackColor = Color.Transparent
-        };
-        // The card title replaces this header (kept for the layout reference).
-        lblHeader.Visible = false;
-        _centerPanel.Controls.Add(lblHeader);
-
-        // === Row 2: (Niedrig) + top wedge + (Hoch) ===
-        var lblLow = new Label
-        {
-            Text = "(Niedrig)",
-            Location = new Point(TopLowX, TopLabelY),
-            AutoSize = true,
-            Font = smallFont,
-            BackColor = Color.Transparent
-        };
-        _centerPanel.Controls.Add(lblLow);
-
-        _topWedge = new Panel
-        {
-            Location = new Point(WedgeX, TopWedgeY),
-            Size = new Size(TopWedgeWidth, WedgeHeight),
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
-        _topWedge.Paint += (sender, e) => PaintTopWedge(e.Graphics, _topWedge.ClientRectangle);
-        _centerPanel.Controls.Add(_topWedge);
-
-        var lblHigh = new Label
-        {
-            Text = "(Hoch)",
-            Location = new Point(HighLabelX, TopLabelY),
-            AutoSize = true,
-            Font = smallFont,
-            BackColor = Color.Transparent
-        };
-        _centerPanel.Controls.Add(lblHigh);
-
-        // === Row 3: Komprimierung + slider + number box ===
-        var lblCompression = new Label
-        {
-            Text = "Komprimierung",
-            Location = new Point(CompressionLabelX, CompressionLabelY),
-            AutoSize = true,
-            Font = smallFont,
-            BackColor = Color.Transparent
-        };
-        ThemeManager.SetRole(lblCompression, ThemeRole.Muted);
-        _centerPanel.Controls.Add(lblCompression);
-
-        // Card around the slider (the slider sits inside it)
-        var sliderFrame = new Panel
-        {
-            Location = new Point(SliderX - 2, SliderY - 2),
-            Size = new Size(SliderWidth + 4, SliderHeight + 4),
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
-        ThemeManager.SetRole(sliderFrame, ThemeRole.Card);
-        _centerPanel.Controls.Add(sliderFrame);
-
-        _slider = new TrackBar
-        {
-            Location = new Point(2, 2),
-            Size = new Size(SliderWidth, SliderHeight),
-            Minimum = 1,
-            Maximum = 5,
-            Value = 3,
-            TickFrequency = 1,
-            SmallChange = 1,
-            LargeChange = 1,
-            TickStyle = TickStyle.BottomRight,
-            Margin = Padding.Empty
-        };
-        sliderFrame.Controls.Add(_slider);
-
-        _numBox = new Panel
-        {
-            Location = new Point(NumberX, NumberY),
-            Size = new Size(NumberWidth, NumberHeight),
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
-        ThemeManager.SetRole(_numBox, ThemeRole.Card);
-        _centerPanel.Controls.Add(_numBox);
-
-        // === Separator line between Komprimierung and Dateigröße ===
-        _separatorLine = new Panel
-        {
-            Location = new Point(24, 57),
-            Size = new Size(86, 1),
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
-        ThemeManager.SetRole(_separatorLine, ThemeRole.Divider);
-        _centerPanel.Controls.Add(_separatorLine);
-
-        _numDisplay = new Label
-        {
-            Dock = DockStyle.Fill,
-            Text = "3",
-            Font = UiFonts.Large,
-            BackColor = Color.Transparent,
-            TextAlign = ContentAlignment.MiddleCenter,
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
-        _numBox.Controls.Add(_numDisplay);
-
-        // Hidden NumericUpDown for data binding
-        _numValue = new NumericUpDown
-        {
-            Location = new Point(NumberX, NumberY),
-            Size = new Size(NumberWidth, NumberHeight),
-            Font = font,
-            Minimum = 1,
-            Maximum = 5,
-            Value = 3,
-            Visible = false
-        };
-        _centerPanel.Controls.Add(_numValue);
-
-        // Bidirectional sync — only number changes
-        _slider.ValueChanged += (s, e) =>
-        {
-            int value = _slider.Value;
             if (!_loading)
-                _settings.CompressionRate = value;
-            if (_numValue.Value != value)
-                _numValue.Value = value;
-            _numDisplay.Text = value.ToString();
+                _settings.CompressionRate = _scale.Slider.Value;
         };
 
-        _numValue.ValueChanged += (s, e) =>
-        {
-            if (_slider.Value != (int)_numValue.Value)
-                _slider.Value = (int)_numValue.Value;
-            if (!_loading)
-                _settings.CompressionRate = (int)_numValue.Value;
-            _numDisplay.Text = ((int)_numValue.Value).ToString();
-        };
-
-        // === Row 4: Dateigröße (own line, above bottom wedge) ===
-        var lblFileSize = new Label
-        {
-            Text = "Dateigröße",
-            Location = new Point(FileSizeLabelX, FileSizeLabelY),
-            AutoSize = true,
-            Font = smallFont,
-            BackColor = Color.Transparent
-        };
-        ThemeManager.SetRole(lblFileSize, ThemeRole.Muted);
-        _centerPanel.Controls.Add(lblFileSize);
-
-        // === Row 5: (Groß) + bottom wedge + (Klein) ===
-        var lblSizeLarge = new Label
-        {
-            Text = "(Groß)",
-            Location = new Point(135, BottomSideLabelY),
-            AutoSize = true,
-            Font = smallFont,
-            BackColor = Color.Transparent
-        };
-        _centerPanel.Controls.Add(lblSizeLarge);
-
-        _bottomWedge = new Panel
-        {
-            Location = new Point(WedgeX, BottomWedgeY),
-            Size = new Size(BottomWedgeWidth, WedgeHeight),
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
-        _bottomWedge.Paint += (sender, e) => PaintBottomWedge(e.Graphics, _bottomWedge.ClientRectangle);
-        _centerPanel.Controls.Add(_bottomWedge);
-
-        var lblSizeSmall = new Label
-        {
-            Text = "(Klein)",
-            Location = new Point(HighLabelX, BottomSideLabelY),
-            AutoSize = true,
-            Font = smallFont,
-            BackColor = Color.Transparent
-        };
-        _centerPanel.Controls.Add(lblSizeSmall);
-
-        // === Row 6: Single static "Normal" centered under bottom wedge ===
-        var lblNormal = new Label
-        {
-            Text = "Normal",
-            AutoSize = true,
-            Font = UiFonts.Default,
-            BackColor = Color.Transparent,
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
-        lblNormal.Location = new Point(
-            WedgeX + (BottomWedgeWidth - lblNormal.PreferredWidth) / 2,
-            NormalY);
-        _centerPanel.Controls.Add(lblNormal);
-
-        _lblDisabledHint = new SettingRow("", "") { DescriptionRole = ThemeRole.Danger, Visible = false };
-
-        // The fixed ScanSnap-style group is centered in a host row of the card.
-        _sliderHost = new Panel { Size = new Size(GroupWidth, GroupHeight + 24) };
-        _sliderHost.Controls.Add(_centerPanel);
-        _sliderHost.Resize += (s, e) => CenterPanel();
+        _lblDisabledHint = new SettingRow("", "") { DescriptionRole = ThemeRole.Danger, Visible = false, VerticalPadding = 4 };
 
         var card = new SettingsCard("Komprimierungsrate",
-            "Eine höhere Komprimierung ergibt kleinere Dateien, aber eine geringere Bildqualität.");
-        card.Add(_sliderHost);
+            "Eine höhere Komprimierung ergibt kleinere Dateien, aber eine geringere Bildqualität.") { Dense = true };
+        card.Add(_scale);
         card.Add(_lblDisabledHint);
         Controls.Add(card);
 
-        // Ensure the slider card and number box are always on top of decorative panels
-        sliderFrame.BringToFront();
-        _numBox.BringToFront();
-
         LoadFromSettings();
     }
+}
 
-    private void CenterPanel()
+/// <summary>
+/// Compression scale of the "Dateigröße" page: captions and the two wedges aligned exactly to
+/// the slider's first and last stop, the <see cref="ModernSlider"/> (1-5) and a value badge.
+/// </summary>
+internal sealed class CompressionScale : Panel, IThemeAware, IHeightForWidth
+{
+    private const int LabelColumn = 112;
+    private const int BadgeSize = 44;
+
+    public CompressionScale()
     {
-        int x = (_sliderHost.ClientSize.Width - _centerPanel.Width) / 2;
-        int y = (_sliderHost.ClientSize.Height - _centerPanel.Height) / 2;
-        _centerPanel.Location = new Point(Math.Max(0, x), Math.Max(0, y));
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
+                 | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+        Slider = new ModernSlider { Minimum = 1, Maximum = 5, Value = 3 };
+        Slider.ValueChanged += (_, _) => Invalidate();
+        Controls.Add(Slider);
+        Height = 150;
     }
 
-    /// <summary>
-    /// Top wedge: right triangle, point at bottom-left (near slider),
-    /// wide at top-right (away from slider). Right angle at bottom-right.
-    /// P1 = (Left, Bottom), P2 = (Right, Top), P3 = (Right, Bottom)
-    /// </summary>
-    private static void PaintTopWedge(Graphics g, Rectangle bounds)
+    public ModernSlider Slider { get; }
+
+    public void ApplyTheme(ThemePalette palette) => Invalidate();
+
+    private int S(float v) => ModernLayout.Scale(this, v);
+
+    public int GetHeightForWidth(int width) => S(146);
+
+    // Vertical positions (96-dpi units)
+    private const int CaptionTopY = 12;
+    private const int WedgeTopY = 30;
+    private const int SliderY = 48;
+    private const int WedgeBottomY = 100;
+    private const int CaptionBottomY = 116;
+    private const int WedgeHeight = 12;
+
+    private Rectangle SliderBounds()
     {
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.CompositingMode = CompositingMode.SourceOver;
-
-        PointF[] points =
-        {
-            new(bounds.Left, bounds.Bottom - 1),
-            new(bounds.Right - 1, bounds.Top),
-            new(bounds.Right - 1, bounds.Bottom - 1)
-        };
-
-        using var path = new GraphicsPath();
-        path.AddPolygon(points);
-
-        var p = ThemeManager.Current;
-        using var brush = new LinearGradientBrush(
-            bounds,
-            ThemePalette.Blend(p.Danger, p.Background, 0.85f),
-            p.Danger,
-            LinearGradientMode.Horizontal);
-
-        g.FillPath(brush, path);
+        int left = S(LabelColumn);
+        int right = Width - S(BadgeSize) - S(28);
+        return new Rectangle(left, S(SliderY), Math.Max(S(120), right - left), S(46));
     }
 
-    /// <summary>
-    /// Bottom wedge: right triangle, point at top-right (near slider),
-    /// wide at bottom-left (away from slider). Right angle at top-left.
-    /// P1 = (Left, Top), P2 = (Left, Bottom), P3 = (Right, Top)
-    /// </summary>
-    private static void PaintBottomWedge(Graphics g, Rectangle bounds)
+    protected override void OnLayout(LayoutEventArgs levent)
     {
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.CompositingMode = CompositingMode.SourceOver;
+        base.OnLayout(levent);
+        Slider?.SetBounds(SliderBounds().X, SliderBounds().Y, SliderBounds().Width, SliderBounds().Height);
+    }
 
-        PointF[] points =
-        {
-            new(bounds.Left, bounds.Top),
-            new(bounds.Left, bounds.Bottom - 1),
-            new(bounds.Right - 1, bounds.Top)
-        };
+    protected override void OnEnabledChanged(EventArgs e)
+    {
+        base.OnEnabledChanged(e);
+        Invalidate();
+    }
 
-        using var path = new GraphicsPath();
-        path.AddPolygon(points);
-
+    protected override void OnPaint(PaintEventArgs e)
+    {
         var p = ThemeManager.Current;
-        using var brush = new LinearGradientBrush(
-            bounds,
-            p.Accent,
-            ThemePalette.Blend(p.Accent, p.Background, 0.85f),
-            LinearGradientMode.Horizontal);
+        var g = e.Graphics;
+        var back = ModernLayout.ParentBack(this);
+        g.Clear(back);
+        bool enabled = Enabled;
 
-        g.FillPath(brush, path);
+        var sb = Slider.Bounds;
+        float x0 = sb.Left + Slider.XOf(Slider.Minimum);
+        float x1 = sb.Left + Slider.XOf(Slider.Maximum);
+
+        Color muted = enabled ? p.TextMuted : ModernLayout.Disabled(p.TextMuted, back);
+        Color label = enabled ? p.TextSecondary : ModernLayout.Disabled(p.TextSecondary, back);
+        var small = ModernFonts.Small;
+        var flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+
+        // Row labels (left column), centered on their wedge
+        DrawRowLabel(g, "Komprimierung", S(WedgeTopY) + S(WedgeHeight) / 2, label);
+        DrawRowLabel(g, "Dateigröße", S(WedgeBottomY) + S(WedgeHeight) / 2, label);
+
+        // Captions at the ends of the wedges
+        DrawCaption(g, "Niedrig", x0, S(CaptionTopY), muted, small, flags, align: -1);
+        DrawCaption(g, "Hoch", x1, S(CaptionTopY), muted, small, flags, align: 1);
+        DrawCaption(g, "Groß", x0, S(CaptionBottomY), muted, small, flags, align: -1);
+        DrawCaption(g, "Klein", x1, S(CaptionBottomY), muted, small, flags, align: 1);
+        DrawCaption(g, "Normal", sb.Left + Slider.XOf(3), S(CaptionBottomY), muted, small, flags, align: 0);
+
+        // Wedges: compression grows to the right (red), file size shrinks to the right (accent)
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+        float wh = S(WedgeHeight);
+        float ty = S(WedgeTopY), by = S(WedgeBottomY);
+        Color red = enabled ? p.Danger : ThemePalette.Blend(p.Danger, back, 0.6f);
+        Color blue = enabled ? p.Accent : ThemePalette.Blend(p.Accent, back, 0.6f);
+        var topRect = new RectangleF(x0, ty, Math.Max(1, x1 - x0), wh);
+        using (var path = new GraphicsPath())
+        {
+            path.AddPolygon(new[] { new PointF(x0, ty + wh), new PointF(x1, ty), new PointF(x1, ty + wh) });
+            using var brush = new LinearGradientBrush(RectangleF.Inflate(topRect, 1, 0), Color.FromArgb(40, red), red, LinearGradientMode.Horizontal);
+            g.FillPath(brush, path);
+        }
+        var bottomRect = new RectangleF(x0, by, Math.Max(1, x1 - x0), wh);
+        using (var path = new GraphicsPath())
+        {
+            path.AddPolygon(new[] { new PointF(x0, by), new PointF(x0, by + wh), new PointF(x1, by) });
+            using var brush = new LinearGradientBrush(RectangleF.Inflate(bottomRect, 1, 0), blue, Color.FromArgb(40, blue), LinearGradientMode.Horizontal);
+            g.FillPath(brush, path);
+        }
+
+        // Value badge, vertically centered on the slider track
+        float s = DeviceDpi / 96f;
+        float trackY = sb.Top + 12 * s;
+        var badge = new RectangleF(Width - S(BadgeSize) - 1, trackY - S(BadgeSize) / 2f, S(BadgeSize), S(BadgeSize));
+        using (var path = ModernLayout.RoundedRect(badge, 8 * s))
+        {
+            using (var brush = new SolidBrush(enabled ? ThemePalette.Blend(p.Input, p.Accent, p.IsDark ? 0.18f : 0.08f) : p.Input))
+                g.FillPath(brush, path);
+            using var pen = new Pen(enabled ? ThemePalette.Blend(p.InputBorder, p.Accent, 0.45f) : p.InputBorder, 1f);
+            g.DrawPath(pen, path);
+        }
+        g.SmoothingMode = SmoothingMode.None;
+        TextRenderer.DrawText(g, Slider.Value.ToString(), ModernFonts.PageTitle, Rectangle.Round(badge),
+            enabled ? p.Text : ModernLayout.Disabled(p.Text, back),
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
+    }
+
+    private void DrawRowLabel(Graphics g, string text, int centerY, Color color)
+    {
+        var size = TextRenderer.MeasureText(g, text, ModernFonts.RowTitle, Size.Empty, TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, text, ModernFonts.RowTitle, new Rectangle(0, centerY - size.Height / 2, S(LabelColumn) - S(8), size.Height),
+            color, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
+    }
+
+    private static void DrawCaption(Graphics g, string text, float x, int y, Color color, Font font, TextFormatFlags flags, int align)
+    {
+        var size = TextRenderer.MeasureText(g, text, font, Size.Empty, flags);
+        int left = align switch
+        {
+            < 0 => (int)Math.Round(x),
+            > 0 => (int)Math.Round(x - size.Width),
+            _ => (int)Math.Round(x - size.Width / 2f)
+        };
+        TextRenderer.DrawText(g, text, font, new Rectangle(left, y, size.Width + 1, size.Height), color, flags);
     }
 }

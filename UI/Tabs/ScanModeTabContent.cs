@@ -4,22 +4,71 @@ using System.Windows.Forms;
 namespace SpeedScanManager;
 
 /// <summary>
-/// Combo item with display text, internal enum value, and optional icon.
+/// Combo item with display text, internal enum value, an optional line glyph and an optional
+/// muted detail (shown in the drop-down list only, e.g. the resolution).
 /// </summary>
 internal sealed class ComboItem
 {
+    /// <summary>Full text (name and detail; used for accessibility and ToString).</summary>
     public string Text { get; }
+    /// <summary>Short name shown in the closed combo box.</summary>
+    public string Name { get; }
+    /// <summary>Muted detail shown after the name in the drop-down list.</summary>
+    public string Detail { get; }
     public object Value { get; }
-    public Bitmap? Icon { get; }
+    public Glyph Glyph { get; }
 
-    public ComboItem(string text, object value, Bitmap? icon = null)
+    public ComboItem(string name, object value, Glyph glyph = Glyph.None, string? detail = null)
     {
-        Text = text;
+        Name = name;
+        Detail = detail ?? "";
+        Text = Detail.Length > 0 ? $"{name} ({Detail})" : name;
         Value = value;
-        Icon = icon;
+        Glyph = glyph;
     }
 
     public override string ToString() => Text;
+}
+
+/// <summary>Owner-draw helper of the combo boxes with <see cref="ComboItem"/>s.</summary>
+internal static class ComboItemPainter
+{
+    /// <summary>
+    /// Draws a <see cref="ComboItem"/>: glyph (theme ink), name and, in the drop-down list,
+    /// the muted detail. <paramref name="enabled"/> false grays the item.
+    /// </summary>
+    public static void Draw(ComboBox cb, DrawItemEventArgs e, ComboItem? item, bool enabled = true)
+    {
+        Color fg = ThemeManager.DrawItemBackground(cb, e, enabled);
+        if (item == null) return;
+        var p = ThemeManager.Current;
+        bool edit = (e.State & DrawItemState.ComboBoxEdit) != 0;
+        bool active = cb.Enabled && enabled;
+        int x = e.Bounds.X + ThemeManager.Scale(cb, 6);
+
+        if (item.Glyph != Glyph.None)
+        {
+            int size = ThemeManager.Scale(cb, 16);
+            var glyphColor = active ? (edit ? p.TextSecondary : p.TextMuted) : fg;
+            ThemeGlyphs.Draw(e.Graphics, item.Glyph,
+                new RectangleF(x, e.Bounds.Y + (e.Bounds.Height - size) / 2f, size, size), glyphColor);
+            x += size + ThemeManager.Scale(cb, 8);
+        }
+
+        var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix
+                    | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis;
+        var rect = new Rectangle(x, e.Bounds.Y, Math.Max(0, e.Bounds.Right - x - 4), e.Bounds.Height);
+        TextRenderer.DrawText(e.Graphics, item.Name, cb.Font, rect, fg, flags);
+        if (!edit && item.Detail.Length > 0)
+        {
+            // Detail right-aligned in its own column
+            int nameW = TextRenderer.MeasureText(e.Graphics, item.Name, cb.Font, rect.Size, flags).Width;
+            int pad = ThemeManager.Scale(cb, 8);
+            var detailRect = new Rectangle(rect.X + nameW + pad, rect.Y, Math.Max(0, e.Bounds.Right - pad - rect.X - nameW - pad), rect.Height);
+            var muted = active ? p.TextMuted : fg;
+            TextRenderer.DrawText(e.Graphics, item.Detail, ModernFonts.Small, detailRect, muted, flags | TextFormatFlags.Right);
+        }
+    }
 }
 
 /// <summary>
@@ -47,27 +96,28 @@ internal class ScanModeTabContent : ModernStack
     {
         QualityItems = new List<ComboItem>
         {
-            new("Automatisch", ImageQuality.Automatic, TabIcons.CreateQualityAutoIcon()),
-            new("Normal (Farbe/Grau: 150 dpi, S&W: 300 dpi)", ImageQuality.Normal, TabIcons.CreateQualityNormalIcon()),
-            new("Fein (Farbe/Grau: 200 dpi, S&W: 400 dpi)", ImageQuality.Fine, TabIcons.CreateQualityFineIcon()),
-            new("Beste (Farbe/Grau: 300 dpi, S&W: 600 dpi)", ImageQuality.Best, TabIcons.CreateQualityBestIcon()),
-            new("Hervorragend (Farbe/Grau: 600 dpi, S&W: 1200 dpi)", ImageQuality.Excellent, TabIcons.CreateQualityExcellentIcon())
+            // Level meter glyphs: the resolution grows from Normal to Hervorragend.
+            new("Automatisch", ImageQuality.Automatic, Glyph.Wand),
+            new("Normal", ImageQuality.Normal, Glyph.Level1, "Farbe/Grau: 150 dpi, S&W: 300 dpi"),
+            new("Fein", ImageQuality.Fine, Glyph.Level2, "Farbe/Grau: 200 dpi, S&W: 400 dpi"),
+            new("Beste", ImageQuality.Best, Glyph.Level3, "Farbe/Grau: 300 dpi, S&W: 600 dpi"),
+            new("Hervorragend", ImageQuality.Excellent, Glyph.Level4, "Farbe/Grau: 600 dpi, S&W: 1200 dpi")
         };
 
         ColorItems = new List<ComboItem>
         {
-            new("Automatische Farberkennung", ColorMode.Automatic, TabIcons.CreateColorAutoIcon()),
-            new("Farbe", ColorMode.Color, TabIcons.CreateColorColorIcon()),
-            new("Grau", ColorMode.Grayscale, TabIcons.CreateColorGrayIcon()),
-            new("Schwarzweiß", ColorMode.BlackWhite, TabIcons.CreateColorBWIcon())
+            new("Automatische Farberkennung", ColorMode.Automatic, Glyph.Wand),
+            new("Farbe", ColorMode.Color, Glyph.Palette),
+            new("Grau", ColorMode.Grayscale, Glyph.Grayscale),
+            new("Schwarzweiß", ColorMode.BlackWhite, Glyph.Contrast)
         };
 
         ScanSideItems = new List<ComboItem>
         {
-            new("Duplex-Scan (doppelseitig)", ScanSide.Duplex, TabIcons.CreateScanSideDuplexIcon()),
-            new("Simplex-Scan (einseitig)", ScanSide.Simplex, TabIcons.CreateScanSideSimplexIcon()),
-            new("Flachbettscannen", ScanSide.Flatbed, TabIcons.CreateScanSideFlatbedIcon()),
-            new("Automatisch", ScanSide.Automatic, TabIcons.CreateScanSideAutoIcon())
+            new("Duplex-Scan (doppelseitig)", ScanSide.Duplex, Glyph.PageDuplex),
+            new("Simplex-Scan (einseitig)", ScanSide.Simplex, Glyph.PageSingle),
+            new("Flachbettscannen", ScanSide.Flatbed, Glyph.Scanner),
+            new("Automatisch", ScanSide.Automatic, Glyph.Wand)
         };
     }
 
@@ -143,33 +193,29 @@ internal class ScanModeTabContent : ModernStack
                 _settings.ContinueScanning = _chkContinueScanning.Checked;
         };
 
-        _btnOptions = new Button
-        {
-            Text = "Option...",
-            Size = new Size(130, 32)
-        };
-        ThemeManager.SetGlyph(_btnOptions, Glyph.Gear);
+        _btnOptions = ModernButtons.SubDialog("Optionen...");
         _btnOptions.Click += (s, e) => OpenOptionsDialog();
 
-        var cardMode = new SettingsCard();
-        cardMode.AddRow("Bildqualität", "Eine höhere Auflösung ergibt schärfere Bilder und größere Dateien.", _cbImageQuality, ComboWidth);
+        var cardMode = new SettingsCard { Dense = true };
+        cardMode.AddRow("Bildqualität", "Höhere Auflösung: schärfere Bilder, größere Dateien.", _cbImageQuality, ComboWidth);
         cardMode.AddRow("Farbmodus", "Farbe, Graustufen oder Schwarzweiß.", _cbColorMode, ComboWidth);
         cardMode.AddRow("Scan-Seite",
-            "Die automatische Papiergrößenerkennung steht für das Flachbettscannen nicht zur Verfügung.",
+            "Flachbettscannen ohne automatische Papiergrößenerkennung.",
             _cbScanSide, ComboWidth);
 
-        var cardOptions = new SettingsCard("Weitere Einstellungen");
+        var cardOptions = new SettingsCard("Weitere Einstellungen") { Dense = true };
         cardOptions.AddRow("Scanvorgang nach aktuellem Scan fortsetzen",
-            "Nach dem Scan fragen, ob weitere Dokumente an diesen Scan angehängt werden sollen.", _chkContinueScanning);
+            "Nach dem Scan fragen, ob weitere Dokumente angehängt werden sollen.", _chkContinueScanning);
         cardOptions.AddRow("Optionen für den Scanmodus",
-            "Helligkeit, Textdokumente, leere Seiten, Schräglauf, Bilddrehung und Einlegerichtung.", _btnOptions);
+            "Helligkeit, Textdokumente, leere Seiten, Schräglauf, Drehung, Einlegerichtung.", _btnOptions);
 
         Controls.Add(cardMode);
         Controls.Add(cardOptions);
         LoadFromSettings();
     }
 
-    private const int ComboWidth = 330;
+    /// <summary>Width of all combo boxes on this page (fits the longest short name).</summary>
+    internal const int ComboWidth = 250;
 
     private static ComboBox CreateIconComboBox(List<ComboItem> items)
     {
@@ -178,10 +224,10 @@ internal class ScanModeTabContent : ModernStack
             DropDownStyle = ComboBoxStyle.DropDownList,
             FlatStyle = FlatStyle.Standard,
             DrawMode = DrawMode.OwnerDrawFixed,
-            ItemHeight = 18,
+            ItemHeight = 20,
             IntegralHeight = true,
             Size = new Size(ComboWidth, 24),
-            DropDownWidth = 400
+            DropDownWidth = items.Any(i => i.Detail.Length > 0) ? 380 : ComboWidth
         };
 
         foreach (var item in items)
@@ -196,21 +242,7 @@ internal class ScanModeTabContent : ModernStack
     private static void DrawComboItem(object? sender, DrawItemEventArgs e, List<ComboItem> items)
     {
         var cb = (ComboBox)sender!;
-        Color fg = ThemeManager.DrawItemBackground(cb, e);
-        if (e.Index < 0) return;
-        var item = items[e.Index];
-
-        // Icon
-        if (item.Icon != null)
-        {
-            int iconY = e.Bounds.Y + (e.Bounds.Height - 16) / 2;
-            e.Graphics.DrawImage(item.Icon, e.Bounds.X + 4, iconY, 16, 16);
-        }
-
-        // Text
-        var textRect = new Rectangle(e.Bounds.X + 26, e.Bounds.Y, e.Bounds.Width - 29, e.Bounds.Height);
-        TextRenderer.DrawText(e.Graphics, item.Text, cb.Font, textRect, fg,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+        ComboItemPainter.Draw(cb, e, e.Index >= 0 && e.Index < items.Count ? items[e.Index] : null);
     }
 
     private static void SelectComboItem(ComboBox cb, List<ComboItem> items, object value)

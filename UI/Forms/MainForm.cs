@@ -113,7 +113,8 @@ internal class MainForm : ModernWindow
             help.ShowDialog(this);
         };
         ShowInTaskbar = true;
-        ClientSize = new Size(900, 620);
+        // Every page fits without scrolling at this size (compact cards, two columns on Allgemein).
+        ClientSize = new Size(920, 660);
 
         // === Sidebar + page area ===
         _nav = new NavSidebar { Dock = DockStyle.Left, Width = 212 };
@@ -122,7 +123,7 @@ internal class MainForm : ModernWindow
         Body.Controls.Add(_nav);
 
         _nav.AddHeading("SpeedScan Manager");
-        _nav.AddItem("Allgemein", Glyph.Sliders);
+        _nav.AddItem("Allgemein", Glyph.Gear);
         _nav.AddHeading("Scaneinstellungen");
         _nav.AddItem("Anwendung", Glyph.Apps);
         _nav.AddItem("Speichern", Glyph.Folder);
@@ -135,78 +136,73 @@ internal class MainForm : ModernWindow
         _quickMenuCheckBox = new ToggleSwitch { Checked = _appSettings.QuickMenuEnabled };
         _autoStartCheckBox = new ToggleSwitch { Checked = _appSettings.AutoStart };
 
-        var cardStart = new SettingsCard();
-        cardStart.AddRow("Quick-Menü verwenden",
-            "Nach jedem Scan auswählen, was mit dem Ergebnis geschehen soll. Die Seite „Anwendung“ ist dann nicht verfügbar.",
-            _quickMenuCheckBox);
-        cardStart.AddRow("SpeedScan Manager beim Anmelden starten",
-            "Startet automatisch nach der Anmeldung bei Windows.", _autoStartCheckBox);
-
-        _btnRecommended = CreatePresetTile("Empfohlen", Glyph.Star, "Automatisch\nKomprimierung 3");
-        _btnSmallFile = CreatePresetTile("Kleine Datei", Glyph.Compress, "Normal\nKomprimierung 5");
-        _btnHighQuality = CreatePresetTile("Hohe Bildqualität", Glyph.Sparkle, "Fein\nKomprimierung 1");
-        _btnCustom = CreatePresetTile("Benutzerdefiniert", Glyph.Sliders, "Eigene\nEinstellungen");
-        var presetGroup = new TileGroup { Columns = 4, TileHeight = 118, VerticalPadding = 4 };
-        presetGroup.Controls.AddRange(new Control[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom });
-        foreach (var tile in new[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom })
-        {
-            tile.Click += PresetButton_Click;
-            tile.Click += (s, e) => OnSettingsChanged();
-        }
-        var cardQuality = new SettingsCard("Scanqualität", "Voreinstellungen für Bildqualität und Komprimierungsrate.") { ShowDividers = false };
-        cardQuality.Add(presetGroup);
-        cardQuality.Add(new Panel { Height = 12 });
-
-        _profileDropdown = new ComboBox
-        {
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            Size = new Size(260, 24),
-            DropDownWidth = 260,
-            MaxDropDownItems = 16
-        };
-        RefreshProfileDropdown();
-        _profileDropdown.SelectedIndexChanged += (s, e) => OnProfileSelected();
-
-        var btnAddProfile = new Button { Text = "Profil hinzufügen...", Size = new Size(170, 32), Margin = new Padding(0, 0, 8, 0) };
-        ThemeManager.SetGlyph(btnAddProfile, Glyph.Plus);
-        btnAddProfile.Click += (s, e) => AddProfile();
-        var btnManageProfiles = new Button { Text = "Profilverwaltung...", Size = new Size(170, 32), Margin = Padding.Empty };
-        ThemeManager.SetGlyph(btnManageProfiles, Glyph.User);
-        btnManageProfiles.Click += (s, e) => OpenProfileManagement();
-        var profileButtons = new FlowLayoutPanel
-        {
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            WrapContents = false,
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
-        profileButtons.Controls.Add(btnAddProfile);
-        profileButtons.Controls.Add(btnManageProfiles);
-
-        _profileCard = new SettingsCard("Profil", "Profile speichern alle Scaneinstellungen. Sie werden nur ohne Quick-Menü verwendet.");
-        _profileCard.AddRow("Aktives Profil", "Die Einstellungen des gewählten Profils werden geladen.", _profileDropdown, 260);
-        _profileCard.AddRow("Profile", "Neues Profil aus den aktuellen Einstellungen anlegen oder Profile bearbeiten.", profileButtons);
-
-        // Design selection (System / Hell / Dunkel), applied immediately
+        // Two columns: start options + design | profiles; the quality presets below.
         _themeDropdown = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Size = new Size(180, 24)
+            Size = new Size(120, 24)
         };
         foreach (ThemeMode mode in Enum.GetValues<ThemeMode>())
             _themeDropdown.Items.Add(ThemeManager.GetModeName(mode));
         _themeDropdown.SelectedIndex = (int)ThemeManager.Mode;
         _themeDropdown.SelectedIndexChanged += (s, e) =>
         {
+            // Design selection (System / Hell / Dunkel), applied immediately
             if (!_suppressThemeEvent && _themeDropdown.SelectedIndex >= 0)
                 ThemeManager.SetMode((ThemeMode)_themeDropdown.SelectedIndex);
         };
-        var cardDesign = new SettingsCard();
-        cardDesign.AddRow("Design", "„System“ folgt der Windows-Einstellung für helle und dunkle Apps.", _themeDropdown, 180);
 
-        var general = new ModernStack { Spacing = 16 };
-        general.Controls.AddRange(new Control[] { cardStart, cardQuality, _profileCard, cardDesign });
+        var cardStart = new SettingsCard { Dense = true };
+        cardStart.AddRow("Quick-Menü verwenden",
+            "Nach jedem Scan das Ziel wählen; ersetzt die Seite „Anwendung“.",
+            _quickMenuCheckBox);
+        cardStart.AddRow("Mit Windows starten",
+            "Startet nach der Anmeldung bei Windows.", _autoStartCheckBox);
+        cardStart.AddRow("Design", "„System“ folgt Windows.", _themeDropdown, 120);
+
+        _profileDropdown = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Size = new Size(160, 24),
+            DropDownWidth = 240,
+            MaxDropDownItems = 16
+        };
+        RefreshProfileDropdown();
+        _profileDropdown.SelectedIndexChanged += (s, e) => OnProfileSelected();
+
+        var btnAddProfile = ModernButtons.SubDialog("Profil hinzufügen...");
+        btnAddProfile.Click += (s, e) => AddProfile();
+        var btnManageProfiles = ModernButtons.SubDialog("Profilverwaltung...");
+        btnManageProfiles.Click += (s, e) => OpenProfileManagement();
+        var profileButtons = new ButtonRow { Height = 30 };
+        profileButtons.Controls.Add(btnAddProfile);
+        profileButtons.Controls.Add(btnManageProfiles);
+
+        _profileCard = new SettingsCard("Profil", "Speichert alle Scaneinstellungen (nur ohne Quick-Menü).") { Dense = true };
+        _profileCard.AddRow("Aktives Profil", null, _profileDropdown, 160);
+        _profileCard.AddRow("", null, profileButtons).Stacked = true;
+
+        var topRow = new ModernColumns();
+        topRow.Controls.Add(cardStart);
+        topRow.Controls.Add(_profileCard);
+
+        _btnRecommended = CreatePresetTile("Empfohlen", Glyph.ShieldCheck, "Automatisch\nKomprimierung 3");
+        _btnSmallFile = CreatePresetTile("Kleine Datei", Glyph.FileSmall, "Normal\nKomprimierung 5");
+        _btnHighQuality = CreatePresetTile("Hohe Bildqualität", Glyph.ImageHq, "Fein\nKomprimierung 1");
+        _btnCustom = CreatePresetTile("Benutzerdefiniert", Glyph.Sliders, "Eigene\nEinstellungen");
+        var presetGroup = new TileGroup { Columns = 4, TileHeight = 116, VerticalPadding = 4 };
+        presetGroup.Controls.AddRange(new Control[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom });
+        foreach (var tile in new[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom })
+        {
+            tile.Click += PresetButton_Click;
+            tile.Click += (s, e) => OnSettingsChanged();
+        }
+        var cardQuality = new SettingsCard("Scanqualität", "Voreinstellungen für Bildqualität und Komprimierungsrate.") { ShowDividers = false, Dense = true };
+        cardQuality.Add(presetGroup);
+        cardQuality.Add(new Panel { Height = 10 });
+
+        var general = new ModernStack { Spacing = 14 };
+        general.Controls.AddRange(new Control[] { topRow, cardQuality });
 
         // === Scan setting pages ===
         _applicationTabContent = new ApplicationTabContent(_working, _appSettings.CustomApplications);
@@ -279,7 +275,7 @@ internal class MainForm : ModernWindow
     private void AddPage(string title, string description, Control content)
     {
         var host = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Visible = false };
-        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(32, 24, 32, 28), Spacing = 18 };
+        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(28, 20, 28, 20), Spacing = 14 };
         stack.Controls.Add(new PageHeader(title, description));
         stack.Controls.Add(content);
         host.Controls.Add(stack);
@@ -660,6 +656,9 @@ internal class MainForm : ModernWindow
                     break;
                 case TrackBar tb:
                     tb.ValueChanged += (s, e) => OnSettingsChanged();
+                    break;
+                case ModernSlider slider:
+                    slider.ValueChanged += (s, e) => OnSettingsChanged();
                     break;
                 case NumericUpDown nud:
                     nud.ValueChanged += (s, e) => OnSettingsChanged();

@@ -9,8 +9,7 @@ namespace SpeedScanManager;
 /// </summary>
 internal class SaveTabContent : ModernStack
 {
-    private readonly TextBox _txtFolderPath;
-    private readonly Button _btnBrowse;
+    private readonly FolderPathPicker _folderPicker;
     private readonly Button _btnFileNameFormat;
     private readonly SettingRow _rowFileName;
     private readonly CheckBox _chkRenameAfterScan;
@@ -41,47 +40,12 @@ internal class SaveTabContent : ModernStack
         if (string.IsNullOrEmpty(_settings.FolderPath))
             _settings.FolderPath = ScanSettings.DefaultFolderPath;
 
-        // === Folder selection: path box + Durchsuchen ===
-        _txtFolderPath = new TextBox
-        {
-            Text = _settings.FolderPath,
-            ReadOnly = true,
-            AutoSize = false,
-            Size = new Size(300, 28),
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
-            Margin = new Padding(0, 2, 8, 2)
-        };
-        _btnBrowse = new Button
-        {
-            Text = "Durchsuchen...",
-            Size = new Size(140, 32),
-            Anchor = AnchorStyles.Right,
-            Margin = Padding.Empty
-        };
-        ThemeManager.SetGlyph(_btnBrowse, Glyph.Folder);
-        _btnBrowse.Click += (s, e) => BrowseFolder();
-
-        var folderBox = new TableLayoutPanel
-        {
-            ColumnCount = 2,
-            RowCount = 1,
-            Size = new Size(400, 32),
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
-        folderBox.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        folderBox.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        folderBox.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-        folderBox.Controls.Add(_txtFolderPath, 0, 0);
-        folderBox.Controls.Add(_btnBrowse, 1, 0);
+        // === Folder selection: picker field with integrated Durchsuchen button ===
+        _folderPicker = new FolderPathPicker("Durchsuchen...") { Path = _settings.FolderPath };
+        _folderPicker.BrowseButton.Click += (s, e) => BrowseFolder();
 
         // === File name format ===
-        _btnFileNameFormat = new Button
-        {
-            Text = "Dateinamenformat...",
-            Size = new Size(180, 32)
-        };
-        ThemeManager.SetGlyph(_btnFileNameFormat, Glyph.FileType);
+        _btnFileNameFormat = ModernButtons.SubDialog("Dateinamenformat...");
         _btnFileNameFormat.Click += (s, e) => OpenFileNameFormatDialog();
 
         // === Rename after scan ===
@@ -92,11 +56,11 @@ internal class SaveTabContent : ModernStack
                 _settings.RenameAfterScan = _chkRenameAfterScan.Checked;
         };
 
-        var cardFolder = new SettingsCard();
-        var rowFolder = cardFolder.AddRow("Speicherordner für Bilddaten", "Die gescannten Dateien werden in diesem Ordner gespeichert.", folderBox);
+        var cardFolder = new SettingsCard { Dense = true };
+        var rowFolder = cardFolder.AddRow("Speicherordner für Bilddaten", "Die gescannten Dateien werden in diesem Ordner gespeichert.", _folderPicker);
         rowFolder.Stacked = true;
 
-        var cardName = new SettingsCard("Dateiname");
+        var cardName = new SettingsCard("Dateiname") { Dense = true };
         _rowFileName = cardName.AddRow("Dateinamenformat", "", _btnFileNameFormat);
         cardName.AddRow("Datei nach Scan umbenennen", "Nach dem Scan können Sie einen eigenen Dateinamen eingeben.", _chkRenameAfterScan);
 
@@ -113,7 +77,7 @@ internal class SaveTabContent : ModernStack
         _loading = true;
         try
         {
-            _txtFolderPath.Text = _settings.FolderPath;
+            _folderPicker.Path = _settings.FolderPath;
             _chkRenameAfterScan.Checked = _settings.RenameAfterScan;
             UpdatePreview();
         }
@@ -142,7 +106,7 @@ internal class SaveTabContent : ModernStack
         if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
         {
             _settings.FolderPath = dialog.SelectedPath;
-            _txtFolderPath.Text = _settings.FolderPath;
+            _folderPicker.Path = _settings.FolderPath;
         }
     }
 

@@ -34,7 +34,33 @@ internal enum Glyph
     Minus,
     Plus,
     Power,
-    Image
+    Image,
+    /// <summary>Magic wand (automatic detection).</summary>
+    Wand,
+    /// <summary>Circle in half-tone (grayscale).</summary>
+    Grayscale,
+    /// <summary>Circle half black / half white (black and white).</summary>
+    Contrast,
+    /// <summary>Single page with text lines (simplex).</summary>
+    PageSingle,
+    /// <summary>Front page with a second page behind it (duplex).</summary>
+    PageDuplex,
+    /// <summary>Shield with a check mark (recommended).</summary>
+    ShieldCheck,
+    /// <summary>Document with an arrow pointing down (small file).</summary>
+    FileSmall,
+    /// <summary>Picture with a sparkle (high image quality).</summary>
+    ImageHq,
+    /// <summary>Box with an arrow pointing out (open externally).</summary>
+    OpenExternal,
+    /// <summary>Level meter, 1 of 4 bars filled (image quality Normal).</summary>
+    Level1,
+    /// <summary>Level meter, 2 of 4 bars filled (image quality Fein).</summary>
+    Level2,
+    /// <summary>Level meter, 3 of 4 bars filled (image quality Beste).</summary>
+    Level3,
+    /// <summary>Level meter, 4 of 4 bars filled (image quality Hervorragend).</summary>
+    Level4
 }
 
 internal static class ThemeGlyphs
@@ -264,6 +290,107 @@ internal static class ThemeGlyphs
                 using (var p = Rounded(new RectangleF(1.75f, 2.75f, 12.5f, 10.5f), 1.75f)) g.DrawPath(pen, p);
                 g.DrawLines(pen, new PointF[] { new(2.5f, 12f), new(6.25f, 8f), new(9f, 10.5f), new(10.75f, 9f), new(13.5f, 11.75f) });
                 g.FillEllipse(brush, 9.5f, 4.75f, 2.25f, 2.25f);
+                break;
+
+            case Glyph.Wand:
+                g.DrawLine(thick, 2.75f, 13.25f, 9.5f, 6.5f);
+                // sparkles
+                g.DrawLine(pen, 12f, 1.75f, 12f, 4.75f);
+                g.DrawLine(pen, 10.5f, 3.25f, 13.5f, 3.25f);
+                g.DrawLine(pen, 13.75f, 7.25f, 13.75f, 9.25f);
+                g.DrawLine(pen, 12.75f, 8.25f, 14.75f, 8.25f);
+                g.DrawLine(pen, 6.5f, 1.75f, 6.5f, 3.75f);
+                g.DrawLine(pen, 5.5f, 2.75f, 7.5f, 2.75f);
+                break;
+
+            case Glyph.Grayscale:
+                using (var half = new SolidBrush(Color.FromArgb(Math.Max(1, ((SolidBrush)brush).Color.A * 45 / 100), ((SolidBrush)brush).Color)))
+                    g.FillEllipse(half, 1.75f, 1.75f, 12.5f, 12.5f);
+                g.DrawEllipse(pen, 1.75f, 1.75f, 12.5f, 12.5f);
+                break;
+
+            case Glyph.Contrast:
+                g.DrawEllipse(pen, 1.75f, 1.75f, 12.5f, 12.5f);
+                using (var p = new GraphicsPath())
+                {
+                    p.AddArc(1.75f, 1.75f, 12.5f, 12.5f, -90, 180);
+                    p.CloseFigure();
+                    g.FillPath(brush, p);
+                }
+                break;
+
+            case Glyph.PageSingle:
+                using (var p = Rounded(new RectangleF(3.25f, 1.75f, 9.5f, 12.5f), 1.5f)) g.DrawPath(pen, p);
+                g.DrawLine(pen, 5.75f, 5.5f, 10.25f, 5.5f);
+                g.DrawLine(pen, 5.75f, 8f, 10.25f, 8f);
+                g.DrawLine(pen, 5.75f, 10.5f, 8.75f, 10.5f);
+                break;
+
+            case Glyph.PageDuplex:
+                using (var p = Rounded(new RectangleF(1.75f, 3.75f, 8.5f, 10.5f), 1.5f)) g.DrawPath(pen, p);
+                g.DrawLines(pen, new PointF[] { new(4.75f, 3.75f), new(4.75f, 3.25f), new(5.25f, 1.75f), new(12.75f, 1.75f), new(14.25f, 3.25f), new(14.25f, 10.75f), new(12.75f, 12.25f), new(10.25f, 12.25f) });
+                g.DrawLine(pen, 4f, 7.25f, 8f, 7.25f);
+                g.DrawLine(pen, 4f, 9.75f, 7f, 9.75f);
+                break;
+
+            case Glyph.ShieldCheck:
+                using (var p = new GraphicsPath())
+                {
+                    p.AddLine(8f, 1.5f, 13.75f, 3.5f);
+                    p.AddBezier(13.75f, 3.5f, 13.75f, 9.5f, 11.5f, 12.5f, 8f, 14.5f);
+                    p.AddBezier(8f, 14.5f, 4.5f, 12.5f, 2.25f, 9.5f, 2.25f, 3.5f);
+                    p.CloseFigure();
+                    g.DrawPath(pen, p);
+                }
+                g.DrawLines(pen, new PointF[] { new(5.25f, 8f), new(7.25f, 10f), new(10.75f, 6.25f) });
+                break;
+
+            case Glyph.FileSmall:
+                g.DrawPolygon(pen, new PointF[]
+                {
+                    new(3.25f, 1.75f), new(9.25f, 1.75f), new(12.75f, 5.25f), new(12.75f, 14.25f), new(3.25f, 14.25f)
+                });
+                g.DrawLines(pen, new PointF[] { new(9.25f, 1.75f), new(9.25f, 5.25f), new(12.75f, 5.25f) });
+                g.DrawLine(pen, 8f, 6.75f, 8f, 11.75f);
+                g.DrawLines(pen, new PointF[] { new(5.75f, 9.5f), new(8f, 11.75f), new(10.25f, 9.5f) });
+                break;
+
+            case Glyph.ImageHq:
+                using (var p = Rounded(new RectangleF(1.75f, 3.75f, 10.5f, 10.5f), 1.75f)) g.DrawPath(pen, p);
+                g.DrawLines(pen, new PointF[] { new(2.5f, 13f), new(5.75f, 9.25f), new(8.25f, 11.5f), new(9.5f, 10.5f), new(11.5f, 12.5f) });
+                using (var p = new GraphicsPath())
+                {
+                    p.AddBezier(12.5f, 0.75f, 12.8f, 2.4f, 13.1f, 2.7f, 14.75f, 3f);
+                    p.AddBezier(14.75f, 3f, 13.1f, 3.3f, 12.8f, 3.6f, 12.5f, 5.25f);
+                    p.AddBezier(12.5f, 5.25f, 12.2f, 3.6f, 11.9f, 3.3f, 10.25f, 3f);
+                    p.AddBezier(10.25f, 3f, 11.9f, 2.7f, 12.2f, 2.4f, 12.5f, 0.75f);
+                    p.CloseFigure();
+                    g.FillPath(brush, p);
+                }
+                break;
+
+            case Glyph.Level1:
+            case Glyph.Level2:
+            case Glyph.Level3:
+            case Glyph.Level4:
+            {
+                int level = glyph - Glyph.Level1 + 1;
+                using var thin = new Pen(((Pen)pen).Color, 1.25f) { LineJoin = LineJoin.Round };
+                for (int i = 0; i < 4; i++)
+                {
+                    float h = 4.5f + i * 3f;
+                    var bar = new RectangleF(1.75f + i * 3.4f, 14.25f - h, 2.4f, h);
+                    using var path = Rounded(bar, 0.6f);
+                    if (i < level) g.FillPath(brush, path);
+                    else g.DrawPath(thin, path);
+                }
+                break;
+            }
+
+            case Glyph.OpenExternal:
+                g.DrawLines(pen, new PointF[] { new(7f, 2.75f), new(3.75f, 2.75f), new(2.75f, 3.75f), new(2.75f, 12.25f), new(3.75f, 13.25f), new(12.25f, 13.25f), new(13.25f, 12.25f), new(13.25f, 9f) });
+                g.DrawLine(pen, 7.5f, 8.5f, 13.25f, 2.75f);
+                g.DrawLines(pen, new PointF[] { new(9.5f, 2.75f), new(13.25f, 2.75f), new(13.25f, 6.5f) });
                 break;
         }
     }

@@ -1,5 +1,4 @@
 using System.Drawing;
-using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace SpeedScanManager;
@@ -19,56 +18,6 @@ internal class FileTypeTabContent : ModernStack
 
     /// <summary>Raised when the user picks another file format.</summary>
     public event Action<FileFormat>? FileFormatChanged;
-
-    // Cached Windows file type icons for PDF, JPEG, PNG
-    private static readonly Image?[] FileTypeIcons = LoadFileTypeIcons();
-
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes,
-        ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct SHFILEINFO
-    {
-        public IntPtr hIcon;
-        public int iIcon;
-        public uint dwAttributes;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
-        public string szDisplayName;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
-        public string szTypeName;
-    }
-
-    private const uint SHGFI_ICON = 0x000000100;
-    private const uint SHGFI_SMALLICON = 0x000000001;
-    private const uint SHGFI_USEFILEATTRIBUTES = 0x000000010;
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool DestroyIcon(IntPtr hIcon);
-
-    private static Image?[] LoadFileTypeIcons()
-    {
-        var extensions = new[] { ".pdf", ".jpg", ".png" };
-        var icons = new Image?[extensions.Length];
-        for (int i = 0; i < extensions.Length; i++)
-        {
-            try
-            {
-                var shfi = new SHFILEINFO();
-                var hImg = SHGetFileInfo(extensions[i], 0, ref shfi,
-                    (uint)Marshal.SizeOf<SHFILEINFO>(),
-                    SHGFI_ICON | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBUTES);
-                if (shfi.hIcon != IntPtr.Zero)
-                {
-                    var icon = Icon.FromHandle(shfi.hIcon);
-                    icons[i] = icon.ToBitmap();
-                    DestroyIcon(shfi.hIcon);
-                }
-            }
-            catch { }
-        }
-        return icons;
-    }
 
     // Keyword marking controls
     private readonly CheckBox _chkAddKeyword;
@@ -95,8 +44,9 @@ internal class FileTypeTabContent : ModernStack
         _cbFileFormat = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Size = new Size(300, 24),
-            DrawMode = DrawMode.OwnerDrawFixed
+            Size = new Size(ComboWidth, 24),
+            DrawMode = DrawMode.OwnerDrawFixed,
+            ItemHeight = 20
         };
         _cbFileFormat.Items.AddRange(new object[] { "PDF (*.pdf)", "JPEG (*.jpg)", "PNG (*.png)" });
         _cbFileFormat.DrawItem += (s, e) => DrawFileFormatItem(e);
@@ -116,12 +66,7 @@ internal class FileTypeTabContent : ModernStack
         };
 
         // === PDF options button ===
-        _btnOptions = new Button
-        {
-            Text = "Option...",
-            Size = new Size(130, 32)
-        };
-        ThemeManager.SetGlyph(_btnOptions, Glyph.Gear);
+        _btnOptions = ModernButtons.SubDialog("Optionen...");
         _btnOptions.Click += (s, e) => OpenPdfOptionsDialog();
 
         // === Keyword marking ===
@@ -169,9 +114,10 @@ internal class FileTypeTabContent : ModernStack
         _cbOcrLanguage = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Size = new Size(260, 24),
+            Size = new Size(ComboWidth, 24),
             DrawMode = DrawMode.OwnerDrawFixed,
-            ItemHeight = 18
+            ItemHeight = 20,
+            DropDownWidth = 300
         };
         // Items (installed languages only) are filled in LoadFromSettings.
         _cbOcrLanguage.DrawItem += (s, e) => DrawOcrLanguageItem(e);
@@ -206,21 +152,21 @@ internal class FileTypeTabContent : ModernStack
         };
 
         // === Cards ===
-        var cardFormat = new SettingsCard();
+        var cardFormat = new SettingsCard { Dense = true };
         _rowFileFormat = cardFormat.AddRow("Dateiformat",
-            "JPEG steht nicht zur Verfügung, wenn \"Schwarzweiß\" unter [Farbmodus] gewählt wurde.",
-            _cbFileFormat, 300);
-        cardFormat.AddRow("PDF-Optionen", "PDF-Seiten teilen und Kennwort für die PDF-Datei (nur PDF).", _btnOptions);
+            "JPEG steht bei Farbmodus „Schwarzweiß“ nicht zur Verfügung.",
+            _cbFileFormat, ComboWidth);
+        cardFormat.AddRow("PDF-Optionen", "PDF-Seiten teilen und Kennwort (nur PDF).", _btnOptions);
 
-        var cardChoose = new SettingsCard("Texterkennung wählen");
+        var cardChoose = new SettingsCard("Texterkennung wählen") { Dense = true };
         cardChoose.AddRow("Markierten Text als Schlüsselwort der PDF-Datei hinzufügen",
-            "Mit Textmarker hervorgehobene Textstellen werden als Schlüsselwörter in die PDF-Eigenschaften eingetragen.", _chkAddKeyword);
+            "Mit Textmarker hervorgehobene Stellen werden Schlüsselwörter der PDF-Datei.", _chkAddKeyword);
         _lblKeywordTarget = cardChoose.AddRow("Zielmarkierung", null, RadioGroup(_rbFirstSection, _rbAllSections));
         cardChoose.AddRow("In durchsuchbare PDF konvertieren",
-            "Texterkennung (OCR): Der erkannte Text wird als unsichtbare Schicht über das Bild gelegt.", _chkOcr);
+            "Der erkannte Text (OCR) wird unsichtbar über das Bild gelegt.", _chkOcr);
 
-        _grpOcrOptions = new SettingsCard("Texterkennungsoptionen");
-        _lblOcrLanguage = _grpOcrOptions.AddRow("Sprache", "Sprache des Dokuments für die Texterkennung.", _cbOcrLanguage, 260);
+        _grpOcrOptions = new SettingsCard("Texterkennungsoptionen") { Dense = true };
+        _lblOcrLanguage = _grpOcrOptions.AddRow("Sprache", null, _cbOcrLanguage, ComboWidth);
         _lblOcrTarget = _grpOcrOptions.AddRow("Zielseiten", null, RadioGroup(_rbFirstPage, _rbAllPages));
 
         Controls.Add(cardFormat);
@@ -229,6 +175,9 @@ internal class FileTypeTabContent : ModernStack
 
         LoadFromSettings();
     }
+
+    /// <summary>Width of the combo boxes on this page (96-dpi units).</summary>
+    private const int ComboWidth = 220;
 
     /// <summary>Horizontal group of radio buttons (one group per container).</summary>
     private static FlowLayoutPanel RadioGroup(params RadioButton[] buttons)
@@ -315,27 +264,17 @@ internal class FileTypeTabContent : ModernStack
         bool disabled = isJpeg && !_jpegAvailable;
 
         var color = ThemeManager.DrawItemBackground(_cbFileFormat, e, itemEnabled: !disabled);
-
-        // Draw file type icon before text
-        var icon = e.Index >= 0 && e.Index < FileTypeIcons.Length ? FileTypeIcons[e.Index] : null;
-        var textBounds = e.Bounds;
-        if (icon != null)
-        {
-            var iconRect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y + (e.Bounds.Height - 16) / 2, 16, 16);
-            using var ia = new System.Drawing.Imaging.ImageAttributes();
-            if (disabled)
-            {
-                ia.SetColorMatrix(new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.4f });
-            }
-            e.Graphics.DrawImage(icon,
-                new Rectangle(iconRect.X, iconRect.Y, iconRect.Width, iconRect.Height),
-                0, 0, icon.Width, icon.Height,
-                GraphicsUnit.Pixel, ia);
-            textBounds = new Rectangle(iconRect.Right + 6, e.Bounds.Y, e.Bounds.Right - iconRect.Right - 6, e.Bounds.Height);
-        }
-
+        var textBounds = new Rectangle(e.Bounds.X + ThemeManager.Scale(_cbFileFormat, 6), e.Bounds.Y,
+            Math.Max(0, e.Bounds.Width - ThemeManager.Scale(_cbFileFormat, 8)), e.Bounds.Height);
         TextRenderer.DrawText(e.Graphics, text, _cbFileFormat.Font, textBounds, color,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
+        if (disabled && (e.State & DrawItemState.ComboBoxEdit) == 0)
+        {
+            int w = TextRenderer.MeasureText(e.Graphics, text, _cbFileFormat.Font, textBounds.Size, TextFormatFlags.NoPrefix).Width;
+            var hint = new Rectangle(textBounds.X + w, textBounds.Y, Math.Max(0, textBounds.Width - w), textBounds.Height);
+            TextRenderer.DrawText(e.Graphics, "nicht bei Schwarzweiß", ModernFonts.Small, hint, ThemeManager.Current.TextMuted,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
+        }
     }
 
     /// <summary>Entry of the OCR language list.</summary>
@@ -396,62 +335,70 @@ internal class FileTypeTabContent : ModernStack
         }
     }
 
-    private static readonly Image?[] OcrLanguageFlags = LoadOcrLanguageFlags();
-
-    private static Image?[] LoadOcrLanguageFlags()
+    /// <summary>Short language code shown as a badge in front of the language name.</summary>
+    private static string GetOcrLanguageCode(OcrLanguage language) => language switch
     {
-        return new Image?[]
-        {
-            FlagIcons.Globe,
-            FlagIcons.Germany,
-            FlagIcons.Japan,
-            FlagIcons.UK,
-            FlagIcons.France,
-            FlagIcons.Italy,
-            FlagIcons.Spain,
-            FlagIcons.ChinaSimplified,
-            FlagIcons.ChinaTraditional,
-            FlagIcons.Korea,
-            FlagIcons.Russia,
-            FlagIcons.Portugal,
-            FlagIcons.Arabic
-        };
-    }
+        OcrLanguage.Deutsch => "DE",
+        OcrLanguage.Japanisch => "JA",
+        OcrLanguage.English => "EN",
+        OcrLanguage.Franzoesisch => "FR",
+        OcrLanguage.Italienisch => "IT",
+        OcrLanguage.Spanisch => "ES",
+        OcrLanguage.ChinesischVereinfacht => "ZH",
+        OcrLanguage.ChinesischTraditionell => "ZH",
+        OcrLanguage.Koreanisch => "KO",
+        OcrLanguage.Russisch => "RU",
+        OcrLanguage.Portugiesisch => "PT",
+        OcrLanguage.Arabisch => "AR",
+        _ => ""
+    };
+
+    private static readonly Font BadgeFont = new("Segoe UI Semibold", 7f);
 
     private void DrawOcrLanguageItem(DrawItemEventArgs e)
     {
         var color = ThemeManager.DrawItemBackground(_cbOcrLanguage, e);
-
         if (e.Index < 0) return;
 
         var entry = _cbOcrLanguage.Items[e.Index];
         string text = entry?.ToString() ?? "";
         bool enabled = _cbOcrLanguage.Enabled;
+        var p = ThemeManager.Current;
+        var g = e.Graphics;
+        int Sc(float v) => ThemeManager.Scale(_cbOcrLanguage, v);
 
-        int flagIndex = entry is OcrLanguageItem item ? (int)item.Language : -1;
-        var flag = flagIndex >= 0 && flagIndex < OcrLanguageFlags.Length ? OcrLanguageFlags[flagIndex] : null;
-        var textBounds = e.Bounds;
-        if (flag != null)
+        // Badge: language code, or a wand for automatic detection (accent tinted)
+        var badge = new RectangleF(e.Bounds.X + Sc(6), e.Bounds.Y + (e.Bounds.Height - Sc(15)) / 2f, Sc(24), Sc(15));
+        bool auto = entry is OcrLanguageItem { Language: OcrLanguage.Automatisch };
+        var bg = (e.State & DrawItemState.Selected) != 0 && (e.State & DrawItemState.ComboBoxEdit) == 0 ? p.Selected : _cbOcrLanguage.BackColor;
+        Color badgeFill = auto ? ThemePalette.Blend(bg, p.Accent, p.IsDark ? 0.28f : 0.16f) : ThemePalette.Blend(bg, p.TextMuted, p.IsDark ? 0.22f : 0.16f);
+        Color badgeText = auto ? (p.IsDark ? ThemePalette.Blend(p.Accent, Color.White, 0.35f) : p.Accent) : p.TextSecondary;
+        if (!enabled)
         {
-            var iconRect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y + (e.Bounds.Height - 16) / 2, 16, 16);
-            if (!enabled)
-            {
-                using var ia = new System.Drawing.Imaging.ImageAttributes();
-                ia.SetColorMatrix(new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.4f });
-                e.Graphics.DrawImage(flag,
-                    new Rectangle(iconRect.X, iconRect.Y, iconRect.Width, iconRect.Height),
-                    0, 0, flag.Width, flag.Height,
-                    GraphicsUnit.Pixel, ia);
-            }
-            else
-            {
-                e.Graphics.DrawImage(flag, iconRect);
-            }
-            textBounds = new Rectangle(iconRect.Right + 6, e.Bounds.Y, e.Bounds.Right - iconRect.Right - 6, e.Bounds.Height);
+            badgeFill = ThemePalette.Blend(badgeFill, bg, 0.5f);
+            badgeText = color;
+        }
+        var state = g.Save();
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using (var path = ModernLayout.RoundedRect(badge, Sc(4)))
+        using (var brush = new SolidBrush(badgeFill))
+            g.FillPath(brush, path);
+        g.Restore(state);
+        if (auto)
+        {
+            float gs = Sc(12);
+            ThemeGlyphs.Draw(g, Glyph.Wand, new RectangleF(badge.X + (badge.Width - gs) / 2f, badge.Y + (badge.Height - gs) / 2f, gs, gs), badgeText);
+        }
+        else if (entry is OcrLanguageItem item)
+        {
+            TextRenderer.DrawText(g, GetOcrLanguageCode(item.Language), BadgeFont, Rectangle.Round(badge), badgeText,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
         }
 
-        TextRenderer.DrawText(e.Graphics, text, _cbOcrLanguage.Font, textBounds, color,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+        int tx = (int)badge.Right + Sc(8);
+        var textBounds = new Rectangle(tx, e.Bounds.Y, Math.Max(0, e.Bounds.Right - tx - 2), e.Bounds.Height);
+        TextRenderer.DrawText(g, text, _cbOcrLanguage.Font, textBounds, color,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
     }
 
     private void UpdateOptionsButtonState()

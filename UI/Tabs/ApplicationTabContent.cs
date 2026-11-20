@@ -72,7 +72,8 @@ internal class ApplicationTabContent : ModernStack
         _cbApplication = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Size = new Size(300, 24),
+            Size = new Size(240, 24),
+            DropDownWidth = 280,
             MaxDropDownItems = 16
         };
         _cbApplication.SelectedIndexChanged += (s, e) =>
@@ -89,27 +90,24 @@ internal class ApplicationTabContent : ModernStack
             UpdatePrintOptionsVisibility();
         };
 
-        _btnEmailOptions = new Button { Text = "E-Mail-Optionen...", Size = new Size(170, 32) };
-        ThemeManager.SetGlyph(_btnEmailOptions, Glyph.Mail);
+        _btnEmailOptions = ModernButtons.SubDialog("E-Mail-Optionen...");
         _btnEmailOptions.Click += (s, e) => OpenEmailOptionsDialog();
 
-        _btnPrintOptions = new Button { Text = "Druck-Optionen...", Size = new Size(170, 32) };
-        ThemeManager.SetGlyph(_btnPrintOptions, Glyph.Printer);
+        _btnPrintOptions = ModernButtons.SubDialog("Druck-Optionen...");
         _btnPrintOptions.Click += (s, e) => OpenPrintOptionsDialog();
 
-        _btnManage = new Button { Text = "Installieren/Deinstallieren...", Size = new Size(230, 32) };
-        ThemeManager.SetGlyph(_btnManage, Glyph.PlusMinus);
+        _btnManage = ModernButtons.SubDialog("Installieren/Deinstallieren...");
         _btnManage.Click += (s, e) => OpenManageDialog();
 
         var cardApp = new SettingsCard("Anwendung nach dem Scan",
-            "Die gescannten Dateien werden an diese Anwendung übergeben.");
-        cardApp.AddRow("Anwendung", "Programm, das nach dem Scan gestartet wird.", _cbApplication, 300);
+            "Die gescannten Dateien werden an diese Anwendung übergeben.") { Dense = true };
+        cardApp.AddRow("Anwendung", "Programm, das nach dem Scan gestartet wird.", _cbApplication, 240);
         _rowEmailOptions = cardApp.AddRow("E-Mail-Optionen", "Empfänger und Betreff der E-Mail.", _btnEmailOptions);
         _rowPrintOptions = cardApp.AddRow("Druck-Optionen", "Drucker, auf dem gedruckt wird.", _btnPrintOptions);
         _rowEmailOptions.Visible = false;
         _rowPrintOptions.Visible = false;
 
-        var cardManage = new SettingsCard();
+        var cardManage = new SettingsCard { Dense = true };
         cardManage.AddRow("Anwendungen verwalten", "Eigene Programme zur Liste hinzufügen oder daraus entfernen.", _btnManage);
 
         Controls.Add(cardApp);

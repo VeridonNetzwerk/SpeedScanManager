@@ -682,11 +682,21 @@ internal sealed class HeaderIconButton : Control, IThemeAware
             }
             default:
             {
-                using var pen = new Pen(fore, 1.6f * s);
-                g.DrawEllipse(pen, r.X + 0.5f, r.Y + 0.5f, r.Width - 1f, r.Height - 1f);
-                TextRenderer.DrawText(g, "?", ThemeFonts.Semibold,
-                    Rectangle.Round(new RectangleF(r.X, r.Y - 0.5f, r.Width + 1, r.Height + 1)), fore,
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
+                // Bare vector "?" with the same stroke weight and optical size as the
+                // close/minimize glyphs (the round hover background is the button shape).
+                using var pen = new Pen(fore, 1.8f * s) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+                float cx = r.X + r.Width / 2f;
+                using (var path = new GraphicsPath())
+                {
+                    path.AddArc(cx - 3f * s, r.Y + 2.5f * s, 6f * s, 6f * s, 180, 225);
+                    var end = path.GetLastPoint();
+                    path.AddBezier(end, new PointF(end.X - 1.2f * s, end.Y + 0.9f * s),
+                        new PointF(cx, r.Y + 9f * s), new PointF(cx, r.Y + 10.25f * s));
+                    g.DrawPath(pen, path);
+                }
+                float dot = 2.3f * s;
+                using (var brush = new SolidBrush(fore))
+                    g.FillEllipse(brush, cx - dot / 2f, r.Y + 12.6f * s - dot / 2f, dot, dot);
                 break;
             }
         }

@@ -126,6 +126,7 @@ internal sealed class ThemeState
     public bool Hover;
     public bool Pressed;
     public Glyph Glyph;
+    public Glyph TrailingGlyph;
     public bool? TintImage;
     public Image? TintSource;
     public Color TintColor;
@@ -341,6 +342,16 @@ internal static class ThemeManager
     public static void SetGlyph(ButtonBase button, Glyph glyph)
     {
         GetState(button).Glyph = glyph;
+        button.Invalidate();
+    }
+
+    /// <summary>
+    /// Shows a small glyph after the button text (e.g. a chevron on buttons that open a
+    /// sub-dialog), drawn in a muted variant of the text color.
+    /// </summary>
+    public static void SetTrailingGlyph(ButtonBase button, Glyph glyph)
+    {
+        GetState(button).TrailingGlyph = glyph;
         button.Invalidate();
     }
 

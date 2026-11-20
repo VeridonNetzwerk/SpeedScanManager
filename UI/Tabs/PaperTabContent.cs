@@ -58,6 +58,9 @@ internal class PaperTabContent : ModernStack
         new("Legal (8,5 x 14 in. (216 x 355,6 mm))", PaperSizeMode.Legal)
     };
 
+    /// <summary>Width of the combo boxes on this page (96-dpi units).</summary>
+    private const int ComboWidth = 260;
+
     public PaperTabContent(ScanSettings settings)
     {
         _settings = settings;
@@ -65,35 +68,24 @@ internal class PaperTabContent : ModernStack
         _cbPaperSize = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Size = new Size(300, 24),
-            DropDownWidth = 360,
+            Size = new Size(ComboWidth, 24),
+            DropDownWidth = 340,
             MaxDropDownItems = 16,
             IntegralHeight = false
         };
         _cbPaperSize.SelectedIndexChanged += (s, e) => OnPaperSizeChanged();
 
-        _btnCarrierSheet = new Button
-        {
-            Text = "Trägerblatteinstellungen...",
-            Size = new Size(220, 32)
-        };
-        ThemeManager.SetGlyph(_btnCarrierSheet, Glyph.Carrier);
+        _btnCarrierSheet = ModernButtons.SubDialog("Trägerblatteinstellungen...");
         _btnCarrierSheet.Click += (s, e) => OpenCarrierSheetDialog();
 
-        _btnCustomSize = new Button
-        {
-            Text = "Benutzerdefiniert...",
-            Size = new Size(180, 32),
-            Enabled = true
-        };
-        ThemeManager.SetGlyph(_btnCustomSize, Glyph.Ruler);
+        _btnCustomSize = ModernButtons.SubDialog("Benutzerdefiniert...");
         _btnCustomSize.Click += (s, e) => OpenCustomSizeDialog();
 
         _cbMultiFeed = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             DrawMode = DrawMode.OwnerDrawFixed,
-            Size = new Size(300, 24),
+            Size = new Size(ComboWidth, 24),
             DropDownWidth = 380
         };
         _cbMultiFeed.DrawItem += (s, e) => DrawMultiFeedItem(e);
@@ -117,15 +109,15 @@ internal class PaperTabContent : ModernStack
             _settings.MultiFeedDetection = selected;
         };
 
-        var cardPaper = new SettingsCard();
+        var cardPaper = new SettingsCard { Dense = true };
         _rowPaperSize = cardPaper.AddRow("Papiergröße",
-            "Die automatische Papiergrößenerkennung steht für das Flachbettscannen nicht zur Verfügung.",
-            _cbPaperSize, 300);
+            "Beim Flachbettscannen ist „Automatische Erkennung“ nicht verfügbar.",
+            _cbPaperSize, ComboWidth);
         cardPaper.AddRow("Benutzerdefinierte Papiergrößen", "Eigene Papiergrößen anlegen, ändern oder löschen.", _btnCustomSize);
         cardPaper.AddRow("Trägerblatt", "Trägerblatt-Modus und Ausgabebildgröße.", _btnCarrierSheet);
 
-        var cardFeed = new SettingsCard("Einzug");
-        cardFeed.AddRow("Mehrfacheinzugserkennung", "Erkennt, wenn mehrere Blätter gleichzeitig eingezogen werden.", _cbMultiFeed, 300);
+        var cardFeed = new SettingsCard("Einzug") { Dense = true };
+        cardFeed.AddRow("Mehrfacheinzugserkennung", "Erkennt, wenn mehrere Blätter gleichzeitig eingezogen werden.", _cbMultiFeed, ComboWidth);
 
         Controls.Add(cardPaper);
         Controls.Add(cardFeed);

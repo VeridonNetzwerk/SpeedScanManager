@@ -102,12 +102,14 @@ internal static class ThemePainters
 
         int pad = (int)Math.Round(8 * s);
         int gap = iconSize > 0 && text.Length > 0 ? (int)Math.Round(6 * s) : 0;
+        int trailSize = st.TrailingGlyph != Glyph.None ? (int)Math.Round(12 * s) : 0;
+        int trailGap = trailSize > 0 ? (int)Math.Round(6 * s) : 0;
         int textW = text.Length > 0
             ? TextRenderer.MeasureText(g, text, b.Font, new Size(int.MaxValue, b.Height), flags & ~TextFormatFlags.EndEllipsis).Width
             : 0;
-        int avail = Math.Max(0, b.Width - 2 * pad - iconSize - gap);
+        int avail = Math.Max(0, b.Width - 2 * pad - iconSize - gap - trailSize - trailGap);
         textW = Math.Min(textW, avail);
-        int total = iconSize + gap + textW;
+        int total = iconSize + gap + textW + trailGap + trailSize;
 
         bool alignLeft = iconSize == 0 && (b.TextAlign & (ContentAlignment.TopLeft | ContentAlignment.MiddleLeft | ContentAlignment.BottomLeft)) != 0;
         int x = alignLeft ? pad : Math.Max(pad / 2, (b.Width - total) / 2);
@@ -127,6 +129,14 @@ internal static class ThemePainters
         {
             var textRect = new Rectangle(x, 0, textW + 1, b.Height);
             TextRenderer.DrawText(g, text, b.Font, textRect, fore, flags);
+            x += textW;
+        }
+
+        if (trailSize > 0)
+        {
+            x += trailGap;
+            var trailRect = new Rectangle(x, (b.Height - trailSize) / 2 + 1, trailSize, trailSize);
+            ThemeGlyphs.Draw(g, st.TrailingGlyph, trailRect, ThemePalette.Blend(fore, bg, 0.3f));
         }
     }
 

@@ -169,6 +169,33 @@ internal class SettingsCard : Panel, IThemeAware, IHeightForWidth
     [DefaultValue(16)]
     public int InnerPadding { get; set; } = 16;
 
+    private bool _dense;
+
+    /// <summary>
+    /// Compact layout (settings window): smaller header and row paddings, so a whole page
+    /// fits without scrolling. Applies to the rows already added and to rows added later.
+    /// </summary>
+    [DefaultValue(false)]
+    public bool Dense
+    {
+        get => _dense;
+        set
+        {
+            _dense = value;
+            foreach (Control c in Controls)
+                if (c is SettingRow row) row.VerticalPadding = value ? SettingRow.DensePadding : SettingRow.NormalPadding;
+            PerformLayout();
+            Invalidate();
+        }
+    }
+
+    /// <summary>
+    /// Minimum height in device pixels (set by <see cref="ModernColumns"/> so that cards
+    /// side by side end on the same line). 0 = height follows the content only.
+    /// </summary>
+    [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public int MinimumCardHeight { get; set; }
+
     /// <summary>Adds a <see cref="SettingRow"/> and returns it.</summary>
     public SettingRow AddRow(string title, string? description = null, Control? control = null, int controlWidth = 0)
     {
@@ -176,6 +203,15 @@ internal class SettingsCard : Panel, IThemeAware, IHeightForWidth
         Controls.Add(row);
         return row;
     }
+
+    protected override void OnControlAdded(ControlEventArgs e)
+    {
+        if (_dense && e.Control is SettingRow row)
+            row.VerticalPadding = SettingRow.DensePadding;
+        base.OnControlAdded(e);
+    }
+
+    private int HeaderTop => S(_dense ? 11 : 14);
 
     /// <summary>Adds any control as full-width row content.</summary>
     public T Add<T>(T control) where T : Control
@@ -199,16 +235,18 @@ internal class SettingsCard : Panel, IThemeAware, IHeightForWidth
 
     private int HeaderHeight(int width)
     {
-        if (!HasHeader) return S(4);
+        if (!HasHeader) return S(_dense ? 2 : 4);
         int textW = Math.Max(1, width - 2 * S(InnerPadding));
-        int h = S(14);
+        int h = HeaderTop;
         var flags = TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
         if (_title.Length > 0)
             h += TextRenderer.MeasureText(_title, ModernFonts.CardTitle, new Size(textW, 0), flags).Height;
         if (_description.Length > 0)
             h += S(2) + TextRenderer.MeasureText(_description, ModernFonts.Small, new Size(textW, 0), flags).Height;
-        return h + S(6);
+        return h + S(_dense ? 5 : 6);
     }
+
+    private int BottomPadding => S(_dense ? 2 : 4);
 
     public int GetHeightForWidth(int width)
     {
@@ -222,7 +260,7 @@ internal class SettingsCard : Panel, IThemeAware, IHeightForWidth
             h += ModernLayout.HeightOf(c, inner);
             first = false;
         }
-        return h + S(4);
+        return h + BottomPadding;
     }
 
     public override Size GetPreferredSize(Size proposedSize)
@@ -253,7 +291,8 @@ internal class SettingsCard : Panel, IThemeAware, IHeightForWidth
             y += h;
             first = false;
         }
-        y += S(4);
+        y += BottomPadding;
+        y = Math.Max(y, MinimumCardHeight);
         if (Height != y && Dock is DockStyle.None or DockStyle.Top)
             Height = y;
         Invalidate();
@@ -282,7 +321,7 @@ internal class SettingsCard : Panel, IThemeAware, IHeightForWidth
         int textW = Math.Max(1, Width - 2 * pad);
         var flags = TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
         bool enabled = Enabled;
-        int y = S(14);
+        int y = HeaderTop;
         if (_title.Length > 0)
         {
             var size = TextRenderer.MeasureText(g, _title, ModernFonts.CardTitle, new Size(textW, 0), flags);
@@ -331,6 +370,18 @@ internal class SettingRow : Panel, IThemeAware, IHeightForWidth
     private Control? _control;
     private int _controlWidth;
     private bool _stacked;
+    private int _verticalPadding = NormalPadding;
+
+    internal const int NormalPadding = 12;
+    internal const int DensePadding = 8;
+
+    /// <summary>Space above and below the row content (96-dpi units, default 12).</summary>
+    [DefaultValue(NormalPadding)]
+    public int VerticalPadding
+    {
+        get => _verticalPadding;
+        set { if (_verticalPadding == value) return; _verticalPadding = value; RelayoutParent(); }
+    }
 
     public SettingRow(string title, string? description = null, Control? control = null)
     {
@@ -467,7 +518,7 @@ internal class SettingRow : Panel, IThemeAware, IHeightForWidth
     public int GetHeightForWidth(int width)
     {
         int text = TextBlockHeight(width);
-        int pad = S(12);
+        int pad = S(_verticalPadding);
         if (_control == null) return text + 2 * pad;
         int ch = _stacked ? ModernLayout.HeightOf(_control, width) : ControlHeight();
         if (_stacked) return pad + text + (text > 0 ? S(8) : 0) + ch + pad;
@@ -484,7 +535,7 @@ internal class SettingRow : Panel, IThemeAware, IHeightForWidth
     {
         base.OnLayout(levent);
         if (_control == null) return;
-        int pad = S(12);
+        int pad = S(_verticalPadding);
         if (_stacked)
         {
             int text = TextBlockHeight(Width);
@@ -511,7 +562,7 @@ internal class SettingRow : Panel, IThemeAware, IHeightForWidth
         int textW = TextWidth(Width);
         var (th, dh) = MeasureText(textW);
         int block = th + (dh > 0 ? S(2) + dh : 0);
-        int y = _stacked || _control == null ? S(12) : Math.Max(S(12), (Height - block) / 2);
+        int y = _stacked || _control == null ? S(_verticalPadding) : Math.Max(S(_verticalPadding), (Height - block) / 2);
 
         if (th > 0)
         {
