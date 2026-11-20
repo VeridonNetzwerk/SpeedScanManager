@@ -51,7 +51,11 @@ internal static class Program
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(debugFile)!);
-                File.WriteAllText(debugFile, $"{DateTime.Now}: App started. Args: {string.Join(",", args)}\nExe: {Environment.ProcessPath ?? "?"}\nRuntime: {Environment.Version}\nOS: {Environment.OSVersion}");
+                // Appended (a second instance that only forwards "SHOW" must not hide the
+                // entry of the running one); trimmed when it grows.
+                if (File.Exists(debugFile) && new FileInfo(debugFile).Length > 64 * 1024)
+                    File.Delete(debugFile);
+                File.AppendAllText(debugFile, $"{DateTime.Now}: App started (pid {Environment.ProcessId}). Args: {string.Join(",", args)}\nExe: {Environment.ProcessPath ?? "?"}\nRuntime: {Environment.Version}\nOS: {Environment.OSVersion}\n\n");
             }
             catch { }
 

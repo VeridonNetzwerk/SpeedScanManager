@@ -57,10 +57,12 @@ internal sealed class TrayHiddenWindow : Form
 /// <summary>
 /// ApplicationContext that runs the app as a tray-only application.
 ///
-/// Scanner state: <see cref="ScannerStateService"/> caches the state and only opens the
-/// TWAIN source when the set of imaging devices changed. The tray asks it every
-/// <see cref="PollIntervalMs"/> (cheap) and after WM_DEVICECHANGE (debounced); the
-/// context menu only reads <see cref="ScannerStateService.LastState"/>.
+/// Scanner state: <see cref="ScannerStateService"/> decides presence without the driver
+/// (SetupAPI) and opens the TWAIN source only when the scanner appears (see its remarks).
+/// TWAIN is initialised a few seconds after the start (<see cref="StartupProbeDelayMs"/>).
+/// The tray asks the service every <see cref="PollIntervalMs"/> (cheap) and after
+/// WM_DEVICECHANGE (debounced); the context menu only reads
+/// <see cref="ScannerStateService.LastState"/>.
 ///
 /// Scan flow (one at a time, <see cref="_busy"/> covers the whole flow including all
 /// post-scan dialogs): acquire on a worker thread (<see cref="ScanPipeline.Scan"/>) →
@@ -75,6 +77,11 @@ internal class TrayApplicationContext : ApplicationContext
     /// <summary>Poll interval while no scanner is connected (cheap check, see ScannerStateService).</summary>
     private const int DisconnectedPollIntervalMs = 5000;
     private const int DeviceChangeDebounceMs = 1500;
+    /// <summary>Delay of the TWAIN initialisation after the start (see <see cref="OnFirstIdle"/>).</summary>
+    private const int StartupProbeDelayMs = 5000;
+    /// <summary>Longer delay when Windows was just started (autostart at logon: drivers/services still starting).</summary>
+    private const int StartupProbeDelayAfterBootMs = 20000;
+    private const long FreshBootUptimeMs = 3 * 60 * 1000;
     private const int DisconnectConfirmThreshold = 2;
     private const int ExitCancelTimeoutMs = 8000;
     private static readonly TimeSpan ButtonDebounce = TimeSpan.FromSeconds(1.5);
@@ -103,6 +110,8 @@ internal class TrayApplicationContext : ApplicationContext
     private readonly System.Windows.Forms.Timer _progressTimer;
     private readonly System.Windows.Forms.Timer _leftClickTimer;
     private readonly System.Windows.Forms.Timer _deviceRetryTimer;
+    /// <summary>One-shot timer of the deferred startup; null once TWAIN was initialised.</summary>
+    private System.Windows.Forms.Timer? _startupTimer;
     private readonly TrayHiddenWindow _hiddenWindow;
 
     /// <summary>The next left MouseUp belongs to a double click (see <see cref="OnTrayMouseUp"/>).</summary>
@@ -445,6 +454,9 @@ internal class TrayApplicationContext : ApplicationContext
             if (!_initialized)
             {
                 _pendingButtonScan = true;
+                // Startup delay still running: the user wants to scan, start TWAIN now.
+                if (_startupTimer != null)
+                    CompleteStartup();
                 return;
             }
             StartScan(ScanTrigger.Button);
@@ -1639,6 +1651,35 @@ internal class TrayApplicationContext : ApplicationContext
                 : $"EnsureScanButtonHandler: registered={t.Result}"),
             TaskScheduler.Default);
 
+        // A scan requested by the scan button is user-initiated: start TWAIN right away.
+        if (Program.ScanOnStartRequested || _pendingButtonScan)
+        {
+            CompleteStartup();
+            return;
+        }
+
+        // TWAIN (DSM open loads every driver to enumerate the sources) and the first scanner
+        // query are deferred: right after the start the process is often slowed down (antivirus
+        // scanning the new exe, logon), and drivers like Fujitsu's then show error dialogs.
+        // The tray icon is already visible ("Wird gestartet…").
+        int delay = Environment.TickCount64 < FreshBootUptimeMs ? StartupProbeDelayAfterBootMs : StartupProbeDelayMs;
+        LogDiag($"Startup: TWAIN initialisation in {delay} ms");
+        _startupTimer = new System.Windows.Forms.Timer { Interval = delay };
+        _startupTimer.Tick += (_, _) => CompleteStartup();
+        _startupTimer.Start();
+    }
+
+    /// <summary>Deferred part of the startup: TWAIN, first scanner query, polling, pending scan.</summary>
+    private void CompleteStartup()
+    {
+        if (_startupTimer != null)
+        {
+            _startupTimer.Stop();
+            _startupTimer.Dispose();
+            _startupTimer = null;
+        }
+        if (_initialized || _disposed) return;
+
         InitializeTwain();
         if (_twainInitialized)
         {
@@ -1885,6 +1926,9 @@ internal class TrayApplicationContext : ApplicationContext
             _deviceChangeTimer.Dispose();
             _deviceRetryTimer.Stop();
             _deviceRetryTimer.Dispose();
+            _startupTimer?.Stop();
+            _startupTimer?.Dispose();
+            _startupTimer = null;
             ThemeManager.ModeChanged -= OnThemeModeChanged;
             ThemeManager.Shutdown();
             _progressTimer.Stop();
