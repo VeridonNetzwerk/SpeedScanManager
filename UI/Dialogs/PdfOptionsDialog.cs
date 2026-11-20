@@ -30,6 +30,7 @@ internal class PdfOptionsDialog : ModernWindow
         Title = "PDF-Dateiformat-Optionen";
         Subtitle = "Seiten teilen und Kennwortschutz";
         HeaderButtons = ModernHeaderButtons.Close;
+        HeaderIcon = ColorIcons.Pdf;
         AutoSizeToContent = true;
         MinimumContentWidth = 500;
 
@@ -84,8 +85,8 @@ internal class PdfOptionsDialog : ModernWindow
             _numSplitPages.Enabled = _rbSplitByPages.Checked;
         };
 
-        var cardSplit = new SettingsCard("PDF-Seiten teilen") { ShowDividers = false };
-        cardSplit.Add(new Panel { Height = 6 });
+        var cardSplit = new SettingsCard("PDF-Seiten teilen") { ShowDividers = false, Dense = true, Icon = ColorIcon.Tile(Glyph.Split, IconColors.Red) };
+        cardSplit.Add(new Panel { Height = 4 });
         cardSplit.Add(_rbMultiPage);
         cardSplit.Add(_rbSplitByPages);
         cardSplit.Add(pagesLine);
@@ -114,7 +115,7 @@ internal class PdfOptionsDialog : ModernWindow
             _txtConfirmPassword.Enabled = enabled;
         };
 
-        var cardPassword = new SettingsCard("Kennwort");
+        var cardPassword = new SettingsCard("Kennwort") { Dense = true, Icon = ColorIcon.Tile(Glyph.Lock, IconColors.Amber) };
         cardPassword.AddRow("Kennwort für PDF-Datei einstellen", null, _chkUsePassword);
         cardPassword.AddRow("Kennwort", null, _txtPassword, 240);
         cardPassword.AddRow("Bestätigen", null, _txtConfirmPassword, 240);
@@ -125,7 +126,7 @@ internal class PdfOptionsDialog : ModernWindow
         Body.Controls.Add(stack);
 
         // === Footer ===
-        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = btnOk;

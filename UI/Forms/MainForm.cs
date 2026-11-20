@@ -123,14 +123,14 @@ internal class MainForm : ModernWindow
         Body.Controls.Add(_nav);
 
         _nav.AddHeading("SpeedScan Manager");
-        _nav.AddItem("Allgemein", Glyph.Gear);
+        _nav.AddItem("Allgemein", Glyph.Gear, IconColors.Slate);
         _nav.AddHeading("Scaneinstellungen");
-        _nav.AddItem("Anwendung", Glyph.Apps);
-        _nav.AddItem("Speichern", Glyph.Folder);
-        _nav.AddItem("Scanmodus", Glyph.Scanner);
-        _nav.AddItem("Dateiart", Glyph.FileType);
-        _nav.AddItem("Papier", Glyph.Paper);
-        _nav.AddItem("Dateigröße", Glyph.Compress);
+        _nav.AddItem("Anwendung", Glyph.Apps, IconColors.Purple);
+        _nav.AddItem("Speichern", Glyph.Folder, IconColors.Amber);
+        _nav.AddItem("Scanmodus", Glyph.Scanner, IconColors.Blue);
+        _nav.AddItem("Dateiart", Glyph.FileType, IconColors.Red);
+        _nav.AddItem("Papier", Glyph.Paper, IconColors.Teal);
+        _nav.AddItem("Dateigröße", Glyph.Compress, IconColors.Green);
 
         // === Page "Allgemein" ===
         _quickMenuCheckBox = new ToggleSwitch { Checked = _appSettings.QuickMenuEnabled };
@@ -140,10 +140,22 @@ internal class MainForm : ModernWindow
         _themeDropdown = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Size = new Size(120, 24)
+            DrawMode = DrawMode.OwnerDrawFixed,
+            ItemHeight = 20,
+            Size = new Size(130, 24)
         };
         foreach (ThemeMode mode in Enum.GetValues<ThemeMode>())
             _themeDropdown.Items.Add(ThemeManager.GetModeName(mode));
+        ComboLists.SetRowHeight(_themeDropdown, ComboLists.IconRow);
+        _themeDropdown.DrawItem += (s, e) =>
+        {
+            if (e.Index < 0)
+            {
+                ThemeManager.DrawItemBackground(_themeDropdown, e);
+                return;
+            }
+            ComboItemPainter.Draw(_themeDropdown, e, ThemeModeIcon((ThemeMode)e.Index), _themeDropdown.Items[e.Index]?.ToString() ?? "", null);
+        };
         _themeDropdown.SelectedIndex = (int)ThemeManager.Mode;
         _themeDropdown.SelectedIndexChanged += (s, e) =>
         {
@@ -158,7 +170,7 @@ internal class MainForm : ModernWindow
             _quickMenuCheckBox);
         cardStart.AddRow("Mit Windows starten",
             "Startet nach der Anmeldung bei Windows.", _autoStartCheckBox);
-        cardStart.AddRow("Design", "„System“ folgt Windows.", _themeDropdown, 120);
+        cardStart.AddRow("Design", "„System“ folgt Windows.", _themeDropdown, 130);
 
         _profileDropdown = new ComboBox
         {
@@ -178,7 +190,7 @@ internal class MainForm : ModernWindow
         profileButtons.Controls.Add(btnAddProfile);
         profileButtons.Controls.Add(btnManageProfiles);
 
-        _profileCard = new SettingsCard("Profil", "Speichert alle Scaneinstellungen (nur ohne Quick-Menü).") { Dense = true };
+        _profileCard = new SettingsCard("Profil", "Speichert alle Scaneinstellungen (nur ohne Quick-Menü).") { Dense = true, Icon = ColorIcon.Tile(Glyph.User, IconColors.Blue) };
         _profileCard.AddRow("Aktives Profil", null, _profileDropdown, 160);
         _profileCard.AddRow("", null, profileButtons).Stacked = true;
 
@@ -186,10 +198,12 @@ internal class MainForm : ModernWindow
         topRow.Controls.Add(cardStart);
         topRow.Controls.Add(_profileCard);
 
-        _btnRecommended = CreatePresetTile("Empfohlen", Glyph.ShieldCheck, "Automatisch\nKomprimierung 3");
-        _btnSmallFile = CreatePresetTile("Kleine Datei", Glyph.FileSmall, "Normal\nKomprimierung 5");
-        _btnHighQuality = CreatePresetTile("Hohe Bildqualität", Glyph.ImageHq, "Fein\nKomprimierung 1");
-        _btnCustom = CreatePresetTile("Benutzerdefiniert", Glyph.Sliders, "Eigene\nEinstellungen");
+        // Duotone chips: Empfohlen = award (amber), Kleine Datei = squeezed file (green),
+        // Hohe Bildqualität unchanged (accent), Benutzerdefiniert = sliders (violet).
+        _btnRecommended = CreatePresetTile("Empfohlen", Glyph.Award, "Automatisch\nKomprimierung 3", IconColors.Amber);
+        _btnSmallFile = CreatePresetTile("Kleine Datei", Glyph.FileZip, "Normal\nKomprimierung 5", IconColors.Green);
+        _btnHighQuality = CreatePresetTile("Hohe Bildqualität", Glyph.ImageHq, "Fein\nKomprimierung 1", null);
+        _btnCustom = CreatePresetTile("Benutzerdefiniert", Glyph.Sliders, "Eigene\nEinstellungen", IconColors.Purple);
         var presetGroup = new TileGroup { Columns = 4, TileHeight = 116, VerticalPadding = 4 };
         presetGroup.Controls.AddRange(new Control[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom });
         foreach (var tile in new[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom })
@@ -197,7 +211,7 @@ internal class MainForm : ModernWindow
             tile.Click += PresetButton_Click;
             tile.Click += (s, e) => OnSettingsChanged();
         }
-        var cardQuality = new SettingsCard("Scanqualität", "Voreinstellungen für Bildqualität und Komprimierungsrate.") { ShowDividers = false, Dense = true };
+        var cardQuality = new SettingsCard("Scanqualität", "Voreinstellungen für Bildqualität und Komprimierungsrate.") { ShowDividers = false, Dense = true, Icon = ColorIcon.Tile(Glyph.Star, IconColors.Pink) };
         cardQuality.Add(presetGroup);
         cardQuality.Add(new Panel { Height = 10 });
 
@@ -327,8 +341,18 @@ internal class MainForm : ModernWindow
         return base.ProcessCmdKey(ref msg, keyData);
     }
 
-    private static TileButton CreatePresetTile(string text, Glyph glyph, string description)
-        => new(text, null, glyph, description) { Focusable = true };
+    private static TileButton CreatePresetTile(string text, Glyph glyph, string description, Color? color)
+        => new(text, null, glyph, description) { Focusable = true, GlyphColor = color };
+
+    private static readonly ColorIcon[] ThemeModeIcons =
+    {
+        ColorIcon.Tile(Glyph.Monitor, IconColors.Slate),
+        ColorIcon.Tile(Glyph.Sun, IconColors.Amber),
+        ColorIcon.Tile(Glyph.Moon, IconColors.Indigo)
+    };
+
+    private static ColorIcon? ThemeModeIcon(ThemeMode mode)
+        => (int)mode >= 0 && (int)mode < ThemeModeIcons.Length ? ThemeModeIcons[(int)mode] : null;
 
     private void PresetButton_Click(object? sender, EventArgs e)
     {

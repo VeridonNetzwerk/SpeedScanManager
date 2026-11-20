@@ -44,6 +44,7 @@ internal class FileNameFormatDialog : ModernWindow
         Subtitle = "Benennung der gescannten Dateien";
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
         HelpTopic = "filename-format";
+        HeaderIcon = ColorIcon.Tile(Glyph.TextField, IconColors.Amber);
         AutoSizeToContent = true;
         MinimumContentWidth = 540;
 
@@ -91,28 +92,31 @@ internal class FileNameFormatDialog : ModernWindow
         _cbCounterDigits.Items.AddRange(new object[] { "3 Ziffern", "4 Ziffern", "5 Ziffern" });
         _cbCounterDigits.SelectedIndex = 0;
 
-        var cardFormat = new SettingsCard { ShowDividers = false };
+        var cardFormat = new SettingsCard("Dateiname") { ShowDividers = false, Dense = true, Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Amber) };
         cardFormat.Add(lblHeading);
         cardFormat.Add(_rbOsDefault);
         cardFormat.Add(_rbTimestamp);
         cardFormat.Add(new Panel { Height = 6 });
         cardFormat.Add(lblCustomHeading);
         cardFormat.Add(_rbCustom);
-        cardFormat.AddRow("Dateiname", null, _txtCustomName, 240);
-        cardFormat.AddRow("Zähler", null, _cbCounterDigits, 140);
+        cardFormat.AddRow("Dateiname", null, _txtCustomName, 240).Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Blue);
+        cardFormat.AddRow("Zähler", null, _cbCounterDigits, 140).Icon = ColorIcon.Tile(Glyph.Hash, IconColors.Purple);
 
         // === Preview card ===
         _lblPreview = new Label
         {
             Text = "",
             AutoSize = false,
-            Height = 40,
+            Height = 26,
             TextAlign = ContentAlignment.MiddleLeft,
             UseMnemonic = false,
-            AutoEllipsis = true
+            AutoEllipsis = true,
+            Font = ThemeFonts.Semibold
         };
-        var cardPreview = new SettingsCard();
-        cardPreview.Add(_lblPreview);
+        _cardPreview = new SettingsCard("Vorschau") { Dense = true, ShowDividers = false, Icon = FileIcon(FileFormat.Pdf) };
+        _cardPreview.Add(_lblPreview);
+        _cardPreview.Add(new Panel { Height = 6 });
+        var cardPreview = _cardPreview;
 
         var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
         stack.Controls.Add(cardFormat);
@@ -125,7 +129,7 @@ internal class FileNameFormatDialog : ModernWindow
         btnApply.Click += (s, e) => ApplySettings();
         _btnApply = btnApply;
 
-        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = btnOk;
@@ -141,9 +145,17 @@ internal class FileNameFormatDialog : ModernWindow
         UpdatePreview();
         ResumeLayout(false);
 
-        ThemeManager.SetRole(_lblPreview, ThemeRole.Muted);
         ThemeManager.Apply(this);
     }
+
+    private readonly SettingsCard _cardPreview;
+
+    private static ColorIcon FileIcon(FileFormat format) => format switch
+    {
+        FileFormat.Jpeg => ColorIcons.Jpeg,
+        FileFormat.Png => ColorIcons.Png,
+        _ => ColorIcons.Pdf
+    };
 
     protected override void OnShown(EventArgs e)
     {
@@ -161,6 +173,7 @@ internal class FileNameFormatDialog : ModernWindow
             _ => 0
         };
 
+        _cardPreview.Icon = FileIcon(PreviewFormat);
         OnSelectionChanged();
         UpdateApplyButton();
         base.OnShown(e);

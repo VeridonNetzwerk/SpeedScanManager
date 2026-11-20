@@ -129,15 +129,22 @@ internal sealed class ComboSubclass : ControlSubclass
     public void AttachList(IntPtr hwndList)
     {
         if (hwndList == IntPtr.Zero || _list?.Handle == hwndList) return;
-        _list ??= new DropDownBorderWindow();
+        _list ??= new DropDownBorderWindow((ComboBox)Owner);
         if (_list.Handle != IntPtr.Zero) _list.ReleaseHandle();
         _list.AssignHandle(hwndList);
     }
 
     private sealed class DropDownBorderWindow : NativeWindow
     {
+        private const int WM_WINDOWPOSCHANGING = 0x0046;
+        private readonly ComboBox _combo;
+
+        public DropDownBorderWindow(ComboBox combo) => _combo = combo;
+
         protected override void WndProc(ref Message m)
         {
+            if (m.Msg == WM_WINDOWPOSCHANGING)
+                ComboLists.AdjustListPosition(_combo, Handle, m.LParam);
             base.WndProc(ref m);
             if (m.Msg == WM_NCPAINT && GetWindowRect(Handle, out var wr))
             {
@@ -146,7 +153,8 @@ internal sealed class ComboSubclass : ControlSubclass
                 try
                 {
                     using var g = Graphics.FromHdc(hdc);
-                    using var pen = new Pen(ThemeManager.Current.IsDark ? ThemeManager.Current.Border : ThemeManager.Current.InputBorder);
+                    var pal = ThemeManager.Current;
+                    using var pen = new Pen(pal.IsDark ? pal.Tertiary : pal.Border);
                     g.DrawRectangle(pen, 0, 0, wr.Right - wr.Left - 1, wr.Bottom - wr.Top - 1);
                 }
                 finally

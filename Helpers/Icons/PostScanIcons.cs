@@ -77,29 +77,50 @@ internal static class PostScanIcons
 
     private static void DrawPrinter(Graphics g, Rectangle rect)
     {
-        int x = rect.X + 4, y = rect.Y + 4, w = rect.Width - 8;
-        // Paper input (top sheet)
-        var topRect = new Rectangle(x + 8, y, w - 16, 10);
+        // Clear printer silhouette: paper in the back, wide body with panel, output slot and
+        // the printed sheet coming out in front.
+        int x = rect.X, y = rect.Y;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        using var paperEdge = new Pen(Color.FromArgb(170, 175, 185), 1f);
+        using var linePen = new Pen(Color.FromArgb(150, 160, 175), 1.2f);
+
+        // Paper input (back sheet)
+        var topRect = new Rectangle(x + 13, y + 4, 22, 14);
         g.FillRectangle(Brushes.White, topRect);
-        g.DrawRectangle(new Pen(Color.FromArgb(180, 180, 180), 0.8f), topRect);
+        g.DrawRectangle(paperEdge, topRect);
+        g.DrawLine(linePen, topRect.X + 4, topRect.Y + 4, topRect.Right - 4, topRect.Y + 4);
+        g.DrawLine(linePen, topRect.X + 4, topRect.Y + 8, topRect.Right - 8, topRect.Y + 8);
+
         // Printer body
-        var bodyRect = new Rectangle(x, y + 9, w, 18);
-        using var bodyBrush = new LinearGradientBrush(bodyRect,
-            Color.FromArgb(120, 120, 125), Color.FromArgb(80, 80, 85), LinearGradientMode.Vertical);
-        var bodyPath = RoundRect(bodyRect, 2);
-        g.FillPath(bodyBrush, bodyPath);
-        using var edgePen = new Pen(IconInk.Adapt(Color.FromArgb(50, 50, 55), 0.42f), 1.2f);
-        g.DrawPath(edgePen, bodyPath);
-        // LED indicator
-        g.FillEllipse(new SolidBrush(Color.FromArgb(80, 200, 80)), x + 4, y + 14, 4, 4);
-        // Paper output (bottom)
-        var botRect = new Rectangle(x + 6, y + 27, w - 12, rect.Height - y - 27);
-        g.FillRectangle(Brushes.White, botRect);
-        g.DrawRectangle(new Pen(Color.FromArgb(180, 180, 180), 0.8f), botRect);
-        // Text lines on output paper
-        using var linePen = new Pen(Color.FromArgb(150, 150, 160), 0.8f);
-        for (int i = 0; i < 3; i++)
-            g.DrawLine(linePen, botRect.X + 2, botRect.Y + 3 + i * 3, botRect.Right - 2, botRect.Y + 3 + i * 3);
+        var bodyRect = new Rectangle(x + 4, y + 15, 40, 21);
+        using var bodyPath = RoundRect(bodyRect, 5);
+        using (var bodyBrush = new LinearGradientBrush(bodyRect,
+                   Color.FromArgb(150, 157, 170), Color.FromArgb(84, 90, 102), LinearGradientMode.Vertical))
+            g.FillPath(bodyBrush, bodyPath);
+        using (var hl = new Pen(Color.FromArgb(120, 255, 255, 255), 1f))
+            g.DrawLine(hl, bodyRect.X + 5, bodyRect.Y + 1.5f, bodyRect.Right - 5, bodyRect.Y + 1.5f);
+        using (var edgePen = new Pen(IconInk.Adapt(Color.FromArgb(52, 56, 66), 0.42f), 1.2f))
+            g.DrawPath(edgePen, bodyPath);
+
+        // Control panel: green LED and a small blue display
+        using (var led = new SolidBrush(Color.FromArgb(70, 210, 110)))
+            g.FillEllipse(led, x + 9, y + 20, 4, 4);
+        using (var display = new SolidBrush(Color.FromArgb(90, 170, 240)))
+            g.FillRectangle(display, x + 30, y + 20, 9, 4);
+
+        // Output slot
+        using var slotPath = RoundRect(new Rectangle(x + 10, y + 28, 28, 4), 2);
+        using (var slot = new SolidBrush(Color.FromArgb(40, 44, 52)))
+            g.FillPath(slot, slotPath);
+
+        // Printed sheet coming out
+        var outRect = new Rectangle(x + 13, y + 30, 22, 15);
+        g.FillRectangle(Brushes.White, outRect);
+        g.DrawRectangle(paperEdge, outRect);
+        using var inkPen = new Pen(Color.FromArgb(70, 130, 220), 1.4f);
+        g.DrawLine(inkPen, outRect.X + 4, outRect.Y + 5, outRect.Right - 4, outRect.Y + 5);
+        g.DrawLine(linePen, outRect.X + 4, outRect.Y + 8.5f, outRect.Right - 4, outRect.Y + 8.5f);
+        g.DrawLine(linePen, outRect.X + 4, outRect.Y + 12, outRect.Right - 9, outRect.Y + 12);
     }
 
     private static void DrawWord(Graphics g, Rectangle rect)

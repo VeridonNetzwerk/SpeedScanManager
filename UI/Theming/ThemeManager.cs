@@ -127,6 +127,7 @@ internal sealed class ThemeState
     public bool Pressed;
     public Glyph Glyph;
     public Glyph TrailingGlyph;
+    public Color? GlyphColor;
     public bool? TintImage;
     public Image? TintSource;
     public Color TintColor;
@@ -346,6 +347,18 @@ internal static class ThemeManager
     }
 
     /// <summary>
+    /// Shows a colored vector glyph on a (secondary) button; on Primary/Danger/Success buttons
+    /// and when disabled the glyph follows the text color.
+    /// </summary>
+    public static void SetGlyph(ButtonBase button, Glyph glyph, Color color)
+    {
+        var st = GetState(button);
+        st.Glyph = glyph;
+        st.GlyphColor = color;
+        button.Invalidate();
+    }
+
+    /// <summary>
     /// Shows a small glyph after the button text (e.g. a chevron on buttons that open a
     /// sub-dialog), drawn in a muted variant of the text color.
     /// </summary>
@@ -398,8 +411,20 @@ internal static class ThemeManager
         bool edit = (e.State & DrawItemState.ComboBoxEdit) != 0;
         bool selected = !edit && (e.State & DrawItemState.Selected) != 0;
         var bg = selected ? p.Selected : owner.BackColor;
-        using (var brush = new SolidBrush(bg))
+        using (var brush = new SolidBrush(owner.BackColor))
             e.Graphics.FillRectangle(brush, e.Bounds);
+        if (selected)
+        {
+            // Rounded highlight inset from the list edges (Win11 / Discord list style)
+            var state = e.Graphics.Save();
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            float inset = Scale(owner, 3);
+            var r = new RectangleF(e.Bounds.X + inset, e.Bounds.Y + 1, e.Bounds.Width - 2 * inset, e.Bounds.Height - 2);
+            using (var path = ThemeGlyphs.Rounded(r, Scale(owner, 4)))
+            using (var brush = new SolidBrush(bg))
+                e.Graphics.FillPath(brush, path);
+            e.Graphics.Restore(state);
+        }
         if (!owner.Enabled || !itemEnabled)
             return ThemePalette.Blend(p.TextMuted, bg, 0.25f);
         return p.Text;
@@ -761,6 +786,7 @@ internal static class ThemeManager
             combo.DrawItem += ThemePainters.DrawComboItemDefault;
         }
         st.Subclass ??= new ComboSubclass(combo);
+        ComboLists.Attach(combo);
         combo.Invalidate();
     }
 

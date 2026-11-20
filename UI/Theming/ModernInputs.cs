@@ -587,6 +587,18 @@ internal static class ModernButtons
         return b;
     }
 
+    /// <summary>
+    /// Sub-dialog button with a colored leading <paramref name="glyph"/> (e.g. a blue envelope
+    /// on "E-Mail-Optionen..."), the text and a chevron.
+    /// </summary>
+    public static Button SubDialog(string text, Glyph glyph, Color color, int minWidth = 0)
+    {
+        var b = SubDialog(text, minWidth);
+        ThemeManager.SetGlyph(b, glyph, color);
+        b.Width = Math.Max(minWidth, TextWidth96(text) + 16 + 6 + 12 + 8 + 16 + 6);
+        return b;
+    }
+
     /// <summary>Text width in 96-dpi units (button font = Segoe UI 9).</summary>
     public static int TextWidth96(string text, Font? font = null)
     {

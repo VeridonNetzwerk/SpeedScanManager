@@ -110,6 +110,16 @@ internal class ModernWindow : Form
         set => _header.Logo = value;
     }
 
+    /// <summary>
+    /// Colored icon tile in the header instead of the app logo (the topic of a dialog, e.g. a
+    /// red PDF document on the PDF options). Null = logo.
+    /// </summary>
+    public ColorIcon? HeaderIcon
+    {
+        get => _header.Icon;
+        set => _header.Icon = value;
+    }
+
     /// <summary>Which round buttons the header shows (default: Close).</summary>
     [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public ModernHeaderButtons HeaderButtons
@@ -401,6 +411,11 @@ internal sealed class ModernWindowHeader : Panel, IThemeAware
     public string Subtitle { get => _subtitle; set { _subtitle = value; Invalidate(); } }
     public Image? Logo { get => _logo; set { _logo = value; Invalidate(); } }
 
+    private ColorIcon? _icon;
+
+    /// <summary>Colored icon tile shown instead of the logo (topic of the dialog).</summary>
+    public ColorIcon? Icon { get => _icon; set { _icon = value; Invalidate(); } }
+
     public ModernHeaderButtons Buttons
     {
         get => _buttons;
@@ -482,7 +497,14 @@ internal sealed class ModernWindowHeader : Panel, IThemeAware
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
         int x = S(16);
-        if (_logo != null)
+        if (_icon != null)
+        {
+            float tileSize = S(36);
+            var tile = new RectangleF(x, (Height - tileSize) / 2f, tileSize, tileSize);
+            _icon.Draw(g, tile);
+            x = (int)tile.Right + S(12);
+        }
+        else if (_logo != null)
         {
             float tileSize = S(36);
             var tile = new RectangleF(x, (Height - tileSize) / 2f, tileSize, tileSize);

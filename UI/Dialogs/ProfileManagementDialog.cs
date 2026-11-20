@@ -29,7 +29,8 @@ internal class ProfileManagementDialog : ModernWindow
         Title = "Profilverwaltung";
         Subtitle = "Profile hinzufügen, umbenennen, löschen und sortieren";
         HeaderButtons = ModernHeaderButtons.Close;
-        ClientSize = new Size(500, 420);
+        HeaderIcon = ColorIcon.Tile(Glyph.User, IconColors.Blue);
+        ClientSize = new Size(520, 430);
         ShowInTaskbar = false;
 
         // === List ===
@@ -39,13 +40,20 @@ internal class ProfileManagementDialog : ModernWindow
             IntegralHeight = false,
             Margin = new Padding(0, 0, 16, 0)
         };
+        // Rows: icon of the profile's scan target (same icons as the Anwendung list), name
+        ModernLists.Setup(_listBox, i =>
+        {
+            var profile = i < _manager.Profiles.Count ? _manager.Profiles[i] : null;
+            return (profile?.Settings == null ? null : ColorIcons.Target(profile.Settings.ApplicationType),
+                _listBox.Items[i]?.ToString() ?? "", null);
+        });
         _listBox.SelectedIndexChanged += (s, e) => UpdateButtonStates();
 
         // === Buttons ===
-        _btnAdd = CreateActionButton("Hinzufügen...", Glyph.Plus);
+        _btnAdd = CreateActionButton("Hinzufügen...", Glyph.Plus, IconColors.Green);
         _btnAdd.Click += (s, e) => AddProfile();
 
-        _btnRename = CreateActionButton("Umbenennen...", Glyph.Sliders);
+        _btnRename = CreateActionButton("Umbenennen...", Glyph.TextField, IconColors.Blue);
         _btnRename.Click += (s, e) => RenameProfile();
 
         _btnDelete = CreateActionButton("Löschen", Glyph.Cross);
@@ -97,7 +105,7 @@ internal class ProfileManagementDialog : ModernWindow
         ResumeLayout(true);
     }
 
-    private static Button CreateActionButton(string text, Glyph glyph)
+    private static Button CreateActionButton(string text, Glyph glyph, Color? color = null)
     {
         var button = new Button
         {
@@ -106,7 +114,8 @@ internal class ProfileManagementDialog : ModernWindow
             Margin = new Padding(0, 0, 0, 8)
         };
         ThemeManager.SetRole(button, ThemeRole.Secondary);
-        ThemeManager.SetGlyph(button, glyph);
+        if (color is Color c) ThemeManager.SetGlyph(button, glyph, c);
+        else ThemeManager.SetGlyph(button, glyph);
         return button;
     }
 
@@ -231,14 +240,16 @@ internal static class ProfileNameInput
         dlg.Title = title;
         dlg.HeaderHeight = 52;
         dlg.HeaderButtons = ModernHeaderButtons.Close;
+        dlg.HeaderIcon = ColorIcon.Tile(Glyph.User, IconColors.Blue);
         dlg.AutoSizeToContent = true;
         dlg.MinimumContentWidth = 380;
 
         var txt = new TextBox { Text = defaultValue, AutoSize = false, Height = 28, MaxLength = ProfileManager.MaxNameLength };
-        var card = new SettingsCard();
+        var card = new SettingsCard { Dense = true };
         var row = card.AddRow(label.TrimEnd(':'), null, txt);
         row.Stacked = true;
-        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(20, 18, 20, 20) };
+        row.Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Blue);
+        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(16, 16, 16, 16) };
         stack.Controls.Add(card);
         dlg.Body.Controls.Add(stack);
 

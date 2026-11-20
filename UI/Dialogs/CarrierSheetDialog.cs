@@ -59,6 +59,7 @@ internal class CarrierSheetDialog : ModernWindow
         Title = "Trägerblatteinstellungen";
         Subtitle = "Gefaltete Dokumente über das Trägerblatt scannen";
         HeaderButtons = ModernHeaderButtons.Close;
+        HeaderIcon = ColorIcon.Tile(Glyph.Carrier, IconColors.Blue);
         AutoSizeToContent = true;
         MinimumContentWidth = 504;
 
@@ -136,10 +137,10 @@ internal class CarrierSheetDialog : ModernWindow
         };
         customFlow.Controls.AddRange(new Control[] { _lblCustomWidth, _numCustomWidth, _lblCustomHeight, _numCustomHeight });
 
-        var cardSettings = new SettingsCard();
-        cardSettings.AddRow("Trägerblatt-Modus aktivieren", null, _chkEnabled);
-        cardSettings.AddRow("Modus", null, _cbMode, 270);
-        cardSettings.AddRow("Ausgabebildgröße", null, _cbOutputSize, 270);
+        var cardSettings = new SettingsCard { Dense = true };
+        cardSettings.AddRow("Trägerblatt-Modus aktivieren", null, _chkEnabled).Icon = ColorIcon.Tile(Glyph.Carrier, IconColors.Blue);
+        cardSettings.AddRow("Modus", null, _cbMode, 270).Icon = ColorIcon.Tile(Glyph.Split, IconColors.Teal);
+        cardSettings.AddRow("Ausgabebildgröße", null, _cbOutputSize, 270).Icon = ColorIcon.Tile(Glyph.Ruler, IconColors.Orange);
         _rowCustomSize = cardSettings.AddRow("Benutzerdefinierte Größe", null, customFlow);
         _rowCustomSize.Stacked = true;
         _rowCustomSize.Visible = false;
@@ -171,7 +172,7 @@ internal class CarrierSheetDialog : ModernWindow
             "falten Sie das Dokument entlang der Mittelachse. Legen Sie es in ein " +
             "Trägerblatt ein und führen Sie das Trägerblatt in den Scanner ein. " +
             "Beide Seiten werden gescannt und im Ausgabebild nebeneinander " +
-            "zusammengefügt.") { ShowDividers = false };
+            "zusammengefügt.") { ShowDividers = false, Dense = true, Icon = ColorIcon.Tile(Glyph.Question, IconColors.Sky) };
         cardInstructions.Add(new Panel { Height = 8 });
         cardInstructions.Add(pnlIllustrations);
         cardInstructions.Add(lblIllustrations);
@@ -182,7 +183,7 @@ internal class CarrierSheetDialog : ModernWindow
         Body.Controls.Add(stack);
 
         // === Footer ===
-        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         _btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         _chkEnabled.CheckedChanged += (s, e) => UpdateEnabledState();

@@ -29,13 +29,27 @@ internal class ScanToPrintOptionsDialog : ModernWindow
         Title = "Scan to Print";
         Subtitle = "Optionen für den Druck";
         HeaderButtons = ModernHeaderButtons.Close;
+        HeaderIcon = ColorIcon.Tile(Glyph.Printer, IconColors.Slate);
         ShowInTaskbar = false;
         AutoSizeToContent = true;
-        MinimumContentWidth = 500;
+        MinimumContentWidth = 540;
 
         _cbPrinter = new ComboBox
         {
-            DropDownStyle = ComboBoxStyle.DropDownList
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            DrawMode = DrawMode.OwnerDrawFixed,
+            ItemHeight = 20
+        };
+        ComboLists.SetRowHeight(_cbPrinter, ComboLists.IconRow);
+        _cbPrinter.DrawItem += (s, e) =>
+        {
+            if (e.Index < 0)
+            {
+                ThemeManager.DrawItemBackground(_cbPrinter, e);
+                return;
+            }
+            // Entry 0 = Windows default printer
+            ComboItemPainter.Draw(_cbPrinter, e, e.Index == 0 ? DefaultPrinterIcon : PrinterIcon, _cbPrinter.Items[e.Index]?.ToString() ?? "", null);
         };
 
         _cbPrinter.Items.Add(DefaultPrinterEntry);
@@ -50,10 +64,10 @@ internal class ScanToPrintOptionsDialog : ModernWindow
         }
         _cbPrinter.SelectedIndex = 0;
 
-        var card = new SettingsCard();
-        card.AddRow("Zieldrucker", "Drucker für den Ausdruck.", _cbPrinter, 260);
+        var card = new SettingsCard { Dense = true };
+        card.AddRow("Zieldrucker", "Drucker für den Ausdruck.", _cbPrinter, 270).Icon = ColorIcon.Tile(Glyph.Printer, IconColors.Slate);
 
-        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(20, 18, 20, 20) };
+        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(16, 16, 16, 16) };
         stack.Controls.Add(card);
         Body.Controls.Add(stack);
 
@@ -66,6 +80,9 @@ internal class ScanToPrintOptionsDialog : ModernWindow
         ThemeManager.Apply(this);
         ResumeLayout(true);
     }
+
+    private static readonly ColorIcon PrinterIcon = ColorIcon.Tile(Glyph.Printer, IconColors.Slate);
+    private static readonly ColorIcon DefaultPrinterIcon = ColorIcon.Tile(Glyph.Printer, IconColors.Blue);
 
     protected override void OnShown(EventArgs e)
     {

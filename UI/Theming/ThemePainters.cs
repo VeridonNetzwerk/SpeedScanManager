@@ -119,7 +119,12 @@ internal static class ThemePainters
             int iconH = image?.Height ?? iconSize;
             var iconRect = new Rectangle(x, (b.Height - iconH) / 2, iconSize, iconH);
             if (st.Glyph != Glyph.None)
-                ThemeGlyphs.Draw(g, st.Glyph, iconRect, fore);
+            {
+                var glyphColor = st.GlyphColor is { } gc && b.Enabled && ButtonRole(b, st) == ThemeRole.Secondary
+                    ? (p.IsDark ? ColorIcons.Lighten(gc, 0.25f) : gc)
+                    : fore;
+                ThemeGlyphs.Draw(g, st.Glyph, iconRect, glyphColor, st.GlyphColor.HasValue ? 1.1f : 1f);
+            }
             else if (image != null)
                 DrawButtonImage(g, b, st, image, iconRect, fore);
             x += iconSize + gap;
@@ -492,6 +497,7 @@ internal static class ThemePainters
         if (TryGetComboInfo(combo, out var info) && info.hwndList != IntPtr.Zero)
         {
             ThemeNative.ApplyExplorerTheme(info.hwndList, dark);
+            ThemeNative.ApplyPopupCorners(info.hwndList, ThemeManager.Current);
             (ThemeManager.GetState(combo).Subclass as ComboSubclass)?.AttachList(info.hwndList);
         }
     }

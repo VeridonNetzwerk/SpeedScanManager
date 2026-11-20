@@ -45,7 +45,7 @@ internal class SaveTabContent : ModernStack
         _folderPicker.BrowseButton.Click += (s, e) => BrowseFolder();
 
         // === File name format ===
-        _btnFileNameFormat = ModernButtons.SubDialog("Dateinamenformat...");
+        _btnFileNameFormat = ModernButtons.SubDialog("Dateinamenformat...", Glyph.TextField, IconColors.Amber);
         _btnFileNameFormat.Click += (s, e) => OpenFileNameFormatDialog();
 
         // === Rename after scan ===
@@ -60,7 +60,7 @@ internal class SaveTabContent : ModernStack
         var rowFolder = cardFolder.AddRow("Speicherordner für Bilddaten", "Die gescannten Dateien werden in diesem Ordner gespeichert.", _folderPicker);
         rowFolder.Stacked = true;
 
-        var cardName = new SettingsCard("Dateiname") { Dense = true };
+        var cardName = new SettingsCard("Dateiname") { Dense = true, Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Amber) };
         _rowFileName = cardName.AddRow("Dateinamenformat", "", _btnFileNameFormat);
         cardName.AddRow("Datei nach Scan umbenennen", "Nach dem Scan können Sie einen eigenen Dateinamen eingeben.", _chkRenameAfterScan);
 

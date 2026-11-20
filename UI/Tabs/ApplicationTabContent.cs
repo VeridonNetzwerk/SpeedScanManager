@@ -73,8 +73,21 @@ internal class ApplicationTabContent : ModernStack
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             Size = new Size(240, 24),
-            DropDownWidth = 280,
+            DrawMode = DrawMode.OwnerDrawFixed,
+            ItemHeight = 20,
             MaxDropDownItems = 16
+        };
+        ComboLists.SetRowHeight(_cbApplication, ComboLists.IconRow);
+        _cbApplication.DrawItem += (s, e) =>
+        {
+            if (e.Index < 0)
+            {
+                ThemeManager.DrawItemBackground(_cbApplication, e);
+                return;
+            }
+            var apps = GetAllApps();
+            var type = e.Index < apps.Count ? apps[e.Index].Type : ApplicationType.Custom;
+            ComboItemPainter.Draw(_cbApplication, e, ColorIcons.Target(type), _cbApplication.Items[e.Index]?.ToString() ?? "", null);
         };
         _cbApplication.SelectedIndexChanged += (s, e) =>
         {
@@ -90,17 +103,17 @@ internal class ApplicationTabContent : ModernStack
             UpdatePrintOptionsVisibility();
         };
 
-        _btnEmailOptions = ModernButtons.SubDialog("E-Mail-Optionen...");
+        _btnEmailOptions = ModernButtons.SubDialog("E-Mail-Optionen...", Glyph.Mail, IconColors.Blue);
         _btnEmailOptions.Click += (s, e) => OpenEmailOptionsDialog();
 
-        _btnPrintOptions = ModernButtons.SubDialog("Druck-Optionen...");
+        _btnPrintOptions = ModernButtons.SubDialog("Druck-Optionen...", Glyph.Printer, IconColors.Slate);
         _btnPrintOptions.Click += (s, e) => OpenPrintOptionsDialog();
 
-        _btnManage = ModernButtons.SubDialog("Installieren/Deinstallieren...");
+        _btnManage = ModernButtons.SubDialog("Installieren/Deinstallieren...", Glyph.PlusMinus, IconColors.Purple);
         _btnManage.Click += (s, e) => OpenManageDialog();
 
         var cardApp = new SettingsCard("Anwendung nach dem Scan",
-            "Die gescannten Dateien werden an diese Anwendung übergeben.") { Dense = true };
+            "Die gescannten Dateien werden an diese Anwendung übergeben.") { Dense = true, Icon = ColorIcon.Tile(Glyph.Apps, IconColors.Purple) };
         cardApp.AddRow("Anwendung", "Programm, das nach dem Scan gestartet wird.", _cbApplication, 240);
         _rowEmailOptions = cardApp.AddRow("E-Mail-Optionen", "Empfänger und Betreff der E-Mail.", _btnEmailOptions);
         _rowPrintOptions = cardApp.AddRow("Druck-Optionen", "Drucker, auf dem gedruckt wird.", _btnPrintOptions);

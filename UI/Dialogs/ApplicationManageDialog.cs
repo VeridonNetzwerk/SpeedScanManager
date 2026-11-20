@@ -33,6 +33,7 @@ internal class ApplicationManageDialog : ModernWindow
         Subtitle = "Eigene Anwendungen hinzufügen, ändern oder entfernen";
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
         HelpTopic = "app-manage";
+        HeaderIcon = ColorIcon.Tile(Glyph.Apps, IconColors.Purple);
         AutoSizeToContent = true;
         MinimumContentWidth = 600;
 
@@ -43,7 +44,7 @@ internal class ApplicationManageDialog : ModernWindow
             Size = new Size(132, 32),
             Margin = new Padding(0, 0, 8, 0)
         };
-        ThemeManager.SetGlyph(_btnAdd, Glyph.Plus);
+        ThemeManager.SetGlyph(_btnAdd, Glyph.Plus, IconColors.Green);
         _btnAdd.Click += (s, e) => AddEntry();
 
         _btnEdit = new Button
@@ -53,7 +54,7 @@ internal class ApplicationManageDialog : ModernWindow
             Margin = new Padding(0, 0, 8, 0),
             Enabled = false
         };
-        ThemeManager.SetGlyph(_btnEdit, Glyph.Sliders);
+        ThemeManager.SetGlyph(_btnEdit, Glyph.Sliders, IconColors.Blue);
         _btnEdit.Click += (s, e) => EditEntry();
 
         _btnRemove = new Button
@@ -84,13 +85,21 @@ internal class ApplicationManageDialog : ModernWindow
             IntegralHeight = false,
             AccessibleName = "Hinzugefügt"
         };
+        // Rows: app icon, name, program path right-aligned
+        ModernLists.Setup(_listBox, i => i < CustomApps.Count
+            ? (ColorIcons.Target(ApplicationType.Custom), CustomApps[i].Name, CustomApps[i].ExePath)
+            : (null, _listBox.Items[i]?.ToString() ?? "", null));
         _listBox.SelectedIndexChanged += (s, e) => UpdateButtonStates();
         _listBox.DoubleClick += (s, e) => EditEntry();
 
         var listHost = new Panel { Height = 176, Padding = new Padding(0, 0, 0, 14) };
         listHost.Controls.Add(_listBox);
 
-        var card = new SettingsCard("Hinzugefügt", $"Bis zu {MaxEntries} Anwendungen können hinzugefügt werden.");
+        var card = new SettingsCard("Hinzugefügt", $"Bis zu {MaxEntries} Anwendungen können hinzugefügt werden.")
+        {
+            Dense = true,
+            Icon = ColorIcon.Tile(Glyph.Apps, IconColors.Purple)
+        };
         card.Add(toolbar);
         card.Add(listHost);
 
@@ -215,6 +224,7 @@ internal class ApplicationEditDialog : ModernWindow
         Title = Text;
         Subtitle = "Programm, das die gescannten Dateien öffnet";
         HeaderButtons = ModernHeaderButtons.Close;
+        HeaderIcon = ColorIcon.Tile(Glyph.Apps, IconColors.Purple);
         AutoSizeToContent = true;
         MinimumContentWidth = 500;
 
@@ -222,23 +232,29 @@ internal class ApplicationEditDialog : ModernWindow
 
         _txtPath = new TextBox { AccessibleName = "Programm" };
         var btnBrowse = new Button { Text = "Durchsuchen...", Size = new Size(132, 32) };
-        ThemeManager.SetGlyph(btnBrowse, Glyph.Folder);
+        ThemeManager.SetGlyph(btnBrowse, Glyph.Folder, IconColors.Amber);
         btnBrowse.Click += (s, e) => BrowseExe();
         var pathPicker = new PathPicker(_txtPath, btnBrowse);
 
         _txtArgs = new TextBox { AccessibleName = "Argumente" };
 
         // Label above the input (full width for long paths).
-        var card = new SettingsCard();
-        card.AddRow("Name", null, _txtName).Stacked = true;
-        card.AddRow("Programm", null, pathPicker).Stacked = true;
-        card.AddRow("Argumente", "Optional. Die gescannten Dateien werden danach angehängt.", _txtArgs).Stacked = true;
+        var card = new SettingsCard { Dense = true };
+        var rowName = card.AddRow("Name", null, _txtName);
+        rowName.Stacked = true;
+        rowName.Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Blue);
+        var rowPath = card.AddRow("Programm", null, pathPicker);
+        rowPath.Stacked = true;
+        rowPath.Icon = ColorIcon.Tile(Glyph.Apps, IconColors.Purple);
+        var rowArgs = card.AddRow("Argumente", "Optional. Die gescannten Dateien werden danach angehängt.", _txtArgs);
+        rowArgs.Stacked = true;
+        rowArgs.Icon = ColorIcon.Tile(Glyph.Sliders, IconColors.Slate);
 
         var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
         stack.Controls.Add(card);
         Body.Controls.Add(stack);
 
-        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
         AcceptButton = btnOk;
         CancelButton = btnCancel;

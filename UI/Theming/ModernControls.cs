@@ -161,6 +161,14 @@ internal class SettingsCard : Panel, IThemeAware, IHeightForWidth
     [AllowNull]
     public string Description { get => _description; set { _description = value ?? ""; PerformLayout(); Invalidate(); } }
 
+    private ColorIcon? _icon;
+
+    /// <summary>Colored icon in front of the card title (only with a title).</summary>
+    public ColorIcon? Icon { get => _icon; set { _icon = value; PerformLayout(); Invalidate(); } }
+
+    /// <summary>Indent of the header text for the icon (device pixels).</summary>
+    private int IconIndent => _icon != null && _title.Length > 0 ? S(_description.Length > 0 ? 40 : 30) : 0;
+
     /// <summary>Divider lines between the rows (default true).</summary>
     [DefaultValue(true)]
     public bool ShowDividers { get => _showDividers; set { _showDividers = value; PerformLayout(); Invalidate(); } }
@@ -236,14 +244,17 @@ internal class SettingsCard : Panel, IThemeAware, IHeightForWidth
     private int HeaderHeight(int width)
     {
         if (!HasHeader) return S(_dense ? 2 : 4);
-        int textW = Math.Max(1, width - 2 * S(InnerPadding));
+        int textW = Math.Max(1, width - 2 * S(InnerPadding) - IconIndent);
         int h = HeaderTop;
         var flags = TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
+        int text = 0;
         if (_title.Length > 0)
-            h += TextRenderer.MeasureText(_title, ModernFonts.CardTitle, new Size(textW, 0), flags).Height;
+            text += TextRenderer.MeasureText(_title, ModernFonts.CardTitle, new Size(textW, 0), flags).Height;
         if (_description.Length > 0)
-            h += S(2) + TextRenderer.MeasureText(_description, ModernFonts.Small, new Size(textW, 0), flags).Height;
-        return h + S(_dense ? 5 : 6);
+            text += S(2) + TextRenderer.MeasureText(_description, ModernFonts.Small, new Size(textW, 0), flags).Height;
+        if (IconIndent > 0)
+            text = Math.Max(text, S(_description.Length > 0 ? 30 : 22));
+        return h + text + S(_dense ? 5 : 6);
     }
 
     private int BottomPadding => S(_dense ? 2 : 4);
@@ -318,22 +329,31 @@ internal class SettingsCard : Panel, IThemeAware, IHeightForWidth
         g.PixelOffsetMode = PixelOffsetMode.Default;
 
         int pad = S(InnerPadding);
-        int textW = Math.Max(1, Width - 2 * pad);
+        int indent = IconIndent;
+        int textW = Math.Max(1, Width - 2 * pad - indent);
         var flags = TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
         bool enabled = Enabled;
         int y = HeaderTop;
+        int titleH = _title.Length > 0 ? TextRenderer.MeasureText(g, _title, ModernFonts.CardTitle, new Size(textW, 0), flags).Height : 0;
+        int descH = _description.Length > 0 ? TextRenderer.MeasureText(g, _description, ModernFonts.Small, new Size(textW, 0), flags).Height : 0;
+        if (indent > 0 && _icon != null)
+        {
+            int block = titleH + (descH > 0 ? S(2) + descH : 0);
+            int iconSize = S(descH > 0 ? 30 : 22);
+            int area = Math.Max(block, iconSize);
+            _icon.Draw(g, new RectangleF(pad, y + (area - iconSize) / 2f, iconSize, iconSize), enabled);
+            y += (area - block) / 2;
+        }
         if (_title.Length > 0)
         {
-            var size = TextRenderer.MeasureText(g, _title, ModernFonts.CardTitle, new Size(textW, 0), flags);
-            TextRenderer.DrawText(g, _title, ModernFonts.CardTitle, new Rectangle(pad, y, textW, size.Height),
+            TextRenderer.DrawText(g, _title, ModernFonts.CardTitle, new Rectangle(pad + indent, y, textW, titleH),
                 enabled ? p.Text : ModernLayout.Disabled(p.Text, BackColor), flags);
-            y += size.Height;
+            y += titleH;
         }
         if (_description.Length > 0)
         {
             y += S(2);
-            var size = TextRenderer.MeasureText(g, _description, ModernFonts.Small, new Size(textW, 0), flags);
-            TextRenderer.DrawText(g, _description, ModernFonts.Small, new Rectangle(pad, y, textW, size.Height),
+            TextRenderer.DrawText(g, _description, ModernFonts.Small, new Rectangle(pad + indent, y, textW, descH),
                 enabled ? p.TextMuted : ModernLayout.Disabled(p.TextMuted, BackColor), flags);
         }
 
@@ -412,6 +432,14 @@ internal class SettingRow : Panel, IThemeAware, IHeightForWidth
             RelayoutParent();
         }
     }
+
+    private ColorIcon? _icon;
+
+    /// <summary>Colored icon tile left of the title (Win11 settings style).</summary>
+    public ColorIcon? Icon { get => _icon; set { _icon = value; RelayoutParent(); } }
+
+    /// <summary>Space reserved for the icon (device pixels).</summary>
+    private int IconIndent => _icon != null ? S(36) : 0;
 
     /// <summary>Color of the description: Muted (default), Danger, Warning, Success or Accent.</summary>
     public ThemeRole DescriptionRole
@@ -494,8 +522,8 @@ internal class SettingRow : Panel, IThemeAware, IHeightForWidth
 
     private int TextWidth(int width)
     {
-        if (_control == null || _stacked) return Math.Max(1, width);
-        return Math.Max(1, width - ControlPixelWidth(width) - S(20));
+        if (_control == null || _stacked) return Math.Max(1, width - IconIndent);
+        return Math.Max(1, width - ControlPixelWidth(width) - S(20) - IconIndent);
     }
 
     private const TextFormatFlags TextFlags = TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
@@ -520,7 +548,7 @@ internal class SettingRow : Panel, IThemeAware, IHeightForWidth
         int text = TextBlockHeight(width);
         int pad = S(_verticalPadding);
         if (_control == null) return text + 2 * pad;
-        int ch = _stacked ? ModernLayout.HeightOf(_control, width) : ControlHeight();
+        int ch = _stacked ? ModernLayout.HeightOf(_control, width - IconIndent) : ControlHeight();
         if (_stacked) return pad + text + (text > 0 ? S(8) : 0) + ch + pad;
         return Math.Max(text, ch) + 2 * pad;
     }
@@ -540,7 +568,7 @@ internal class SettingRow : Panel, IThemeAware, IHeightForWidth
         {
             int text = TextBlockHeight(Width);
             int y = pad + text + (text > 0 ? S(8) : 0);
-            _control.SetBounds(0, y, Width, ModernLayout.HeightOf(_control, Width));
+            _control.SetBounds(IconIndent, y, Width - IconIndent, ModernLayout.HeightOf(_control, Width - IconIndent));
         }
         else
         {
@@ -563,10 +591,17 @@ internal class SettingRow : Panel, IThemeAware, IHeightForWidth
         var (th, dh) = MeasureText(textW);
         int block = th + (dh > 0 ? S(2) + dh : 0);
         int y = _stacked || _control == null ? S(_verticalPadding) : Math.Max(S(_verticalPadding), (Height - block) / 2);
+        int x = IconIndent;
+        if (_icon != null)
+        {
+            int size = S(26);
+            float iy = _stacked || _control == null ? y + (Math.Max(block, size) - size) / 2f : (Height - size) / 2f;
+            _icon.Draw(g, new RectangleF(0, iy, size, size), enabled);
+        }
 
         if (th > 0)
         {
-            TextRenderer.DrawText(g, _title, ModernFonts.RowTitle, new Rectangle(0, y, textW, th),
+            TextRenderer.DrawText(g, _title, ModernFonts.RowTitle, new Rectangle(x, y, textW, th),
                 enabled ? p.Text : ModernLayout.Disabled(p.Text, back), TextFlags);
             y += th + S(2);
         }
@@ -580,7 +615,7 @@ internal class SettingRow : Panel, IThemeAware, IHeightForWidth
                 ThemeRole.Accent => p.Accent,
                 _ => p.TextMuted
             };
-            TextRenderer.DrawText(g, _description, ModernFonts.Small, new Rectangle(0, y, textW, dh),
+            TextRenderer.DrawText(g, _description, ModernFonts.Small, new Rectangle(x, y, textW, dh),
                 enabled ? color : ModernLayout.Disabled(color, back), TextFlags);
         }
     }
@@ -732,6 +767,14 @@ internal class TileButton : Control, IThemeAware
 
     /// <summary>Line glyph (drawn in a tinted chip; used when <see cref="Icon"/> is null).</summary>
     public Glyph Glyph { get => _glyph; set { _glyph = value; Invalidate(); } }
+
+    private Color? _glyphColor;
+
+    /// <summary>
+    /// Color of the glyph chip (duotone: light tint of the color with the glyph in the color;
+    /// filled with the color and a white glyph when selected). Null = accent color.
+    /// </summary>
+    public Color? GlyphColor { get => _glyphColor; set { _glyphColor = value; Invalidate(); } }
 
     [AllowNull]
     public string Description { get => _description; set { _description = value ?? ""; Invalidate(); } }
@@ -932,8 +975,9 @@ internal class TileButton : Control, IThemeAware
             return;
         }
         if (_glyph == Glyph.None) return;
-        Color chip = _selected ? p.Accent : ThemePalette.Blend(fill, p.Accent, p.IsDark ? 0.18f : 0.12f);
-        Color glyphColor = _selected ? p.TextOnAccent : p.Accent;
+        Color hue = _glyphColor ?? p.Accent;
+        Color chip = _selected ? hue : ThemePalette.Blend(fill, hue, p.IsDark ? 0.2f : 0.14f);
+        Color glyphColor = _selected ? p.TextOnAccent : (p.IsDark && _glyphColor.HasValue ? ColorIcons.Lighten(hue, 0.2f) : hue);
         if (!active)
         {
             chip = ThemePalette.Blend(chip, fill, 0.5f);
@@ -1093,6 +1137,7 @@ internal class NavSidebar : Control, IThemeAware
     {
         public string Text = "";
         public Glyph Glyph;
+        public Color? Color;
         public bool Enabled = true;
         public bool IsHeading;
         public Rectangle Bounds;
@@ -1125,9 +1170,12 @@ internal class NavSidebar : Control, IThemeAware
     }
 
     /// <summary>Adds an item; returns its index.</summary>
-    public int AddItem(string text, Glyph glyph)
+    public int AddItem(string text, Glyph glyph) => AddItem(text, glyph, null);
+
+    /// <summary>Adds an item with a colored icon tile (white glyph on <paramref name="color"/>); returns its index.</summary>
+    public int AddItem(string text, Glyph glyph, Color? color)
     {
-        _entries.Add(new NavEntry { Text = text, Glyph = glyph });
+        _entries.Add(new NavEntry { Text = text, Glyph = glyph, Color = color });
         _itemIndexes.Add(_entries.Count - 1);
         Relayout();
         return _itemIndexes.Count - 1;
@@ -1305,9 +1353,18 @@ internal class NavSidebar : Control, IThemeAware
                 : selected ? p.Text
                 : hover ? p.Text
                 : p.TextSecondary;
-            Color glyph = !entry.Enabled ? fore : selected ? p.Accent : hover ? p.TextSecondary : p.TextMuted;
-            int icon = S(18);
-            ThemeGlyphs.Draw(g, entry.Glyph, new RectangleF(r.X + S(10), r.Y + (r.Height - icon) / 2f, icon, icon), glyph);
+            if (entry.Color is { } tileColor)
+            {
+                int tile = S(24);
+                var tileRect = new RectangleF(r.X + S(7), r.Y + (r.Height - tile) / 2f, tile, tile);
+                ColorIcon.Tile(entry.Glyph, tileColor).Draw(g, tileRect, entry.Enabled);
+            }
+            else
+            {
+                Color glyph = !entry.Enabled ? fore : selected ? p.Accent : hover ? p.TextSecondary : p.TextMuted;
+                int icon = S(18);
+                ThemeGlyphs.Draw(g, entry.Glyph, new RectangleF(r.X + S(10), r.Y + (r.Height - icon) / 2f, icon, icon), glyph);
+            }
             var textRect = new Rectangle(r.X + S(38), r.Y, Math.Max(0, r.Width - S(42)), r.Height);
             TextRenderer.DrawText(g, entry.Text, selected ? ThemeFonts.Semibold : ModernFonts.RowTitle, textRect, fore,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);

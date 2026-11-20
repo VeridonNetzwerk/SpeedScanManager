@@ -10,7 +10,7 @@ namespace SpeedScanManager;
 /// </summary>
 internal class ScanModeOptionsDialog : ModernWindow
 {
-    private readonly TrackBar _brightnessSlider;
+    private readonly ModernSlider _brightnessSlider;
     private readonly Label _lblBrightnessValue;
     private readonly CheckBox _chkTextOnly;
     private readonly CheckBox _chkDeleteBlankPages;
@@ -19,8 +19,6 @@ internal class ScanModeOptionsDialog : ModernWindow
     private readonly CheckBox _chkFaceUp;
 
     private readonly ColorMode _colorMode;
-    private readonly Image _leftIcon;
-    private readonly Image _rightIcon;
 
     public int Brightness { get; set; }
     public bool TextOnlySettings { get; set; }
@@ -42,20 +40,14 @@ internal class ScanModeOptionsDialog : ModernWindow
         Subtitle = "Helligkeit und Bildverarbeitung";
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
         HelpTopic = "scanmode-options";
+        HeaderIcon = ColorIcon.Tile(Glyph.Sliders, IconColors.Blue);
         AutoSizeToContent = true;
-        MinimumContentWidth = 460;
+        MinimumContentWidth = 480;
 
-        _leftIcon = TabIcons.CreateScanIcon();
-        _rightIcon = TabIcons.CreatePaperIcon();
+        bool brightnessEnabled = colorMode == ColorMode.BlackWhite;
 
         // === Brightness card ===
-        var picLeftIcon = new PictureBox
-        {
-            Image = _leftIcon,
-            SizeMode = PictureBoxSizeMode.CenterImage,
-            Size = new Size(16, 16),
-            Margin = Padding.Empty
-        };
+        var picLeftIcon = new ColorIconBox(ColorIcon.Tile(Glyph.Moon, IconColors.Graphite)) { Faded = !brightnessEnabled };
 
         // Slider: negative values (left) = darker, positive (right) = lighter (TWAIN brightness)
         var lblDark = new Label { Text = "Dunkel", AutoSize = true };
@@ -63,24 +55,17 @@ internal class ScanModeOptionsDialog : ModernWindow
         ThemeManager.SetRole(lblDark, ThemeRole.Muted);
         ThemeManager.SetRole(lblBright, ThemeRole.Muted);
 
-        var picRightIcon = new PictureBox
-        {
-            Image = _rightIcon,
-            SizeMode = PictureBoxSizeMode.CenterImage,
-            Size = new Size(16, 16),
-            Margin = Padding.Empty
-        };
+        var picRightIcon = new ColorIconBox(ColorIcon.Tile(Glyph.Sun, IconColors.Amber)) { Faded = !brightnessEnabled };
 
-        _brightnessSlider = new TrackBar
+        // Themed slider (same as the Dateigröße page): -3 .. +3, keyboard and mouse as before
+        _brightnessSlider = new ModernSlider
         {
-            Size = new Size(250, 45),
+            Size = new Size(250, 46),
             Minimum = -3,
             Maximum = 3,
             Value = 0,
-            TickFrequency = 1,
-            SmallChange = 1,
-            LargeChange = 1,
-            Enabled = colorMode == ColorMode.BlackWhite,
+            TickLabels = new[] { "-3", "-2", "-1", "0", "+1", "+2", "+3" },
+            Enabled = brightnessEnabled,
             AccessibleName = "Helligkeit"
         };
         _brightnessSlider.ValueChanged += (s, e) => UpdateBrightnessLabel();
@@ -90,14 +75,18 @@ internal class ScanModeOptionsDialog : ModernWindow
             Text = "Normal",
             AutoSize = false,
             Size = new Size(250, 20),
-            Font = UiFonts.Bold,
+            Font = ThemeFonts.Semibold,
             TextAlign = ContentAlignment.MiddleCenter
         };
         ThemeManager.SetRole(_lblBrightnessValue, ThemeRole.Accent);
 
         var strip = new BrightnessStrip(picLeftIcon, lblDark, _brightnessSlider, lblBright, picRightIcon, _lblBrightnessValue);
 
-        var cardBrightness = new SettingsCard("Helligkeit", "Nur für Schwarzweiß-Scans (Farbmodus \"Schwarzweiß\").");
+        var cardBrightness = new SettingsCard("Helligkeit", "Nur für Schwarzweiß-Scans (Farbmodus \"Schwarzweiß\").")
+        {
+            Dense = true,
+            Icon = ColorIcon.Tile(Glyph.Sun, IconColors.Amber)
+        };
         cardBrightness.Add(strip);
 
         // === Options card (switches) ===
@@ -107,12 +96,12 @@ internal class ScanModeOptionsDialog : ModernWindow
         _chkAutoRotate = new ToggleSwitch { Checked = true };
         _chkFaceUp = new ToggleSwitch();
 
-        var cardOptions = new SettingsCard("Bildverarbeitung");
-        cardOptions.AddRow("Einstellung nur für Textdokumente", null, _chkTextOnly);
-        cardOptions.AddRow("Automatisches Löschen leerer Seiten zulassen", null, _chkDeleteBlankPages);
-        cardOptions.AddRow("Schräglauf automatisch korrigieren", null, _chkDeskew);
-        cardOptions.AddRow("Automatische Bilddrehung zulassen", null, _chkAutoRotate);
-        cardOptions.AddRow("Dokumente mit der Vorderseite nach oben einlegen", null, _chkFaceUp);
+        var cardOptions = new SettingsCard("Bildverarbeitung") { Dense = true, Icon = ColorIcon.Tile(Glyph.Image, IconColors.Teal) };
+        cardOptions.AddRow("Einstellung nur für Textdokumente", null, _chkTextOnly).Icon = ColorIcon.Tile(Glyph.FileType, IconColors.Blue);
+        cardOptions.AddRow("Automatisches Löschen leerer Seiten zulassen", null, _chkDeleteBlankPages).Icon = ColorIcon.Tile(Glyph.PageBlank, IconColors.Red);
+        cardOptions.AddRow("Schräglauf automatisch korrigieren", null, _chkDeskew).Icon = ColorIcon.Tile(Glyph.Skew, IconColors.Teal);
+        cardOptions.AddRow("Automatische Bilddrehung zulassen", null, _chkAutoRotate).Icon = ColorIcon.Tile(Glyph.Rotate, IconColors.Purple);
+        cardOptions.AddRow("Dokumente mit der Vorderseite nach oben einlegen", null, _chkFaceUp).Icon = ColorIcon.Tile(Glyph.PageSingle, IconColors.Orange);
 
         var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
         stack.Controls.Add(cardBrightness);
@@ -120,7 +109,7 @@ internal class ScanModeOptionsDialog : ModernWindow
         Body.Controls.Add(stack);
 
         // === Footer ===
-        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = btnOk;
@@ -169,16 +158,6 @@ internal class ScanModeOptionsDialog : ModernWindow
         base.OnFormClosing(e);
     }
 
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _leftIcon.Dispose();
-            _rightIcon.Dispose();
-        }
-        base.Dispose(disposing);
-    }
-
     /// <summary>
     /// Brightness row: icon, "Dunkel", slider, "Hell", icon in one line, the value label
     /// centered under the slider.
@@ -195,7 +174,7 @@ internal class ScanModeOptionsDialog : ModernWindow
             _lblBright = lblBright;
             _rightIcon = rightIcon;
             _value = value;
-            Height = 84;
+            Height = 82;
             Margin = Padding.Empty;
             Controls.AddRange(new[] { leftIcon, lblDark, slider, lblBright, rightIcon, value });
         }
@@ -206,8 +185,8 @@ internal class ScanModeOptionsDialog : ModernWindow
         {
             base.OnLayout(levent);
             int sliderH = _slider.Height;
-            int top = S(12);
-            int lineY = top + S(14); // vertical center of the slider track
+            int top = S(10);
+            int lineY = top + S(12); // vertical center of the slider track
             int x = 0;
             _leftIcon.Location = new Point(x, lineY - _leftIcon.Height / 2);
             x = _leftIcon.Right + S(6);
@@ -221,7 +200,7 @@ internal class ScanModeOptionsDialog : ModernWindow
             int right = _lblBright.Left - S(8);
 
             _slider.SetBounds(left, top, Math.Max(S(60), right - left), sliderH);
-            _value.SetBounds(_slider.Left, _slider.Bottom - S(2), _slider.Width, _value.Height);
+            _value.SetBounds(_slider.Left, _slider.Bottom + S(2), _slider.Width, _value.Height);
         }
     }
 }

@@ -4,8 +4,8 @@ using System.Windows.Forms;
 namespace SpeedScanManager;
 
 /// <summary>
-/// Combo item with display text, internal enum value, an optional line glyph and an optional
-/// muted detail (shown in the drop-down list only, e.g. the resolution).
+/// Combo item with display text, internal enum value, an optional colorful icon and an optional
+/// muted detail (shown as a second line in the drop-down list only, e.g. the resolution).
 /// </summary>
 internal sealed class ComboItem
 {
@@ -13,60 +13,122 @@ internal sealed class ComboItem
     public string Text { get; }
     /// <summary>Short name shown in the closed combo box.</summary>
     public string Name { get; }
-    /// <summary>Muted detail shown after the name in the drop-down list.</summary>
+    /// <summary>Muted detail shown under the name in the drop-down list.</summary>
     public string Detail { get; }
     public object Value { get; }
-    public Glyph Glyph { get; }
+    public ColorIcon? Icon { get; }
 
-    public ComboItem(string name, object value, Glyph glyph = Glyph.None, string? detail = null)
+    public ComboItem(string name, object value, ColorIcon? icon = null, string? detail = null)
     {
         Name = name;
         Detail = detail ?? "";
         Text = Detail.Length > 0 ? $"{name} ({Detail})" : name;
         Value = value;
-        Glyph = glyph;
+        Icon = icon;
     }
 
     public override string ToString() => Text;
 }
 
-/// <summary>Owner-draw helper of the combo boxes with <see cref="ComboItem"/>s.</summary>
+/// <summary>Owner-draw helper of the combo boxes with icons and optional detail lines.</summary>
 internal static class ComboItemPainter
 {
     /// <summary>
-    /// Draws a <see cref="ComboItem"/>: glyph (theme ink), name and, in the drop-down list,
-    /// the muted detail. <paramref name="enabled"/> false grays the item.
+    /// Sets up <paramref name="cb"/> for <see cref="Draw"/>: list rows with icons, two-line
+    /// rows for items with a detail (<paramref name="hasDetail"/> per index).
+    /// </summary>
+    public static void Setup(ComboBox cb, Func<int, bool> hasDetail)
+        => ComboLists.SetRowHeight(cb, i => hasDetail(i) ? ComboLists.TwoLineRow : ComboLists.IconRow);
+
+    /// <summary>
+    /// Draws a <see cref="ComboItem"/>: colorful icon, name and, in the drop-down list, the
+    /// muted detail as a second line. <paramref name="enabled"/> false grays the item.
     /// </summary>
     public static void Draw(ComboBox cb, DrawItemEventArgs e, ComboItem? item, bool enabled = true)
     {
+        if (item == null)
+        {
+            ThemeManager.DrawItemBackground(cb, e, enabled);
+            return;
+        }
+        Draw(cb, e, item.Icon, item.Name, item.Detail, enabled);
+    }
+
+    /// <summary>
+    /// Draws one row with the detail as a muted right-aligned column (in the box and in the
+    /// list), e.g. paper sizes: "A4" ... "210 x 297 mm".
+    /// </summary>
+    public static void DrawInline(ComboBox cb, DrawItemEventArgs e, ColorIcon? icon, string name, string? detail, bool enabled = true)
+    {
         Color fg = ThemeManager.DrawItemBackground(cb, e, enabled);
-        if (item == null) return;
         var p = ThemeManager.Current;
         bool edit = (e.State & DrawItemState.ComboBoxEdit) != 0;
         bool active = cb.Enabled && enabled;
-        int x = e.Bounds.X + ThemeManager.Scale(cb, 6);
-
-        if (item.Glyph != Glyph.None)
+        int S(float v) => ThemeManager.Scale(cb, v);
+        int x = e.Bounds.X + S(edit ? 6 : 10);
+        if (icon != null)
         {
-            int size = ThemeManager.Scale(cb, 16);
-            var glyphColor = active ? (edit ? p.TextSecondary : p.TextMuted) : fg;
-            ThemeGlyphs.Draw(e.Graphics, item.Glyph,
-                new RectangleF(x, e.Bounds.Y + (e.Bounds.Height - size) / 2f, size, size), glyphColor);
-            x += size + ThemeManager.Scale(cb, 8);
+            int size = S(edit ? 18 : 20);
+            icon.Draw(e.Graphics, new RectangleF(x, e.Bounds.Y + (e.Bounds.Height - size) / 2f, size, size), active);
+            x += size + S(edit ? 8 : 10);
+        }
+        var flags = TextFormatFlags.Left | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine
+                    | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding | TextFormatFlags.VerticalCenter;
+        int right = e.Bounds.Right - S(8);
+        int detailW = 0;
+        if (!string.IsNullOrEmpty(detail))
+        {
+            detailW = Math.Min(TextRenderer.MeasureText(e.Graphics, detail, ModernFonts.Small, Size.Empty,
+                    TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding).Width + 1,
+                Math.Max(0, (right - x) * 2 / 3));
+            TextRenderer.DrawText(e.Graphics, detail, ModernFonts.Small, new Rectangle(right - detailW, e.Bounds.Y, detailW, e.Bounds.Height),
+                active ? p.TextMuted : fg, flags);
+            detailW += S(10);
+        }
+        TextRenderer.DrawText(e.Graphics, name, cb.Font, new Rectangle(x, e.Bounds.Y, Math.Max(0, right - detailW - x), e.Bounds.Height), fg, flags);
+    }
+
+    /// <summary>Draws one row: <paramref name="icon"/>, <paramref name="name"/> and (list only) <paramref name="detail"/>.</summary>
+    public static void Draw(ComboBox cb, DrawItemEventArgs e, ColorIcon? icon, string name, string? detail, bool enabled = true,
+        string? hint = null)
+    {
+        Color fg = ThemeManager.DrawItemBackground(cb, e, enabled);
+        var p = ThemeManager.Current;
+        bool edit = (e.State & DrawItemState.ComboBoxEdit) != 0;
+        bool active = cb.Enabled && enabled;
+        int S(float v) => ThemeManager.Scale(cb, v);
+        int x = e.Bounds.X + S(edit ? 6 : 10);
+
+        if (icon != null)
+        {
+            int size = S(edit ? 18 : 20);
+            icon.Draw(e.Graphics, new RectangleF(x, e.Bounds.Y + (e.Bounds.Height - size) / 2f, size, size), active);
+            x += size + S(edit ? 8 : 10);
         }
 
-        var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix
-                    | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis;
-        var rect = new Rectangle(x, e.Bounds.Y, Math.Max(0, e.Bounds.Right - x - 4), e.Bounds.Height);
-        TextRenderer.DrawText(e.Graphics, item.Name, cb.Font, rect, fg, flags);
-        if (!edit && item.Detail.Length > 0)
+        var flags = TextFormatFlags.Left | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine
+                    | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding;
+        int right = e.Bounds.Right - S(8);
+        var muted = active ? p.TextMuted : fg;
+        bool twoLine = !edit && !string.IsNullOrEmpty(detail);
+        if (twoLine)
         {
-            // Detail right-aligned in its own column
-            int nameW = TextRenderer.MeasureText(e.Graphics, item.Name, cb.Font, rect.Size, flags).Width;
-            int pad = ThemeManager.Scale(cb, 8);
-            var detailRect = new Rectangle(rect.X + nameW + pad, rect.Y, Math.Max(0, e.Bounds.Right - pad - rect.X - nameW - pad), rect.Height);
-            var muted = active ? p.TextMuted : fg;
-            TextRenderer.DrawText(e.Graphics, item.Detail, ModernFonts.Small, detailRect, muted, flags | TextFormatFlags.Right);
+            int nameH = TextRenderer.MeasureText(e.Graphics, "Ag", cb.Font, Size.Empty, flags).Height;
+            int detailH = TextRenderer.MeasureText(e.Graphics, "Ag", ModernFonts.Small, Size.Empty, flags).Height;
+            int top = e.Bounds.Y + (e.Bounds.Height - nameH - detailH - S(1)) / 2;
+            TextRenderer.DrawText(e.Graphics, name, cb.Font, new Rectangle(x, top, Math.Max(0, right - x), nameH), fg, flags);
+            TextRenderer.DrawText(e.Graphics, detail, ModernFonts.Small, new Rectangle(x, top + nameH + S(1), Math.Max(0, right - x), detailH), muted, flags);
+        }
+        else
+        {
+            var rect = new Rectangle(x, e.Bounds.Y, Math.Max(0, right - x), e.Bounds.Height);
+            TextRenderer.DrawText(e.Graphics, name, cb.Font, rect, fg, flags | TextFormatFlags.VerticalCenter);
+            if (!edit && !string.IsNullOrEmpty(hint))
+            {
+                int nameW = TextRenderer.MeasureText(e.Graphics, name, cb.Font, rect.Size, flags).Width;
+                var hintRect = new Rectangle(x + nameW + S(8), e.Bounds.Y, Math.Max(0, right - x - nameW - S(8)), e.Bounds.Height);
+                TextRenderer.DrawText(e.Graphics, hint, ModernFonts.Small, hintRect, p.TextMuted, flags | TextFormatFlags.VerticalCenter | TextFormatFlags.Right);
+            }
         }
     }
 }
@@ -96,28 +158,28 @@ internal class ScanModeTabContent : ModernStack
     {
         QualityItems = new List<ComboItem>
         {
-            // Level meter glyphs: the resolution grows from Normal to Hervorragend.
-            new("Automatisch", ImageQuality.Automatic, Glyph.Wand),
-            new("Normal", ImageQuality.Normal, Glyph.Level1, "Farbe/Grau: 150 dpi, S&W: 300 dpi"),
-            new("Fein", ImageQuality.Fine, Glyph.Level2, "Farbe/Grau: 200 dpi, S&W: 400 dpi"),
-            new("Beste", ImageQuality.Best, Glyph.Level3, "Farbe/Grau: 300 dpi, S&W: 600 dpi"),
-            new("Hervorragend", ImageQuality.Excellent, Glyph.Level4, "Farbe/Grau: 600 dpi, S&W: 1200 dpi")
+            // Level meters on tiles that get "hotter" as the resolution grows.
+            new("Automatisch", ImageQuality.Automatic, ColorIcon.Auto),
+            new("Normal", ImageQuality.Normal, ColorIcon.Tile(Glyph.Level1, IconColors.Teal), "Farbe/Grau: 150 dpi, S&W: 300 dpi"),
+            new("Fein", ImageQuality.Fine, ColorIcon.Tile(Glyph.Level2, IconColors.Sky), "Farbe/Grau: 200 dpi, S&W: 400 dpi"),
+            new("Beste", ImageQuality.Best, ColorIcon.Tile(Glyph.Level3, IconColors.Blue), "Farbe/Grau: 300 dpi, S&W: 600 dpi"),
+            new("Hervorragend", ImageQuality.Excellent, ColorIcon.Tile(Glyph.Level4, IconColors.Indigo), "Farbe/Grau: 600 dpi, S&W: 1200 dpi")
         };
 
         ColorItems = new List<ComboItem>
         {
-            new("Automatische Farberkennung", ColorMode.Automatic, Glyph.Wand),
-            new("Farbe", ColorMode.Color, Glyph.Palette),
-            new("Grau", ColorMode.Grayscale, Glyph.Grayscale),
-            new("Schwarzweiß", ColorMode.BlackWhite, Glyph.Contrast)
+            new("Automatische Farberkennung", ColorMode.Automatic, ColorIcon.Auto),
+            new("Farbe", ColorMode.Color, ColorIcon.Gradient(Glyph.Palette, IconColors.Orange, IconColors.Pink)),
+            new("Grau", ColorMode.Grayscale, ColorIcon.Tile(Glyph.Grayscale, IconColors.Slate)),
+            new("Schwarzweiß", ColorMode.BlackWhite, ColorIcon.Tile(Glyph.Contrast, IconColors.Graphite))
         };
 
         ScanSideItems = new List<ComboItem>
         {
-            new("Duplex-Scan (doppelseitig)", ScanSide.Duplex, Glyph.PageDuplex),
-            new("Simplex-Scan (einseitig)", ScanSide.Simplex, Glyph.PageSingle),
-            new("Flachbettscannen", ScanSide.Flatbed, Glyph.Scanner),
-            new("Automatisch", ScanSide.Automatic, Glyph.Wand)
+            new("Duplex-Scan (doppelseitig)", ScanSide.Duplex, ColorIcon.Tile(Glyph.PageDuplex, IconColors.Blue)),
+            new("Simplex-Scan (einseitig)", ScanSide.Simplex, ColorIcon.Tile(Glyph.PageSingle, IconColors.Teal)),
+            new("Flachbettscannen", ScanSide.Flatbed, ColorIcon.Tile(Glyph.Scanner, IconColors.Orange)),
+            new("Automatisch", ScanSide.Automatic, ColorIcon.Auto)
         };
     }
 
@@ -193,7 +255,7 @@ internal class ScanModeTabContent : ModernStack
                 _settings.ContinueScanning = _chkContinueScanning.Checked;
         };
 
-        _btnOptions = ModernButtons.SubDialog("Optionen...");
+        _btnOptions = ModernButtons.SubDialog("Optionen...", Glyph.Sliders, IconColors.Blue);
         _btnOptions.Click += (s, e) => OpenOptionsDialog();
 
         var cardMode = new SettingsCard { Dense = true };
@@ -203,7 +265,7 @@ internal class ScanModeTabContent : ModernStack
             "Flachbettscannen ohne automatische Papiergrößenerkennung.",
             _cbScanSide, ComboWidth);
 
-        var cardOptions = new SettingsCard("Weitere Einstellungen") { Dense = true };
+        var cardOptions = new SettingsCard("Weitere Einstellungen") { Dense = true, Icon = ColorIcon.Tile(Glyph.Sliders, IconColors.Blue) };
         cardOptions.AddRow("Scanvorgang nach aktuellem Scan fortsetzen",
             "Nach dem Scan fragen, ob weitere Dokumente angehängt werden sollen.", _chkContinueScanning);
         cardOptions.AddRow("Optionen für den Scanmodus",
@@ -225,10 +287,9 @@ internal class ScanModeTabContent : ModernStack
             FlatStyle = FlatStyle.Standard,
             DrawMode = DrawMode.OwnerDrawFixed,
             ItemHeight = 20,
-            IntegralHeight = true,
-            Size = new Size(ComboWidth, 24),
-            DropDownWidth = items.Any(i => i.Detail.Length > 0) ? 380 : ComboWidth
+            Size = new Size(ComboWidth, 24)
         };
+        ComboItemPainter.Setup(cb, i => i >= 0 && i < items.Count && items[i].Detail.Length > 0);
 
         foreach (var item in items)
             cb.Items.Add(item);

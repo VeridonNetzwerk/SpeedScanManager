@@ -34,6 +34,7 @@ internal class CustomSizeDialog : ModernWindow
         Subtitle = "Hinzufügen oder Entfernen von benutzerdefinierten Größen";
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
         HelpTopic = "custom-size-dialog";
+        HeaderIcon = ColorIcon.Tile(Glyph.Ruler, IconColors.Orange);
         AutoSizeToContent = true;
         MinimumContentWidth = 560;
 
@@ -44,7 +45,7 @@ internal class CustomSizeDialog : ModernWindow
             Size = new Size(132, 32),
             Margin = new Padding(0, 0, 8, 0)
         };
-        ThemeManager.SetGlyph(_btnAdd, Glyph.Plus);
+        ThemeManager.SetGlyph(_btnAdd, Glyph.Plus, IconColors.Green);
         _btnAdd.Click += (s, e) => AddSize();
 
         _btnEdit = new Button
@@ -54,7 +55,7 @@ internal class CustomSizeDialog : ModernWindow
             Margin = new Padding(0, 0, 8, 0),
             Enabled = false
         };
-        ThemeManager.SetGlyph(_btnEdit, Glyph.Sliders);
+        ThemeManager.SetGlyph(_btnEdit, Glyph.Sliders, IconColors.Blue);
         _btnEdit.Click += (s, e) => EditSize();
 
         _btnRemove = new Button
@@ -86,6 +87,10 @@ internal class CustomSizeDialog : ModernWindow
             Margin = Padding.Empty,
             AccessibleName = "Benutzerdefinierte Größen"
         };
+        // Rows: ruler icon, name, dimensions right-aligned
+        ModernLists.Setup(_listBox, i => i < CustomSizes.Count
+            ? (SizeIcon, CustomSizes[i].Name, $"{CustomSizes[i].WidthMm} x {CustomSizes[i].LengthMm} mm")
+            : (null, _listBox.Items[i]?.ToString() ?? "", null));
         _listBox.SelectedIndexChanged += (s, e) => OnSelectionChanged();
 
         var listHost = new Panel { Height = 180, Padding = new Padding(0, 0, 0, 12) };
@@ -150,7 +155,11 @@ internal class CustomSizeDialog : ModernWindow
             Margin = new Padding(6, 0, 0, 0)
         }, 3, 1);
 
-        var card = new SettingsCard("Größen", $"Bis zu {MaxEntries} benutzerdefinierte Größen können hinzugefügt werden.");
+        var card = new SettingsCard("Größen", $"Bis zu {MaxEntries} benutzerdefinierte Größen können hinzugefügt werden.")
+        {
+            Dense = true,
+            Icon = ColorIcon.Tile(Glyph.Ruler, IconColors.Orange)
+        };
         card.Add(toolbar);
         card.Add(listHost);
         card.AddRow("Ausgewählte Größe", null, dimTable);
@@ -171,6 +180,8 @@ internal class CustomSizeDialog : ModernWindow
         ThemeManager.SetRole(_btnRemove, ThemeRole.Danger);
         ThemeManager.Apply(this);
     }
+
+    private static readonly ColorIcon SizeIcon = ColorIcon.Tile(Glyph.PageSingle, IconColors.Orange);
 
     private void RefreshList()
     {

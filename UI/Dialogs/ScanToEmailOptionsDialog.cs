@@ -27,18 +27,19 @@ internal class ScanToEmailOptionsDialog : ModernWindow
         Title = "Scan to E-Mail";
         Subtitle = "Optionen für den E-Mail-Versand";
         HeaderButtons = ModernHeaderButtons.Close;
+        HeaderIcon = ColorIcon.Tile(Glyph.Mail, IconColors.Blue);
         ShowInTaskbar = false;
         AutoSizeToContent = true;
-        MinimumContentWidth = 500;
+        MinimumContentWidth = 540;
 
         _txtRecipient = new TextBox { AutoSize = false, Size = new Size(260, 28) };
         _txtSubject = new TextBox { AutoSize = false, Size = new Size(260, 28) };
 
-        var card = new SettingsCard();
-        card.AddRow("Standard-Empfänger", "Empfänger der E-Mail.", _txtRecipient, 260);
-        card.AddRow("Betreff-Vorlage", "Betreff der E-Mail.", _txtSubject, 260);
+        var card = new SettingsCard { Dense = true };
+        card.AddRow("Standard-Empfänger", "Empfänger der E-Mail.", _txtRecipient, 260).Icon = ColorIcon.Tile(Glyph.User, IconColors.Blue);
+        card.AddRow("Betreff-Vorlage", "Betreff der E-Mail.", _txtSubject, 260).Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Purple);
 
-        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(20, 18, 20, 20) };
+        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(16, 16, 16, 16) };
         stack.Controls.Add(card);
         Body.Controls.Add(stack);
 

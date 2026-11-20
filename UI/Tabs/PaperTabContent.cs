@@ -59,7 +59,7 @@ internal class PaperTabContent : ModernStack
     };
 
     /// <summary>Width of the combo boxes on this page (96-dpi units).</summary>
-    private const int ComboWidth = 260;
+    private const int ComboWidth = 290;
 
     public PaperTabContent(ScanSettings settings)
     {
@@ -69,25 +69,28 @@ internal class PaperTabContent : ModernStack
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             Size = new Size(ComboWidth, 24),
-            DropDownWidth = 340,
-            MaxDropDownItems = 16,
-            IntegralHeight = false
+            DrawMode = DrawMode.OwnerDrawFixed,
+            ItemHeight = 20,
+            MaxDropDownItems = 16
         };
+        ComboLists.SetRowHeight(_cbPaperSize, ComboLists.IconRow);
+        _cbPaperSize.DrawItem += (s, e) => DrawPaperSizeItem(e);
         _cbPaperSize.SelectedIndexChanged += (s, e) => OnPaperSizeChanged();
 
-        _btnCarrierSheet = ModernButtons.SubDialog("Trägerblatteinstellungen...");
+        _btnCarrierSheet = ModernButtons.SubDialog("Trägerblatteinstellungen...", Glyph.Carrier, IconColors.Blue);
         _btnCarrierSheet.Click += (s, e) => OpenCarrierSheetDialog();
 
-        _btnCustomSize = ModernButtons.SubDialog("Benutzerdefiniert...");
+        _btnCustomSize = ModernButtons.SubDialog("Benutzerdefiniert...", Glyph.Ruler, IconColors.Orange);
         _btnCustomSize.Click += (s, e) => OpenCustomSizeDialog();
 
         _cbMultiFeed = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             DrawMode = DrawMode.OwnerDrawFixed,
-            Size = new Size(ComboWidth, 24),
-            DropDownWidth = 380
+            ItemHeight = 20,
+            Size = new Size(ComboWidth, 24)
         };
+        ComboLists.SetRowHeight(_cbMultiFeed, i => i >= 0 && !IsMultiFeedModeSupported((MultiFeedDetection)i) ? ComboLists.TwoLineRow : ComboLists.IconRow);
         _cbMultiFeed.DrawItem += (s, e) => DrawMultiFeedItem(e);
         _cbMultiFeed.Items.AddRange(new object[]
         {
@@ -116,7 +119,7 @@ internal class PaperTabContent : ModernStack
         cardPaper.AddRow("Benutzerdefinierte Papiergrößen", "Eigene Papiergrößen anlegen, ändern oder löschen.", _btnCustomSize);
         cardPaper.AddRow("Trägerblatt", "Trägerblatt-Modus und Ausgabebildgröße.", _btnCarrierSheet);
 
-        var cardFeed = new SettingsCard("Einzug") { Dense = true };
+        var cardFeed = new SettingsCard("Einzug") { Dense = true, Icon = ColorIcon.Tile(Glyph.PageDuplex, IconColors.Blue) };
         cardFeed.AddRow("Mehrfacheinzugserkennung", "Erkennt, wenn mehrere Blätter gleichzeitig eingezogen werden.", _cbMultiFeed, ComboWidth);
 
         Controls.Add(cardPaper);
@@ -296,6 +299,14 @@ internal class PaperTabContent : ModernStack
         _ => false
     };
 
+    private static readonly ColorIcon[] MultiFeedIcons =
+    {
+        ColorIcon.Tile(Glyph.Cross, IconColors.Slate),
+        ColorIcon.Tile(Glyph.PageDuplex, IconColors.Blue),
+        ColorIcon.Tile(Glyph.Ruler, IconColors.Teal),
+        ColorIcon.Tile(Glyph.ShieldCheck, IconColors.Indigo)
+    };
+
     private void DrawMultiFeedItem(DrawItemEventArgs e)
     {
         if (e.Index < 0)
@@ -307,20 +318,38 @@ internal class PaperTabContent : ModernStack
         var mode = (MultiFeedDetection)e.Index;
         bool supported = IsMultiFeedModeSupported(mode);
         var text = _cbMultiFeed.Items[e.Index]?.ToString() ?? "";
+        ComboItemPainter.Draw(_cbMultiFeed, e, e.Index < MultiFeedIcons.Length ? MultiFeedIcons[e.Index] : null, text,
+            supported ? null : "Vom Scanner nicht unterstützt", enabled: supported);
+    }
 
-        var textColor = ThemeManager.DrawItemBackground(_cbMultiFeed, e, itemEnabled: supported);
-        var bounds = new Rectangle(e.Bounds.X + 4, e.Bounds.Y, Math.Max(0, e.Bounds.Width - 4), e.Bounds.Height);
+    private static readonly ColorIcon PaperIcon = ColorIcon.Tile(Glyph.PageSingle, IconColors.Teal);
+    private static readonly ColorIcon CustomPaperIcon = ColorIcon.Tile(Glyph.Ruler, IconColors.Orange);
 
-        var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix;
-        TextRenderer.DrawText(e.Graphics, text, _cbMultiFeed.Font, bounds, textColor, flags);
-
-        if (!supported && (e.State & DrawItemState.Selected) != DrawItemState.Selected)
+    /// <summary>Paper size: name with the dimensions as a muted right-aligned column.</summary>
+    private void DrawPaperSizeItem(DrawItemEventArgs e)
+    {
+        if (e.Index < 0 || _cbPaperSize.Items[e.Index] is not PaperSizeItem item)
         {
-            var suffix = " (nicht unterstützt)";
-            var textSize = TextRenderer.MeasureText(e.Graphics, text + "  ", _cbMultiFeed.Font, bounds.Size, flags);
-            var suffixRect = new Rectangle(bounds.X + textSize.Width, bounds.Y, bounds.Width - textSize.Width, bounds.Height);
-            TextRenderer.DrawText(e.Graphics, suffix, _cbMultiFeed.Font, suffixRect, ThemeManager.Current.TextMuted, flags);
+            ThemeManager.DrawItemBackground(_cbPaperSize, e);
+            return;
         }
+        string text = item.DisplayText;
+        string name = text, detail = "";
+        int open = text.IndexOf(" (", StringComparison.Ordinal);
+        if (open > 0 && text.EndsWith(')'))
+        {
+            name = text[..open];
+            detail = text[(open + 2)..^1];
+        }
+        var icon = item.Value switch
+        {
+            PaperSizeMode.Automatic => ColorIcon.Auto,
+            PaperSizeMode.Custom => CustomPaperIcon,
+            _ => PaperIcon
+        };
+        // Automatic detection is not available for flatbed scanning (selecting it is refused)
+        bool enabled = !(item.Value == PaperSizeMode.Automatic && _settings.ScanSide == ScanSide.Flatbed);
+        ComboItemPainter.DrawInline(_cbPaperSize, e, icon, name, detail, enabled);
     }
 
     private void OpenCarrierSheetDialog()

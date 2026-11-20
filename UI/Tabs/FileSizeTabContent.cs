@@ -71,7 +71,7 @@ internal class FileSizeTabContent : ModernStack
         _lblDisabledHint = new SettingRow("", "") { DescriptionRole = ThemeRole.Danger, Visible = false, VerticalPadding = 4 };
 
         var card = new SettingsCard("Komprimierungsrate",
-            "Eine höhere Komprimierung ergibt kleinere Dateien, aber eine geringere Bildqualität.") { Dense = true };
+            "Eine höhere Komprimierung ergibt kleinere Dateien, aber eine geringere Bildqualität.") { Dense = true, Icon = ColorIcon.Tile(Glyph.Compress, IconColors.Green) };
         card.Add(_scale);
         card.Add(_lblDisabledHint);
         Controls.Add(card);
