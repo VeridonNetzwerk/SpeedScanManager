@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace SpeedScanManager;
@@ -6,10 +7,11 @@ namespace SpeedScanManager;
 /// <summary>
 /// Post-scan "In Ordner speichern" dialog shown when destination is Scan to Folder.
 /// Lets the user preview scanned images, choose a title and destination folder before saving.
-/// Themed (light/dark) via <see cref="ThemeManager"/>: page preview on a canvas surface,
-/// input fields on the right, footer bar with page navigation and the buttons.
+/// Modern window (<see cref="ModernWindow"/>): page preview on a rounded canvas on the left,
+/// cards for title, folder and the scan settings summary on the right, footer bar with the
+/// page navigation (left) and Abbrechen / Speichern (right).
 /// </summary>
-internal class PostScanSaveDialog : Form
+internal class PostScanSaveDialog : ModernWindow
 {
     private readonly IReadOnlyList<Bitmap> _scanImages;
     private readonly string _defaultTitle;
@@ -17,10 +19,8 @@ internal class PostScanSaveDialog : Form
     private int _currentPageIndex;
 
     private static readonly Font UiFont = ThemeFonts.Regular;
-    private static readonly Font BoldFont = ThemeFonts.Semibold;
 
-    private readonly SplitContainer _split;
-    private readonly PictureBox _imgPreview;
+    private readonly PagePreview _imgPreview;
     private readonly Label _lblPageCounter;
     private readonly TextBox _txtTitle;
     private readonly TextBox _txtFolderPath;
@@ -57,117 +57,81 @@ internal class PostScanSaveDialog : Form
         _settings = settings;
         _currentPageIndex = 0;
 
+        SuspendLayout();
         Text = "In Ordner speichern";
-        Icon = TrayIcons.GetAppIcon();
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
+        Title = "In Ordner speichern";
+        Subtitle = _scanImages.Count == 1 ? "1 Seite gescannt" : $"{_scanImages.Count} Seiten gescannt";
+        HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
+        HelpTopic = "postscan-save";
         // Owner is the invisible tray window: center on screen and stay on top, otherwise the
         // dialog may open behind other windows (scan started with the hardware button).
         StartPosition = FormStartPosition.CenterScreen;
         TopMost = true;
-        ClientSize = new Size(560, 420);
         ShowInTaskbar = true;
-        AutoScaleMode = AutoScaleMode.None;
-        Font = UiFont;
+        ClientSize = new Size(760, 560);
 
-        // === SplitContainer ===
-        _split = new SplitContainer
+        // === Left: page preview on a canvas ===
+        var previewHost = new Panel
         {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterWidth = 1,
-            IsSplitterFixed = true,
-            FixedPanel = FixedPanel.Panel1
+            Dock = DockStyle.Left,
+            Width = 300,
+            Padding = new Padding(16, 16, 0, 16)
         };
+        _imgPreview = new PagePreview { Dock = DockStyle.Fill, AccessibleName = "Vorschau" };
+        previewHost.Controls.Add(_imgPreview);
 
-        // === Left side: Preview ===
-        // Canvas surface around the page so a white page stands out in both themes
-        var previewPanel = new Panel
-        {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(10)
-        };
-        ThemeManager.SetRole(previewPanel, ThemeRole.Sidebar);
-
-        _imgPreview = new PictureBox
-        {
-            SizeMode = PictureBoxSizeMode.Zoom,
-            Image = null,
-            Dock = DockStyle.Fill
-        };
-        previewPanel.Controls.Add(_imgPreview);
-        _split.Panel1.Controls.Add(previewPanel);
-
-        _lblPageCounter = new Label
-        {
-            Text = "Seite 1",
-            Font = UiFont,
-            AutoSize = false,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter
-        };
-
-        _btnPrev = new Button { Size = new Size(28, 28), Font = UiFont, Anchor = AnchorStyles.None, Margin = new Padding(0), AccessibleName = "Vorherige Seite" };
-        _btnNext = new Button { Size = new Size(28, 28), Font = UiFont, Anchor = AnchorStyles.None, Margin = new Padding(0), AccessibleName = "Nächste Seite" };
-        _btnPrev.Image = _chevronLeft = CreateChevron(left: true);
-        _btnNext.Image = _chevronRight = CreateChevron(left: false);
-
-        // === Right side: Title + Folder ===
-        var contentPanel = new Panel { Dock = DockStyle.Fill };
-
-        var lblTitle = new Label
-        {
-            Text = "Titel festlegen",
-            Font = BoldFont,
-            Location = new Point(14, 12),
-            AutoSize = true
-        };
-
+        // === Right: title, folder, scan settings ===
         _txtTitle = new TextBox
         {
             Font = UiFont,
-            Location = new Point(14, 32),
-            Size = new Size(260, 24),
-            Text = _defaultTitle
-        };
-
-        var lblFolder = new Label
-        {
-            Text = "Zielordner festlegen",
-            Font = BoldFont,
-            Location = new Point(14, 74),
-            AutoSize = true
+            AutoSize = false,
+            Size = new Size(300, 28),
+            Text = _defaultTitle,
+            AccessibleName = "Titel festlegen"
         };
 
         _txtFolderPath = new TextBox
         {
             ReadOnly = true,
             Font = UiFont,
-            Location = new Point(14, 94),
-            Size = new Size(260, 24),
-            Text = defaultFolder
+            AutoSize = false,
+            Size = new Size(300, 28),
+            Anchor = AnchorStyles.Left | AnchorStyles.Right,
+            Margin = new Padding(0, 2, 8, 2),
+            Text = defaultFolder,
+            AccessibleName = "Zielordner festlegen"
         };
 
         _btnBrowse = new Button
         {
             Text = "Durchsuchen...",
-            Size = new Size(135, 28),
+            Size = new Size(140, 32),
             Font = UiFont,
-            Location = new Point(14, 124)
+            Anchor = AnchorStyles.Right,
+            Margin = Padding.Empty
         };
         ThemeManager.SetGlyph(_btnBrowse, Glyph.Folder);
         _btnBrowse.Click += (_, _) => BrowseFolder();
 
-        // Scan settings summary
-        var grpSummary = new GroupBox
+        var folderBox = new TableLayoutPanel
         {
-            Text = "Scaneinstellungen",
-            Location = new Point(14, 168),
-            Size = new Size(260, 142),
-            Font = UiFont
+            ColumnCount = 2,
+            RowCount = 1,
+            Size = new Size(400, 32),
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
+        folderBox.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        folderBox.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        folderBox.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        folderBox.Controls.Add(_txtFolderPath, 0, 0);
+        folderBox.Controls.Add(_btnBrowse, 1, 0);
 
+        var cardTarget = new SettingsCard();
+        cardTarget.AddRow("Titel festlegen", "Name der Datei; ungültige Zeichen werden ersetzt.", _txtTitle).Stacked = true;
+        cardTarget.AddRow("Zielordner festlegen", null, folderBox).Stacked = true;
+
+        // Scan settings summary
         var dpiValue = _settings.ImageQuality switch
         {
             ImageQuality.Normal => 150,
@@ -195,118 +159,49 @@ internal class PostScanSaveDialog : Form
             _ => "PDF"
         };
 
-        var lblPreset = new Label
+        var summary = new SummaryList(presetText, new[]
         {
-            Text = presetText,
-            Font = ThemeFonts.Semibold,
-            Location = new Point(10, 22),
-            AutoSize = true
-        };
-        ThemeManager.SetRole(lblPreset, ThemeRole.Accent);
+            ("Auflösung", $"{dpiValue} dpi"),
+            ("Farbmodus", GetColorModeText(_settings.ColorMode)),
+            ("Scanseite", GetScanSideText(_settings.ScanSide)),
+            ("Dateiformat", fileFormatText),
+            ("Kompression", $"Stufe {_settings.CompressionRate}")
+        });
+        var cardSummary = new SettingsCard("Scaneinstellungen") { ShowDividers = false };
+        cardSummary.Add(summary);
 
-        var lblDpi = new Label
+        var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
+        stack.Controls.Add(cardTarget);
+        stack.Controls.Add(cardSummary);
+        var contentHost = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
+        contentHost.Controls.Add(stack);
+
+        Body.Controls.Add(contentHost);
+        Body.Controls.Add(previewHost);
+
+        // === Footer: page navigation (left), Abbrechen / Speichern (right) ===
+        _btnPrev = new Button { Size = new Size(32, 32), Font = UiFont, Margin = new Padding(0), AccessibleName = "Vorherige Seite" };
+        _btnNext = new Button { Size = new Size(32, 32), Font = UiFont, Margin = new Padding(0), AccessibleName = "Nächste Seite" };
+        _btnPrev.Image = _chevronLeft = CreateChevron(left: true);
+        _btnNext.Image = _chevronRight = CreateChevron(left: false);
+
+        _lblPageCounter = new Label
         {
-            Text = $"Auflösung: {dpiValue} dpi",
+            Text = "Seite 1",
             Font = UiFont,
-            Location = new Point(10, 40),
-            AutoSize = true
+            AutoSize = false,
+            Size = new Size(110, 32),
+            TextAlign = ContentAlignment.MiddleCenter,
+            UseMnemonic = false
         };
+        ThemeManager.SetRole(_lblPageCounter, ThemeRole.Secondary);
 
-        var lblColor = new Label
-        {
-            Text = $"Farbmodus: {GetColorModeText(_settings.ColorMode)}",
-            Font = UiFont,
-            Location = new Point(10, 58),
-            AutoSize = true
-        };
+        AddFooterControl(_btnPrev, alignLeft: true);
+        AddFooterControl(_lblPageCounter, alignLeft: true);
+        AddFooterControl(_btnNext, alignLeft: true);
 
-        var lblSide = new Label
-        {
-            Text = $"Scanseite: {GetScanSideText(_settings.ScanSide)}",
-            Font = UiFont,
-            Location = new Point(10, 76),
-            AutoSize = true
-        };
-
-        var lblFormat = new Label
-        {
-            Text = $"Dateiformat: {fileFormatText}",
-            Font = UiFont,
-            Location = new Point(10, 94),
-            AutoSize = true
-        };
-
-        var lblCompression = new Label
-        {
-            Text = $"Kompression: Stufe {_settings.CompressionRate}",
-            Font = UiFont,
-            Location = new Point(10, 112),
-            AutoSize = true
-        };
-
-        foreach (var row in new[] { lblDpi, lblColor, lblSide, lblFormat, lblCompression })
-            ThemeManager.SetRole(row, ThemeRole.Muted);
-        grpSummary.Controls.AddRange(new Control[] { lblPreset, lblDpi, lblColor, lblSide, lblFormat, lblCompression });
-
-        contentPanel.Controls.AddRange(new Control[] { lblTitle, _txtTitle, lblFolder, _txtFolderPath, _btnBrowse, grpSummary });
-        _split.Panel2.Controls.Add(contentPanel);
-
-        // === Footer ===
-        var footerPanel = new Panel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 48,
-            Padding = new Padding(8, 0, 8, 0)
-        };
-        ThemeManager.SetRole(footerPanel, ThemeRole.Secondary);
-
-        _btnSave = new Button
-        {
-            Text = "Speichern",
-            Size = new Size(110, 30),
-            Font = UiFont,
-            Anchor = AnchorStyles.Right,
-            Margin = new Padding(0)
-        };
-        ThemeManager.SetRole(_btnSave, ThemeRole.Primary);
-        ThemeManager.SetGlyph(_btnSave, Glyph.Check);
-
-        _btnCancel = new Button
-        {
-            Text = "Abbrechen",
-            Size = new Size(110, 30),
-            Font = UiFont,
-            Anchor = AnchorStyles.Right,
-            Margin = new Padding(0)
-        };
-        ThemeManager.SetRole(_btnCancel, ThemeRole.Secondary);
-        ThemeManager.SetGlyph(_btnCancel, Glyph.Cross);
-
-        var footerTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 6,
-            RowCount = 1,
-            Margin = new Padding(0)
-        };
-        footerTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 28));
-        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));
-        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 28));
-        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 118));
-        footerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
-        footerTable.Controls.Add(_btnPrev, 0, 0);
-        footerTable.Controls.Add(_lblPageCounter, 1, 0);
-        footerTable.Controls.Add(_btnNext, 2, 0);
-        footerTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 3, 0);
-        footerTable.Controls.Add(_btnCancel, 4, 0);
-        footerTable.Controls.Add(_btnSave, 5, 0);
-        footerPanel.Controls.Add(footerTable);
-
-        Controls.Add(_split);
-        Controls.Add(footerPanel);
-        _split.SplitterDistance = 260;
+        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross);
+        _btnSave = AddFooterButton("Speichern", ThemeRole.Primary, Glyph.Check);
 
         AcceptButton = _btnSave;
         CancelButton = _btnCancel;
@@ -328,6 +223,7 @@ internal class PostScanSaveDialog : Form
         // Set initial preview
         UpdatePreview();
         ThemeManager.Apply(this);
+        ResumeLayout(true);
     }
 
     private readonly Bitmap _chevronLeft;
@@ -354,7 +250,6 @@ internal class PostScanSaveDialog : Form
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
-        WindowActivation.BringToFront(this);
         _txtTitle.SelectAll();
         _txtTitle.Focus();
     }
@@ -404,7 +299,9 @@ internal class PostScanSaveDialog : Form
         if (_scanImages.Count > 0 && _currentPageIndex < _scanImages.Count)
         {
             _imgPreview.Image = _scanImages[_currentPageIndex];
-            _lblPageCounter.Text = $"Seite {_currentPageIndex + 1}";
+            _lblPageCounter.Text = _scanImages.Count > 1
+                ? $"Seite {_currentPageIndex + 1} von {_scanImages.Count}"
+                : $"Seite {_currentPageIndex + 1}";
         }
         else
         {
@@ -433,4 +330,149 @@ internal class PostScanSaveDialog : Form
         ScanSide.Flatbed => "Flachbett",
         _ => "Duplex"
     };
+
+    /// <summary>
+    /// Scanned page on a rounded canvas (light and dark): the page is drawn zoomed to fit with
+    /// a thin outline so a white page stands out; "Kein Vorschaubild verfügbar" when empty.
+    /// Also used by <see cref="MultiFeedWarningDialog"/>.
+    /// </summary>
+    internal sealed class PagePreview : Control, IThemeAware
+    {
+        private Image? _image;
+
+        public PagePreview()
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
+                     | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.Selectable, false);
+            AccessibleRole = AccessibleRole.Graphic;
+        }
+
+        public Image? Image
+        {
+            get => _image;
+            set { _image = value; Invalidate(); }
+        }
+
+        /// <summary>Text shown without an image.</summary>
+        public string EmptyText { get; set; } = "Kein Vorschaubild verfügbar";
+
+        public void ApplyTheme(ThemePalette palette) => Invalidate();
+
+        private float S => DeviceDpi / 96f;
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var p = ThemeManager.Current;
+            var g = e.Graphics;
+            g.Clear(ModernLayout.ParentBack(this));
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            float s = S;
+
+            // Canvas: a recessed surface in both themes
+            Color canvas = p.IsDark ? p.Tertiary : p.Secondary;
+            var rect = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
+            using (var path = ModernLayout.RoundedRect(rect, 8 * s))
+            {
+                using (var brush = new SolidBrush(canvas))
+                    g.FillPath(brush, path);
+                using var pen = new Pen(p.IsDark ? p.Tertiary : p.CardBorder);
+                g.DrawPath(pen, path);
+            }
+
+            if (_image == null || _image.Width <= 0 || _image.Height <= 0)
+            {
+                TextRenderer.DrawText(g, EmptyText, ThemeFonts.Regular, ClientRectangle, p.TextMuted,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix);
+                return;
+            }
+
+            float pad = 14 * s;
+            float availW = Math.Max(1, Width - 2 * pad), availH = Math.Max(1, Height - 2 * pad);
+            float scale = Math.Min(availW / _image.Width, availH / _image.Height);
+            float w = _image.Width * scale, h = _image.Height * scale;
+            var page = new RectangleF((Width - w) / 2f, (Height - h) / 2f, w, h);
+
+            // soft shadow
+            for (int i = 3; i >= 1; i--)
+            {
+                using var shadow = new SolidBrush(Color.FromArgb(p.IsDark ? 34 : 14, 0, 0, 0));
+                var sr = RectangleF.Inflate(page, i * s, i * s);
+                sr.Offset(0, 1.5f * s);
+                using var sp = ModernLayout.RoundedRect(sr, (2 + i) * s);
+                g.FillPath(shadow, sp);
+            }
+            g.DrawImage(_image, page);
+            using (var outline = new Pen(p.IsDark ? Color.FromArgb(70, 0, 0, 0) : p.CardBorder))
+                g.DrawRectangle(outline, page.X, page.Y, page.Width, page.Height);
+        }
+    }
+
+    /// <summary>
+    /// Summary of the scan settings: the preset (accent) followed by label/value lines.
+    /// </summary>
+    private sealed class SummaryList : Control, IThemeAware, IHeightForWidth
+    {
+        private readonly string _preset;
+        private readonly (string Label, string Value)[] _rows;
+
+        public SummaryList(string preset, (string Label, string Value)[] rows)
+        {
+            _preset = preset;
+            _rows = rows;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
+                     | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.Selectable, false);
+            AccessibleRole = AccessibleRole.StaticText;
+            AccessibleName = "Scaneinstellungen";
+            AccessibleDescription = preset + ", " + string.Join(", ", rows.Select(r => $"{r.Label}: {r.Value}"));
+        }
+
+        public void ApplyTheme(ThemePalette palette) => Invalidate();
+
+        private int S(float v) => ModernLayout.Scale(this, v);
+
+        private int LineHeight => S(25);
+
+        public int GetHeightForWidth(int width) => S(4) + S(28) + _rows.Length * LineHeight + S(8);
+
+        public override Size GetPreferredSize(Size proposedSize) => new(Width, GetHeightForWidth(Width));
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var p = ThemeManager.Current;
+            var g = e.Graphics;
+            var back = ModernLayout.ParentBack(this);
+            g.Clear(back);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            // Preset chip
+            var flags = TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
+            var size = TextRenderer.MeasureText(g, _preset, ThemeFonts.Semibold, Size.Empty, flags);
+            var chip = new RectangleF(0, S(4), size.Width + S(20), S(24));
+            using (var path = ModernLayout.RoundedRect(chip, chip.Height / 2f))
+            using (var brush = new SolidBrush(ThemePalette.Blend(back, p.Accent, p.IsDark ? 0.22f : 0.12f)))
+                g.FillPath(brush, path);
+            TextRenderer.DrawText(g, _preset, ThemeFonts.Semibold, Rectangle.Round(chip),
+                p.IsDark ? ThemePalette.Blend(p.Accent, Color.White, 0.45f) : p.AccentHover,
+                flags | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+            int y = S(4) + S(28) + S(2);
+            int labelW = S(110);
+            using var divider = new Pen(p.CardDivider);
+            for (int i = 0; i < _rows.Length; i++)
+            {
+                var r = new Rectangle(0, y, Width, LineHeight);
+                TextRenderer.DrawText(g, _rows[i].Label, ModernFonts.RowTitle, new Rectangle(r.X, r.Y, labelW, r.Height), p.TextMuted,
+                    flags | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                TextRenderer.DrawText(g, _rows[i].Value, ModernFonts.RowTitle, new Rectangle(r.X + labelW, r.Y, Math.Max(0, Width - labelW), r.Height), p.Text,
+                    flags | TextFormatFlags.VerticalCenter | TextFormatFlags.Right | TextFormatFlags.EndEllipsis);
+                if (i < _rows.Length - 1)
+                    g.DrawLine(divider, 0, r.Bottom - 1, Width, r.Bottom - 1);
+                y += LineHeight;
+            }
+        }
+    }
 }

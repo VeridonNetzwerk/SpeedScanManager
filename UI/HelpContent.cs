@@ -72,14 +72,18 @@ internal static class HelpContent
         static string H(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
         bool dark = p.IsDark;
         var link = dark ? Color.FromArgb(0x00, 0xA8, 0xFC) : Color.FromArgb(0x00, 0x5F, 0xCC);
-        var heading2 = dark ? ThemePalette.Blend(p.Accent, Color.White, 0.3f) : p.AccentHover;
         var noteText = dark ? p.Warning : Color.FromArgb(0x8A, 0x5A, 0x00);
         var dangerText = dark ? Color.FromArgb(0xF2, 0x6B, 0x6E) : Color.FromArgb(0xC0, 0x24, 0x29);
-        var noteBg = ThemePalette.Blend(p.Background, p.Warning, dark ? 0.10f : 0.09f);
-        var warnBg = ThemePalette.Blend(p.Background, p.Danger, dark ? 0.10f : 0.07f);
-        var codeBg = dark ? p.Tertiary : p.Secondary;
+        // Cards like the settings window (SettingsCard): card surface, subtle border, 8 px radius.
+        var card = p.Card;
+        var cardBorder = p.CardBorder;
+        var divider = p.CardDivider;
+        var noteBg = ThemePalette.Blend(card, p.Warning, dark ? 0.08f : 0.07f);
+        var warnBg = ThemePalette.Blend(card, p.Danger, dark ? 0.08f : 0.05f);
+        var codeBg = dark ? p.Tertiary : p.Tertiary;
         var thumb = dark ? Color.FromArgb(0x1A, 0x1B, 0x1E) : Color.FromArgb(0xC4, 0xC9, 0xCE);
-        var track = dark ? p.Secondary : p.Secondary;
+        var track = p.Background;
+        var hover = dark ? ThemePalette.Blend(card, Color.White, 0.04f) : p.Hover;
         var sb = new StringBuilder();
         sb.Append($@"
         html, body {{ scrollbar-face-color: {H(thumb)}; scrollbar-track-color: {H(track)}; scrollbar-arrow-color: {H(p.TextMuted)};
@@ -88,33 +92,51 @@ internal static class HelpContent
             -ms-scrollbar-face-color: {H(thumb)}; -ms-scrollbar-track-color: {H(track)}; -ms-scrollbar-arrow-color: {H(p.TextMuted)};
             -ms-scrollbar-shadow-color: {H(thumb)}; -ms-scrollbar-highlight-color: {H(thumb)}; -ms-scrollbar-3dlight-color: {H(track)};
             -ms-scrollbar-darkshadow-color: {H(track)}; -ms-scrollbar-base-color: {H(track)}; background: {H(p.Background)}; }}
-        body {{ font-family: 'Segoe UI', Tahoma, Verdana, sans-serif; font-size: 9.5pt; color: {H(p.Text)}; background: {H(p.Background)};
-            margin: 14px 22px 22px 22px; line-height: 1.45; }}
+        body {{ font-family: 'Segoe UI', Tahoma, Verdana, sans-serif; font-size: 9.5pt; color: {H(p.TextSecondary)}; background: {H(p.Background)};
+            margin: 22px 30px 30px 30px; line-height: 1.5; max-width: 900px; }}
         h1 {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(p.Text)}; font-size: 15pt;
-            margin: 0 0 12px 0; padding-bottom: 8px; border-bottom: 1px solid {H(p.Border)}; }}
-        h2 {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(heading2)}; font-size: 11.5pt; margin: 18px 0 6px 0; }}
-        h3 {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(p.TextSecondary)}; font-size: 10pt; margin: 12px 0 4px 0; }}
-        p {{ margin: 4px 0 8px 0; line-height: 1.45; }}
+            margin: 0 0 14px 0; padding: 0; border: 0; }}
+        h2 {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(p.Text)}; font-size: 11pt;
+            margin: 22px 0 8px 0; }}
+        h3 {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(p.TextSecondary)}; font-size: 10pt; margin: 14px 0 4px 0; }}
+        p {{ margin: 4px 0 10px 0; line-height: 1.5; }}
         b, strong {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(p.Text)}; }}
-        ul, ol {{ margin: 4px 0 10px 0; padding-left: 24px; }}
-        li {{ margin: 3px 0; line-height: 1.45; }}
+        ul, ol {{ margin: 4px 0 12px 0; padding-left: 22px; }}
+        li {{ margin: 4px 0; line-height: 1.5; }}
         a {{ color: {H(link)}; text-decoration: none; }}
         a:visited {{ color: {H(link)}; }}
         a:hover {{ text-decoration: underline; }}
-        .note {{ background: {H(noteBg)}; border: 1px solid {H(ThemePalette.Blend(noteBg, p.Warning, 0.35f))}; border-left: 4px solid {H(p.Warning)};
-            border-radius: 4px; padding: 8px 12px; margin: 10px 0; }}
-        .note-title {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(noteText)}; }}
-        .warning {{ background: {H(warnBg)}; border: 1px solid {H(ThemePalette.Blend(warnBg, p.Danger, 0.35f))}; border-left: 4px solid {H(p.Danger)};
-            border-radius: 4px; padding: 8px 12px; margin: 10px 0; }}
-        .warning-title {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; color: {H(dangerText)}; }}
-        .see-also {{ margin: 16px 0 4px 0; padding-top: 8px; border-top: 1px solid {H(p.Border)}; color: {H(p.TextMuted)}; }}
-        .see-also ul {{ color: {H(p.Text)}; padding-left: 18px; margin-top: 4px; }}
-        table {{ border-collapse: collapse; margin: 10px 0; }}
-        td, th {{ border: 1px solid {H(p.Border)}; padding: 5px 10px; font-size: 9pt; text-align: left; }}
-        th {{ background: {H(p.Secondary)}; color: {H(p.Text)}; font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; }}
-        .kbd, kbd {{ background: {H(codeBg)}; color: {H(p.Text)}; border: 1px solid {H(p.Border)}; border-bottom-width: 2px; border-radius: 3px;
+        .note, .warning, .see-also {{ background: {H(card)}; border: 1px solid {H(cardBorder)}; border-radius: 8px; padding: 10px 16px; margin: 14px 0; }}
+        .note {{ background: {H(noteBg)}; border-color: {H(ThemePalette.Blend(cardBorder, p.Warning, 0.30f))}; border-left: 4px solid {H(p.Warning)}; }}
+        .warning {{ background: {H(warnBg)}; border-color: {H(ThemePalette.Blend(cardBorder, p.Danger, 0.30f))}; border-left: 4px solid {H(p.Danger)}; }}
+        .note p, .warning p {{ margin: 2px 0 4px 0; }}
+        .note ul, .warning ul {{ margin: 4px 0 2px 0; }}
+        .note-title, .warning-title {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; font-size: 8pt;
+            letter-spacing: 0.04em; margin-bottom: 2px; }}
+        .note-title {{ color: {H(noteText)}; }}
+        .warning-title {{ color: {H(dangerText)}; }}
+        .see-also {{ margin-top: 22px; color: {H(p.TextMuted)}; font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-size: 8pt;
+            letter-spacing: 0.04em; text-transform: uppercase; }}
+        .see-also ul {{ list-style: none; padding-left: 0; margin: 6px 0 0 0; font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 9.5pt;
+            letter-spacing: 0; text-transform: none; }}
+        .see-also li {{ margin: 0; padding: 6px 0; border-top: 1px solid {H(divider)}; }}
+        .see-also li:first-child {{ border-top: 0; }}
+        table {{ border-collapse: separate; border-spacing: 0; margin: 12px 0; border: 1px solid {H(cardBorder)}; border-radius: 8px; background: {H(card)}; }}
+        td, th {{ border: 0; border-top: 1px solid {H(divider)}; padding: 6px 12px; font-size: 9pt; text-align: left; color: {H(p.TextSecondary)}; }}
+        th {{ border-top: 0; background: {H(dark ? p.Tertiary : p.Secondary)}; color: {H(p.Text)}; font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; font-weight: normal; }}
+        tr:first-child th:first-child, tr:first-child td:first-child {{ border-top-left-radius: 7px; }}
+        tr:first-child th:last-child, tr:first-child td:last-child {{ border-top-right-radius: 7px; }}
+        tr:first-child td {{ border-top: 0; }}
+        .kbd, kbd {{ background: {H(codeBg)}; color: {H(p.Text)}; border: 1px solid {H(dark ? p.Border : p.InputBorder)}; border-bottom-width: 2px; border-radius: 4px;
             padding: 0 5px; font-family: 'Segoe UI', sans-serif; font-size: 8.5pt; white-space: nowrap; }}
-        code {{ font-family: 'Consolas', monospace; font-size: 9pt; color: {H(p.Text)}; background: {H(codeBg)}; border-radius: 3px; padding: 1px 4px; }}
+        code {{ font-family: 'Consolas', monospace; font-size: 9pt; color: {H(p.Text)}; background: {H(codeBg)}; border-radius: 4px; padding: 1px 5px; }}
+        .lead {{ color: {H(p.TextMuted)}; margin: -6px 0 14px 0; }}
+        .topic-list {{ background: {H(card)}; border: 1px solid {H(cardBorder)}; border-radius: 8px; padding: 4px 0; }}
+        a.topic {{ display: block; padding: 10px 16px; border-top: 1px solid {H(divider)}; color: {H(p.Text)}; text-decoration: none; }}
+        a.topic:first-child {{ border-top: 0; }}
+        a.topic:hover {{ background: {H(hover)}; text-decoration: none; }}
+        .topic-title {{ font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif; color: {H(p.Text)}; }}
+        .topic-meta {{ float: right; color: {H(p.TextMuted)}; font-size: 8.5pt; }}
         ::selection {{ background: {H(ThemePalette.Blend(p.Background, p.Accent, 0.45f))}; }}
         ");
         return sb.ToString();
@@ -265,7 +287,7 @@ internal static class HelpContent
             <div class='note-title'>HINWEIS</div>
             <p>Mitgeliefert sind die Texterkennungs-Sprachdaten für Deutsch und Englisch sowie die Daten
             für die automatische Bilddrehung. Weitere Sprachen siehe
-            <a href='#filetype-tab'>[Dateiart] Registerkarte</a>.</p>
+            <a href='#filetype-tab'>[Dateiart] Seite</a>.</p>
         </div>
     "));
 
@@ -294,6 +316,10 @@ internal static class HelpContent
         </ul>
 
         <h2>Menü</h2>
+        <p>Oben im Menü stehen das Logo, „SpeedScan Manager“ und der Scannerstatus mit farbigem Punkt:
+        grün mit dem Namen des verbundenen Scanners, orange bei „Scannt…“, „Scan wird bearbeitet…“,
+        „Wird gestartet…“ oder „Scanner wird gesucht…“, rot bei „Kein Scanner verbunden“ bzw.
+        „Auswahl: ... (offline)“. Darunter folgen die Befehle:</p>
         <ul>
             <li><b>Scan</b> – Startet einen Scan mit den aktuell übernommenen Einstellungen
             (nur verfügbar, wenn der Scanner nicht als getrennt erkannt wurde und kein Scan läuft)</li>
@@ -309,14 +335,15 @@ internal static class HelpContent
             <li><b>Druckeinstellungen...</b> – Öffnet die <a href='#print-options'>Scan to Print-Optionen</a></li>
             <li><b>Scan-Ergebnis anzeigen</b> – Zeigt die zuletzt gespeicherte Datei im Explorer an
             (erst nach einem Scan verfügbar)</li>
+            <li><b>Design</b> – Untermenü <b>System</b> / <b>Hell</b> / <b>Dunkel</b> (Erscheinungsbild aller Fenster, wirkt sofort)</li>
             <li><b>Hilfe</b> – Untermenü mit <b>Hilfethemen</b> und <b>Versionsinformationen</b></li>
             <li><b>Beenden</b> – Beendet SpeedScan Manager (bei laufendem Scan nach Rückfrage; wird der Scan
             gerade gespeichert, beendet sich das Programm erst danach)</li>
         </ul>
 
         <h2>Autostart</h2>
-        <p>Im Einstellungsdialogfeld legt das Kontrollkästchen <b>SpeedScan Manager beim Anmelden starten</b>
-        fest, ob das Programm mit Windows startet. Bei einer Neuinstallation ist die Option aktiviert;
+        <p>Im Einstellungsdialogfeld legt der Schalter <b>SpeedScan Manager beim Anmelden starten</b> auf der Seite
+        [Allgemein] fest, ob das Programm mit Windows startet. Bei einer Neuinstallation ist die Option aktiviert;
         nach einem Update von Version 0.1.x bleibt sie ausgeschaltet, bis Sie sie aktivieren.</p>
 
         <div class='note'>
@@ -399,7 +426,7 @@ internal static class HelpContent
     private static HelpTopic TopicScanQuickMenu() => new("scan-quick", "Scannen mit dem Quick-Menü",
         Wrap("Scannen mit dem Quick-Menü", @"
         <p>Wenn das Quick-Menü aktiviert ist (Grundeinstellung), scannen Sie mit den Einstellungen der
-        Registerkarten und wählen erst nach dem Scan, was mit den Seiten geschehen soll.</p>
+        Seiten des Einstellungsdialogfelds und wählen erst nach dem Scan, was mit den Seiten geschehen soll.</p>
 
         <h2>Schritte</h2>
         <ol>
@@ -421,20 +448,21 @@ internal static class HelpContent
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
-            <p>Wenn das Quick-Menü aktiviert ist, ist die [Anwendung] Registerkarte im
-            Einstellungsdialogfeld deaktiviert. Die Aktion wird stattdessen nach dem Scannen
+            <p>Wenn das Quick-Menü aktiviert ist, ist die Seite [Anwendung] im
+            Einstellungsdialogfeld deaktiviert (in der Seitenleiste ausgegraut). Die Aktion wird stattdessen nach dem Scannen
             im Quick-Menü ausgewählt. Wird das Quick-Menü über [Abbrechen] oder das Schließen-Symbol beendet,
             bleibt die bereits gespeicherte Datei erhalten.</p>
         </div>
 
         <h2>Voreinstellungen</h2>
-        <p>Die Tasten im Einstellungsdialogfeld setzen Bildqualität und Komprimierungsrate:</p>
+        <p>Die Kacheln unter [Scanqualität] auf der Seite [Allgemein] des Einstellungsdialogfelds setzen
+        Bildqualität und Komprimierungsrate:</p>
         <ul>
             <li><b>Empfohlen</b> – Bildqualität Automatisch, Komprimierungsrate 3</li>
             <li><b>Kleine Datei</b> – Bildqualität Normal, Komprimierungsrate 5</li>
             <li><b>Hohe Bildqualität</b> – Bildqualität Fein, Komprimierungsrate 1</li>
-            <li><b>Benutzerdefiniert</b> – Öffnet die Detaileinstellungen; aktiv, sobald die Werte keiner der
-            drei Voreinstellungen entsprechen</li>
+            <li><b>Benutzerdefiniert</b> – Öffnet die Seite [Scanmodus] mit den Detaileinstellungen; hervorgehoben,
+            sobald die Werte keiner der drei Voreinstellungen entsprechen</li>
         </ul>
 
         <div class='see-also'>Siehe auch:
@@ -450,12 +478,12 @@ internal static class HelpContent
         Wrap("Scannen ohne Quick-Menü", @"
         <p>Wenn das Quick-Menü deaktiviert ist, können Sie detaillierte Scaneinstellungen
         über das Einstellungsdialogfeld vornehmen und Profile verwenden. Die nach dem Scan
-        ausgeführte Aktion wird durch die <b>[Anwendung]</b> Registerkarte bestimmt (bzw. durch das gewählte Profil).</p>
+        ausgeführte Aktion wird durch die Seite <b>[Anwendung]</b> bestimmt (bzw. durch das gewählte Profil).</p>
 
         <h2>Schritte</h2>
         <ol>
-            <li>Wählen Sie ein Profil aus der [Profil] Auswahlliste im Einstellungsdialogfeld.</li>
-            <li>Passen Sie die Einstellungen auf den Registerkarten an (Anwendung, Speichern, Scanmodus, Dateiart, Papier, Dateigröße).</li>
+            <li>Wählen Sie auf der Seite [Allgemein] des Einstellungsdialogfelds ein Profil unter [Aktives Profil].</li>
+            <li>Passen Sie die Einstellungen auf den Seiten an (Anwendung, Speichern, Scanmodus, Dateiart, Papier, Dateigröße).</li>
             <li>Schließen Sie das Einstellungsdialogfeld mit <span class='kbd'>OK</span>.</li>
             <li>Legen Sie die Dokumente in den Scanner ein und starten Sie den Scan über das Tray-Menü oder die Scan-Taste.</li>
         </ol>
@@ -464,14 +492,14 @@ internal static class HelpContent
         <ul>
             <li><b>Scan to Folder</b> – Es erscheint das <a href='#postscan-save'>[In Ordner speichern] Dialogfeld</a>.</li>
             <li><b>Andere Anwendungen</b> – Die Aktion wird sofort ausgeführt. Ist [Datei nach Scan umbenennen]
-            markiert, erscheint vorher das [In Ordner speichern] Dialogfeld.</li>
+            eingeschaltet, erscheint vorher das [In Ordner speichern] Dialogfeld.</li>
         </ul>
 
         <div class='see-also'>Siehe auch:
             <ul>
                 <li><a href='#settings'>Einstellungsdialogfeld</a></li>
                 <li><a href='#profile-mgmt'>Profile verwalten</a></li>
-                <li><a href='#app-tab'>[Anwendung] Registerkarte</a></li>
+                <li><a href='#app-tab'>[Anwendung] Seite</a></li>
             </ul>
         </div>
     "));
@@ -551,8 +579,8 @@ internal static class HelpContent
         beim Beenden (auch beim Abmelden von Windows) nie gelöscht.</p>
 
         <h2>Scanvorgang fortsetzen</h2>
-        <p>Ist auf der [Scanmodus] Registerkarte das Kontrollkästchen
-        <b>Scanvorgang nach aktuellem Scan fortsetzen</b> markiert, fragt SpeedScan Manager nach jedem
+        <p>Ist auf der Seite [Scanmodus] der Schalter
+        <b>Scanvorgang nach aktuellem Scan fortsetzen</b> eingeschaltet, fragt SpeedScan Manager nach jedem
         Durchgang „Weitere Dokumente scannen?“ und nennt die bisherige Seitenzahl.</p>
         <ul>
             <li><b>Fortsetzen</b> – Legen Sie die nächsten Seiten ein; sie werden an die bisherigen Seiten angehängt.</li>
@@ -587,9 +615,9 @@ internal static class HelpContent
         </ul>
 
         <h2>Bei deaktiviertem Quick-Menü</h2>
-        <p>Die in der <a href='#app-tab'>[Anwendung] Registerkarte</a> ausgewählte Aktion (einschließlich
+        <p>Die in der <a href='#app-tab'>[Anwendung] Seite</a> ausgewählte Aktion (einschließlich
         eigener Anwendungen) wird direkt ausgeführt. Bei Scan to Folder erscheint das
-        [In Ordner speichern] Dialogfeld; bei anderen Anwendungen nur, wenn [Datei nach Scan umbenennen] markiert ist.</p>
+        [In Ordner speichern] Dialogfeld; bei anderen Anwendungen nur, wenn [Datei nach Scan umbenennen] eingeschaltet ist.</p>
 
         <h2>Nachverarbeitung</h2>
         <p>Vor dem Speichern werden folgende Schritte angewendet (je nach Einstellungen):</p>
@@ -616,7 +644,7 @@ internal static class HelpContent
 
         <h2>Ablauf</h2>
         <ol>
-            <li>Aktivieren Sie in der [Papier] Registerkarte unter [Trägerblatteinstellungen] den Trägerblatt-Modus
+            <li>Aktivieren Sie auf der Seite [Papier] in der Zeile [Trägerblatt] (Taste [Trägerblatteinstellungen...]) den Trägerblatt-Modus
             und wählen Sie die Ausgabebildgröße.</li>
             <li>Falten Sie das Dokument entlang der Mittelachse und legen Sie es in das Trägerblatt ein.</li>
             <li>Führen Sie das Trägerblatt in den Scanner ein. Verwenden Sie dazu einen Duplex-Scan, damit
@@ -650,66 +678,84 @@ internal static class HelpContent
         Tray-Symbol oder über <b>Einstellungen der SCAN Taste...</b> im Tray-Menü geöffnet.
         Die Änderungen werden erst mit [OK] oder [Übernehmen] wirksam; [Abbrechen], die Taste
         <span class='kbd'>Esc</span> und das Schließen-Symbol verwerfen nicht übernommene Änderungen.
-        Mit dem Hilfe-Symbol (?) in der Titelleiste öffnen Sie diese Hilfe.</p>
+        Solange es nicht übernommene Änderungen gibt, steht unten links „Nicht übernommene Änderungen“.</p>
 
-        <h2>Elemente</h2>
-        <p><b>[Quick-Menü verwenden] Kontrollkästchen</b><br>
-        Markieren Sie dieses Kontrollkästchen, um das Quick-Menü zu verwenden. Entfernen Sie
-        die Markierung, falls Sie das Quick-Menü nicht verwenden möchten.</p>
-
-        <p><b>[SpeedScan Manager beim Anmelden starten] Kontrollkästchen</b><br>
-        Startet das Programm automatisch bei der Windows-Anmeldung (Grundeinstellung: markiert).</p>
-
-        <p><b>[Empfohlen] / [Kleine Datei] / [Hohe Bildqualität] Tasten</b><br>
-        Setzen Bildqualität und Komprimierungsrate (siehe
-        <a href='#scan-quick'>Scannen mit dem Quick-Menü</a>). Die Taste, die den aktuellen Werten
-        entspricht, ist hervorgehoben. Die Tasten sind auch ohne Quick-Menü sichtbar.</p>
-
-        <p><b>[Benutzerdefiniert] Taste</b><br>
-        Nur bei aktivem Quick-Menü sichtbar. Blendet die Detaileinstellungen ein; die Taste ist hervorgehoben,
-        wenn die Werte keiner Voreinstellung entsprechen.</p>
-
-        <p><b>[Profil] Auswahlliste</b><br>
-        Erscheint, wenn das Quick-Menü nicht verwendet wird. Sie können Profile wechseln,
-        mit <b>Profil hinzufügen...</b> ein neues Profil aus den aktuellen Einstellungen anlegen oder mit
-        <b>Profilverwaltung...</b> Profile verwalten. Änderungen an einem eigenen Profil werden beim Übernehmen
-        in diesem Profil gespeichert. Die Standardprofile können nicht geändert werden: Es wird gefragt, ob die
-        Einstellungen als neues Profil gespeichert oder nur als aktuelle Einstellungen übernommen werden sollen.</p>
-
-        <p><b>[Detail] / [Ausblenden] Taste</b><br>
-        Zeigt oder blendet die Detaileinstellungsregisterkarten aus.</p>
-
-        <p><b>Detaileinstellungsregisterkarten</b></p>
+        <h2>Aufbau</h2>
+        <p>Links befindet sich die <b>Seitenleiste</b> mit den Seiten des Dialogfelds, rechts die Einstellungen
+        der gewählten Seite in Gruppen (Karten). Ist eine Seite länger als das Fenster, kann sie gescrollt werden.</p>
         <ul>
-            <li>Mit Quick-Menü: Speichern, Scanmodus, Dateiart, Papier, Dateigröße (die Registerkarte Anwendung ist deaktiviert)</li>
-            <li>Ohne Quick-Menü: Anwendung, Speichern, Scanmodus, Dateiart, Papier, Dateigröße</li>
+            <li><b>SpeedScan Manager</b>: Allgemein (Quick-Menü, Autostart, Scanqualität, Profil, Design)</li>
+            <li><b>Scaneinstellungen</b>: <a href='#app-tab'>Anwendung</a>, <a href='#save-tab'>Speichern</a>,
+            <a href='#scanmode-tab'>Scanmodus</a>, <a href='#filetype-tab'>Dateiart</a>, <a href='#paper-tab'>Papier</a>,
+            <a href='#filesize-tab'>Dateigröße</a></li>
         </ul>
+        <p>Die Seiten wechseln Sie per Mausklick in der Seitenleiste, mit den Pfeiltasten (wenn die Seitenleiste den
+        Fokus hat) oder mit <span class='kbd'>Strg</span>+<span class='kbd'>Tab</span> /
+        <span class='kbd'>Strg</span>+<span class='kbd'>Umschalt</span>+<span class='kbd'>Tab</span>
+        (bzw. <span class='kbd'>Strg</span>+<span class='kbd'>Bild ab</span> / <span class='kbd'>Bild auf</span>).
+        Bei aktivem Quick-Menü ist die Seite [Anwendung] ausgegraut und kann nicht gewählt werden.</p>
+        <p>Das <b>Hilfe-Symbol (?)</b> oben rechts öffnet die Hilfe zur gerade angezeigten Seite. Mit dem
+        <b>Minimieren-Symbol</b> legen Sie das Fenster in die Taskleiste.</p>
 
-        <p><b>[OK] Taste</b> – Einstellungen übernehmen und Dialogfeld schließen.<br>
-        <b>[Abbrechen] Taste</b> – Änderungen verwerfen und Dialogfeld schließen.<br>
+        <h2>Seite [Allgemein]</h2>
+        <p><b>[Quick-Menü verwenden] Schalter</b><br>
+        Schalten Sie das Quick-Menü ein, um nach jedem Scan auszuwählen, was mit dem Ergebnis geschehen soll
+        (siehe <a href='#scan-quick'>Scannen mit dem Quick-Menü</a>). Ist es eingeschaltet, sind die Seite [Anwendung]
+        und die Gruppe [Profil] deaktiviert.</p>
+
+        <p><b>[SpeedScan Manager beim Anmelden starten] Schalter</b><br>
+        Startet das Programm automatisch bei der Windows-Anmeldung (Grundeinstellung: eingeschaltet).</p>
+
+        <p><b>[Scanqualität] Kacheln</b><br>
+        <b>Empfohlen</b>, <b>Kleine Datei</b> und <b>Hohe Bildqualität</b> setzen Bildqualität und Komprimierungsrate
+        (siehe <a href='#scan-quick'>Scannen mit dem Quick-Menü</a>). Die Kachel, die den aktuellen Werten entspricht,
+        ist hervorgehoben (mit Häkchen). <b>Benutzerdefiniert</b> ist hervorgehoben, wenn die Werte keiner Voreinstellung
+        entsprechen; ein Klick darauf öffnet die Seite [Scanmodus] mit den Detaileinstellungen. Die Kacheln sind mit und
+        ohne Quick-Menü verfügbar und lassen sich auch mit <span class='kbd'>Tab</span> und
+        <span class='kbd'>Leertaste</span> bedienen.</p>
+
+        <p><b>[Profil] Gruppe</b><br>
+        Nur verfügbar, wenn das Quick-Menü nicht verwendet wird (sonst ausgegraut).</p>
+        <ul>
+            <li><b>Aktives Profil</b> – Auswahlliste; das gewählte Profil wird geladen.</li>
+            <li><b>Profil hinzufügen...</b> – Legt ein neues Profil aus den aktuellen Einstellungen an
+            (<a href='#new-profile'>[Neues Profil hinzufügen] Dialogfeld</a>).</li>
+            <li><b>Profilverwaltung...</b> – Öffnet das <a href='#profile-mgmt-dialog'>[Profilverwaltung] Dialogfeld</a>.</li>
+        </ul>
+        <p>Änderungen an einem eigenen Profil werden beim Übernehmen in diesem Profil gespeichert. Die Standardprofile
+        können nicht geändert werden: Es wird gefragt, ob die Einstellungen als neues Profil gespeichert oder nur als
+        aktuelle Einstellungen übernommen werden sollen.</p>
+
+        <p><b>[Design] Auswahlliste</b><br>
+        <b>System</b> folgt der Windows-Einstellung für helle und dunkle Apps, <b>Hell</b> und <b>Dunkel</b> legen das
+        Erscheinungsbild fest. Die Auswahl wirkt sofort (auch ohne [OK]); sie ist auch im Tray-Menü unter <b>Design</b> erreichbar.</p>
+
+        <h2>Schaltflächen</h2>
+        <p><b>[Abbrechen] Taste</b> – Änderungen verwerfen und Dialogfeld schließen.<br>
         <b>[Übernehmen] Taste</b> – Änderungen übernehmen, ohne das Dialogfeld zu schließen.
-        Die Taste ist nur aktiv, wenn es nicht übernommene Änderungen gibt.</p>
+        Die Taste ist nur aktiv, wenn es nicht übernommene Änderungen gibt.<br>
+        <b>[OK] Taste</b> – Einstellungen übernehmen und Dialogfeld schließen (auch mit <span class='kbd'>Enter</span>).</p>
 
         <div class='see-also'>Siehe auch:
             <ul>
-                <li><a href='#app-tab'>[Anwendung] Registerkarte</a></li>
-                <li><a href='#save-tab'>[Speichern] Registerkarte</a></li>
-                <li><a href='#scanmode-tab'>[Scanmodus] Registerkarte</a></li>
-                <li><a href='#filetype-tab'>[Dateiart] Registerkarte</a></li>
-                <li><a href='#paper-tab'>[Papier] Registerkarte</a></li>
-                <li><a href='#filesize-tab'>[Dateigröße] Registerkarte</a></li>
+                <li><a href='#app-tab'>[Anwendung] Seite</a></li>
+                <li><a href='#save-tab'>[Speichern] Seite</a></li>
+                <li><a href='#scanmode-tab'>[Scanmodus] Seite</a></li>
+                <li><a href='#filetype-tab'>[Dateiart] Seite</a></li>
+                <li><a href='#paper-tab'>[Papier] Seite</a></li>
+                <li><a href='#filesize-tab'>[Dateigröße] Seite</a></li>
             </ul>
         </div>
     "));
 
-    private static HelpTopic TopicApplicationTab() => new("app-tab", "[Anwendung] Registerkarte",
-        Wrap("[Anwendung] Registerkarte", @"
-        <p>In der [Anwendung] Registerkarte können Sie eine Anwendung wählen, die nach dem
+    private static HelpTopic TopicApplicationTab() => new("app-tab", "[Anwendung] Seite",
+        Wrap("[Anwendung] Seite", @"
+        <p>Auf der Seite [Anwendung] können Sie eine Anwendung wählen, die nach dem
         Scannen zur Weiterverarbeitung der Bilddaten verwendet werden soll.</p>
 
         <div class='warning'>
             <div class='warning-title'>ACHTUNG</div>
-            <p>Die [Anwendung] Registerkarte ist deaktiviert, wenn das Quick-Menü verwendet wird.
+            <p>Die Seite [Anwendung] ist deaktiviert (in der Seitenleiste ausgegraut), wenn das Quick-Menü verwendet wird.
             Wählen Sie die auszuführende Aktion dann im Quick-Menü nach dem Scannen.</p>
         </div>
 
@@ -730,15 +776,15 @@ internal static class HelpContent
         Dialogfeld hinzugefügt wurden. Nach dem Scan wird eine eigene Anwendung mit ihren Argumenten und
         den gespeicherten Dateien als weiteren Argumenten gestartet.</p>
 
-        <p><b>[E-Mail-Optionen...] Taste</b><br>
+        <p><b>[E-Mail-Optionen...] Taste</b> (Zeile „E-Mail-Optionen“)<br>
         Erscheint, wenn Scan to E-Mail ausgewählt wurde. Öffnet das
         <a href='#email-options'>[Scan to E-Mail-Optionen] Dialogfeld</a>.</p>
 
-        <p><b>[Druck-Optionen...] Taste</b><br>
+        <p><b>[Druck-Optionen...] Taste</b> (Zeile „Druck-Optionen“)<br>
         Erscheint, wenn Scan to Print ausgewählt wurde. Öffnet das
         <a href='#print-options'>[Scan to Print-Optionen] Dialogfeld</a>.</p>
 
-        <p><b>[Installieren/Deinstallieren...] Taste</b><br>
+        <p><b>[Installieren/Deinstallieren...] Taste</b> (Zeile „Anwendungen verwalten“)<br>
         Öffnet das <a href='#app-manage'>[Installieren/Deinstallieren] Dialogfeld</a>.</p>
 
         <div class='note'>
@@ -757,27 +803,27 @@ internal static class HelpContent
         </div>
     "));
 
-    private static HelpTopic TopicSaveTab() => new("save-tab", "[Speichern] Registerkarte",
-        Wrap("[Speichern] Registerkarte", @"
-        <p>Unter der [Speichern] Registerkarte können Sie den Zielordner für die gescannten
-        Bilder bestimmen.</p>
+    private static HelpTopic TopicSaveTab() => new("save-tab", "[Speichern] Seite",
+        Wrap("[Speichern] Seite", @"
+        <p>Auf der Seite [Speichern] können Sie den Zielordner für die gescannten
+        Bilder und den Dateinamen bestimmen.</p>
 
         <h2>Elemente</h2>
         <p><b>Speicherordner für Bilddaten</b><br>
         Zeigt den aktuellen Zielordner an. Das Verzeichnis kann nicht direkt bearbeitet werden.
-        Verwenden Sie die [Durchsuchen] Taste, um einen Ordner zu wählen.</p>
+        Verwenden Sie die [Durchsuchen...] Taste, um einen Ordner zu wählen.</p>
 
-        <p><b>[Durchsuchen] Taste</b><br>
+        <p><b>[Durchsuchen...] Taste</b><br>
         Zeigt einen Ordner-Dialog, in dem Sie einen Ordner für das Speichern der Bilder auswählen können.</p>
 
-        <p><b>[Dateinamenformat] Taste</b><br>
+        <p><b>[Dateinamenformat...] Taste</b> (Gruppe „Dateiname“)<br>
         Zeigt das <a href='#filename-format'>[Dateinamenformat] Dialogfeld</a> an, in dem das
-        Dateinamenformat bestimmt werden kann. Darunter wird ein Beispiel für den nächsten Dateinamen angezeigt.</p>
+        Dateinamenformat bestimmt werden kann. Daneben wird ein Beispiel für den nächsten Dateinamen angezeigt.</p>
 
-        <p><b>[Datei nach Scan umbenennen] Kontrollkästchen</b><br>
-        Wenn markiert, erscheint nach dem Scannen das <a href='#postscan-save'>[In Ordner speichern]
+        <p><b>[Datei nach Scan umbenennen] Schalter</b><br>
+        Wenn eingeschaltet, erscheint nach dem Scannen das <a href='#postscan-save'>[In Ordner speichern]
         Dialogfeld</a>, in dem Ziel oder Dateiname geändert werden können. Bei Scan to Folder und bei
-        aktivem Quick-Menü wird dieses Dialogfeld unabhängig von der Markierung angezeigt, wenn „In Ordner speichern“
+        aktivem Quick-Menü wird dieses Dialogfeld unabhängig von diesem Schalter angezeigt, wenn „In Ordner speichern“
         gewählt wird.</p>
 
         <div class='note'>
@@ -797,9 +843,10 @@ internal static class HelpContent
         </div>
     "));
 
-    private static HelpTopic TopicScanModeTab() => new("scanmode-tab", "[Scanmodus] Registerkarte",
-        Wrap("[Scanmodus] Registerkarte", @"
-        <p>In der [Scanmodus] Registerkarte können Sie die Scanmodi für den Scanner festlegen.</p>
+    private static HelpTopic TopicScanModeTab() => new("scanmode-tab", "[Scanmodus] Seite",
+        Wrap("[Scanmodus] Seite", @"
+        <p>Auf der Seite [Scanmodus] können Sie die Scanmodi für den Scanner festlegen. Sie öffnet sich auch
+        über die Kachel [Benutzerdefiniert] auf der Seite [Allgemein].</p>
 
         <h2>[Bildqualität] Auswahlliste</h2>
         <table>
@@ -842,24 +889,24 @@ internal static class HelpContent
         und eine Sprechblase weist darauf hin. Für das Flachbettscannen steht die automatische
         Papiergrößenerkennung nicht zur Verfügung; die Papiergröße wird dann auf A4 gesetzt.</p>
 
-        <p><b>[Scanvorgang nach aktuellem Scan fortsetzen] Kontrollkästchen</b><br>
-        Ist dieses Kontrollkästchen markiert, erscheint nach dem Scannen die Abfrage „Weitere Dokumente scannen?“
+        <p><b>[Scanvorgang nach aktuellem Scan fortsetzen] Schalter</b> (Gruppe „Weitere Einstellungen“)<br>
+        Ist dieser Schalter eingeschaltet, erscheint nach dem Scannen die Abfrage „Weitere Dokumente scannen?“
         (siehe <a href='#scan-continue'>Scan abbrechen und fortsetzen</a>).</p>
 
-        <p><b>[Option] Taste</b><br>
+        <p><b>[Option...] Taste</b> (Zeile „Optionen für den Scanmodus“)<br>
         Zeigt das <a href='#scanmode-options'>[Scanmodus Option] Dialogfeld</a> an.</p>
 
         <div class='see-also'>Siehe auch:
             <ul>
                 <li><a href='#scanmode-options'>[Scanmodus Option] Dialogfeld</a></li>
-                <li><a href='#paper-tab'>[Papier] Registerkarte</a></li>
+                <li><a href='#paper-tab'>[Papier] Seite</a></li>
             </ul>
         </div>
     "));
 
-    private static HelpTopic TopicFileTypeTab() => new("filetype-tab", "[Dateiart] Registerkarte",
-        Wrap("[Dateiart] Registerkarte", @"
-        <p>Unter der [Dateiart] Registerkarte können Sie das Dateiformat für die gescannten
+    private static HelpTopic TopicFileTypeTab() => new("filetype-tab", "[Dateiart] Seite",
+        Wrap("[Dateiart] Seite", @"
+        <p>Auf der Seite [Dateiart] können Sie das Dateiformat für die gescannten
         Bilder festlegen.</p>
 
         <h2>[Dateiformat] Auswahlliste</h2>
@@ -871,16 +918,17 @@ internal static class HelpContent
         <div class='warning'>
             <div class='warning-title'>ACHTUNG</div>
             <p>JPEG steht nicht zur Verfügung, wenn [Schwarzweiß] unter [Farbmodus]
-            in der [Scanmodus] Registerkarte gewählt wurde. Die Optionen zur Texterkennung und zu
+            auf der Seite [Scanmodus] gewählt wurde. Die Optionen zur Texterkennung und zu
             Schlüsselwörtern sind nur bei PDF verfügbar.</p>
         </div>
 
         <h2>Texterkennung (OCR)</h2>
-        <p><b>[In durchsuchbare PDF konvertieren] Kontrollkästchen</b><br>
+        <p>Die Elemente stehen in den Gruppen „Texterkennung wählen“ und „Texterkennungsoptionen“.</p>
+        <p><b>[In durchsuchbare PDF konvertieren] Schalter</b><br>
         Führt OCR durch und erstellt eine durchsuchbare PDF-Datei.
         Der erkannte Text wird als unsichtbare Schicht über das Bild gelegt.</p>
 
-        <p><b>[Markierten Text als Schlüsselwort der PDF-Datei hinzufügen] Kontrollkästchen</b><br>
+        <p><b>[Markierten Text als Schlüsselwort der PDF-Datei hinzufügen] Schalter</b><br>
         Mit Textmarker hervorgehobene Textstellen werden als Schlüsselwörter in die PDF-Eigenschaften eingetragen.
         Dazu ist die Texterkennung nötig; ohne sie wird die Option übersprungen und eine Sprechblase angezeigt.
         Unter <b>Zielmarkierung</b> wählen Sie, ob nur die erste oder alle markierten Stellen verwendet werden.</p>
@@ -903,21 +951,21 @@ internal static class HelpContent
             <li><b>Alle Seiten</b> – Texterkennung für alle Seiten</li>
         </ul>
 
-        <p><b>[Option] Taste</b><br>
+        <p><b>[Option...] Taste</b> (Zeile „PDF-Optionen“)<br>
         Öffnet das <a href='#pdf-options'>[PDF-Dateiformat Option] Dialogfeld</a>.
         Nur verfügbar, wenn PDF als Dateiformat gewählt wurde.</p>
 
         <div class='see-also'>Siehe auch:
             <ul>
                 <li><a href='#pdf-options'>[PDF-Dateiformat Option] Dialogfeld</a></li>
-                <li><a href='#scanmode-tab'>[Scanmodus] Registerkarte</a></li>
+                <li><a href='#scanmode-tab'>[Scanmodus] Seite</a></li>
             </ul>
         </div>
     "));
 
-    private static HelpTopic TopicPaperTab() => new("paper-tab", "[Papier] Registerkarte",
-        Wrap("[Papier] Registerkarte", @"
-        <p>In der [Papier] Registerkarte können Sie die Papiergröße für das zu scannende
+    private static HelpTopic TopicPaperTab() => new("paper-tab", "[Papier] Seite",
+        Wrap("[Papier] Seite", @"
+        <p>Auf der Seite [Papier] können Sie die Papiergröße für das zu scannende
         Dokument einstellen.</p>
 
         <h2>[Papiergröße] Auswahlliste</h2>
@@ -946,13 +994,13 @@ internal static class HelpContent
             die automatische Erkennung nicht verfügbar.</p>
         </div>
 
-        <p><b>[Trägerblatteinstellungen] Taste</b><br>
+        <p><b>[Trägerblatteinstellungen...] Taste</b> (Zeile „Trägerblatt“)<br>
         Öffnet das <a href='#carrier-sheet-dialog'>[Trägerblatteinstellungen] Dialogfeld</a>.</p>
 
-        <p><b>[Benutzerdefiniert] Taste</b><br>
+        <p><b>[Benutzerdefiniert...] Taste</b> (Zeile „Benutzerdefinierte Papiergrößen“)<br>
         Zeigt das <a href='#custom-size-dialog'>[Hinzufügen oder Entfernen von benutzerdefinierten Größen] Dialogfeld</a> an.</p>
 
-        <h2>[Mehrfacheinzugserkennung] Auswahlliste</h2>
+        <h2>[Mehrfacheinzugserkennung] Auswahlliste (Gruppe „Einzug“)</h2>
         <ul>
             <li><b>Aus</b> – Mehrfacheinzugserkennung wird nicht ausgeführt (Grundeinstellung)</li>
             <li><b>Überprüfung von Überlappung [Ultraschall]</b> – Überwacht die Blattstärken der eingezogenen Dokumente</li>
@@ -975,15 +1023,15 @@ internal static class HelpContent
         </div>
     "));
 
-    private static HelpTopic TopicFileSizeTab() => new("filesize-tab", "[Dateigröße] Registerkarte",
-        Wrap("[Dateigröße] Registerkarte", @"
-        <p>Unter der [Dateigröße] Registerkarte können Sie die Komprimierungsrate für die
+    private static HelpTopic TopicFileSizeTab() => new("filesize-tab", "[Dateigröße] Seite",
+        Wrap("[Dateigröße] Seite", @"
+        <p>Auf der Seite [Dateigröße] können Sie die Komprimierungsrate für die
         gescannten Bilddaten bestimmen.</p>
 
         <div class='warning'>
             <div class='warning-title'>ACHTUNG</div>
             <p>Die Einstellung ist deaktiviert (mit Hinweis), wenn [Schwarzweiß] in der
-            [Farbmodus] Auswahlliste unter der [Scanmodus] Registerkarte ausgewählt wurde, sowie bei PNG als Dateiformat.
+            [Farbmodus] Auswahlliste auf der Seite [Scanmodus] ausgewählt wurde, sowie bei PNG als Dateiformat.
             Schwarzweißbilder werden verlustfrei komprimiert, PNG-Dateien verlustfrei gespeichert.</p>
         </div>
 
@@ -1005,7 +1053,7 @@ internal static class HelpContent
 
         <div class='see-also'>Siehe auch:
             <ul>
-                <li><a href='#scanmode-tab'>[Scanmodus] Registerkarte</a></li>
+                <li><a href='#scanmode-tab'>[Scanmodus] Seite</a></li>
             </ul>
         </div>
     "));
@@ -1046,7 +1094,7 @@ internal static class HelpContent
 
         <div class='see-also'>Siehe auch:
             <ul>
-                <li><a href='#scanmode-tab'>[Scanmodus] Registerkarte</a></li>
+                <li><a href='#scanmode-tab'>[Scanmodus] Seite</a></li>
             </ul>
         </div>
     "));
@@ -1076,7 +1124,7 @@ internal static class HelpContent
 
         <div class='see-also'>Siehe auch:
             <ul>
-                <li><a href='#filetype-tab'>[Dateiart] Registerkarte</a></li>
+                <li><a href='#filetype-tab'>[Dateiart] Seite</a></li>
             </ul>
         </div>
     "));
@@ -1191,7 +1239,7 @@ internal static class HelpContent
     private static HelpTopic TopicEmailOptionsDialog() => new("email-options", "[Scan to E-Mail-Optionen] Dialogfeld",
         Wrap("[Scan to E-Mail-Optionen] Dialogfeld", @"
         <p>In diesem Dialogfeld können Sie Einstellungen für die Verwendung von Scan to E-Mail
-        konfigurieren. Es ist über die [Anwendung] Registerkarte oder das Tray-Menü
+        konfigurieren. Es ist über die Seite [Anwendung] oder das Tray-Menü
         (<b>E-Mail-Einstellungen...</b>) erreichbar.</p>
 
         <h2>Elemente</h2>
@@ -1212,7 +1260,7 @@ internal static class HelpContent
     private static HelpTopic TopicPrintOptionsDialog() => new("print-options", "[Scan to Print-Optionen] Dialogfeld",
         Wrap("[Scan to Print-Optionen] Dialogfeld", @"
         <p>In diesem Dialogfeld können die Optionen der Funktion Scan to Print eingestellt werden.
-        Es ist über die [Anwendung] Registerkarte oder das Tray-Menü
+        Es ist über die Seite [Anwendung] oder das Tray-Menü
         (<b>Druckeinstellungen...</b>) erreichbar.</p>
 
         <h2>Elemente</h2>
@@ -1346,18 +1394,19 @@ internal static class HelpContent
         <h2>Elemente</h2>
         <p><b>Vorschau</b> – Zeigt das gescannte Dokumentenbild an. Bei mehreren Seiten kann
         durch die Seiten navigiert werden.</p>
-        <p><b>Seitennavigation</b> – Zeigt die aktuelle Seitenzahl und ermöglicht das
+        <p><b>Seitennavigation</b> (unten links) – Zeigt die aktuelle Seite („Seite 2 von 3“) und ermöglicht das
         Durchblättern der gescannten Seiten mit den Pfeilschaltflächen.</p>
         <p><b>Titel festlegen</b> – Zeigt den vorgeschlagenen Dateinamen an. Kann geändert werden.
         Ungültige Zeichen werden ersetzt.</p>
         <p><b>Zielordner festlegen</b> – Zeigt den Zielordner an. Er wird über
         [Durchsuchen...] geändert.</p>
-        <p><b>Scaneinstellungen</b> – Zeigt eine Übersicht der verwendeten Einstellungen (Auflösung, Farbmodus,
-        Scan-Seite, Dateiformat, Kompression).</p>
+        <p><b>Scaneinstellungen</b> – Zeigt eine Übersicht der verwendeten Einstellungen (Voreinstellung, Auflösung,
+        Farbmodus, Scan-Seite, Dateiformat, Kompression).</p>
         <p><b>[Speichern] Taste</b> – Übernimmt Titel und Zielordner. Bei mehreren Dateien wird eine Seriennummer
         angefügt. Bestehende Dateien werden nie überschrieben (es wird <code>_1</code> usw. angehängt).</p>
-        <p><b>[Abbrechen] Taste</b> – Fragt „Scan verwerfen?“. Bei <b>Ja</b> werden die bereits erstellten Dateien gelöscht,
-        bei <b>Nein</b> kehren Sie zum Dialogfeld zurück.</p>
+        <p><b>[Abbrechen] Taste</b>, <span class='kbd'>Esc</span> und <b>Schließen-Symbol</b> – Fragen „Scan verwerfen?“.
+        Bei <b>Ja</b> werden die bereits erstellten Dateien gelöscht, bei <b>Nein</b> kehren Sie zum Dialogfeld zurück.</p>
+        <p><b>Hilfe-Symbol (?)</b> – Öffnet diese Hilfe.</p>
     "));
 
     private static HelpTopic TopicScannerDriverInfoDialog() => new("driver-info", "[Scanner- und Treiberinformationen] Dialogfeld",
@@ -1385,17 +1434,18 @@ internal static class HelpContent
 
     private static HelpTopic TopicProfileManagement() => new("profile-mgmt", "Profile verwalten",
         Wrap("Profile verwalten (Hinzufügen/Umbenennen/Löschen)", @"
-        <p>Um Einstellungen ohne das Quick-Menü festzulegen, können Sie ein Profil aus der
-        [Profil] Auswahlliste im Einstellungsdialogfeld auswählen. Ein Profil speichert alle Einstellungen
-        aller Registerkarten (Anwendung, Speichern, Scanmodus, Dateiart, Papier, Dateigröße).</p>
+        <p>Um Einstellungen ohne das Quick-Menü festzulegen, können Sie auf der Seite [Allgemein] des
+        Einstellungsdialogfelds in der Gruppe [Profil] unter [Aktives Profil] ein Profil auswählen. Ein Profil speichert
+        die Einstellungen aller Scan-Seiten (Anwendung, Speichern, Scanmodus, Dateiart, Papier, Dateigröße).
+        Bei aktivem Quick-Menü ist die Gruppe [Profil] ausgegraut.</p>
 
-        <p>Bis zu 20 Profile, einschließlich der bereits in der [Profil] Auswahlliste
+        <p>Bis zu 20 Profile, einschließlich der bereits in der Auswahlliste
         enthaltenen, können hinzugefügt werden.</p>
 
         <h2>Neues Profil hinzufügen</h2>
         <ol>
             <li>Stellen Sie die gewünschten Werte ein.</li>
-            <li>Wählen Sie [Profil hinzufügen...] in der [Profil] Auswahlliste.</li>
+            <li>Klicken Sie in der Gruppe [Profil] auf <b>Profil hinzufügen...</b>.</li>
             <li>Vergeben Sie im <a href='#new-profile'>[Neues Profil hinzufügen] Dialogfeld</a> einen Namen.</li>
         </ol>
 
@@ -1407,7 +1457,7 @@ internal static class HelpContent
         <h2>Profile umbenennen, löschen oder sortieren</h2>
         <p>Öffnen Sie das <a href='#profile-mgmt-dialog'>[Profilverwaltung] Dialogfeld</a> über:</p>
         <ul>
-            <li>[Profilverwaltung...] in der [Profil] Auswahlliste des Einstellungsdialogfelds</li>
+            <li>die Taste [Profilverwaltung...] in der Gruppe [Profil] auf der Seite [Allgemein] des Einstellungsdialogfelds</li>
             <li>[Profilverwaltung...] im Tray-Menü</li>
         </ul>
 
@@ -1431,11 +1481,11 @@ internal static class HelpContent
             <tr><td>Speicherordner</td><td>Dokumente\SpeedScanManager</td></tr>
             <tr><td>Dateinamenformat</td><td>Datum und Uhrzeit (JJJJMMTThhmmss)</td></tr>
             <tr><td>Benutzerdefinierter Dateiname</td><td>unbenannt, 3 Ziffern</td></tr>
-            <tr><td>Datei nach Scan umbenennen</td><td>Nicht markiert</td></tr>
+            <tr><td>Datei nach Scan umbenennen</td><td>Ausgeschaltet</td></tr>
             <tr><td>Bildqualität</td><td>Automatisch (200 dpi, Schwarzweiß 400 dpi)</td></tr>
             <tr><td>Farbmodus</td><td>Farbe</td></tr>
             <tr><td>Scan-Seite</td><td>Automatisch</td></tr>
-            <tr><td>Scanvorgang fortsetzen</td><td>Nicht markiert</td></tr>
+            <tr><td>Scanvorgang fortsetzen</td><td>Ausgeschaltet</td></tr>
             <tr><td>Helligkeit</td><td>Normal</td></tr>
             <tr><td>Automatisches Löschen leerer Seiten</td><td>Aktiviert</td></tr>
             <tr><td>Schräglauf automatisch korrigieren</td><td>Deaktiviert</td></tr>
@@ -1469,7 +1519,7 @@ internal static class HelpContent
 
         <div class='note'>
             <div class='note-title'>HINWEIS</div>
-            <p>Die Bildqualität [Hohe Bildqualität], [Kleine Datei] und [Empfohlen] sind keine Profile, sondern
+            <p>Die Kacheln [Empfohlen], [Kleine Datei] und [Hohe Bildqualität] unter [Scanqualität] sind keine Profile, sondern
             Voreinstellungen für Bildqualität und Komprimierungsrate im Einstellungsdialogfeld.</p>
         </div>
     "));
@@ -1484,18 +1534,21 @@ internal static class HelpContent
         („Mehrfacheinzug erkannt!“). Der Scanner hält an, bis Sie entschieden haben.</p>
 
         <h2>Elemente</h2>
-        <p><b>Vorschaubilder</b> – Zeigt die vorherige Seite und die aktuelle Seite (mit Mehrfacheinzug)
-        zur Beurteilung.</p>
+        <p><b>Vorschaubilder</b> – Zeigt die vorherige Seite und die aktuelle Seite (mit Mehrfacheinzug, rot markiert)
+        zur Beurteilung. Gibt es keine vorherige Seite, steht dort „Kein Vorschaubild verfügbar“.</p>
 
         <p><b>[Wiederholen] Taste</b> – Verwirft die in diesem Durchgang gescannten Bilder und bricht den Scan ab
         (Sprechblase „Scan verworfen“). Legen Sie das Dokument erneut ein und starten Sie einen neuen Scan.
-        Dieselbe Wirkung hat das Schließen des Dialogfelds.</p>
+        Dieselbe Wirkung hat das Schließen des Dialogfelds (Schließen-Symbol). [Wiederholen] ist die Standardtaste
+        (<span class='kbd'>Enter</span>).</p>
 
         <p><b>[So übernehmen] Taste</b> – Behält die Bilder mit Mehrfacheinzug.
         Der Scanvorgang wird fortgesetzt.</p>
 
-        <p><b>[Erkennung ausschalten] Taste</b> – Ignoriert weitere Mehrfacheinzug-Meldungen
+        <p><b>[Erkennung ausschalten] Taste</b> (unten links) – Ignoriert weitere Mehrfacheinzug-Meldungen
         für den restlichen Scan und übernimmt die aktuelle Seite.</p>
+
+        <p><b>Hilfe-Symbol (?)</b> – Öffnet diese Hilfe.</p>
 
         <div class='warning'>
             <div class='warning-title'>ACHTUNG</div>
