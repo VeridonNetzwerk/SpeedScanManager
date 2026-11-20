@@ -5,8 +5,9 @@ namespace SpeedScanManager;
 
 /// <summary>
 /// Sub-dialog for PDF file format options: page splitting and password protection.
+/// Modern layout (<see cref="ModernWindow"/>): one card per option group.
 /// </summary>
-internal class PdfOptionsDialog : Form
+internal class PdfOptionsDialog : ModernWindow
 {
     private readonly RadioButton _rbMultiPage;
     private readonly RadioButton _rbSplitByPages;
@@ -23,119 +24,85 @@ internal class PdfOptionsDialog : Form
     public PdfOptionsDialog()
     {
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        Text = "PDF-Dateiformat-Optionen";
-        Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(460, 274);
         ShowInTaskbar = false;
+        Text = "PDF-Dateiformat-Optionen";
+        Title = "PDF-Dateiformat-Optionen";
+        Subtitle = "Seiten teilen und Kennwortschutz";
+        HeaderButtons = ModernHeaderButtons.Close;
+        AutoSizeToContent = true;
+        MinimumContentWidth = 500;
 
-        var font = UiFonts.Default;
-        Font = font;
-
-        // === Page split group ===
-        var grpSplit = new GroupBox
-        {
-            Text = "PDF-Seiten teilen",
-            Location = new Point(12, 12),
-            Size = new Size(436, 100),
-            Font = font
-        };
-
+        // === Page split card (radio buttons share the card as their group) ===
         _rbMultiPage = new RadioButton
         {
             Text = "Mehrseitige PDF-Datei (gesamter Stapel in einer PDF)",
-            Location = new Point(16, 22),
-            AutoSize = true,
-            Font = font,
+            AutoSize = false,
+            Height = 34,
             Checked = true
         };
 
         _rbSplitByPages = new RadioButton
         {
             Text = "Seitenzahl, für die jeweils eine neue PDF-Datei erstellt werden soll",
-            Location = new Point(16, 46),
-            Size = new Size(410, 22),
-            Font = font
+            AutoSize = false,
+            Height = 34
         };
 
         _numSplitPages = new NumericUpDown
         {
-            Location = new Point(34, 70),
-            Size = new Size(60, 24),
-            Font = font,
+            Size = new Size(70, 24),
             Minimum = 1,
             Maximum = 999,
             Value = 1,
-            Enabled = false
+            Enabled = false,
+            Margin = Padding.Empty,
+            AccessibleName = "Seitenzahl"
         };
 
         var lblPages = new Label
         {
             Text = "Seite(n)",
-            Location = new Point(100, 73),
             AutoSize = true,
-            Font = font
+            Margin = new Padding(8, 4, 0, 0)
         };
+
+        var pagesLine = new FlowLayoutPanel
+        {
+            AutoSize = false,
+            Height = 40,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Padding = new Padding(24, 2, 0, 10),
+            Margin = Padding.Empty
+        };
+        pagesLine.Controls.Add(_numSplitPages);
+        pagesLine.Controls.Add(lblPages);
 
         _rbSplitByPages.CheckedChanged += (s, e) =>
         {
             _numSplitPages.Enabled = _rbSplitByPages.Checked;
         };
 
-        grpSplit.Controls.AddRange(new Control[] { _rbMultiPage, _rbSplitByPages, _numSplitPages, lblPages });
+        var cardSplit = new SettingsCard("PDF-Seiten teilen") { ShowDividers = false };
+        cardSplit.Add(new Panel { Height = 6 });
+        cardSplit.Add(_rbMultiPage);
+        cardSplit.Add(_rbSplitByPages);
+        cardSplit.Add(pagesLine);
 
-        // === Password group ===
-        var grpPassword = new GroupBox
-        {
-            Text = "Kennwort",
-            Location = new Point(12, 122),
-            Size = new Size(436, 100),
-            Font = font
-        };
-
-        _chkUsePassword = new CheckBox
-        {
-            Text = "Kennwort für PDF-Datei einstellen",
-            Location = new Point(16, 22),
-            AutoSize = true,
-            Font = font
-        };
-
-        var lblPassword = new Label
-        {
-            Text = "Kennwort:",
-            Location = new Point(32, 48),
-            AutoSize = true,
-            Font = font
-        };
+        // === Password card ===
+        _chkUsePassword = new ToggleSwitch();
 
         _txtPassword = new TextBox
         {
-            Location = new Point(130, 45),
             Size = new Size(240, 24),
-            Font = font,
             UseSystemPasswordChar = true,
             Enabled = false
         };
 
-        var lblConfirm = new Label
-        {
-            Text = "Bestätigen:",
-            Location = new Point(32, 76),
-            AutoSize = true,
-            Font = font
-        };
-
         _txtConfirmPassword = new TextBox
         {
-            Location = new Point(130, 73),
             Size = new Size(240, 24),
-            Font = font,
             UseSystemPasswordChar = true,
             Enabled = false
         };
@@ -147,35 +114,23 @@ internal class PdfOptionsDialog : Form
             _txtConfirmPassword.Enabled = enabled;
         };
 
-        grpPassword.Controls.AddRange(new Control[]
-        {
-            _chkUsePassword, lblPassword, _txtPassword, lblConfirm, _txtConfirmPassword
-        });
+        var cardPassword = new SettingsCard("Kennwort");
+        cardPassword.AddRow("Kennwort für PDF-Datei einstellen", null, _chkUsePassword);
+        cardPassword.AddRow("Kennwort", null, _txtPassword, 240);
+        cardPassword.AddRow("Bestätigen", null, _txtConfirmPassword, 240);
 
-        // === Buttons ===
-        var btnOk = new Button
-        {
-            Text = "OK",
-            DialogResult = DialogResult.OK,
-            Location = new Point(282, 234),
-            Size = new Size(75, 28),
-            Font = font
-        };
+        var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
+        stack.Controls.Add(cardSplit);
+        stack.Controls.Add(cardPassword);
+        Body.Controls.Add(stack);
 
-        var btnCancel = new Button
-        {
-            Text = "Abbrechen",
-            DialogResult = DialogResult.Cancel,
-            Location = new Point(370, 234),
-            Size = new Size(75, 28),
-            Font = font
-        };
+        // === Footer ===
+        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
-        Controls.AddRange(new Control[] { grpSplit, grpPassword, btnOk, btnCancel });
         AcceptButton = btnOk;
         CancelButton = btnCancel;
         ResumeLayout(false);
-        PerformLayout();
 
         ThemeManager.Apply(this);
     }

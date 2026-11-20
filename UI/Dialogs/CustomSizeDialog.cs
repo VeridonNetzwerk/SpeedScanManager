@@ -5,14 +5,15 @@ namespace SpeedScanManager;
 
 /// <summary>
 /// Dialog for adding, removing, and editing custom paper sizes (max 10 entries).
+/// Modern layout (<see cref="ModernWindow"/>): one card with a toolbar (add/edit/remove),
+/// the list and the dimensions of the selected entry; help in the header.
 /// </summary>
-internal class CustomSizeDialog : Form
+internal class CustomSizeDialog : ModernWindow
 {
     private readonly ListBox _listBox;
     private readonly Button _btnAdd;
     private readonly Button _btnRemove;
     private readonly Button _btnEdit;
-    private readonly Button _btnHelp;
     private readonly Button _btnClose;
     private readonly TextBox _txtWidth;
     private readonly TextBox _txtLength;
@@ -26,192 +27,116 @@ internal class CustomSizeDialog : Form
         CustomSizes.AddRange(existingSizes.Select(s => s with { }).Take(MaxEntries));
 
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        Text = "Hinzufügen oder Entfernen von benutzerdefinierten Größen";
-        Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(600, 292);
         ShowInTaskbar = false;
+        Text = "Hinzufügen oder Entfernen von benutzerdefinierten Größen";
+        Title = "Benutzerdefinierte Größen";
+        Subtitle = "Hinzufügen oder Entfernen von benutzerdefinierten Größen";
+        HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
+        HelpTopic = "custom-size-dialog";
+        AutoSizeToContent = true;
+        MinimumContentWidth = 560;
 
-        var font = UiFonts.Default;
-        Font = font;
-
-        // === List ===
-        _listBox = new ListBox
-        {
-            Font = font,
-            Dock = DockStyle.Fill,
-            Margin = Padding.Empty
-        };
-        _listBox.SelectedIndexChanged += (s, e) => OnSelectionChanged();
-
-        // === Right button column ===
+        // === Toolbar: add / edit / remove ===
         _btnAdd = new Button
         {
             Text = "Hinzufügen...",
-            Size = new Size(100, 28),
-            Font = font,
-            Dock = DockStyle.Top,
-            Margin = Padding.Empty
+            Size = new Size(132, 32),
+            Margin = new Padding(0, 0, 8, 0)
         };
+        ThemeManager.SetGlyph(_btnAdd, Glyph.Plus);
         _btnAdd.Click += (s, e) => AddSize();
-
-        _btnRemove = new Button
-        {
-            Text = "Entfernen",
-            Size = new Size(100, 28),
-            Font = font,
-            Dock = DockStyle.Top,
-            Margin = new Padding(0, 8, 0, 0),
-            Enabled = false
-        };
-        _btnRemove.Click += (s, e) => RemoveSize();
 
         _btnEdit = new Button
         {
             Text = "Ändern...",
-            Size = new Size(100, 28),
-            Font = font,
-            Dock = DockStyle.Top,
-            Margin = new Padding(0, 8, 0, 0),
+            Size = new Size(116, 32),
+            Margin = new Padding(0, 0, 8, 0),
             Enabled = false
         };
+        ThemeManager.SetGlyph(_btnEdit, Glyph.Sliders);
         _btnEdit.Click += (s, e) => EditSize();
 
-        _btnHelp = new Button
+        _btnRemove = new Button
         {
-            Text = "Hilfe",
-            Size = new Size(100, 28),
-            Font = font,
-            Dock = DockStyle.Top,
-            Margin = new Padding(0, 20, 0, 0)
+            Text = "Entfernen",
+            Size = new Size(116, 32),
+            Margin = Padding.Empty,
+            Enabled = false
         };
-        _btnHelp.Click += (s, e) => { using var h = new HelpForm("custom-size-dialog"); h.ShowDialog(this); };
+        ThemeManager.SetGlyph(_btnRemove, Glyph.Minus);
+        _btnRemove.Click += (s, e) => RemoveSize();
 
-        _btnClose = new Button
+        var toolbar = new FlowLayoutPanel
         {
-            Text = "Schließen",
-            DialogResult = DialogResult.OK,
-            Size = new Size(100, 28),
-            Font = font,
-            Dock = DockStyle.Bottom,
+            AutoSize = false,
+            Height = 56,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Padding = new Padding(0, 12, 0, 12),
             Margin = Padding.Empty
         };
+        toolbar.Controls.AddRange(new Control[] { _btnAdd, _btnEdit, _btnRemove });
 
-        var buttonColumn = new TableLayoutPanel
+        // === List ===
+        _listBox = new ListBox
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            ColumnStyles = { new ColumnStyle(SizeType.Absolute, 100f) },
-            RowCount = 6,
-            RowStyles =
-            {
-                new RowStyle(SizeType.Absolute, 28f),
-                new RowStyle(SizeType.Absolute, 36f),
-                new RowStyle(SizeType.Absolute, 36f),
-                new RowStyle(SizeType.Percent, 100f),
-                new RowStyle(SizeType.Absolute, 48f),
-                new RowStyle(SizeType.Absolute, 28f)
-            },
-            Margin = new Padding(10, 0, 0, 0),
-            Padding = Padding.Empty
+            IntegralHeight = false,
+            Margin = Padding.Empty,
+            AccessibleName = "Benutzerdefinierte Größen"
         };
-        buttonColumn.Controls.Add(_btnAdd, 0, 0);
-        buttonColumn.Controls.Add(_btnRemove, 0, 1);
-        buttonColumn.Controls.Add(_btnEdit, 0, 2);
-        buttonColumn.Controls.Add(new Panel { Dock = DockStyle.Fill }, 0, 3);
-        buttonColumn.Controls.Add(_btnHelp, 0, 4);
-        buttonColumn.Controls.Add(_btnClose, 0, 5);
+        _listBox.SelectedIndexChanged += (s, e) => OnSelectionChanged();
 
-        // === Top row: ListBox + button column ===
-        var topTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 2,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Percent, 100f),
-                new ColumnStyle(SizeType.Absolute, 110f)
-            },
-            RowCount = 1,
-            RowStyles = { new RowStyle(SizeType.Percent, 100f) },
-            Margin = Padding.Empty
-        };
-        topTable.Controls.Add(_listBox, 0, 0);
-        topTable.Controls.Add(buttonColumn, 1, 0);
+        var listHost = new Panel { Height = 180, Padding = new Padding(0, 0, 0, 12) };
+        listHost.Controls.Add(_listBox);
 
-        // === Dimensions row ===
+        // === Dimensions of the selected entry (display only) ===
         _txtWidth = new TextBox
         {
-            Size = new Size(70, 22),
-            Font = font,
+            Size = new Size(70, 24),
             Margin = Padding.Empty,
             TextAlign = HorizontalAlignment.Center,
-            ReadOnly = true // display only; values are edited via "Ändern..."
+            ReadOnly = true, // display only; values are edited via "Ändern..."
+            AccessibleName = "Breite"
         };
 
         _txtLength = new TextBox
         {
-            Size = new Size(70, 22),
-            Font = font,
+            Size = new Size(70, 24),
             Margin = Padding.Empty,
             TextAlign = HorizontalAlignment.Center,
-            ReadOnly = true // display only; values are edited via "Ändern..."
+            ReadOnly = true, // display only; values are edited via "Ändern..."
+            AccessibleName = "Länge"
         };
 
-        // Labels above text fields: clean 6-column layout, labels directly above textboxes
+        // Labels above the text fields
         var dimTable = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill,
-            ColumnCount = 5,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Absolute, 75f),  // width label + textbox
-                new ColumnStyle(SizeType.Absolute, 20f),  // ×
-                new ColumnStyle(SizeType.Absolute, 75f),  // length label + textbox
-                new ColumnStyle(SizeType.Absolute, 40f),  // mm
-                new ColumnStyle(SizeType.Percent, 100f)   // filler
-            },
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 4,
             RowCount = 2,
-            RowStyles =
-            {
-                new RowStyle(SizeType.Absolute, 16f),  // label row
-                new RowStyle(SizeType.Absolute, 24f)    // textbox row
-            },
-            Margin = new Padding(60, 0, 0, 0),
-            Height = 40
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
-        // Row 0: labels directly above their textboxes
-        var lblBreite = new Label
-        {
-            Text = "Breite",
-            Font = font,
-            AutoSize = true,
-            Anchor = AnchorStyles.Left | AnchorStyles.Bottom,
-            Margin = Padding.Empty
-        };
+        dimTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70f));
+        dimTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 22f));
+        dimTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70f));
+        dimTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        dimTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        dimTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var lblBreite = new Label { Text = "Breite", AutoSize = true, Margin = new Padding(0, 0, 0, 3) };
+        var lblLaenge = new Label { Text = "Länge", AutoSize = true, Margin = new Padding(0, 0, 0, 3) };
+        ThemeManager.SetRole(lblBreite, ThemeRole.Muted);
+        ThemeManager.SetRole(lblLaenge, ThemeRole.Muted);
         dimTable.Controls.Add(lblBreite, 0, 0);
-
-        var lblLaenge = new Label
-        {
-            Text = "Länge",
-            Font = font,
-            AutoSize = true,
-            Anchor = AnchorStyles.Left | AnchorStyles.Bottom,
-            Margin = Padding.Empty
-        };
         dimTable.Controls.Add(lblLaenge, 2, 0);
-
-        // Row 1: textboxes and × and mm
         dimTable.Controls.Add(_txtWidth, 0, 1);
         dimTable.Controls.Add(new Label
         {
             Text = "×",
-            Font = font,
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
             TextAlign = ContentAlignment.MiddleCenter
@@ -220,55 +145,30 @@ internal class CustomSizeDialog : Form
         dimTable.Controls.Add(new Label
         {
             Text = "mm",
-            Font = font,
             AutoSize = true,
             Anchor = AnchorStyles.Left,
-            Margin = new Padding(4, 0, 0, 0)
+            Margin = new Padding(6, 0, 0, 0)
         }, 3, 1);
 
-        // === Hint label ===
-        var hintLabel = new Label
-        {
-            Text = $"Bis zu {MaxEntries} benutzerdefinierte Größen können hinzugefügt werden.",
-            Font = font,
-            AutoSize = true,
-            Margin = Padding.Empty
-        };
+        var card = new SettingsCard("Größen", $"Bis zu {MaxEntries} benutzerdefinierte Größen können hinzugefügt werden.");
+        card.Add(toolbar);
+        card.Add(listHost);
+        card.AddRow("Ausgewählte Größe", null, dimTable);
 
-        // === Main layout ===
-        var rootTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            ColumnStyles = { new ColumnStyle(SizeType.Percent, 100f) },
-            RowCount = 4,
-            RowStyles =
-            {
-                new RowStyle(SizeType.Absolute, 180f),
-                new RowStyle(SizeType.Absolute, 45f),
-                new RowStyle(SizeType.Absolute, 25f),
-                new RowStyle(SizeType.Percent, 100f)
-            },
-            Padding = new Padding(28, 15, 20, 15),
-            Margin = Padding.Empty
-        };
+        var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
+        stack.Controls.Add(card);
+        Body.Controls.Add(stack);
 
-        rootTable.Controls.Add(topTable, 0, 0);
-        rootTable.Controls.Add(dimTable, 0, 1);
-        rootTable.Controls.Add(hintLabel, 0, 2);
-        rootTable.Controls.Add(new Panel { Dock = DockStyle.Fill }, 0, 3);
-
-        Controls.Add(rootTable);
+        // === Footer ===
+        _btnClose = AddFooterButton("Schließen", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = _btnClose;
         CancelButton = _btnClose;
 
         RefreshList();
         ResumeLayout(false);
-        PerformLayout();
 
         ThemeManager.SetRole(_btnRemove, ThemeRole.Danger);
-        ThemeManager.SetRole(hintLabel, ThemeRole.Muted);
         ThemeManager.Apply(this);
     }
 
@@ -358,7 +258,7 @@ internal class CustomSizeDialog : Form
 /// <summary>
 /// Simple input dialog for a single custom paper size: name, width, length in mm.
 /// </summary>
-internal class CustomSizeEditDialog : Form
+internal class CustomSizeEditDialog : ModernWindow
 {
     private readonly TextBox _txtName;
     private readonly NumericUpDown _numWidth;
@@ -373,142 +273,52 @@ internal class CustomSizeEditDialog : Form
     public CustomSizeEditDialog()
     {
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        Text = "Benutzerdefinierte Größe";
-        Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(300, 156);
         ShowInTaskbar = false;
+        Text = "Benutzerdefinierte Größe";
+        Title = "Benutzerdefinierte Größe";
+        Subtitle = "Name und Abmessungen in Millimetern";
+        HeaderButtons = ModernHeaderButtons.Close;
+        AutoSizeToContent = true;
+        MinimumContentWidth = 400;
 
-        var font = UiFonts.Default;
-        Font = font;
-
-        var lblName = new Label
-        {
-            Text = "Name:",
-            Font = font,
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Margin = Padding.Empty
-        };
         _txtName = new TextBox
         {
             MaxLength = ScanSettings.MaxCustomPaperSizeNameLength,
-            Size = new Size(170, 22),
-            Font = font,
-            Dock = DockStyle.Fill,
-            Margin = Padding.Empty
+            Size = new Size(200, 24)
         };
 
-        var lblWidth = new Label
-        {
-            Text = "Breite (mm):",
-            Font = font,
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Margin = Padding.Empty
-        };
         _numWidth = new NumericUpDown
         {
-            Size = new Size(80, 22),
-            Font = font,
+            Size = new Size(90, 24),
             Minimum = 1,
             Maximum = 9999,
-            Value = 210,
-            Dock = DockStyle.Left,
-            Margin = Padding.Empty
+            Value = 210
         };
 
-        var lblLength = new Label
-        {
-            Text = "Länge (mm):",
-            Font = font,
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Margin = Padding.Empty
-        };
         _numLength = new NumericUpDown
         {
-            Size = new Size(80, 22),
-            Font = font,
+            Size = new Size(90, 24),
             Minimum = 1,
             Maximum = 9999,
-            Value = 297,
-            Dock = DockStyle.Left,
-            Margin = Padding.Empty
+            Value = 297
         };
 
-        _btnOk = new Button
-        {
-            Text = "OK",
-            DialogResult = DialogResult.OK,
-            Size = new Size(75, 28),
-            Font = font,
-            Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
-            Margin = new Padding(0, 0, 8, 0)
-        };
-        _btnCancel = new Button
-        {
-            Text = "Abbrechen",
-            DialogResult = DialogResult.Cancel,
-            Size = new Size(75, 28),
-            Font = font,
-            Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
-            Margin = Padding.Empty
-        };
+        var card = new SettingsCard();
+        card.AddRow("Name", null, _txtName, 200);
+        card.AddRow("Breite (mm)", null, _numWidth, 90);
+        card.AddRow("Länge (mm)", null, _numLength, 90);
 
-        var inputTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Top,
-            ColumnCount = 2,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Absolute, 100f),
-                new ColumnStyle(SizeType.Percent, 100f)
-            },
-            RowCount = 3,
-            RowStyles =
-            {
-                new RowStyle(SizeType.Absolute, 30f),
-                new RowStyle(SizeType.Absolute, 30f),
-                new RowStyle(SizeType.Absolute, 30f)
-            },
-            Margin = Padding.Empty,
-            Padding = new Padding(12, 12, 12, 0)
-        };
-        inputTable.Controls.Add(lblName, 0, 0);
-        inputTable.Controls.Add(_txtName, 1, 0);
-        inputTable.Controls.Add(lblWidth, 0, 1);
-        inputTable.Controls.Add(_numWidth, 1, 1);
-        inputTable.Controls.Add(lblLength, 0, 2);
-        inputTable.Controls.Add(_numLength, 1, 2);
+        var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
+        stack.Controls.Add(card);
+        Body.Controls.Add(stack);
 
-        var buttonRow = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            FlowDirection = FlowDirection.RightToLeft,
-            WrapContents = false,
-            Height = 40,
-            Padding = new Padding(0, 0, 12, 8),
-            Margin = Padding.Empty
-        };
-        buttonRow.Controls.Add(_btnCancel);
-        buttonRow.Controls.Add(_btnOk);
-
-        Controls.Add(inputTable);
-        Controls.Add(buttonRow);
+        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        _btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = _btnOk;
         CancelButton = _btnCancel;
         ResumeLayout(false);
-        PerformLayout();
 
         ThemeManager.Apply(this);
     }

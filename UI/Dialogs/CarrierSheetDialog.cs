@@ -7,8 +7,10 @@ namespace SpeedScanManager;
 /// <summary>
 /// Dialog for carrier sheet (Trägerblatt) settings.
 /// Explains the carrier sheet workflow and allows configuring output size.
+/// Modern layout (<see cref="ModernWindow"/>): a settings card and an instructions card
+/// with the illustrations.
 /// </summary>
-internal class CarrierSheetDialog : Form
+internal class CarrierSheetDialog : ModernWindow
 {
     private readonly CheckBox _chkEnabled;
     private readonly ComboBox _cbMode;
@@ -17,6 +19,7 @@ internal class CarrierSheetDialog : Form
     private readonly NumericUpDown _numCustomHeight;
     private readonly Label _lblCustomWidth;
     private readonly Label _lblCustomHeight;
+    private readonly SettingRow _rowCustomSize;
     private readonly Button _btnOk;
     private readonly Button _btnCancel;
 
@@ -50,65 +53,33 @@ internal class CarrierSheetDialog : Form
     public CarrierSheetDialog()
     {
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        Text = "Trägerblatteinstellungen";
-        Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(466, 488);
         ShowInTaskbar = false;
+        Text = "Trägerblatteinstellungen";
+        Title = "Trägerblatteinstellungen";
+        Subtitle = "Gefaltete Dokumente über das Trägerblatt scannen";
+        HeaderButtons = ModernHeaderButtons.Close;
+        AutoSizeToContent = true;
+        MinimumContentWidth = 504;
 
-        var font = UiFonts.Default;
-        var smallFont = UiFonts.Default;
-        Font = font;
-
-        // === Enable checkbox ===
-        _chkEnabled = new CheckBox
-        {
-            Text = "Trägerblatt-Modus aktivieren",
-            Location = new Point(12, 12),
-            AutoSize = true,
-            Font = font
-        };
+        // === Enable switch ===
+        _chkEnabled = new ToggleSwitch();
 
         // === Mode dropdown ===
-        var lblMode = new Label
-        {
-            Text = "Modus:",
-            Location = new Point(12, 44),
-            AutoSize = true,
-            Font = font
-        };
-
         _cbMode = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(140, 41),
-            Size = new Size(300, 24),
-            Font = font,
+            Size = new Size(270, 24),
             Enabled = false
         };
         _cbMode.Items.Add("Zwei Seiten in einem Bild erstellen");
         _cbMode.SelectedIndex = 0;
 
         // === Output size dropdown ===
-        var lblOutputSize = new Label
-        {
-            Text = "Ausgabebildgröße:",
-            Location = new Point(12, 76),
-            AutoSize = true,
-            Font = font
-        };
-
         _cbOutputSize = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(140, 73),
-            Size = new Size(240, 24),
-            Font = font,
+            Size = new Size(270, 24),
             Enabled = false,
             MaxDropDownItems = OutputSizes.Length
         };
@@ -121,118 +92,113 @@ internal class CarrierSheetDialog : Form
         _lblCustomWidth = new Label
         {
             Text = "Breite (mm):",
-            Location = new Point(140, 108),
             AutoSize = true,
-            Font = font,
+            Margin = new Padding(0, 4, 6, 0),
             Visible = false
         };
 
         _numCustomWidth = new NumericUpDown
         {
-            Location = new Point(220, 105),
-            Size = new Size(60, 24),
-            Font = font,
+            Size = new Size(70, 24),
             Minimum = ScanSettings.MinCarrierSheetSizeMm,
             Maximum = ScanSettings.MaxCarrierSheetSizeMm,
             Value = 297,
+            Margin = new Padding(0, 0, 16, 0),
             Visible = false
         };
 
         _lblCustomHeight = new Label
         {
             Text = "Höhe (mm):",
-            Location = new Point(296, 108),
             AutoSize = true,
-            Font = font,
+            Margin = new Padding(0, 4, 6, 0),
             Visible = false
         };
 
         _numCustomHeight = new NumericUpDown
         {
-            Location = new Point(372, 105),
-            Size = new Size(60, 24),
-            Font = font,
+            Size = new Size(70, 24),
             Minimum = ScanSettings.MinCarrierSheetSizeMm,
             Maximum = ScanSettings.MaxCarrierSheetSizeMm,
             Value = 420,
+            Margin = Padding.Empty,
             Visible = false
         };
 
-        // === Instruction text ===
-        var lblInstructions = new Label
+        var customFlow = new FlowLayoutPanel
         {
-            Text = "Anleitung:\n\n" +
-                   "Für Dokumente, die größer als das normale Scan-Format sind (z. B. A3), " +
-                   "falten Sie das Dokument entlang der Mittelachse. Legen Sie es in ein " +
-                   "Trägerblatt ein und führen Sie das Trägerblatt in den Scanner ein. " +
-                   "Beide Seiten werden gescannt und im Ausgabebild nebeneinander " +
-                   "zusammengefügt.",
-            Location = new Point(12, 136),
-            Size = new Size(440, 94),
-            Font = smallFont
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
+        customFlow.Controls.AddRange(new Control[] { _lblCustomWidth, _numCustomWidth, _lblCustomHeight, _numCustomHeight });
 
-        // === Illustrations ===
+        var cardSettings = new SettingsCard();
+        cardSettings.AddRow("Trägerblatt-Modus aktivieren", null, _chkEnabled);
+        cardSettings.AddRow("Modus", null, _cbMode, 270);
+        cardSettings.AddRow("Ausgabebildgröße", null, _cbOutputSize, 270);
+        _rowCustomSize = cardSettings.AddRow("Benutzerdefinierte Größe", null, customFlow);
+        _rowCustomSize.Stacked = true;
+        _rowCustomSize.Visible = false;
+
+        // === Instructions with illustrations ===
         var pnlIllustrations = new Panel
         {
-            Location = new Point(12, 234),
-            Size = new Size(440, 166)
+            Height = 170,
+            Margin = Padding.Empty
         };
-        ThemeManager.SetRole(pnlIllustrations, ThemeRole.Card);
+        // Painted completely by DrawIllustrations (inner tile + drawings).
+        ThemeManager.SetRole(pnlIllustrations, ThemeRole.None);
         typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
             ?.SetValue(pnlIllustrations, true);
+        pnlIllustrations.Paint += (s, e) => DrawIllustrations(e.Graphics, pnlIllustrations);
 
         var lblIllustrations = new Label
         {
             Text = "1) Dokument falten    2) In Trägerblatt einlegen    3) In Scanner führen",
-            Location = new Point(12, 404),
-            Size = new Size(440, 20),
-            Font = smallFont,
-            TextAlign = ContentAlignment.MiddleCenter
+            AutoSize = false,
+            Height = 34,
+            TextAlign = ContentAlignment.MiddleCenter,
+            UseMnemonic = false
         };
+        ThemeManager.SetRole(lblIllustrations, ThemeRole.Muted);
 
-        // === Buttons ===
-        _btnOk = new Button
-        {
-            Text = "OK",
-            DialogResult = DialogResult.OK,
-            Location = new Point(290, 444),
-            Size = new Size(75, 28),
-            Font = font
-        };
+        var cardInstructions = new SettingsCard("Anleitung",
+            "Für Dokumente, die größer als das normale Scan-Format sind (z. B. A3), " +
+            "falten Sie das Dokument entlang der Mittelachse. Legen Sie es in ein " +
+            "Trägerblatt ein und führen Sie das Trägerblatt in den Scanner ein. " +
+            "Beide Seiten werden gescannt und im Ausgabebild nebeneinander " +
+            "zusammengefügt.") { ShowDividers = false };
+        cardInstructions.Add(new Panel { Height = 8 });
+        cardInstructions.Add(pnlIllustrations);
+        cardInstructions.Add(lblIllustrations);
 
-        _btnCancel = new Button
-        {
-            Text = "Abbrechen",
-            DialogResult = DialogResult.Cancel,
-            Location = new Point(377, 444),
-            Size = new Size(75, 28),
-            Font = font
-        };
+        var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
+        stack.Controls.Add(cardSettings);
+        stack.Controls.Add(cardInstructions);
+        Body.Controls.Add(stack);
+
+        // === Footer ===
+        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        _btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         _chkEnabled.CheckedChanged += (s, e) => UpdateEnabledState();
-
-        Controls.AddRange(new Control[]
-        {
-            _chkEnabled,
-            lblMode, _cbMode,
-            lblOutputSize, _cbOutputSize,
-            _lblCustomWidth, _numCustomWidth,
-            _lblCustomHeight, _numCustomHeight,
-            lblInstructions,
-            pnlIllustrations,
-            lblIllustrations,
-            _btnOk, _btnCancel
-        });
 
         AcceptButton = _btnOk;
         CancelButton = _btnCancel;
         ResumeLayout(false);
-        PerformLayout();
 
         ThemeManager.Apply(this);
-        // After Apply: the card background is painted first, the illustrations on top.
-        pnlIllustrations.Paint += (s, e) => DrawIllustrations(e.Graphics, pnlIllustrations.Size);
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        // Size the window for the initial state (custom size row shown or not).
+        _rowCustomSize.Visible = CarrierSheetEnabled && OutputSize == CarrierSheetOutputSize.Custom;
+        base.OnLoad(e);
     }
 
     private void UpdateEnabledState()
@@ -251,20 +217,38 @@ internal class CarrierSheetDialog : Form
         _numCustomWidth.Visible = showCustom;
         _lblCustomHeight.Visible = showCustom;
         _numCustomHeight.Visible = showCustom;
+        if (_rowCustomSize.Visible != showCustom)
+        {
+            _rowCustomSize.Visible = showCustom;
+            // The window follows the content (row shown/hidden).
+            if (IsLayoutScaled && AutoSizeToContent)
+                FitToContent();
+        }
     }
 
     /// <summary>
     /// Draws three simple schematic illustrations for the carrier sheet workflow.
     /// </summary>
-    private void DrawIllustrations(Graphics g, Size size)
+    private void DrawIllustrations(Graphics g, Control panel)
     {
+        var p = ThemeManager.Current;
+        var size = panel.ClientSize;
+        g.Clear(p.Card);
         g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        // Inner tile (the drawings sit on it)
+        var bg = p.TileOnCard;
+        float s = panel.DeviceDpi / 96f;
+        using (var tilePath = ThemeGlyphs.Rounded(new RectangleF(0.5f, 0.5f, size.Width - 1.5f, size.Height - 1.5f), 8 * s))
+        {
+            using (var tileBrush = new SolidBrush(bg))
+                g.FillPath(tileBrush, tilePath);
+            using var tilePen = new Pen(p.CardBorder);
+            g.DrawPath(tilePen, tilePath);
+        }
+
         int panelW = size.Width / 3;
         int centerY = size.Height / 2;
-
-        // Theme colors (the panel is a card on the secondary surface)
-        var p = ThemeManager.Current;
-        var bg = p.Secondary;
         using var pen = new Pen(p.Accent, 2);
         using var foldPen = new Pen(p.Danger, 1.5f) { DashStyle = DashStyle.Dash };
         using var fillBrush = new SolidBrush(ThemePalette.Blend(p.Accent, bg, p.IsDark ? 0.78f : 0.86f));

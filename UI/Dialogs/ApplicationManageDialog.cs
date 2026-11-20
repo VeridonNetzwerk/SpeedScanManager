@@ -6,8 +6,10 @@ namespace SpeedScanManager;
 /// <summary>
 /// Dialog for managing custom scan applications (add/remove/edit, max 10).
 /// Built-in applications (Scan to Folder) are not shown here – only user-added ones.
+/// Modern layout (<see cref="ModernWindow"/>): one card with a toolbar (add/edit/remove) and
+/// the list; help in the header.
 /// </summary>
-internal class ApplicationManageDialog : Form
+internal class ApplicationManageDialog : ModernWindow
 {
     private readonly ListBox _listBox;
     private readonly Button _btnAdd;
@@ -24,114 +26,88 @@ internal class ApplicationManageDialog : Form
         CustomApps.AddRange(existingApps.Select(a => a.Clone()));
 
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        Text = "Installieren/Deinstallieren";
-        Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(600, 206);
         ShowInTaskbar = false;
+        Text = "Installieren/Deinstallieren";
+        Title = "Installieren/Deinstallieren";
+        Subtitle = "Eigene Anwendungen hinzufügen, ändern oder entfernen";
+        HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
+        HelpTopic = "app-manage";
+        AutoSizeToContent = true;
+        MinimumContentWidth = 600;
 
-        var font = UiFonts.Default;
-        Font = font;
-
-        // === List ===
-        var lblList = new Label
-        {
-            Text = "Hinzugefügt:",
-            Location = new Point(12, 12),
-            AutoSize = true,
-            Font = font
-        };
-
-        _listBox = new ListBox
-        {
-            Location = new Point(12, 34),
-            Size = new Size(444, 134),
-            Font = font,
-            IntegralHeight = false
-        };
-        _listBox.SelectedIndexChanged += (s, e) => UpdateButtonStates();
-        _listBox.DoubleClick += (s, e) => EditEntry();
-
-        // === Buttons (right column, stacked) ===
+        // === Toolbar: add / edit / remove ===
         _btnAdd = new Button
         {
             Text = "Hinzufügen...",
-            Location = new Point(468, 12),
-            Size = new Size(120, 28),
-            Font = font
+            Size = new Size(132, 32),
+            Margin = new Padding(0, 0, 8, 0)
         };
+        ThemeManager.SetGlyph(_btnAdd, Glyph.Plus);
         _btnAdd.Click += (s, e) => AddEntry();
-
-        _btnRemove = new Button
-        {
-            Text = "Entfernen",
-            Location = new Point(468, 46),
-            Size = new Size(120, 28),
-            Font = font,
-            Enabled = false
-        };
-        _btnRemove.Click += (s, e) => RemoveEntry();
 
         _btnEdit = new Button
         {
             Text = "Ändern...",
-            Location = new Point(468, 80),
-            Size = new Size(120, 28),
-            Font = font,
+            Size = new Size(116, 32),
+            Margin = new Padding(0, 0, 8, 0),
             Enabled = false
         };
+        ThemeManager.SetGlyph(_btnEdit, Glyph.Sliders);
         _btnEdit.Click += (s, e) => EditEntry();
 
-        var btnHelp = new Button
+        _btnRemove = new Button
         {
-            Text = "Hilfe",
-            Location = new Point(468, 114),
-            Size = new Size(120, 28),
-            Font = font
+            Text = "Entfernen",
+            Size = new Size(116, 32),
+            Margin = Padding.Empty,
+            Enabled = false
         };
-        btnHelp.Click += (s, e) => { using var h = new HelpForm("app-manage"); h.ShowDialog(this); };
+        ThemeManager.SetGlyph(_btnRemove, Glyph.Minus);
+        _btnRemove.Click += (s, e) => RemoveEntry();
 
-        _btnClose = new Button
+        var toolbar = new FlowLayoutPanel
         {
-            Text = "Schließen",
-            DialogResult = DialogResult.OK,
-            Location = new Point(468, 148),
-            Size = new Size(120, 28),
-            Font = font
+            AutoSize = false,
+            Height = 56,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Padding = new Padding(0, 12, 0, 12),
+            Margin = Padding.Empty
         };
+        toolbar.Controls.AddRange(new Control[] { _btnAdd, _btnEdit, _btnRemove });
 
-        var lblHint = new Label
+        // === List ===
+        _listBox = new ListBox
         {
-            Text = $"Bis zu {MaxEntries} Anwendungen können hinzugefügt werden.",
-            Location = new Point(12, 178),
-            AutoSize = true,
-            Font = font
+            Dock = DockStyle.Fill,
+            IntegralHeight = false,
+            AccessibleName = "Hinzugefügt"
         };
+        _listBox.SelectedIndexChanged += (s, e) => UpdateButtonStates();
+        _listBox.DoubleClick += (s, e) => EditEntry();
 
-        Controls.AddRange(new Control[]
-        {
-            lblList,
-            _listBox,
-            _btnAdd, _btnRemove, _btnEdit,
-            btnHelp,
-            _btnClose,
-            lblHint
-        });
+        var listHost = new Panel { Height = 176, Padding = new Padding(0, 0, 0, 14) };
+        listHost.Controls.Add(_listBox);
+
+        var card = new SettingsCard("Hinzugefügt", $"Bis zu {MaxEntries} Anwendungen können hinzugefügt werden.");
+        card.Add(toolbar);
+        card.Add(listHost);
+
+        var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
+        stack.Controls.Add(card);
+        Body.Controls.Add(stack);
+
+        // === Footer ===
+        _btnClose = AddFooterButton("Schließen", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = _btnClose;
         CancelButton = _btnClose;
 
         RefreshList();
         ResumeLayout(false);
-        PerformLayout();
 
         ThemeManager.SetRole(_btnRemove, ThemeRole.Danger);
-        ThemeManager.SetRole(lblHint, ThemeRole.Muted);
         ThemeManager.Apply(this);
     }
 
@@ -217,7 +193,7 @@ internal class ApplicationManageDialog : Form
 /// <summary>
 /// Input dialog for a custom application entry: name, program (.exe) and optional arguments.
 /// </summary>
-internal class ApplicationEditDialog : Form
+internal class ApplicationEditDialog : ModernWindow
 {
     private readonly TextBox _txtName;
     private readonly TextBox _txtPath;
@@ -233,49 +209,49 @@ internal class ApplicationEditDialog : Form
         _validateName = validateName;
 
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        Text = "Anwendung hinzufügen";
-        Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(440, 176);
         ShowInTaskbar = false;
+        Text = "Anwendung hinzufügen";
+        Title = Text;
+        Subtitle = "Programm, das die gescannten Dateien öffnet";
+        HeaderButtons = ModernHeaderButtons.Close;
+        AutoSizeToContent = true;
+        MinimumContentWidth = 500;
 
-        var font = UiFonts.Default;
-        Font = font;
+        _txtName = new TextBox { MaxLength = 64, AccessibleName = "Name" };
 
-        var lblName = new Label { Text = "Name:", Location = new Point(12, 16), AutoSize = true, Font = font };
-        _txtName = new TextBox { Location = new Point(100, 13), Size = new Size(326, 24), Font = font, MaxLength = 64 };
-
-        var lblPath = new Label { Text = "Programm:", Location = new Point(12, 48), AutoSize = true, Font = font };
-        _txtPath = new TextBox { Location = new Point(100, 45), Size = new Size(220, 24), Font = font };
-        var btnBrowse = new Button { Text = "Durchsuchen...", Location = new Point(326, 44), Size = new Size(100, 26), Font = font };
+        _txtPath = new TextBox { AccessibleName = "Programm" };
+        var btnBrowse = new Button { Text = "Durchsuchen...", Size = new Size(132, 32) };
+        ThemeManager.SetGlyph(btnBrowse, Glyph.Folder);
         btnBrowse.Click += (s, e) => BrowseExe();
+        var pathPicker = new PathPicker(_txtPath, btnBrowse);
 
-        var lblArgs = new Label { Text = "Argumente:", Location = new Point(12, 80), AutoSize = true, Font = font };
-        _txtArgs = new TextBox { Location = new Point(100, 77), Size = new Size(326, 24), Font = font };
-        var lblArgsHint = new Label
-        {
-            Text = "Optional. Die gescannten Dateien werden danach angehängt.",
-            Location = new Point(100, 103),
-            AutoSize = true,
-            Font = font
-        };
-        ThemeManager.SetRole(lblArgsHint, ThemeRole.Muted);
+        _txtArgs = new TextBox { AccessibleName = "Argumente" };
 
-        var btnOk = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(266, 136), Size = new Size(75, 28), Font = font };
-        var btnCancel = new Button { Text = "Abbrechen", DialogResult = DialogResult.Cancel, Location = new Point(351, 136), Size = new Size(75, 28), Font = font };
+        // Label above the input (full width for long paths).
+        var card = new SettingsCard();
+        card.AddRow("Name", null, _txtName).Stacked = true;
+        card.AddRow("Programm", null, pathPicker).Stacked = true;
+        card.AddRow("Argumente", "Optional. Die gescannten Dateien werden danach angehängt.", _txtArgs).Stacked = true;
 
-        Controls.AddRange(new Control[] { lblName, _txtName, lblPath, _txtPath, btnBrowse, lblArgs, _txtArgs, lblArgsHint, btnOk, btnCancel });
+        var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
+        stack.Controls.Add(card);
+        Body.Controls.Add(stack);
+
+        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
         AcceptButton = btnOk;
         CancelButton = btnCancel;
         ResumeLayout(false);
-        PerformLayout();
 
         ThemeManager.Apply(this);
+    }
+
+    /// <summary>The caption (set by the caller, e.g. "Anwendung ändern") is also the header title.</summary>
+    protected override void OnTextChanged(EventArgs e)
+    {
+        base.OnTextChanged(e);
+        Title = Text;
     }
 
     private void BrowseExe()
@@ -326,5 +302,30 @@ internal class ApplicationEditDialog : Form
             Arguments = _txtArgs.Text.Trim();
         }
         base.OnFormClosing(e);
+    }
+
+    /// <summary>Path text box (fills the width) with the browse button on its right.</summary>
+    private sealed class PathPicker : Panel
+    {
+        private readonly TextBox _text;
+        private readonly Button _button;
+
+        public PathPicker(TextBox text, Button button)
+        {
+            _text = text;
+            _button = button;
+            Height = 32;
+            Margin = Padding.Empty;
+            Controls.Add(text);
+            Controls.Add(button);
+        }
+
+        protected override void OnLayout(LayoutEventArgs levent)
+        {
+            base.OnLayout(levent);
+            int gap = ModernLayout.Scale(this, 8);
+            _button.Location = new Point(Width - _button.Width, (Height - _button.Height) / 2);
+            _text.SetBounds(0, (Height - _text.Height) / 2, Math.Max(0, _button.Left - gap), _text.Height);
+        }
     }
 }

@@ -6,8 +6,9 @@ namespace SpeedScanManager;
 /// <summary>
 /// Sub-dialog for scan mode options: brightness slider (B/W only),
 /// blank page deletion, deskew, auto-rotate, face-up feeding.
+/// Modern layout (<see cref="ModernWindow"/>): a brightness card and a card with switches.
 /// </summary>
-internal class ScanModeOptionsDialog : Form
+internal class ScanModeOptionsDialog : ModernWindow
 {
     private readonly TrackBar _brightnessSlider;
     private readonly Label _lblBrightnessValue;
@@ -34,67 +35,44 @@ internal class ScanModeOptionsDialog : Form
         _colorMode = colorMode;
 
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        Text = "Scanmodus-Optionen";
-        Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(400, 312);
         ShowInTaskbar = false;
+        Text = "Scanmodus-Optionen";
+        Title = "Scanmodus-Optionen";
+        Subtitle = "Helligkeit und Bildverarbeitung";
+        HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
+        HelpTopic = "scanmode-options";
+        AutoSizeToContent = true;
+        MinimumContentWidth = 460;
 
-        var font = UiFonts.Default;
-        Font = font;
         _leftIcon = TabIcons.CreateScanIcon();
         _rightIcon = TabIcons.CreatePaperIcon();
 
-        // === Brightness group ===
-        var grpBrightness = new GroupBox
-        {
-            Text = "Helligkeit (nur Schwarzweiß-Scan)",
-            Location = new Point(12, 12),
-            Size = new Size(376, 92),
-            Font = font
-        };
-
+        // === Brightness card ===
         var picLeftIcon = new PictureBox
         {
             Image = _leftIcon,
-            SizeMode = PictureBoxSizeMode.AutoSize,
-            Location = new Point(16, 28),
+            SizeMode = PictureBoxSizeMode.CenterImage,
+            Size = new Size(16, 16),
             Margin = Padding.Empty
         };
 
         // Slider: negative values (left) = darker, positive (right) = lighter (TWAIN brightness)
-        var lblDark = new Label
-        {
-            Text = "Dunkel",
-            Location = new Point(30, 32),
-            AutoSize = true,
-            Font = font
-        };
-
-        var lblBright = new Label
-        {
-            Text = "Hell",
-            Location = new Point(322, 32),
-            AutoSize = true,
-            Font = font
-        };
+        var lblDark = new Label { Text = "Dunkel", AutoSize = true };
+        var lblBright = new Label { Text = "Hell", AutoSize = true };
+        ThemeManager.SetRole(lblDark, ThemeRole.Muted);
+        ThemeManager.SetRole(lblBright, ThemeRole.Muted);
 
         var picRightIcon = new PictureBox
         {
             Image = _rightIcon,
-            SizeMode = PictureBoxSizeMode.AutoSize,
-            Location = new Point(348, 28),
+            SizeMode = PictureBoxSizeMode.CenterImage,
+            Size = new Size(16, 16),
             Margin = Padding.Empty
         };
 
         _brightnessSlider = new TrackBar
         {
-            Location = new Point(66, 18),
             Size = new Size(250, 45),
             Minimum = -3,
             Maximum = 3,
@@ -102,140 +80,52 @@ internal class ScanModeOptionsDialog : Form
             TickFrequency = 1,
             SmallChange = 1,
             LargeChange = 1,
-            Enabled = colorMode == ColorMode.BlackWhite
+            Enabled = colorMode == ColorMode.BlackWhite,
+            AccessibleName = "Helligkeit"
         };
         _brightnessSlider.ValueChanged += (s, e) => UpdateBrightnessLabel();
 
         _lblBrightnessValue = new Label
         {
             Text = "Normal",
-            Location = new Point(66, 64),
-            Size = new Size(250, 18),
             AutoSize = false,
+            Size = new Size(250, 20),
             Font = UiFonts.Bold,
             TextAlign = ContentAlignment.MiddleCenter
         };
         ThemeManager.SetRole(_lblBrightnessValue, ThemeRole.Accent);
 
-        grpBrightness.Controls.AddRange(new Control[] { picLeftIcon, lblDark, lblBright, picRightIcon, _brightnessSlider, _lblBrightnessValue });
+        var strip = new BrightnessStrip(picLeftIcon, lblDark, _brightnessSlider, lblBright, picRightIcon, _lblBrightnessValue);
 
-        // === Checkboxes ===
-        int cbY = 116;
-        int cbSpacing = 28;
+        var cardBrightness = new SettingsCard("Helligkeit", "Nur für Schwarzweiß-Scans (Farbmodus \"Schwarzweiß\").");
+        cardBrightness.Add(strip);
 
-        _chkTextOnly = new CheckBox
-        {
-            Text = "Einstellung nur für Textdokumente",
-            Location = new Point(16, cbY),
-            AutoSize = true,
-            Font = font
-        };
+        // === Options card (switches) ===
+        _chkTextOnly = new ToggleSwitch();
+        _chkDeleteBlankPages = new ToggleSwitch { Checked = true };
+        _chkDeskew = new ToggleSwitch();
+        _chkAutoRotate = new ToggleSwitch { Checked = true };
+        _chkFaceUp = new ToggleSwitch();
 
-        _chkDeleteBlankPages = new CheckBox
-        {
-            Text = "Automatisches Löschen leerer Seiten zulassen",
-            Location = new Point(16, cbY + cbSpacing),
-            AutoSize = true,
-            Font = font,
-            Checked = true
-        };
+        var cardOptions = new SettingsCard("Bildverarbeitung");
+        cardOptions.AddRow("Einstellung nur für Textdokumente", null, _chkTextOnly);
+        cardOptions.AddRow("Automatisches Löschen leerer Seiten zulassen", null, _chkDeleteBlankPages);
+        cardOptions.AddRow("Schräglauf automatisch korrigieren", null, _chkDeskew);
+        cardOptions.AddRow("Automatische Bilddrehung zulassen", null, _chkAutoRotate);
+        cardOptions.AddRow("Dokumente mit der Vorderseite nach oben einlegen", null, _chkFaceUp);
 
-        _chkDeskew = new CheckBox
-        {
-            Text = "Schräglauf automatisch korrigieren",
-            Location = new Point(16, cbY + cbSpacing * 2),
-            AutoSize = true,
-            Font = font
-        };
+        var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
+        stack.Controls.Add(cardBrightness);
+        stack.Controls.Add(cardOptions);
+        Body.Controls.Add(stack);
 
-        _chkAutoRotate = new CheckBox
-        {
-            Text = "Automatische Bilddrehung zulassen",
-            Location = new Point(16, cbY + cbSpacing * 3),
-            AutoSize = true,
-            Font = font,
-            Checked = true
-        };
-
-        _chkFaceUp = new CheckBox
-        {
-            Text = "Dokumente mit der Vorderseite nach oben einlegen",
-            Location = new Point(16, cbY + cbSpacing * 4),
-            AutoSize = true,
-            Font = font
-        };
-
-        // === Buttons ===
-        var btnOk = new Button
-        {
-            Text = "OK",
-            DialogResult = DialogResult.OK,
-            Size = new Size(75, 28),
-            Font = font
-        };
-
-        var btnCancel = new Button
-        {
-            Text = "Abbrechen",
-            DialogResult = DialogResult.Cancel,
-            Size = new Size(75, 28),
-            Font = font
-        };
-
-        var btnHelp = new Button
-        {
-            Text = "Hilfe",
-            Size = new Size(75, 28),
-            Font = font
-        };
-        btnHelp.Click += (s, e) => { using var h = new HelpForm("scanmode-options"); h.ShowDialog(this); };
-
-        var buttonPanel = new TableLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 46,
-            Margin = Padding.Empty,
-            Padding = new Padding(0, 0, 12, 10),
-            ColumnCount = 6,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Percent, 100f),
-                new ColumnStyle(SizeType.Absolute, 75f),
-                new ColumnStyle(SizeType.Absolute, 8f),
-                new ColumnStyle(SizeType.Absolute, 75f),
-                new ColumnStyle(SizeType.Absolute, 8f),
-                new ColumnStyle(SizeType.Absolute, 75f)
-            },
-            RowCount = 1,
-            RowStyles = { new RowStyle(SizeType.Absolute, 36f) }
-        };
-
-        btnOk.Dock = DockStyle.Fill;
-        btnCancel.Dock = DockStyle.Fill;
-        btnHelp.Dock = DockStyle.Fill;
-        btnOk.Margin = new Padding(0, 4, 0, 4);
-        btnCancel.Margin = new Padding(0, 4, 0, 4);
-        btnHelp.Margin = new Padding(0, 4, 0, 4);
-
-        buttonPanel.Controls.Add(btnOk, 1, 0);
-        buttonPanel.Controls.Add(btnCancel, 3, 0);
-        buttonPanel.Controls.Add(btnHelp, 5, 0);
-
-        Controls.AddRange(new Control[]
-        {
-            buttonPanel,
-            grpBrightness,
-            _chkTextOnly,
-            _chkDeleteBlankPages,
-            _chkDeskew,
-            _chkAutoRotate,
-            _chkFaceUp
-        });
+        // === Footer ===
+        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = btnOk;
         CancelButton = btnCancel;
         ResumeLayout(false);
-        PerformLayout();
 
         ThemeManager.Apply(this);
     }
@@ -287,5 +177,51 @@ internal class ScanModeOptionsDialog : Form
             _rightIcon.Dispose();
         }
         base.Dispose(disposing);
+    }
+
+    /// <summary>
+    /// Brightness row: icon, "Dunkel", slider, "Hell", icon in one line, the value label
+    /// centered under the slider.
+    /// </summary>
+    private sealed class BrightnessStrip : Panel
+    {
+        private readonly Control _leftIcon, _lblDark, _slider, _lblBright, _rightIcon, _value;
+
+        public BrightnessStrip(Control leftIcon, Control lblDark, Control slider, Control lblBright, Control rightIcon, Control value)
+        {
+            _leftIcon = leftIcon;
+            _lblDark = lblDark;
+            _slider = slider;
+            _lblBright = lblBright;
+            _rightIcon = rightIcon;
+            _value = value;
+            Height = 84;
+            Margin = Padding.Empty;
+            Controls.AddRange(new[] { leftIcon, lblDark, slider, lblBright, rightIcon, value });
+        }
+
+        private int S(float v) => ModernLayout.Scale(this, v);
+
+        protected override void OnLayout(LayoutEventArgs levent)
+        {
+            base.OnLayout(levent);
+            int sliderH = _slider.Height;
+            int top = S(12);
+            int lineY = top + S(14); // vertical center of the slider track
+            int x = 0;
+            _leftIcon.Location = new Point(x, lineY - _leftIcon.Height / 2);
+            x = _leftIcon.Right + S(6);
+            _lblDark.Location = new Point(x, lineY - _lblDark.Height / 2);
+            int left = _lblDark.Right + S(8);
+
+            int r = Width;
+            _rightIcon.Location = new Point(r - _rightIcon.Width, lineY - _rightIcon.Height / 2);
+            r = _rightIcon.Left - S(6);
+            _lblBright.Location = new Point(r - _lblBright.Width, lineY - _lblBright.Height / 2);
+            int right = _lblBright.Left - S(8);
+
+            _slider.SetBounds(left, top, Math.Max(S(60), right - left), sliderH);
+            _value.SetBounds(_slider.Left, _slider.Bottom - S(2), _slider.Width, _value.Height);
+        }
     }
 }

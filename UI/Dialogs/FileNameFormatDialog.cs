@@ -6,8 +6,10 @@ namespace SpeedScanManager;
 /// <summary>
 /// Dialog for configuring the file name format for scanned documents.
 /// Three modes: OS default, timestamp pattern, or custom name with counter.
+/// Modern layout (<see cref="ModernWindow"/>): the options in one card (one radio group),
+/// the example file name in a second card.
 /// </summary>
-internal class FileNameFormatDialog : Form
+internal class FileNameFormatDialog : ModernWindow
 {
     public enum FormatMode
     {
@@ -35,252 +37,96 @@ internal class FileNameFormatDialog : Form
     public FileNameFormatDialog()
     {
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        Text = "Dateinamenformat";
-        Icon = TrayIcons.GetAppIcon();
-        ClientSize = new Size(550, 240);
         ShowInTaskbar = false;
+        Text = "Dateinamenformat";
+        Title = "Dateinamenformat";
+        Subtitle = "Benennung der gescannten Dateien";
+        HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
+        HelpTopic = "filename-format";
+        AutoSizeToContent = true;
+        MinimumContentWidth = 540;
 
-        var font = UiFonts.Default;
-        Font = font;
-
-        // === Root layout with real padding ===
-        var rootPanel = new Panel
-        {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(14, 30, 14, 8),
-            Margin = Padding.Empty
-        };
-
-        // === Content table (no GroupBox, plain label heading) ===
-        // 6 rows: heading, 2 radio buttons (indented), custom radio, input row, preview
-        // 5 columns: label | textbox | gap | label | combobox
-        var contentTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 5,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Absolute, 90f),    // Dateiname label
-                new ColumnStyle(SizeType.Absolute, 210f),   // Dateiname textbox
-                new ColumnStyle(SizeType.Absolute, 40f),    // gap
-                new ColumnStyle(SizeType.Absolute, 60f),    // Zähler label
-                new ColumnStyle(SizeType.Percent, 100f)     // Zähler combobox + remainder
-            },
-            RowCount = 6,
-            RowStyles =
-            {
-                new RowStyle(SizeType.Absolute, 20f),  // "Datum und Uhrzeit" heading
-                new RowStyle(SizeType.Absolute, 26f),  // rbOsDefault (indented)
-                new RowStyle(SizeType.Absolute, 26f),  // rbTimestamp (indented)
-                new RowStyle(SizeType.Absolute, 26f),  // rbCustom
-                new RowStyle(SizeType.Absolute, 30f),  // combined Dateiname + Zähler row
-                new RowStyle(SizeType.Absolute, 24f)   // Preview row
-            },
-            Margin = new Padding(12, 0, 8, 4),
-            Padding = Padding.Empty
-        };
-
-        var lblHeading = new Label
-        {
-            Text = "Datum und Uhrzeit",
-            Font = font,
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            Margin = Padding.Empty
-        };
+        // All three radio buttons live in the same card (one radio group).
+        var lblHeading = new SectionHeading("Datum und Uhrzeit") { Height = 30 };
 
         _rbOsDefault = new RadioButton
         {
             Text = "Benutzen Sie die Einstellung Ihres Betriebssystems",
-            Font = font,
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            Margin = new Padding(20, 0, 0, 0)
+            AutoSize = false,
+            Height = 32
         };
 
         _rbTimestamp = new RadioButton
         {
             Text = "JJJJMMTThhmmss",
-            Font = font,
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            Margin = new Padding(20, 0, 0, 0),
+            AutoSize = false,
+            Height = 32,
             Checked = true
         };
+
+        var lblCustomHeading = new SectionHeading("Benutzerdefiniert") { Height = 30 };
 
         _rbCustom = new RadioButton
         {
             Text = "Benutzerdefinierter Dateiname",
-            Font = font,
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            Margin = Padding.Empty
-        };
-
-        var lblFileName = new Label
-        {
-            Text = "Dateiname:",
-            Font = font,
-            AutoSize = true,
-            Anchor = AnchorStyles.Left,
-            Margin = new Padding(8, 0, 0, 0)
+            AutoSize = false,
+            Height = 32
         };
 
         _txtCustomName = new TextBox
         {
             Text = FileNamePattern.DefaultCustomName,
-            Font = font,
             MaxLength = FileNamePattern.MaxCustomNameLength,
-            Size = new Size(200, 22),
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
-            Margin = Padding.Empty,
+            Size = new Size(240, 24),
             Enabled = false
-        };
-
-        var lblCounter = new Label
-        {
-            Text = "Zähler:",
-            Font = font,
-            AutoSize = true,
-            Anchor = AnchorStyles.Left,
-            Margin = new Padding(16, 0, 0, 0)
         };
 
         _cbCounterDigits = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Font = font,
-            Size = new Size(110, 22),
-            Anchor = AnchorStyles.Left,
-            Margin = Padding.Empty,
+            Size = new Size(140, 24),
             Enabled = false
         };
         _cbCounterDigits.Items.AddRange(new object[] { "3 Ziffern", "4 Ziffern", "5 Ziffern" });
         _cbCounterDigits.SelectedIndex = 0;
 
+        var cardFormat = new SettingsCard { ShowDividers = false };
+        cardFormat.Add(lblHeading);
+        cardFormat.Add(_rbOsDefault);
+        cardFormat.Add(_rbTimestamp);
+        cardFormat.Add(new Panel { Height = 6 });
+        cardFormat.Add(lblCustomHeading);
+        cardFormat.Add(_rbCustom);
+        cardFormat.AddRow("Dateiname", null, _txtCustomName, 240);
+        cardFormat.AddRow("Zähler", null, _cbCounterDigits, 140);
+
+        // === Preview card ===
         _lblPreview = new Label
         {
             Text = "",
-            Font = font,
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            Margin = new Padding(16, 0, 0, 0)
+            AutoSize = false,
+            Height = 40,
+            TextAlign = ContentAlignment.MiddleLeft,
+            UseMnemonic = false,
+            AutoEllipsis = true
         };
+        var cardPreview = new SettingsCard();
+        cardPreview.Add(_lblPreview);
 
-        // Add controls to content table
-        // Row 0: "Datum und Uhrzeit" heading
-        contentTable.Controls.Add(lblHeading, 0, 0);
-        contentTable.SetColumnSpan(lblHeading, 5);
+        var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
+        stack.Controls.Add(cardFormat);
+        stack.Controls.Add(cardPreview);
+        Body.Controls.Add(stack);
 
-        // Row 1-2: RadioButtons under heading (indented)
-        contentTable.Controls.Add(_rbOsDefault, 0, 1);
-        contentTable.SetColumnSpan(_rbOsDefault, 5);
-
-        contentTable.Controls.Add(_rbTimestamp, 0, 2);
-        contentTable.SetColumnSpan(_rbTimestamp, 5);
-
-        // Row 3: Custom radio button (separate, not under heading)
-        contentTable.Controls.Add(_rbCustom, 0, 3);
-        contentTable.SetColumnSpan(_rbCustom, 5);
-
-        // Row 4: Combined Dateiname + Zähler in one horizontal row
-        contentTable.Controls.Add(lblFileName, 0, 4);
-        contentTable.Controls.Add(_txtCustomName, 1, 4);
-        contentTable.Controls.Add(lblCounter, 3, 4);
-        contentTable.Controls.Add(_cbCounterDigits, 4, 4);
-
-        // Row 5: Preview label spanning all columns
-        contentTable.Controls.Add(_lblPreview, 0, 5);
-        contentTable.SetColumnSpan(_lblPreview, 5);
-
-        // === Buttons ===
-        var btnOk = new Button
-        {
-            Text = "OK",
-            DialogResult = DialogResult.OK,
-            Size = new Size(95, 28),
-            Font = font,
-            Margin = Padding.Empty
-        };
-
-        var btnCancel = new Button
-        {
-            Text = "Abbrechen",
-            DialogResult = DialogResult.Cancel,
-            Size = new Size(95, 28),
-            Font = font,
-            Margin = Padding.Empty
-        };
-
-        var btnHelp = new Button
-        {
-            Text = "Hilfe",
-            Size = new Size(95, 28),
-            Font = font,
-            Margin = Padding.Empty
-        };
-        btnHelp.Click += (s, e) => { using var h = new HelpForm("filename-format"); h.ShowDialog(this); };
-
-        var btnApply = new Button
-        {
-            Text = "Übernehmen",
-            Size = new Size(95, 28),
-            Font = font,
-            Margin = Padding.Empty,
-            Enabled = false
-        };
+        // === Footer: Übernehmen left, Abbrechen and OK right ===
+        var btnApply = AddFooterButton("Übernehmen", ThemeRole.Secondary, Glyph.Apply, alignLeft: true);
+        btnApply.Enabled = false;
         btnApply.Click += (s, e) => ApplySettings();
         _btnApply = btnApply;
 
-        // Button panel using TableLayoutPanel for reliable layout
-        // Columns: filler | OK | gap | Abbrechen | gap | Übernehmen | gap | Hilfe | rightMargin
-        var buttonPanel = new TableLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 36,
-            Margin = Padding.Empty,
-            Padding = Padding.Empty,
-            ColumnCount = 9,
-            ColumnStyles =
-            {
-                new ColumnStyle(SizeType.Percent, 100f),  // filler
-                new ColumnStyle(SizeType.Absolute, 95f),   // OK
-                new ColumnStyle(SizeType.Absolute, 14f),   // gap
-                new ColumnStyle(SizeType.Absolute, 95f),   // Abbrechen
-                new ColumnStyle(SizeType.Absolute, 14f),   // gap
-                new ColumnStyle(SizeType.Absolute, 95f),   // Übernehmen
-                new ColumnStyle(SizeType.Absolute, 14f),   // gap
-                new ColumnStyle(SizeType.Absolute, 95f),   // Hilfe
-                new ColumnStyle(SizeType.Absolute, 16f)    // right margin
-            },
-            RowCount = 1,
-            RowStyles = { new RowStyle(SizeType.Absolute, 36f) }
-        };
-
-        btnOk.Dock = DockStyle.Fill;
-        btnCancel.Dock = DockStyle.Fill;
-        btnApply.Dock = DockStyle.Fill;
-        btnHelp.Dock = DockStyle.Fill;
-        btnOk.Margin = new Padding(0, 4, 0, 4);
-        btnCancel.Margin = new Padding(0, 4, 0, 4);
-        btnApply.Margin = new Padding(0, 4, 0, 4);
-        btnHelp.Margin = new Padding(0, 4, 0, 4);
-
-        buttonPanel.Controls.Add(btnOk, 1, 0);
-        buttonPanel.Controls.Add(btnCancel, 3, 0);
-        buttonPanel.Controls.Add(btnApply, 5, 0);
-        buttonPanel.Controls.Add(btnHelp, 7, 0);
-
-        rootPanel.Controls.Add(contentTable);
-        rootPanel.Controls.Add(buttonPanel);
-
-        Controls.Add(rootPanel);
+        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = btnOk;
         CancelButton = btnCancel;
@@ -294,9 +140,7 @@ internal class FileNameFormatDialog : Form
 
         UpdatePreview();
         ResumeLayout(false);
-        PerformLayout();
 
-        ThemeManager.SetRole(lblHeading, ThemeRole.Heading);
         ThemeManager.SetRole(_lblPreview, ThemeRole.Muted);
         ThemeManager.Apply(this);
     }
