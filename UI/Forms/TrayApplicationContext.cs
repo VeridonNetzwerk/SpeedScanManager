@@ -939,7 +939,7 @@ internal class TrayApplicationContext : ApplicationContext
             var ext = Path.GetExtension(src);
             string newName = sameName
                 ? Path.GetFileName(src)
-                : files.Count == 1 ? title + ext : $"{title}_{i + 1:D3}{ext}";
+                : files.Count == 1 ? title + ext : $"{title}_{(i + 1).ToString(new string('0', FileNamePattern.NormalizeCounterDigits(_settings.CounterDigits)))}{ext}";
             try
             {
                 var dest = ScanOutputProcessor.MakeUniquePath(targetFolder, newName);
@@ -1035,6 +1035,21 @@ internal class TrayApplicationContext : ApplicationContext
                 LaunchCustomApplication(settings, files);
                 break;
         }
+    }
+
+    private void OnCustomApplicationsChanged()
+    {
+        // A custom application removed in "Anwendungen verwalten" must not stay the live
+        // target until the next OK; fall back to Scan to Folder right away.
+        if (_settings.ApplicationType == ApplicationType.Custom
+            && !_appSettings.CustomApplications.Any(a => string.Equals(a.Name, _settings.CustomApplicationName, StringComparison.OrdinalIgnoreCase)))
+        {
+            _settings.ApplicationType = ApplicationType.ScanToFolder;
+            _settings.CustomApplicationName = "";
+            _settings.CustomApplicationPath = "";
+            _settings.CustomApplicationArguments = "";
+        }
+        _appSettings.Save();
     }
 
     private async void SendMail(List<string> files, ScanSettings settings)
@@ -1396,7 +1411,7 @@ internal class TrayApplicationContext : ApplicationContext
         {
             _mainForm = new MainForm(_settings, _profileManager, _appSettings);
             _mainForm.SettingsApplied += (_, _) => OnSettingsApplied();
-            _mainForm.CustomApplicationsChanged += (_, _) => _appSettings.Save();
+            _mainForm.CustomApplicationsChanged += (_, _) => OnCustomApplicationsChanged();
             _mainForm.FormClosed += (_, _) => _mainForm = null;
         }
         if (!_mainForm.Visible)

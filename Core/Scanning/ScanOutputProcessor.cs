@@ -668,7 +668,10 @@ internal class ScanOutputProcessor
             sb.Append(Array.IndexOf(invalid, c) >= 0 ? '_' : c);
         var result = sb.ToString().Trim().TrimEnd('.', ' ');
         if (result.Length == 0) result = "Scan";
-        if (ReservedNames.Contains(result)) result += "_";
+        // "CON.x" is rejected by Windows as well: check the part before the first dot.
+        int dot = result.IndexOf('.');
+        if (ReservedNames.Contains(dot >= 0 ? result.Substring(0, dot).TrimEnd() : result))
+            result = dot >= 0 ? result.Insert(dot, "_") : result + "_";
         if (result.Length > 180) result = result.Substring(0, 180);
         return result;
     }
