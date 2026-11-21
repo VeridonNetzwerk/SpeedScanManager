@@ -33,6 +33,25 @@ internal sealed class TrayMenuHeaderItem : ToolStripItem
         Invalidate();
     }
 
+    private ToolStrip? _layoutOwner;
+
+    protected override void OnOwnerChanged(EventArgs e)
+    {
+        base.OnOwnerChanged(e);
+        if (_layoutOwner != null) _layoutOwner.LayoutCompleted -= OnOwnerLayoutCompleted;
+        _layoutOwner = Owner;
+        if (_layoutOwner != null) _layoutOwner.LayoutCompleted += OnOwnerLayoutCompleted;
+    }
+
+    // The drop-down computes its left padding (image margin) during layout; cancel it with a
+    // negative margin so the header starts at the menu edge. Converges after one extra layout.
+    private void OnOwnerLayoutCompleted(object? sender, EventArgs e)
+    {
+        int pad = _layoutOwner?.Padding.Left ?? 0;
+        if (Margin.Left != -pad)
+            Margin = new Padding(-pad, 1, 0, 2);
+    }
+
     private float S => (Owner?.DeviceDpi ?? 96) / 96f;
 
     public override Size GetPreferredSize(Size constrainingSize)
