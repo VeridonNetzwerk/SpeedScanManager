@@ -128,6 +128,14 @@ internal sealed class ThemedToolStripRenderer : ToolStripRenderer
             var glyphColor = !item.Enabled || item.Selected || IsDanger(item) ? color : p.TextSecondary;
             ThemeGlyphs.Draw(e.Graphics, glyph, new RectangleF(12 * s, (item.Height - size) / 2f, size, size), glyphColor);
         }
+        if (inDropDown)
+        {
+            // Center the text line over the full row height, like the glyph; the default text
+            // rectangle sits a few pixels high once the items get extra vertical padding.
+            var tr = e.TextRectangle;
+            e.TextRectangle = new Rectangle(tr.X, 0, tr.Width, item.Height);
+            e.TextFormat = (e.TextFormat & ~(TextFormatFlags.Top | TextFormatFlags.Bottom)) | TextFormatFlags.VerticalCenter;
+        }
         base.OnRenderItemText(e);
     }
 
