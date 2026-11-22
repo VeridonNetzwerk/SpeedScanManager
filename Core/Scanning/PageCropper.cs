@@ -50,21 +50,23 @@ internal static class PageCropper
         // 2. Paper color (median of the inner area) and scanner background (edge bands).
         Color paper = MedianColor(r, g, b, w, (int)(w * 0.25), (int)(w * 0.75), (int)(bottom * 0.1), (int)(bottom * 0.9));
         int paperLum = Lum(paper);
-        if (filler && paperLum >= 253) // overexposed paper looks the same as filler
-        {
-            filler = false;
-            bottom = h;
-        }
-        else if (filler && paperLum <= 248)
-        {
-            // The last filler rows can be slightly off white (JPEG transfer, downscaling).
-            while (bottom > MinPaperMm * mm && IsWhiteRow(lum, w, bottom - 1, 251)) bottom--;
-        }
-
         int band = Math.Max(3, (int)(1.0 * mm));
         var leftColor = BackgroundBand(r, g, b, lum, w, bottom, 0, band, paperLum);
         var rightColor = BackgroundBand(r, g, b, lum, w, bottom, w - band, w, paperLum);
         Color? back = leftColor ?? rightColor;
+
+        if (filler && back == null && paperLum >= 253)
+        {
+            // Very white paper over the full width looks the same as filler.
+            filler = false;
+            bottom = h;
+        }
+        else if (filler && (back != null || paperLum <= 248))
+        {
+            // The last filler rows can be slightly off white (JPEG transfer, downscaling). Paper
+            // rows are never mistaken for filler: they contain background or are darker.
+            while (bottom > MinPaperMm * mm && IsWhiteRow(lum, w, bottom - 1, 251)) bottom--;
+        }
 
         double x0 = 0, x1 = w, y0 = 0, y1 = bottom;
         Edge? left = null, right = null, top = null, low = null;
