@@ -94,8 +94,6 @@ internal sealed class ScanOutputResult : IDisposable
 /// </summary>
 internal class ScanOutputProcessor
 {
-    private const float MinOsdConfidence = 3.0f;
-
     /// <summary>Brush of the OCR text layer. Transparent; a test harness may set a visible brush to check positions.</summary>
     internal static XBrush OcrTextBrush { get; set; } = XBrushes.Transparent;
 
@@ -149,6 +147,10 @@ internal class ScanOutputProcessor
             // 1. Carrier sheet: merge front/back (duplex) side by side, apply the output size.
             BuildPages(images, duplex, pages);
 
+            // 1b. Automatic paper size: cut to the sheet (scanner background, filler rows).
+            if (s.PaperSize == PaperSizeMode.Automatic && !s.CarrierSheetEnabled)
+                foreach (var page in pages) CropToPaper(page);
+
             // 2. Blank pages — before OSD/OCR so they cost nothing further.
             for (int i = pages.Count - 1; i >= 0; i--)
             {
@@ -197,7 +199,10 @@ internal class ScanOutputProcessor
                 if (!osd.IsAvailable)
                     AddWarning(result, "Die automatische Bilddrehung ist nicht verfügbar (osd.traineddata fehlt).");
                 else
-                    foreach (var page in pages) AutoRotate(page, osd);
+                {
+                    using var orientation = new PageOrientationDetector(osd, s.OcrLanguage);
+                    foreach (var page in pages) AutoRotate(page, orientation);
+                }
             }
 
             // 5. Highlighter marks (need the color image, so before color conversion).
@@ -376,33 +381,30 @@ internal class ScanOutputProcessor
         return CarrierOutputSizes.TryGetValue(name, out var mm) ? mm : null;
     }
 
-    private void AutoRotate(WorkPage page, OsdDetector osd)
+    private static void CropToPaper(WorkPage page)
     {
-        var osdResult = osd.Detect(page.Bmp);
-        if (osdResult == null) return;
-        page.Script = osdResult.Value.Script;
-
-        int rotate = osdResult.Value.RotateClockwise;
-        if (rotate == 0) return;
-        if (osdResult.Value.OrientationConfidence < MinOsdConfidence)
+        try
         {
-            LogDiag($"AutoRotate: confidence {osdResult.Value.OrientationConfidence:0.0} too low, not rotating");
-            return;
+            var cropped = PageCropper.Crop(page.Bmp);
+            if (cropped != null) page.Replace(cropped);
         }
-
-        var flipType = rotate switch
+        catch (Exception ex)
         {
-            90 => RotateFlipType.Rotate90FlipNone,
-            180 => RotateFlipType.Rotate180FlipNone,
-            270 => RotateFlipType.Rotate270FlipNone,
-            _ => RotateFlipType.RotateNoneFlipNone
-        };
-        if (flipType == RotateFlipType.RotateNoneFlipNone) return;
+            // Cropping is optional: keep the full image.
+            LogDiag($"Crop failed: {ex.Message}");
+        }
+    }
+
+    private static void AutoRotate(WorkPage page, PageOrientationDetector orientation)
+    {
+        int rotate = orientation.Detect(page.Bmp, out var script);
+        page.Script = script;
+        if (rotate == 0) return;
 
         // RotateFlip works in place: never on a caller-owned bitmap.
         if (!page.Owned)
             page.Replace(ImageProcessing.DeepCopy(page.Bmp));
-        page.Bmp.RotateFlip(flipType);
+        page.Bmp.RotateFlip(PageOrientationDetector.ToFlip(rotate));
         LogDiag($"AutoRotate: rotated {rotate}° clockwise");
     }
 

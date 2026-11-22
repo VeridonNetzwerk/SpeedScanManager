@@ -130,7 +130,7 @@ internal static class ImageProcessing
     }
 
     /// <summary>Reads a 24 bpp bitmap into separate R, G, B arrays plus luminance.</summary>
-    private static void ReadRgb(Bitmap bmp24, out byte[] r, out byte[] g, out byte[] b, out byte[] lum)
+    internal static void ReadRgb(Bitmap bmp24, out byte[] r, out byte[] g, out byte[] b, out byte[] lum)
     {
         int w = bmp24.Width, h = bmp24.Height;
         r = new byte[w * h]; g = new byte[w * h]; b = new byte[w * h]; lum = new byte[w * h];
@@ -160,7 +160,7 @@ internal static class ImageProcessing
         return lum;
     }
 
-    private static int Percentile(int[] histogram, long total, double p)
+    internal static int Percentile(int[] histogram, long total, double p)
     {
         long target = (long)(total * p);
         long acc = 0;

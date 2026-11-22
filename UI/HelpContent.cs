@@ -413,6 +413,7 @@ internal static class HelpContent
         <p>Je nach Einstellung, in dieser Reihenfolge:</p>
         " + Steps(
             "<b>Trägerblatt</b>: Vorder- und Rückseite werden nebeneinander zusammengefügt.",
+            "<b>Auf das Blatt zuschneiden</b> (nur bei Papiergröße „Automatische Erkennung“, ohne Trägerblatt).",
             "<b>Leere Seiten entfernen</b>. Sind alle Seiten leer, wird nichts gespeichert und eine Meldung erscheint.",
             "<b>Schräglauf korrigieren</b> (wenn eingeschaltet).",
             "<b>Automatische Bilddrehung</b> (wenn eingeschaltet).",
@@ -617,8 +618,8 @@ internal static class HelpContent
         "Papiergröße, Trägerblatt und die Erkennung von doppelt eingezogenen Blättern.",
         Shot("page_paper", "Seite „Papier“") + @"
         <h2>Papiergröße</h2>
-        <p><b>Automatische Erkennung</b> (Grundeinstellung) lässt den Scannertreiber die Größe bestimmen – nötig auch für
-        <a href='#scan-long'>lange Seiten</a>. Außerdem wählbar:</p>
+        <p><b>Automatische Erkennung</b> (Grundeinstellung) schneidet jede Seite auf das Blatt zu: Der graue Scannerhintergrund
+        und leere Flächen nach dem Blattende fallen weg. Sie ist auch für <a href='#scan-long'>lange Seiten</a> nötig. Außerdem wählbar:</p>
         " + Grid(new[] { "Größe", "Maße" },
             new[] { "A3 / A4 / A5 / A6", "297 × 420 / 210 × 297 / 148 × 210 / 105 × 148 mm" },
             new[] { "B4 / B5 / B6 (JIS)", "257 × 364 / 182 × 257 / 128 × 182 mm" },
@@ -707,7 +708,7 @@ internal static class HelpContent
             ("Einstellung nur für Textdokumente", "Verstärkt den Kontrast bei Schwarzweiß – gut für Text und Handschrift."),
             ("Automatisches Löschen leerer Seiten zulassen", "Entfernt leere Seiten (Grundeinstellung: an). Sind alle Seiten leer, wird keine Datei gespeichert."),
             ("Schräglauf automatisch korrigieren", "Rückt schief eingezogene Seiten gerade (Grundeinstellung: aus)."),
-            ("Automatische Bilddrehung zulassen", "Dreht seitlich oder kopfüber gescannte Seiten richtig herum (Grundeinstellung: an). Ist die Erkennung unsicher, wird nicht gedreht."),
+            ("Automatische Bilddrehung zulassen", "Dreht seitlich oder kopfüber gescannte Seiten richtig herum (Grundeinstellung: an). Dazu wird ein Stück Text probeweise gelesen. Ist zu wenig Text da, wird nicht gedreht."),
             ("Dokumente mit der Vorderseite nach oben einlegen", "An, wenn Sie den Stapel mit der Schrift nach oben einlegen: Die Reihenfolge wird umgedreht, damit die Seiten richtig sortiert sind.")) +
         Note("Bei Scan-Seite „Automatisch“ werden leere Rückseiten auch ohne die Option „leere Seiten“ entfernt.") +
         "<p><b>OK</b> übernimmt, <b>Abbrechen</b> verwirft die Änderungen.</p>",
