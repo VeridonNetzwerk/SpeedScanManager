@@ -91,6 +91,21 @@
             <Setter Property="Padding" Value="16,14"/>
         </Style>
 
+        <!-- ===== Green banner at the top of the finish pages ===== -->
+        <Style x:Key="SuccessBanner" TargetType="Border">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="16,13"/>
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#2FB86E" Offset="0"/>
+                        <GradientStop Color="#18A24C" Offset="0.55"/>
+                        <GradientStop Color="#0E8C70" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- ===== Sidebar navigation item ===== -->
         <Style x:Key="NavItem" TargetType="RadioButton">
             <Setter Property="GroupName" Value="Nav"/>

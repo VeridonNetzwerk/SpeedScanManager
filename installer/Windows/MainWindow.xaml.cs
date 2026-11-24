@@ -479,7 +479,7 @@ public partial class MainWindow : Window
             StatusText.Text = "Installation erfolgreich abgeschlossen!";
 
             await Task.Delay(400);
-            ShowFinish(targetDir);
+            ShowFinish(targetDir, setupExit == 0, desktop, startMenu);
         }
         catch (Exception ex)
         {
@@ -542,15 +542,29 @@ public partial class MainWindow : Window
     private string? _installedDir;
 
     /// <summary>Finish page: replaces the install page, navigation is locked.</summary>
-    private void ShowFinish(string targetDir)
+    private void ShowFinish(string targetDir, bool scanButtonOk, bool desktop, bool startMenu)
     {
         _installedDir = targetDir;
+        FinishChecks.Children.Clear();
+        FinishChecks.Children.Add(FinishPage.Row("Programm installiert", targetDir, CheckState.Ok));
+        FinishChecks.Children.Add(scanButtonOk
+            ? FinishPage.Row("Scan-Taste eingerichtet", "Startet den Scan direkt am Scanner", CheckState.Ok)
+            : FinishPage.Row("Scan-Taste nicht eingerichtet", "Beim ersten Start erneut versuchen", CheckState.Warn));
+        FinishChecks.Children.Add(desktop
+            ? FinishPage.Row("Desktop-Verknüpfung", null, CheckState.Ok)
+            : FinishPage.Row("Keine Desktop-Verknüpfung", null, CheckState.Off));
+        FinishChecks.Children.Add(startMenu
+            ? FinishPage.Row("Eintrag im Startmenü", null, CheckState.Ok)
+            : FinishPage.Row("Kein Startmenü-Eintrag", null, CheckState.Off));
         WelcomeView.Visibility = Visibility.Collapsed;
         ReadmeView.Visibility = Visibility.Collapsed;
         SupportView.Visibility = Visibility.Collapsed;
         FinishView.Visibility = Visibility.Visible;
         BtnInstall.IsEnabled = BtnReadme.IsEnabled = BtnSupport.IsEnabled = false;
         BtnClose.IsEnabled = true;
+        // A warning takes the place of the three steps
+        FinishSteps.Visibility = FinishWarning.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+        FinishPage.Play(FinishBanner, FinishCheck, FinishSummary, FinishSteps, FinishWarning, FinishFooter);
     }
 
     private void OnFinishClick(object sender, RoutedEventArgs e)

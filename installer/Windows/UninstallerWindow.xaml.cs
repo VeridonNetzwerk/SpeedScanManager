@@ -65,6 +65,11 @@ public partial class UninstallerWindow : Window
         Process.Start(new ProcessStartInfo(DiscordFeedbackUrl) { UseShellExecute = true });
     }
 
+    private void OnFeedbackButtonClick(object sender, RoutedEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(DiscordFeedbackUrl) { UseShellExecute = true });
+    }
+
     private void OnUninstallClick(object sender, RoutedEventArgs e)
     {
         ConfirmOverlay.Visibility = Visibility.Visible;
@@ -205,14 +210,27 @@ public partial class UninstallerWindow : Window
             }
 
             // Finish page instead of a message box
+            FinishChecks.Children.Clear();
+            FinishChecks.Children.Add(canRemoveFiles && allFilesKnown
+                ? FinishPage.Row("Programmdateien entfernt", null, CheckState.Ok)
+                : FinishPage.Row("Programmdateien teilweise übrig", "Siehe Hinweis unten", CheckState.Warn));
+            FinishChecks.Children.Add(FinishPage.Row("Verknüpfungen entfernt", null, CheckState.Ok));
+            FinishChecks.Children.Add(scanButtonRestored
+                ? FinishPage.Row("Scan-Taste zurückgesetzt", "Windows-Standard wiederhergestellt", CheckState.Ok)
+                : FinishPage.Row("Scan-Taste nicht zurückgesetzt", "Siehe Hinweis unten", CheckState.Warn));
+            FinishChecks.Children.Add(removeSettings
+                ? FinishPage.Row("Einstellungen gelöscht", null, CheckState.Ok)
+                : FinishPage.Row("Einstellungen behalten", "Für eine spätere Neuinstallation", CheckState.Off));
             if (warnings.Count > 0)
             {
                 FinishWarningText.Text = string.Join("\n\n", warnings);
                 FinishWarning.Visibility = Visibility.Visible;
+                FinishFeedback.Visibility = Visibility.Collapsed;
             }
             MainView.Visibility = Visibility.Collapsed;
             FinishView.Visibility = Visibility.Visible;
             BtnClose.IsEnabled = true;
+            FinishPage.Play(FinishBanner, FinishCheck, FinishSummary, FinishFeedback, FinishWarning);
         }
         catch (Exception ex)
         {

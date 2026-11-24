@@ -207,58 +207,119 @@
                         <!-- ===== FINISH VIEW ===== -->
                         <Grid x:Name="FinishView" Visibility="Collapsed" Margin="28,22,28,20">
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="440">
-                                <Border Width="64" Height="64" CornerRadius="32" Background="#23A55A" HorizontalAlignment="Center">
-                                    <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="28" Foreground="White"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <TextBlock Text="Installation abgeschlossen" Style="{StaticResource PageTitle}" FontSize="22"
-                                           HorizontalAlignment="Center" Margin="0,16,0,0"/>
-                                <TextBlock Text="SpeedScan Manager ist bereit zum Scannen." Style="{StaticResource PageSubtitle}"
-                                           HorizontalAlignment="Center" TextAlignment="Center" Margin="0,4,0,18"/>
-                                <Border Style="{StaticResource Card}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Border Style="{StaticResource BigIconTile}" Background="#3B82F6">
-                                            <TextBlock Text="&#xE946;" Style="{StaticResource BigTileGlyph}"/>
-                                        </Border>
-                                        <StackPanel Grid.Column="1" Margin="14,0,0,0">
-                                            <TextBlock Text="So geht es los" Style="{StaticResource CardTitle}"/>
-                                            <TextBlock Text="SpeedScan Manager läuft im Infobereich der Taskleiste (unten rechts). Papier einlegen und die Scan-Taste am Scanner drücken – fertig." Style="{StaticResource CardText}" Margin="0,2,0,0"/>
-                                            <CheckBox x:Name="ChkLaunch" Style="{StaticResource FlatCheckBox}" IsChecked="True"
-                                                      Content="SpeedScan Manager jetzt starten" Margin="0,10,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                                <Border x:Name="FinishWarning" Style="{StaticResource Card}" Margin="0,10,0,0" Visibility="Collapsed">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Border Style="{StaticResource BigIconTile}" Background="#F59E0B">
-                                            <TextBlock Text="&#xE7BA;" Style="{StaticResource BigTileGlyph}"/>
-                                        </Border>
-                                        <StackPanel Grid.Column="1" Margin="14,0,0,0">
-                                            <TextBlock Text="Bitte beachten" Style="{StaticResource CardTitle}"/>
-                                            <TextBlock x:Name="FinishWarningText" Style="{StaticResource CardText}" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </StackPanel>
-                            <Button Grid.Row="1" Style="{StaticResource AccentButton}" HorizontalAlignment="Right"
-                                    MinWidth="140" Click="OnFinishClick">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE73E;" Style="{StaticResource ButtonGlyph}"/>
-                                    <TextBlock Text="Fertig"/>
+                            <Border x:Name="FinishBanner" Style="{StaticResource SuccessBanner}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid x:Name="FinishCheck" Width="50" Height="50">
+                                                <Ellipse Fill="#33FFFFFF"/>
+                                                <Ellipse Margin="6" Fill="White"/>
+                                                <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="19" FontWeight="Bold" Foreground="#16A34A"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <StackPanel Grid.Column="1" Margin="16,0,12,0" VerticalAlignment="Center">
+                                                <TextBlock Text="Installation abgeschlossen" FontSize="20" FontWeight="SemiBold" Foreground="White"/>
+                                                <TextBlock Text="SpeedScan Manager ist bereit zum Scannen." FontSize="13" Foreground="#E6FFFFFF" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="2" Width="52" Height="52" CornerRadius="14" Background="#26FFFFFF" VerticalAlignment="Center">
+                                                <Image Source="pack://application:,,,/SpeedScanInstaller;component/Assets/SpeedScanManager_Logo.png" Width="34" Height="34"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+
+                            <Border x:Name="FinishSummary" Grid.Row="1" Style="{StaticResource Card}" Margin="0,10,0,0" Padding="16,10,8,8">
+                                <StackPanel>
+                                    <TextBlock Text="EINGERICHTET" Style="{StaticResource SectionLabel}" Margin="0,0,0,4"/>
+                                    <UniformGrid x:Name="FinishChecks" Columns="2"/>
                                 </StackPanel>
-                            </Button>
+                            </Border>
+
+                            <Grid x:Name="FinishSteps" Grid.Row="2" Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="14,12">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource AccentBrush}">
+                                                            <TextBlock Text="1" FontSize="11.5" FontWeight="SemiBold" Foreground="White"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <TextBlock Text="Papier einlegen" Style="{StaticResource CardTitle}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="Dokument in den Einzug des Scanners legen." Style="{StaticResource CardText}" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                            </Border>
+                                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="14,12">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource AccentBrush}">
+                                                            <TextBlock Text="2" FontSize="11.5" FontWeight="SemiBold" Foreground="White"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <TextBlock Text="Taste drücken" Style="{StaticResource CardTitle}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="Oder im Taskleisten-Menü „Scannen“ wählen." Style="{StaticResource CardText}" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                            </Border>
+                                <Border Grid.Column="4" Style="{StaticResource Card}" Padding="14,12">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource AccentBrush}">
+                                                            <TextBlock Text="3" FontSize="11.5" FontWeight="SemiBold" Foreground="White"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <TextBlock Text="Fertig" Style="{StaticResource CardTitle}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="Speichern, mailen oder drucken – so wie eingestellt." Style="{StaticResource CardText}" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                            </Border>
+                            </Grid>
+
+                            <Grid Grid.Row="3" Margin="0,10,0,0" VerticalAlignment="Top">
+                                <Border x:Name="FinishWarning" Style="{StaticResource Card}" Visibility="Collapsed">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Style="{StaticResource BigIconTile}" Background="#F59E0B">
+                                                    <TextBlock Text="&#xE7BA;" Style="{StaticResource BigTileGlyph}"/>
+                                                </Border>
+                                                <ScrollViewer Grid.Column="1" Margin="14,0,0,0" VerticalScrollBarVisibility="Auto">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Bitte beachten" Style="{StaticResource CardTitle}"/>
+                                                        <TextBlock x:Name="FinishWarningText" Style="{StaticResource CardText}" Margin="0,2,0,0"/>
+                                                    </StackPanel>
+                                                </ScrollViewer>
+                                            </Grid>
+                                        </Border>
+                            </Grid>
+
+                            <Grid x:Name="FinishFooter" Grid.Row="4" Margin="0,12,0,0">
+                                <CheckBox x:Name="ChkLaunch" Style="{StaticResource FlatCheckBox}" IsChecked="True"
+                                          Content="SpeedScan Manager jetzt starten" VerticalAlignment="Center"/>
+                                <Button Style="{StaticResource AccentButton}" HorizontalAlignment="Right" MinWidth="140" Click="OnFinishClick">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE73E;" Style="{StaticResource ButtonGlyph}"/>
+                                        <TextBlock Text="Fertig"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
                         </Grid>
 
                         <!-- ===== README VIEW ===== -->
