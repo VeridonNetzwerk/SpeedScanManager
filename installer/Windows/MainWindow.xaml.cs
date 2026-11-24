@@ -357,7 +357,7 @@ public partial class MainWindow : Window
         TxtInstallPath.IsEnabled = false;
         SetOptionsEnabled(false);
         bool desktop = ChkDesktop.IsChecked == true, startMenu = ChkStartMenu.IsChecked == true,
-            scanButton = ChkScanButton.IsChecked == true;
+            launch = ChkLaunch.IsChecked == true;
 
         // Show progress
         ProgressPanel.Visibility = Visibility.Visible;
@@ -464,13 +464,10 @@ public partial class MainWindow : Window
             await Task.Delay(100);
 
             // Scan button setup (WIA handler registration) — the setup already runs elevated
+            StatusText.Text = "Registriere Scan-Taste...";
             InstallProgress.Value = 88;
-            if (scanButton)
-            {
-                StatusText.Text = "Registriere Scan-Taste...";
-                var setupExit = await InstallerCore.RunAppHelperAsync(targetDir, "/setup", TimeSpan.FromSeconds(30));
-                Debug.WriteLine($"Scan button setup exit code: {setupExit?.ToString() ?? "n/a"}");
-            }
+            var setupExit = await InstallerCore.RunAppHelperAsync(targetDir, "/setup", TimeSpan.FromSeconds(30));
+            Debug.WriteLine($"Scan button setup exit code: {setupExit?.ToString() ?? "n/a"}");
 
             // Shortcuts
             StatusText.Text = "Erstelle Verknüpfungen...";
@@ -482,14 +479,9 @@ public partial class MainWindow : Window
             InstallProgress.Value = 100;
             StatusText.Text = "Installation erfolgreich abgeschlossen!";
 
-            await Task.Delay(500);
+            await Task.Delay(1200);
 
-            var launch = MessageBox.Show(
-                "SpeedScan Manager wurde erfolgreich installiert!\n\nMöchten Sie SpeedScan Manager jetzt starten?",
-                "Installation erfolgreich",
-                MessageBoxButton.YesNo, MessageBoxImage.Information);
-
-            if (launch == MessageBoxResult.Yes)
+            if (launch)
             {
                 // The setup runs elevated; start the app with normal user rights
                 InstallerCore.StartDeElevated(Path.Combine(targetDir, InstallerCore.AppExeName));
@@ -559,7 +551,7 @@ public partial class MainWindow : Window
     {
         ChkDesktop.IsEnabled = enabled;
         ChkStartMenu.IsEnabled = enabled;
-        ChkScanButton.IsEnabled = enabled;
+        ChkLaunch.IsEnabled = enabled;
     }
 
     /// <summary>

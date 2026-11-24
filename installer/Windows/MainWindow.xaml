@@ -181,8 +181,8 @@
                                                   Content="Verknüpfung auf dem Desktop" Margin="0,0,0,8"/>
                                         <CheckBox x:Name="ChkStartMenu" Style="{StaticResource FlatCheckBox}" IsChecked="True"
                                                   Content="Eintrag im Startmenü" Margin="0,0,0,8"/>
-                                        <CheckBox x:Name="ChkScanButton" Style="{StaticResource FlatCheckBox}" IsChecked="True"
-                                                  Content="Scan-Taste am Scanner startet SpeedScan Manager"/>
+                                        <CheckBox x:Name="ChkLaunch" Style="{StaticResource FlatCheckBox}" IsChecked="True"
+                                                  Content="SpeedScan Manager nach der Installation starten"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>
