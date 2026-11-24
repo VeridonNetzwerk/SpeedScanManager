@@ -31,19 +31,19 @@ internal class CarrierSheetDialog : ModernWindow
     /// <summary>Output sizes in display order (help: [Ausgabebildgröße] Auswahlliste).</summary>
     private static readonly (string Text, CarrierSheetOutputSize Value)[] OutputSizes =
     {
-        ("Automatische Erkennung", CarrierSheetOutputSize.Automatic),
+        (L.T("Automatische Erkennung"), CarrierSheetOutputSize.Automatic),
         ("A3 (297 x 420 mm)", CarrierSheetOutputSize.A3),
         ("A4 (210 x 297 mm)", CarrierSheetOutputSize.A4),
         ("A5 (148 x 210 mm)", CarrierSheetOutputSize.A5),
         ("A6 (105 x 148 mm)", CarrierSheetOutputSize.A6),
-        ("B4(JIS) (257 x 364 mm)", CarrierSheetOutputSize.B4),
-        ("B5(JIS) (182 x 257 mm)", CarrierSheetOutputSize.B5),
-        ("B6(JIS) (128 x 182 mm)", CarrierSheetOutputSize.B6),
-        ("Letter (216 x 279,4 mm)", CarrierSheetOutputSize.Letter),
-        ("Double Letter (279,4 x 431,8 mm)", CarrierSheetOutputSize.DoubleLetter),
-        ("Postkarte (100 x 148 mm)", CarrierSheetOutputSize.Postcard),
-        ("Visitenkarte (55 x 91 mm)", CarrierSheetOutputSize.BusinessCard),
-        ("Trägerblattgröße (220 x 297 mm)", CarrierSheetOutputSize.CarrierSheet),
+        (L.T("B4(JIS) (257 x 364 mm)"), CarrierSheetOutputSize.B4),
+        (L.T("B5(JIS) (182 x 257 mm)"), CarrierSheetOutputSize.B5),
+        (L.T("B6(JIS) (128 x 182 mm)"), CarrierSheetOutputSize.B6),
+        (L.T("Letter (216 x 279,4 mm)"), CarrierSheetOutputSize.Letter),
+        (L.T("Double Letter (279,4 x 431,8 mm)"), CarrierSheetOutputSize.DoubleLetter),
+        (L.T("Postkarte (100 x 148 mm)"), CarrierSheetOutputSize.Postcard),
+        (L.T("Visitenkarte (55 x 91 mm)"), CarrierSheetOutputSize.BusinessCard),
+        (L.T("Trägerblattgröße (220 x 297 mm)"), CarrierSheetOutputSize.CarrierSheet),
         ("Benutzerdefiniert...", CarrierSheetOutputSize.Custom)
     };
 
@@ -55,9 +55,9 @@ internal class CarrierSheetDialog : ModernWindow
         SuspendLayout();
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
-        Text = "Trägerblatteinstellungen";
-        Title = "Trägerblatteinstellungen";
-        Subtitle = "Gefaltete Dokumente über das Trägerblatt scannen";
+        Text = L.T("Trägerblatteinstellungen");
+        Title = L.T("Trägerblatteinstellungen");
+        Subtitle = L.T("Gefaltete Dokumente über das Trägerblatt scannen");
         HeaderButtons = ModernHeaderButtons.Close;
         HeaderIcon = ColorIcon.Tile(Glyph.Carrier, IconColors.Blue);
         AutoSizeToContent = true;
@@ -73,7 +73,7 @@ internal class CarrierSheetDialog : ModernWindow
             Size = new Size(270, 24),
             Enabled = false
         };
-        _cbMode.Items.Add("Zwei Seiten in einem Bild erstellen");
+        _cbMode.Items.Add(L.T("Zwei Seiten in einem Bild erstellen"));
         _cbMode.SelectedIndex = 0;
 
         // === Output size dropdown ===
@@ -92,7 +92,7 @@ internal class CarrierSheetDialog : ModernWindow
         // === Custom size inputs ===
         _lblCustomWidth = new Label
         {
-            Text = "Breite (mm):",
+            Text = L.T("Breite (mm):"),
             AutoSize = true,
             Margin = new Padding(0, 4, 6, 0),
             Visible = false
@@ -110,7 +110,7 @@ internal class CarrierSheetDialog : ModernWindow
 
         _lblCustomHeight = new Label
         {
-            Text = "Höhe (mm):",
+            Text = L.T("Höhe (mm):"),
             AutoSize = true,
             Margin = new Padding(0, 4, 6, 0),
             Visible = false
@@ -138,10 +138,10 @@ internal class CarrierSheetDialog : ModernWindow
         customFlow.Controls.AddRange(new Control[] { _lblCustomWidth, _numCustomWidth, _lblCustomHeight, _numCustomHeight });
 
         var cardSettings = new SettingsCard { Dense = true };
-        cardSettings.AddRow("Trägerblatt-Modus aktivieren", null, _chkEnabled).Icon = ColorIcon.Tile(Glyph.Carrier, IconColors.Blue);
-        cardSettings.AddRow("Modus", null, _cbMode, 270).Icon = ColorIcon.Tile(Glyph.Split, IconColors.Teal);
-        cardSettings.AddRow("Ausgabebildgröße", null, _cbOutputSize, 270).Icon = ColorIcon.Tile(Glyph.Ruler, IconColors.Orange);
-        _rowCustomSize = cardSettings.AddRow("Benutzerdefinierte Größe", null, customFlow);
+        cardSettings.AddRow(L.T("Trägerblatt-Modus aktivieren"), null, _chkEnabled).Icon = ColorIcon.Tile(Glyph.Carrier, IconColors.Blue);
+        cardSettings.AddRow(L.T("Modus"), null, _cbMode, 270).Icon = ColorIcon.Tile(Glyph.Split, IconColors.Teal);
+        cardSettings.AddRow(L.T("Ausgabebildgröße"), null, _cbOutputSize, 270).Icon = ColorIcon.Tile(Glyph.Ruler, IconColors.Orange);
+        _rowCustomSize = cardSettings.AddRow(L.T("Benutzerdefinierte Größe"), null, customFlow);
         _rowCustomSize.Stacked = true;
         _rowCustomSize.Visible = false;
 
@@ -159,7 +159,7 @@ internal class CarrierSheetDialog : ModernWindow
 
         var lblIllustrations = new Label
         {
-            Text = "1) Dokument falten    2) In Trägerblatt einlegen    3) In Scanner führen",
+            Text = L.T("1) Dokument falten    2) In Trägerblatt einlegen    3) In Scanner führen"),
             AutoSize = false,
             Height = 34,
             TextAlign = ContentAlignment.MiddleCenter,
@@ -167,12 +167,12 @@ internal class CarrierSheetDialog : ModernWindow
         };
         ThemeManager.SetRole(lblIllustrations, ThemeRole.Muted);
 
-        var cardInstructions = new SettingsCard("Anleitung",
-            "Für Dokumente, die größer als das normale Scan-Format sind (z. B. A3), " +
-            "falten Sie das Dokument entlang der Mittelachse. Legen Sie es in ein " +
-            "Trägerblatt ein und führen Sie das Trägerblatt in den Scanner ein. " +
-            "Beide Seiten werden gescannt und im Ausgabebild nebeneinander " +
-            "zusammengefügt.") { ShowDividers = false, Dense = true, Icon = ColorIcon.Tile(Glyph.Question, IconColors.Sky) };
+        var cardInstructions = new SettingsCard(L.T("Anleitung"),
+            L.T("Für Dokumente, die größer als das normale Scan-Format sind (z. B. A3), ") +
+            L.T("falten Sie das Dokument entlang der Mittelachse. Legen Sie es in ein ") +
+            L.T("Trägerblatt ein und führen Sie das Trägerblatt in den Scanner ein. ") +
+            L.T("Beide Seiten werden gescannt und im Ausgabebild nebeneinander ") +
+            L.T("zusammengefügt.")) { ShowDividers = false, Dense = true, Icon = ColorIcon.Tile(Glyph.Question, IconColors.Sky) };
         cardInstructions.Add(new Panel { Height = 8 });
         cardInstructions.Add(pnlIllustrations);
         cardInstructions.Add(lblIllustrations);
@@ -183,7 +183,7 @@ internal class CarrierSheetDialog : ModernWindow
         Body.Controls.Add(stack);
 
         // === Footer ===
-        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        _btnCancel = AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         _btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         _chkEnabled.CheckedChanged += (s, e) => UpdateEnabledState();

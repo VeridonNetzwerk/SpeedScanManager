@@ -28,7 +28,7 @@ internal class PdfOptionsDialog : ModernWindow
         ShowInTaskbar = false;
         Text = "PDF-Dateiformat-Optionen";
         Title = "PDF-Dateiformat-Optionen";
-        Subtitle = "Seiten teilen und Kennwortschutz";
+        Subtitle = L.T("Seiten teilen und Kennwortschutz");
         HeaderButtons = ModernHeaderButtons.Close;
         HeaderIcon = ColorIcons.Pdf;
         AutoSizeToContent = true;
@@ -37,7 +37,7 @@ internal class PdfOptionsDialog : ModernWindow
         // === Page split card (radio buttons share the card as their group) ===
         _rbMultiPage = new RadioButton
         {
-            Text = "Mehrseitige PDF-Datei (gesamter Stapel in einer PDF)",
+            Text = L.T("Mehrseitige PDF-Datei (gesamter Stapel in einer PDF)"),
             AutoSize = false,
             Height = 34,
             Checked = true
@@ -45,7 +45,7 @@ internal class PdfOptionsDialog : ModernWindow
 
         _rbSplitByPages = new RadioButton
         {
-            Text = "Seitenzahl, für die jeweils eine neue PDF-Datei erstellt werden soll",
+            Text = L.T("Seitenzahl, für die jeweils eine neue PDF-Datei erstellt werden soll"),
             AutoSize = false,
             Height = 34
         };
@@ -58,12 +58,12 @@ internal class PdfOptionsDialog : ModernWindow
             Value = 1,
             Enabled = false,
             Margin = Padding.Empty,
-            AccessibleName = "Seitenzahl"
+            AccessibleName = L.T("Seitenzahl")
         };
 
         var lblPages = new Label
         {
-            Text = "Seite(n)",
+            Text = L.T("Seite(n)"),
             AutoSize = true,
             Margin = new Padding(8, 4, 0, 0)
         };
@@ -85,7 +85,7 @@ internal class PdfOptionsDialog : ModernWindow
             _numSplitPages.Enabled = _rbSplitByPages.Checked;
         };
 
-        var cardSplit = new SettingsCard("PDF-Seiten teilen") { ShowDividers = false, Dense = true, Icon = ColorIcon.Tile(Glyph.Split, IconColors.Red) };
+        var cardSplit = new SettingsCard(L.T("PDF-Seiten teilen")) { ShowDividers = false, Dense = true, Icon = ColorIcon.Tile(Glyph.Split, IconColors.Red) };
         cardSplit.Add(new Panel { Height = 4 });
         cardSplit.Add(_rbMultiPage);
         cardSplit.Add(_rbSplitByPages);
@@ -115,10 +115,10 @@ internal class PdfOptionsDialog : ModernWindow
             _txtConfirmPassword.Enabled = enabled;
         };
 
-        var cardPassword = new SettingsCard("Kennwort") { Dense = true, Icon = ColorIcon.Tile(Glyph.Lock, IconColors.Amber) };
-        cardPassword.AddRow("Kennwort für PDF-Datei einstellen", null, _chkUsePassword);
-        cardPassword.AddRow("Kennwort", null, _txtPassword, 240);
-        cardPassword.AddRow("Bestätigen", null, _txtConfirmPassword, 240);
+        var cardPassword = new SettingsCard(L.T("Kennwort")) { Dense = true, Icon = ColorIcon.Tile(Glyph.Lock, IconColors.Amber) };
+        cardPassword.AddRow(L.T("Kennwort für PDF-Datei einstellen"), null, _chkUsePassword);
+        cardPassword.AddRow(L.T("Kennwort"), null, _txtPassword, 240);
+        cardPassword.AddRow(L.T("Bestätigen"), null, _txtConfirmPassword, 240);
 
         var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
         stack.Controls.Add(cardSplit);
@@ -126,7 +126,7 @@ internal class PdfOptionsDialog : ModernWindow
         Body.Controls.Add(stack);
 
         // === Footer ===
-        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        var btnCancel = AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = btnOk;
@@ -159,9 +159,9 @@ internal class PdfOptionsDialog : ModernWindow
             if (_chkUsePassword.Checked)
             {
                 string? error = string.IsNullOrEmpty(_txtPassword.Text)
-                    ? "Bitte geben Sie ein Kennwort ein."
+                    ? L.T("Bitte geben Sie ein Kennwort ein.")
                     : _txtPassword.Text != _txtConfirmPassword.Text
-                        ? "Die eingegebenen Kennwörter stimmen nicht überein."
+                        ? L.T("Die eingegebenen Kennwörter stimmen nicht überein.")
                         : null;
                 if (error != null)
                 {

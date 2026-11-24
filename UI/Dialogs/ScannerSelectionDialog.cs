@@ -11,8 +11,8 @@ namespace SpeedScanManager;
 /// </summary>
 internal class ScannerSelectionDialog : ModernWindow
 {
-    private const string HintText = "USB-verbundene Scanner werden bevorzugt oben angezeigt.";
-    private const string NoScannerText = "Kein Scanner gefunden. Die Liste wird automatisch aktualisiert, sobald ein Scanner erkannt wird.";
+    private static string HintText => L.T("USB-verbundene Scanner werden bevorzugt oben angezeigt.");
+    private static string NoScannerText => L.T("Kein Scanner gefunden. Die Liste wird automatisch aktualisiert, sobald ein Scanner erkannt wird.");
 
     private readonly ComboBox _combo;
     private readonly TwainSession _twain;
@@ -37,9 +37,9 @@ internal class ScannerSelectionDialog : ModernWindow
         _currentSelection = currentSelection;
 
         SuspendLayout();
-        Text = "SpeedScan Manager – Scanner auswählen";
-        Title = "Scanner auswählen";
-        Subtitle = "Bitte wählen Sie einen Scanner:";
+        Text = L.T("SpeedScan Manager – Scanner auswählen");
+        Title = L.T("Scanner auswählen");
+        Subtitle = L.T("Bitte wählen Sie einen Scanner:");
         HeaderButtons = ModernHeaderButtons.Close;
         StartPosition = FormStartPosition.CenterScreen;
         ShowInTaskbar = false;
@@ -57,13 +57,13 @@ internal class ScannerSelectionDialog : ModernWindow
 
         // The hint is a row of its own below the list, so it isn't drawn disabled with the list.
         var card = new SettingsCard { ShowDividers = false };
-        card.AddRow("Scanner", null, _combo).Stacked = true;
+        card.AddRow(L.T("Scanner"), null, _combo).Stacked = true;
         _rowHint = card.AddRow("", HintText);
         var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(20, 18, 20, 20) };
         stack.Controls.Add(card);
         Body.Controls.Add(stack);
 
-        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        _btnCancel = AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         _btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
         _btnOk.Click += (s, e) =>
         {
@@ -145,7 +145,7 @@ internal class ScannerSelectionDialog : ModernWindow
 
         if (_sorted.Count == 0)
         {
-            _combo.Items.Add("(kein Scanner gefunden)");
+            _combo.Items.Add(L.T("(kein Scanner gefunden)"));
             _combo.SelectedIndex = 0;
             _combo.Enabled = false;
             _btnOk.Enabled = true; // OK still works for "Automatisch"

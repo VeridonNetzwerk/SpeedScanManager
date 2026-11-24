@@ -1154,7 +1154,7 @@ internal class NavSidebar : Control, IThemeAware
                  | ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
         TabStop = true;
         AccessibleRole = AccessibleRole.PageTabList;
-        AccessibleName = "Navigation";
+        AccessibleName = L.T("Navigation");
     }
 
     /// <summary>The selected item changed (by the user or by code).</summary>

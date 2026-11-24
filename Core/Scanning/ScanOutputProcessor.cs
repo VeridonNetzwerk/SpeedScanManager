@@ -184,7 +184,7 @@ internal class ScanOutputProcessor
                     }
                     catch (OutOfMemoryException)
                     {
-                        AddWarning(result, "Zu wenig Arbeitsspeicher für die Schräglagenkorrektur; sie wurde übersprungen.");
+                        AddWarning(result, L.T("Zu wenig Arbeitsspeicher für die Schräglagenkorrektur; sie wurde übersprungen."));
                     }
                 }
             }
@@ -197,7 +197,7 @@ internal class ScanOutputProcessor
             if (s.AllowAutoRotate && osd != null)
             {
                 if (!osd.IsAvailable)
-                    AddWarning(result, "Die automatische Bilddrehung ist nicht verfügbar (osd.traineddata fehlt).");
+                    AddWarning(result, L.T("Die automatische Bilddrehung ist nicht verfügbar (osd.traineddata fehlt)."));
                 else
                 {
                     using var orientation = new PageOrientationDetector(osd, s.OcrLanguage);
@@ -209,7 +209,7 @@ internal class ScanOutputProcessor
             bool wantKeywords = s.FileFormat == FileFormat.Pdf && s.AddKeywordToPdf;
             if (wantKeywords && !s.OcrEnabled)
             {
-                AddWarning(result, "Markierte Schlüsselwörter benötigen die Texterkennung (durchsuchbare PDF); sie wurden übersprungen.");
+                AddWarning(result, L.T("Markierte Schlüsselwörter benötigen die Texterkennung (durchsuchbare PDF); sie wurden übersprungen."));
                 wantKeywords = false;
             }
             if (wantKeywords)
@@ -359,14 +359,14 @@ internal class ScanOutputProcessor
             ["B5Jis"] = (182, 257),
             ["B6"] = (128, 182),
             ["B6Jis"] = (128, 182),
-            ["Letter"] = (215.9, 279.4),
+            [L.T("Letter")] = (215.9, 279.4),
             ["DoubleLetter"] = (279.4, 431.8),
-            ["Postcard"] = (100, 148),
-            ["Postkarte"] = (100, 148),
+            [L.T("Postcard")] = (100, 148),
+            [L.T("Postkarte")] = (100, 148),
             ["BusinessCard"] = (55, 91),
-            ["Visitenkarte"] = (55, 91),
+            [L.T("Visitenkarte")] = (55, 91),
             ["CarrierSheet"] = (220, 297),
-            ["Traegerblatt"] = (220, 297),
+            [L.T("Traegerblatt")] = (220, 297),
         };
 
     private static (double widthMm, double heightMm)? GetCarrierOutputSizeMm(ScanSettings s)
@@ -434,13 +434,13 @@ internal class ScanOutputProcessor
                 }
                 else
                 {
-                    AddWarning(result, "Die Texterkennung ist nicht verfügbar (tessdata fehlt).");
+                    AddWarning(result, L.T("Die Texterkennung ist nicht verfügbar (tessdata fehlt)."));
                 }
             }
             catch (Exception ex)
             {
                 LogDiag($"OCR failed: {ex.Message}");
-                AddWarning(result, "Die Texterkennung ist fehlgeschlagen.");
+                AddWarning(result, L.T("Die Texterkennung ist fehlgeschlagen."));
             }
         }
 
@@ -511,7 +511,7 @@ internal class ScanOutputProcessor
             // Set password if configured. A missing password (PdfPasswordMissing) is caught
             // by the scan flow before scanning; never fall back to an unprotected file here.
             if (_settings.PdfPasswordMissing)
-                throw new InvalidOperationException("Das PDF-Passwort konnte nicht gelesen werden. Bitte geben Sie es in den Einstellungen neu ein.");
+                throw new InvalidOperationException(L.T("Das PDF-Passwort konnte nicht gelesen werden. Bitte geben Sie es in den Einstellungen neu ein."));
             if (_settings.PdfUsePassword)
             {
                 doc.SecuritySettings.UserPassword = _settings.PdfPassword;

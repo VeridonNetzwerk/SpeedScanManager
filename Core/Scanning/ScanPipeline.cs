@@ -219,7 +219,7 @@ internal class ScanPipeline : IDisposable
             if (rc != ReturnCode.Success)
             {
                 LogDiag($"DSM open failed: {rc}");
-                result.ErrorMessage = "Der TWAIN-Quellmanager konnte nicht geöffnet werden.";
+                result.ErrorMessage = L.T("Der TWAIN-Quellmanager konnte nicht geöffnet werden.");
                 return result;
             }
         }
@@ -327,7 +327,7 @@ internal class ScanPipeline : IDisposable
             {
                 LogDiag($"Scan timed out (no TWAIN event for {limit.TotalSeconds:0} s)");
                 _result.TimedOut = true;
-                _result.Warnings.Add("Der Scanner hat nicht mehr reagiert. Der Scanvorgang wurde abgebrochen.");
+                _result.Warnings.Add(L.T("Der Scanner hat nicht mehr reagiert. Der Scanvorgang wurde abgebrochen."));
                 break;
             }
         }
@@ -358,7 +358,7 @@ internal class ScanPipeline : IDisposable
             if (rc != ReturnCode.Success)
             {
                 LogDiag($"DSM open failed: {rc}");
-                _result.ErrorMessage = "Der TWAIN-Quellmanager konnte nicht geöffnet werden.";
+                _result.ErrorMessage = L.T("Der TWAIN-Quellmanager konnte nicht geöffnet werden.");
                 return false;
             }
         }
@@ -369,7 +369,7 @@ internal class ScanPipeline : IDisposable
         {
             LogDiag("SelectSource: no source found");
             _result.WasCancelled = true;
-            _result.ErrorMessage = "Es wurde kein Scanner gefunden.";
+            _result.ErrorMessage = L.T("Es wurde kein Scanner gefunden.");
             return false;
         }
         LogDiag($"SelectSource: selected '{_currentSource.Name}' (preferred='{_preferredSourceName ?? "(auto)"}', mfr='{_currentSource.Manufacturer}', family='{_currentSource.ProductFamily}')");
@@ -380,7 +380,7 @@ internal class ScanPipeline : IDisposable
         if (openRc != ReturnCode.Success)
         {
             LogDiag($"Source open failed: {openRc}");
-            _result.ErrorMessage = "Der Scanner konnte nicht geöffnet werden. Ist er eingeschaltet und verbunden?";
+            _result.ErrorMessage = L.T("Der Scanner konnte nicht geöffnet werden. Ist er eingeschaltet und verbunden?");
             return false;
         }
 
@@ -406,8 +406,8 @@ internal class ScanPipeline : IDisposable
         LogDiag($"Enable(NoUI) rc={enableRc}");
         if (enableRc != ReturnCode.Success)
         {
-            LogStatus("Enable");
-            _result.ErrorMessage = "Der Scanvorgang konnte nicht gestartet werden.";
+            LogStatus(L.T("Enable"));
+            _result.ErrorMessage = L.T("Der Scanvorgang konnte nicht gestartet werden.");
             return false;
         }
         return true;
@@ -615,7 +615,7 @@ internal class ScanPipeline : IDisposable
             _ => PixelType.RGB // Color and Automatic (classified per page afterwards)
         };
         if (SetCap("ICapPixelType", caps.ICapPixelType, pixelType) != ReturnCode.Success)
-            _result.Warnings.Add($"Der Scanner unterstützt den Farbmodus '{pixelType}' nicht.");
+            _result.Warnings.Add(L.F("Der Scanner unterstützt den Farbmodus '{0}' nicht.", pixelType));
         GetCurrent("ICapPixelType", caps.ICapPixelType);
 
         // ── Resolution ──
@@ -692,7 +692,7 @@ internal class ScanPipeline : IDisposable
         if (effectiveSide == ScanSide.Flatbed)
         {
             if (SetCap("CapFeederEnabled", caps.CapFeederEnabled, BoolType.False) != ReturnCode.Success)
-                _result.Warnings.Add("Der Scanner unterstützt kein Flachbett. Es wird der Einzug verwendet.");
+                _result.Warnings.Add(L.T("Der Scanner unterstützt kein Flachbett. Es wird der Einzug verwendet."));
             else
                 SetCap("CapDuplexEnabled", caps.CapDuplexEnabled, BoolType.False);
         }
@@ -708,7 +708,7 @@ internal class ScanPipeline : IDisposable
                     LogDiag("Duplex refused, falling back to Simplex");
                     SetCap("CapDuplexEnabled", caps.CapDuplexEnabled, BoolType.False);
                     if (!autoSide)
-                        _result.Warnings.Add("Der Scanner unterstützt keinen Duplex-Scan. Es wurde einseitig gescannt.");
+                        _result.Warnings.Add(L.T("Der Scanner unterstützt keinen Duplex-Scan. Es wurde einseitig gescannt."));
                 }
             }
             else
@@ -741,7 +741,7 @@ internal class ScanPipeline : IDisposable
                     LogDiag($"Resolution {dpi} refused, supported=[{string.Join(",", values)}], using {best}");
                     SetCap("ICapXResolution", caps.ICapXResolution, (TWFix32)best);
                     SetCap("ICapYResolution", caps.ICapYResolution, (TWFix32)best);
-                    _result.Warnings.Add($"Die Auflösung {dpi} dpi wird nicht unterstützt, es wurden {best:0} dpi verwendet.");
+                    _result.Warnings.Add(L.F("Die Auflösung {0} dpi wird nicht unterstützt, es wurden {1:0} dpi verwendet.", dpi, best));
                 }
             }
             catch (Exception ex)
@@ -776,7 +776,7 @@ internal class ScanPipeline : IDisposable
                 {
                     rc = SetCap("CapDoubleFeedDetection", caps.CapDoubleFeedDetection, DoubleFeedDetection.Ultrasonic);
                     if (rc == ReturnCode.Success)
-                        _result.Warnings.Add("Der Scanner unterstützt nicht beide Mehrfacheinzugsprüfungen gleichzeitig; es wird nur Ultraschall verwendet.");
+                        _result.Warnings.Add(L.T("Der Scanner unterstützt nicht beide Mehrfacheinzugsprüfungen gleichzeitig; es wird nur Ultraschall verwendet."));
                 }
                 break;
             default:
@@ -786,7 +786,7 @@ internal class ScanPipeline : IDisposable
 
         if (rc != ReturnCode.Success)
         {
-            _result.Warnings.Add("Die Mehrfacheinzugserkennung konnte nicht aktiviert werden.");
+            _result.Warnings.Add(L.T("Die Mehrfacheinzugserkennung konnte nicht aktiviert werden."));
             return;
         }
 
@@ -861,7 +861,7 @@ internal class ScanPipeline : IDisposable
             if (_customPaperSize == null || _customPaperSize.WidthMm <= 0 || _customPaperSize.LengthMm <= 0)
             {
                 LogDiag($"Custom paper size: no valid selection (index={_settings.SelectedCustomSizeIndex}), leaving driver default");
-                _result.Warnings.Add("Keine gültige benutzerdefinierte Papiergröße ausgewählt.");
+                _result.Warnings.Add(L.T("Keine gültige benutzerdefinierte Papiergröße ausgewählt."));
                 return;
             }
             widthMm = _customPaperSize.WidthMm;
@@ -908,7 +908,7 @@ internal class ScanPipeline : IDisposable
         };
         SetSupportedSizeNone();
         if (SetCap("ICapFrames", caps.ICapFrames, frame) != ReturnCode.Success)
-            _result.Warnings.Add("Die gewählte Papiergröße wird vom Scanner nicht unterstützt.");
+            _result.Warnings.Add(L.T("Die gewählte Papiergröße wird vom Scanner nicht unterstützt."));
         TryLogFrame();
     }
 
@@ -989,7 +989,7 @@ internal class ScanPipeline : IDisposable
 
             if (bmp == null)
             {
-                RecordFailedTransfer("Keine Bilddaten vom Scanner erhalten.");
+                RecordFailedTransfer(L.T("Keine Bilddaten vom Scanner erhalten."));
                 return;
             }
 
@@ -1000,13 +1000,13 @@ internal class ScanPipeline : IDisposable
         catch (OutOfMemoryException ex)
         {
             bmp?.Dispose();
-            RecordFailedTransfer("Zu wenig Arbeitsspeicher für eine Seite.");
+            RecordFailedTransfer(L.T("Zu wenig Arbeitsspeicher für eine Seite."));
             LogDiag($"Image transfer failed (out of memory): {ex.Message}");
         }
         catch (Exception ex)
         {
             bmp?.Dispose();
-            RecordFailedTransfer($"Seite konnte nicht übertragen werden: {ex.Message}");
+            RecordFailedTransfer(L.F("Seite konnte nicht übertragen werden: {0}", ex.Message));
             LogDiag($"Image transfer failed: {ex}");
         }
     }
@@ -1050,7 +1050,7 @@ internal class ScanPipeline : IDisposable
         Touch();
         var msg = e.Exception?.Message ?? $"rc={e.ReturnCode}, cc={e.SourceStatus?.ConditionCode}";
         LogDiag($"TransferError: {msg}");
-        RecordFailedTransfer($"Übertragungsfehler: {msg}");
+        RecordFailedTransfer(L.F("Übertragungsfehler: {0}", msg));
     }
 
     private void OnTransferCanceled(object? sender, TransferCanceledEventArgs e)

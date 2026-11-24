@@ -90,7 +90,7 @@ internal static class UpdateService
     /// </summary>
     public static async Task<string> DownloadAsync(UpdateInfo info, IProgress<double>? progress, CancellationToken ct)
     {
-        var dir = Path.Combine(Path.GetTempPath(), "SpeedScanManager", "Update");
+        var dir = Path.Combine(Path.GetTempPath(), "SpeedScanManager", L.T("Update"));
         Directory.CreateDirectory(dir);
         var target = Path.Combine(dir, Path.GetFileName(info.SetupName));
         var partial = target + ".part";
@@ -100,7 +100,7 @@ internal static class UpdateService
             response.EnsureSuccessStatusCode();
             var final = response.RequestMessage?.RequestUri?.AbsoluteUri ?? info.SetupUrl;
             if (!IsGitHubUrl(final))
-                throw new InvalidOperationException("Der Download wurde auf eine unbekannte Adresse umgeleitet.");
+                throw new InvalidOperationException(L.T("Der Download wurde auf eine unbekannte Adresse umgeleitet."));
             long total = response.Content.Headers.ContentLength ?? info.SetupSize;
             await using var input = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
             await using var output = new FileStream(partial, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
@@ -119,7 +119,7 @@ internal static class UpdateService
         if (info.SetupSize > 0 && length != info.SetupSize)
         {
             File.Delete(partial);
-            throw new InvalidOperationException("Der Download ist unvollständig. Bitte erneut versuchen.");
+            throw new InvalidOperationException(L.T("Der Download ist unvollständig. Bitte erneut versuchen."));
         }
         if (info.Sha256 != null)
         {
@@ -129,7 +129,7 @@ internal static class UpdateService
             if (actual != info.Sha256)
             {
                 File.Delete(partial);
-                throw new InvalidOperationException("Die heruntergeladene Datei ist beschädigt (Prüfsumme stimmt nicht).");
+                throw new InvalidOperationException(L.T("Die heruntergeladene Datei ist beschädigt (Prüfsumme stimmt nicht)."));
             }
         }
         File.Move(partial, target, overwrite: true);

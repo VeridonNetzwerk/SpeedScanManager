@@ -48,7 +48,7 @@ internal class FileTypeTabContent : ModernStack
             DrawMode = DrawMode.OwnerDrawFixed,
             ItemHeight = 20
         };
-        _cbFileFormat.Items.AddRange(new object[] { "PDF (*.pdf)", "JPEG (*.jpg)", "PNG (*.png)" });
+        _cbFileFormat.Items.AddRange(new object[] { L.T("PDF (*.pdf)"), L.T("JPEG (*.jpg)"), L.T("PNG (*.png)") });
         ComboLists.SetRowHeight(_cbFileFormat, ComboLists.IconRow);
         _cbFileFormat.DrawItem += (s, e) => DrawFileFormatItem(e);
         _cbFileFormat.SelectedIndexChanged += (s, e) =>
@@ -81,7 +81,7 @@ internal class FileTypeTabContent : ModernStack
 
         _rbFirstSection = new RadioButton
         {
-            Text = "Erste markierte Sektion",
+            Text = L.T("Erste markierte Sektion"),
             AutoSize = true,
             Margin = new Padding(0, 0, 14, 0)
         };
@@ -93,7 +93,7 @@ internal class FileTypeTabContent : ModernStack
 
         _rbAllSections = new RadioButton
         {
-            Text = "Alle markierten Sektionen",
+            Text = L.T("Alle markierten Sektionen"),
             AutoSize = true,
             Margin = Padding.Empty
         };
@@ -130,7 +130,7 @@ internal class FileTypeTabContent : ModernStack
 
         _rbFirstPage = new RadioButton
         {
-            Text = "Erste Seite",
+            Text = L.T("Erste Seite"),
             AutoSize = true,
             Margin = new Padding(0, 0, 14, 0)
         };
@@ -142,7 +142,7 @@ internal class FileTypeTabContent : ModernStack
 
         _rbAllPages = new RadioButton
         {
-            Text = "Alle Seiten",
+            Text = L.T("Alle Seiten"),
             AutoSize = true,
             Margin = Padding.Empty
         };
@@ -154,21 +154,21 @@ internal class FileTypeTabContent : ModernStack
 
         // === Cards ===
         var cardFormat = new SettingsCard { Dense = true };
-        _rowFileFormat = cardFormat.AddRow("Dateiformat",
-            "JPEG steht bei Farbmodus „Schwarzweiß“ nicht zur Verfügung.",
+        _rowFileFormat = cardFormat.AddRow(L.T("Dateiformat"),
+            L.T("JPEG steht bei Farbmodus „Schwarzweiß“ nicht zur Verfügung."),
             _cbFileFormat, ComboWidth);
-        cardFormat.AddRow("PDF-Optionen", "PDF-Seiten teilen und Kennwort (nur PDF).", _btnOptions);
+        cardFormat.AddRow("PDF-Optionen", L.T("PDF-Seiten teilen und Kennwort (nur PDF)."), _btnOptions);
 
-        var cardChoose = new SettingsCard("Texterkennung wählen") { Dense = true, Icon = ColorIcon.Tile(Glyph.Sparkle, IconColors.Pink) };
-        cardChoose.AddRow("Markierten Text als Schlüsselwort der PDF-Datei hinzufügen",
-            "Mit Textmarker hervorgehobene Stellen werden Schlüsselwörter der PDF-Datei.", _chkAddKeyword);
-        _lblKeywordTarget = cardChoose.AddRow("Zielmarkierung", null, RadioGroup(_rbFirstSection, _rbAllSections));
-        cardChoose.AddRow("In durchsuchbare PDF konvertieren",
-            "Der erkannte Text (OCR) wird unsichtbar über das Bild gelegt.", _chkOcr);
+        var cardChoose = new SettingsCard(L.T("Texterkennung wählen")) { Dense = true, Icon = ColorIcon.Tile(Glyph.Sparkle, IconColors.Pink) };
+        cardChoose.AddRow(L.T("Markierten Text als Schlüsselwort der PDF-Datei hinzufügen"),
+            L.T("Mit Textmarker hervorgehobene Stellen werden Schlüsselwörter der PDF-Datei."), _chkAddKeyword);
+        _lblKeywordTarget = cardChoose.AddRow(L.T("Zielmarkierung"), null, RadioGroup(_rbFirstSection, _rbAllSections));
+        cardChoose.AddRow(L.T("In durchsuchbare PDF konvertieren"),
+            L.T("Der erkannte Text (OCR) wird unsichtbar über das Bild gelegt."), _chkOcr);
 
-        _grpOcrOptions = new SettingsCard("Texterkennungsoptionen") { Dense = true, Icon = ColorIcon.Tile(Glyph.Globe, IconColors.Sky) };
-        _lblOcrLanguage = _grpOcrOptions.AddRow("Sprache", null, _cbOcrLanguage, ComboWidth);
-        _lblOcrTarget = _grpOcrOptions.AddRow("Zielseiten", null, RadioGroup(_rbFirstPage, _rbAllPages));
+        _grpOcrOptions = new SettingsCard(L.T("Texterkennungsoptionen")) { Dense = true, Icon = ColorIcon.Tile(Glyph.Globe, IconColors.Sky) };
+        _lblOcrLanguage = _grpOcrOptions.AddRow(L.T("Sprache"), null, _cbOcrLanguage, ComboWidth);
+        _lblOcrTarget = _grpOcrOptions.AddRow(L.T("Zielseiten"), null, RadioGroup(_rbFirstPage, _rbAllPages));
 
         Controls.Add(cardFormat);
         Controls.Add(cardChoose);
@@ -266,7 +266,7 @@ internal class FileTypeTabContent : ModernStack
         bool isJpeg = e.Index == (int)FileFormat.Jpeg;
         bool disabled = isJpeg && !_jpegAvailable;
         ComboItemPainter.Draw(_cbFileFormat, e, e.Index < FileFormatIcons.Length ? FileFormatIcons[e.Index] : null, text, null,
-            enabled: !disabled, hint: disabled ? "nicht bei Schwarzweiß" : null);
+            enabled: !disabled, hint: disabled ? L.T("nicht bei Schwarzweiß") : null);
     }
 
     /// <summary>Entry of the OCR language list.</summary>
@@ -277,19 +277,19 @@ internal class FileTypeTabContent : ModernStack
 
     private static string GetOcrLanguageName(OcrLanguage language) => language switch
     {
-        OcrLanguage.Automatisch => "Automatische Erkennung",
-        OcrLanguage.Deutsch => "Deutsch",
-        OcrLanguage.Japanisch => "Japanisch",
-        OcrLanguage.English => "Englisch",
-        OcrLanguage.Franzoesisch => "Französisch",
-        OcrLanguage.Italienisch => "Italienisch",
-        OcrLanguage.Spanisch => "Spanisch",
-        OcrLanguage.ChinesischVereinfacht => "Chinesisch (vereinfacht)",
-        OcrLanguage.ChinesischTraditionell => "Chinesisch (traditionell)",
-        OcrLanguage.Koreanisch => "Koreanisch",
-        OcrLanguage.Russisch => "Russisch",
-        OcrLanguage.Portugiesisch => "Portugiesisch",
-        OcrLanguage.Arabisch => "Arabisch",
+        OcrLanguage.Automatisch => L.T("Automatische Erkennung"),
+        OcrLanguage.Deutsch => L.T("Deutsch"),
+        OcrLanguage.Japanisch => L.T("Japanisch"),
+        OcrLanguage.English => L.T("Englisch"),
+        OcrLanguage.Franzoesisch => L.T("Französisch"),
+        OcrLanguage.Italienisch => L.T("Italienisch"),
+        OcrLanguage.Spanisch => L.T("Spanisch"),
+        OcrLanguage.ChinesischVereinfacht => L.T("Chinesisch (vereinfacht)"),
+        OcrLanguage.ChinesischTraditionell => L.T("Chinesisch (traditionell)"),
+        OcrLanguage.Koreanisch => L.T("Koreanisch"),
+        OcrLanguage.Russisch => L.T("Russisch"),
+        OcrLanguage.Portugiesisch => L.T("Portugiesisch"),
+        OcrLanguage.Arabisch => L.T("Arabisch"),
         _ => language.ToString()
     };
 
@@ -315,7 +315,7 @@ internal class FileTypeTabContent : ModernStack
                     continue;
 
                 var item = new OcrLanguageItem(language,
-                    available ? GetOcrLanguageName(language) : $"{GetOcrLanguageName(language)} (nicht installiert)");
+                    available ? GetOcrLanguageName(language) : L.F("{0} (nicht installiert)", GetOcrLanguageName(language)));
                 _cbOcrLanguage.Items.Add(item);
                 if (language == selected) selectedItem = item;
             }

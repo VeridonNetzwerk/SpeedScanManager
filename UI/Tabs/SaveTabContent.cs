@@ -57,12 +57,12 @@ internal class SaveTabContent : ModernStack
         };
 
         var cardFolder = new SettingsCard { Dense = true };
-        var rowFolder = cardFolder.AddRow("Speicherordner für Bilddaten", "Die gescannten Dateien werden in diesem Ordner gespeichert.", _folderPicker);
+        var rowFolder = cardFolder.AddRow(L.T("Speicherordner für Bilddaten"), L.T("Die gescannten Dateien werden in diesem Ordner gespeichert."), _folderPicker);
         rowFolder.Stacked = true;
 
-        var cardName = new SettingsCard("Dateiname") { Dense = true, Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Amber) };
-        _rowFileName = cardName.AddRow("Dateinamenformat", "", _btnFileNameFormat);
-        cardName.AddRow("Datei nach Scan umbenennen", "Nach dem Scan können Sie einen eigenen Dateinamen eingeben.", _chkRenameAfterScan);
+        var cardName = new SettingsCard(L.T("Dateiname")) { Dense = true, Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Amber) };
+        _rowFileName = cardName.AddRow(L.T("Dateinamenformat"), "", _btnFileNameFormat);
+        cardName.AddRow(L.T("Datei nach Scan umbenennen"), L.T("Nach dem Scan können Sie einen eigenen Dateinamen eingeben."), _chkRenameAfterScan);
 
         Controls.Add(cardFolder);
         Controls.Add(cardName);
@@ -100,7 +100,7 @@ internal class SaveTabContent : ModernStack
         using var dialog = new FolderBrowserDialog
         {
             SelectedPath = FolderPath,
-            Description = "Speicherordner für gescannte Dokumente wählen"
+            Description = L.T("Speicherordner für gescannte Dokumente wählen")
         };
 
         if (dialog.ShowDialog(FindForm()) == DialogResult.OK)

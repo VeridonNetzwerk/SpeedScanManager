@@ -25,9 +25,9 @@ internal class ProfileManagementDialog : ModernWindow
 
         SuspendLayout();
         StartPosition = FormStartPosition.CenterParent;
-        Text = "SpeedScan Manager – Profilverwaltung";
-        Title = "Profilverwaltung";
-        Subtitle = "Profile hinzufügen, umbenennen, löschen und sortieren";
+        Text = L.T("SpeedScan Manager – Profilverwaltung");
+        Title = L.T("Profilverwaltung");
+        Subtitle = L.T("Profile hinzufügen, umbenennen, löschen und sortieren");
         HeaderButtons = ModernHeaderButtons.Close;
         HeaderIcon = ColorIcon.Tile(Glyph.User, IconColors.Blue);
         ClientSize = new Size(520, 430);
@@ -50,20 +50,20 @@ internal class ProfileManagementDialog : ModernWindow
         _listBox.SelectedIndexChanged += (s, e) => UpdateButtonStates();
 
         // === Buttons ===
-        _btnAdd = CreateActionButton("Hinzufügen...", Glyph.Plus, IconColors.Green);
+        _btnAdd = CreateActionButton(L.T("Hinzufügen..."), Glyph.Plus, IconColors.Green);
         _btnAdd.Click += (s, e) => AddProfile();
 
         _btnRename = CreateActionButton("Umbenennen...", Glyph.TextField, IconColors.Blue);
         _btnRename.Click += (s, e) => RenameProfile();
 
-        _btnDelete = CreateActionButton("Löschen", Glyph.Cross);
+        _btnDelete = CreateActionButton(L.T("Löschen"), Glyph.Cross);
         ThemeManager.SetRole(_btnDelete, ThemeRole.Danger);
         _btnDelete.Click += (s, e) => DeleteProfile();
 
-        _btnUp = CreateActionButton("Nach oben", Glyph.ChevronUp);
+        _btnUp = CreateActionButton(L.T("Nach oben"), Glyph.ChevronUp);
         _btnUp.Click += (s, e) => MoveUp();
 
-        _btnDown = CreateActionButton("Nach unten", Glyph.ChevronDown);
+        _btnDown = CreateActionButton(L.T("Nach unten"), Glyph.ChevronDown);
         _btnDown.Click += (s, e) => MoveDown();
 
         // Same tab order as before: list, Hinzufügen, Umbenennen, Löschen, Nach oben, Nach unten, Schließen.
@@ -94,8 +94,8 @@ internal class ProfileManagementDialog : ModernWindow
         Body.Controls.Add(layout);
 
         // === Footer ===
-        FooterHint = $"Höchstens {ProfileManager.MaxProfiles} Profile";
-        _btnClose = AddFooterButton("Schließen", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
+        FooterHint = L.F("Höchstens {0} Profile", ProfileManager.MaxProfiles);
+        _btnClose = AddFooterButton(L.T("Schließen"), ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = _btnClose;
         CancelButton = _btnClose;
@@ -139,23 +139,23 @@ internal class ProfileManagementDialog : ModernWindow
 
         var steps = new List<TutorialOverlay.Step>
         {
-            new("Profile",
-                "Ein Profil speichert alle Scaneinstellungen unter einem Namen – z. B. „Belege“ in Schwarzweiß und „Fotos“ in Farbe. So wechselst du mit einem Klick zwischen ihnen.",
+            new(L.T("Profile"),
+                L.T("Ein Profil speichert alle Scaneinstellungen unter einem Namen – z. B. „Belege“ in Schwarzweiß und „Fotos“ in Farbe. So wechselst du mit einem Klick zwischen ihnen."),
                 Glyph.User, IconColors.Blue),
-            new("Deine Profile",
-                "Hier stehen alle Profile. Die Standardprofile sind fest, eigene Profile kannst du umbenennen, löschen und sortieren.",
+            new(L.T("Deine Profile"),
+                L.T("Hier stehen alle Profile. Die Standardprofile sind fest, eigene Profile kannst du umbenennen, löschen und sortieren."),
                 Glyph.Apps, IconColors.Purple, Of(_listBox)),
-            new("Neues Profil",
-                "„Hinzufügen...“ legt ein neues Profil an. Wähle es danach im Einstellungsfenster unter „Aktives Profil“ aus und stell alles ein – mit OK wird es im Profil gespeichert.",
+            new(L.T("Neues Profil"),
+                L.T("„Hinzufügen...“ legt ein neues Profil an. Wähle es danach im Einstellungsfenster unter „Aktives Profil“ aus und stell alles ein – mit OK wird es im Profil gespeichert."),
                 Glyph.Plus, IconColors.Green, Of(_btnAdd)),
-            new("Umbenennen und löschen",
-                "Für eigene Profile: erst in der Liste auswählen, dann umbenennen oder löschen.",
+            new(L.T("Umbenennen und löschen"),
+                L.T("Für eigene Profile: erst in der Liste auswählen, dann umbenennen oder löschen."),
                 Glyph.TextField, IconColors.Blue, Of(_btnRename, _btnDelete)),
-            new("Reihenfolge",
-                "„Nach oben“ und „Nach unten“ sortieren die Profile – in dieser Reihenfolge erscheinen sie auch in der Auswahl.",
+            new(L.T("Reihenfolge"),
+                L.T("„Nach oben“ und „Nach unten“ sortieren die Profile – in dieser Reihenfolge erscheinen sie auch in der Auswahl."),
                 Glyph.ChevronUp, IconColors.Slate, Of(_btnUp, _btnDown)),
-            new("Gut zu wissen",
-                "Profile gelten nur, wenn das Quick-Menü aus ist. Mit dem Quick-Menü wählst du das Ziel nach jedem Scan selbst.",
+            new(L.T("Gut zu wissen"),
+                L.T("Profile gelten nur, wenn das Quick-Menü aus ist. Mit dem Quick-Menü wählst du das Ziel nach jedem Scan selbst."),
                 Glyph.Check, IconColors.Green, Of(_btnClose)),
         };
         _tour = new TutorialOverlay(this, steps);
@@ -204,12 +204,12 @@ internal class ProfileManagementDialog : ModernWindow
     {
         if (!_manager.CanAddProfile)
         {
-            TrayMessageBox.Show(this, $"Es können höchstens {ProfileManager.MaxProfiles} Profile angelegt werden.",
+            TrayMessageBox.Show(this, L.F("Es können höchstens {0} Profile angelegt werden.", ProfileManager.MaxProfiles),
                 "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
-        string? name = ShowInputDialog("Neues Profil", "Name des neuen Profils:", "Neues Profil", null);
+        string? name = ShowInputDialog(L.T("Neues Profil"), L.T("Name des neuen Profils:"), L.T("Neues Profil"), null);
         if (name == null)
             return;
 
@@ -230,7 +230,7 @@ internal class ProfileManagementDialog : ModernWindow
         var profile = _manager.Profiles[idx];
         if (profile.IsBuiltIn) return;
         string currentName = profile.Name;
-        string? newName = ShowInputDialog("Profil umbenennen", "Neuer Name:", currentName, profile);
+        string? newName = ShowInputDialog(L.T("Profil umbenennen"), L.T("Neuer Name:"), currentName, profile);
 
         if (newName != null && newName != currentName)
         {
@@ -246,7 +246,7 @@ internal class ProfileManagementDialog : ModernWindow
         if (idx < 0 || idx >= _manager.Profiles.Count || _manager.Profiles[idx].IsBuiltIn) return;
 
         var result = TrayMessageBox.Show(this,
-            $"Profil \"{_manager.Profiles[idx].DisplayName}\" wirklich löschen?",
+            L.F("Profil \"{0}\" wirklich löschen?", _manager.Profiles[idx].DisplayName),
             "SpeedScan Manager", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
         if (result == DialogResult.Yes)
@@ -311,7 +311,7 @@ internal static class ProfileNameInput
         stack.Controls.Add(card);
         dlg.Body.Controls.Add(stack);
 
-        var btnCancel = dlg.AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        var btnCancel = dlg.AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         var btnOk = dlg.AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
         dlg.AcceptButton = btnOk;
         dlg.CancelButton = btnCancel;

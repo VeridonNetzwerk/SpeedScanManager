@@ -31,9 +31,9 @@ internal sealed class UpdateDialog : ModernWindow
         _info = info;
         _blockedReason = blockedReason;
         SuspendLayout();
-        Text = "SpeedScan Manager – Update";
-        Title = $"Version {UpdateService.Format(info.Version)} ist da";
-        Subtitle = $"Installiert ist {UpdateService.CurrentVersionText}";
+        Text = L.T("SpeedScan Manager – Update");
+        Title = L.F("Version {0} ist da", UpdateService.Format(info.Version));
+        Subtitle = L.F("Installiert ist {0}", UpdateService.CurrentVersionText);
         HeaderIcon = ColorIcon.Tile(Glyph.Download, IconColors.Green);
         HeaderButtons = ModernHeaderButtons.Close;
         StartPosition = FormStartPosition.CenterParent;
@@ -48,7 +48,7 @@ internal sealed class UpdateDialog : ModernWindow
         };
         var heading = new Label
         {
-            Text = "Was ist neu",
+            Text = L.T("Was ist neu"),
             AutoSize = true,
             Font = ThemeFonts.Heading,
             Margin = new Padding(0, 0, 0, 8),
@@ -56,7 +56,7 @@ internal sealed class UpdateDialog : ModernWindow
         };
         stack.Controls.Add(heading);
         var notes = UpdateService.PlainNotes(info.Notes);
-        _notes = new NotesView(string.IsNullOrWhiteSpace(notes) ? "Fehlerbehebungen und Verbesserungen." : notes)
+        _notes = new NotesView(string.IsNullOrWhiteSpace(notes) ? L.T("Fehlerbehebungen und Verbesserungen.") : notes)
         {
             Width = TextWidth,
             Margin = new Padding(0, 0, 0, 10),
@@ -66,10 +66,10 @@ internal sealed class UpdateDialog : ModernWindow
         stack.Controls.Add(_progress);
         Body.Controls.Add(stack);
 
-        var github = AddFooterButton("Auf GitHub", ThemeRole.Secondary, Glyph.OpenExternal, DialogResult.None, alignLeft: true);
+        var github = AddFooterButton(L.T("Auf GitHub"), ThemeRole.Secondary, Glyph.OpenExternal, DialogResult.None, alignLeft: true);
         github.Click += (_, _) => OpenPage();
-        _btnLater = AddFooterButton("Später", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
-        _btnInstall = AddFooterButton("Jetzt installieren", ThemeRole.Primary, Glyph.Download, DialogResult.None);
+        _btnLater = AddFooterButton(L.T("Später"), ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        _btnInstall = AddFooterButton(L.T("Jetzt installieren"), ThemeRole.Primary, Glyph.Download, DialogResult.None);
         _btnInstall.Click += async (_, _) => await InstallAsync();
         AcceptButton = _btnInstall;
         CancelButton = _btnLater;
@@ -101,13 +101,13 @@ internal sealed class UpdateDialog : ModernWindow
         if (_download != null || _blockedReason() != null) { UpdateBlocked(); return; }
         _download = new CancellationTokenSource();
         _btnInstall.Enabled = false;
-        _progress.SetProgress(0, "Wird heruntergeladen …");
-        var progress = new Progress<double>(v => _progress.SetProgress(v, $"Wird heruntergeladen … {v * 100:0} %"));
+        _progress.SetProgress(0, L.T("Wird heruntergeladen …"));
+        var progress = new Progress<double>(v => _progress.SetProgress(v, L.F("Wird heruntergeladen … {0:0} %", v * 100)));
         try
         {
             var path = await UpdateService.DownloadAsync(_info, progress, _download.Token);
             if (IsDisposed) return;
-            _progress.SetProgress(1, "Setup wird gestartet …");
+            _progress.SetProgress(1, L.T("Setup wird gestartet …"));
             SetupReady?.Invoke(path);
         }
         catch (OperationCanceledException)
@@ -119,7 +119,7 @@ internal sealed class UpdateDialog : ModernWindow
             DiagLog.Write($"[Update] download failed: {ex}");
             if (IsDisposed) return;
             _progress.SetText(ex is HttpRequestException or TaskCanceledException
-                ? "Download fehlgeschlagen. Bitte Internetverbindung prüfen und erneut versuchen."
+                ? L.T("Download fehlgeschlagen. Bitte Internetverbindung prüfen und erneut versuchen.")
                 : ex.Message, ProgressLine.Mode.Error);
         }
         finally
@@ -127,7 +127,7 @@ internal sealed class UpdateDialog : ModernWindow
             var cts = _download;
             _download = null;
             cts?.Dispose();
-            if (!IsDisposed && _btnInstall.Text == "Jetzt installieren")
+            if (!IsDisposed && _btnInstall.Text == L.T("Jetzt installieren"))
                 _btnInstall.Enabled = _blockedReason() == null;
         }
     }

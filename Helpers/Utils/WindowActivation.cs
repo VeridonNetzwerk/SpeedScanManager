@@ -221,15 +221,15 @@ internal sealed class TrayPromptForm : ModernWindow
         Button first, second;
         if (buttons == MessageBoxButtons.YesNoCancel)
         {
-            first = AddFooterButton("&Ja", ThemeRole.Secondary, Glyph.None, DialogResult.Yes);
-            second = AddFooterButton("&Nein", ThemeRole.Secondary, Glyph.None, DialogResult.No);
-            var third = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+            first = AddFooterButton(L.T("&Ja"), ThemeRole.Secondary, Glyph.None, DialogResult.Yes);
+            second = AddFooterButton(L.T("&Nein"), ThemeRole.Secondary, Glyph.None, DialogResult.No);
+            var third = AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
             CancelButton = third;
         }
         else if (buttons == MessageBoxButtons.YesNo)
         {
-            first = AddFooterButton("&Ja", ThemeRole.Secondary, Glyph.None, DialogResult.Yes);
-            second = AddFooterButton("&Nein", ThemeRole.Secondary, Glyph.None, DialogResult.No);
+            first = AddFooterButton(L.T("&Ja"), ThemeRole.Secondary, Glyph.None, DialogResult.Yes);
+            second = AddFooterButton(L.T("&Nein"), ThemeRole.Secondary, Glyph.None, DialogResult.No);
             CancelButton = second;
         }
         else
@@ -272,10 +272,10 @@ internal sealed class TrayPromptForm : ModernWindow
             AccessibleRole = AccessibleRole.Graphic;
             AccessibleName = kind switch
             {
-                Kind.Error => "Fehler",
-                Kind.Warning => "Warnung",
-                Kind.Question => "Frage",
-                _ => "Information"
+                Kind.Error => L.T("Fehler"),
+                Kind.Warning => L.T("Warnung"),
+                Kind.Question => L.T("Frage"),
+                _ => L.T("Information")
             };
         }
 

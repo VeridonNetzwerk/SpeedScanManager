@@ -77,7 +77,7 @@ internal class ProfileManager
             if (element.ValueKind != JsonValueKind.Object)
                 continue;
 
-            string name = GetString(element, "Name") ?? "";
+            string name = GetString(element, L.T("Name")) ?? "";
             if (string.IsNullOrWhiteSpace(name))
                 continue;
 
@@ -193,18 +193,18 @@ internal class ProfileManager
     public string? ValidateName(string? name, ScanProfile? except = null)
     {
         if (string.IsNullOrWhiteSpace(name))
-            return "Bitte geben Sie einen Profilnamen ein.";
+            return L.T("Bitte geben Sie einen Profilnamen ein.");
         name = name.Trim();
         if (name.Length > MaxNameLength)
-            return $"Der Profilname darf höchstens {MaxNameLength} Zeichen lang sein.";
+            return L.F("Der Profilname darf höchstens {0} Zeichen lang sein.", MaxNameLength);
         if (name == "-")
-            return "Dieser Profilname ist nicht zulässig.";
+            return L.T("Dieser Profilname ist nicht zulässig.");
         foreach (var p in Profiles)
         {
             if (ReferenceEquals(p, except)) continue;
             if (string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(p.DisplayName, name, StringComparison.OrdinalIgnoreCase))
-                return $"Ein Profil mit dem Namen \"{name}\" existiert bereits.";
+                return L.F("Ein Profil mit dem Namen \"{0}\" existiert bereits.", name);
         }
         return null;
     }

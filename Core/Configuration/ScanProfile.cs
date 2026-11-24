@@ -49,14 +49,14 @@ internal class ScanProfile
 
     public static string GetBuiltInDisplayName(string name) => name switch
     {
-        nameof(ApplicationType.ScanToFolder) => "In Ordner speichern",
-        nameof(ApplicationType.ScanToEmail) => "Per E-Mail senden",
-        nameof(ApplicationType.ScanToPrint) => "Drucken",
-        nameof(ApplicationType.ScanToWord) => "In Word-Dokument umwandeln",
-        nameof(ApplicationType.ScanToExcel) => "In Excel-Tabelle umwandeln",
-        nameof(ApplicationType.ScanToPowerPoint) => "In PowerPoint-Präsentation umwandeln",
-        nameof(ApplicationType.ScanPictureFolder) => "In Bilderordner speichern",
-        nameof(ApplicationType.EditWithPdf) => "Mit PDF-Programm bearbeiten",
+        nameof(ApplicationType.ScanToFolder) => L.T("In Ordner speichern"),
+        nameof(ApplicationType.ScanToEmail) => L.T("Per E-Mail senden"),
+        nameof(ApplicationType.ScanToPrint) => L.T("Drucken"),
+        nameof(ApplicationType.ScanToWord) => L.T("In Word-Dokument umwandeln"),
+        nameof(ApplicationType.ScanToExcel) => L.T("In Excel-Tabelle umwandeln"),
+        nameof(ApplicationType.ScanToPowerPoint) => L.T("In PowerPoint-Präsentation umwandeln"),
+        nameof(ApplicationType.ScanPictureFolder) => L.T("In Bilderordner speichern"),
+        nameof(ApplicationType.EditWithPdf) => L.T("Mit PDF-Programm bearbeiten"),
         _ => name
     };
 }

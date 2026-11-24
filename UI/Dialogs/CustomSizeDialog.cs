@@ -29,9 +29,9 @@ internal class CustomSizeDialog : ModernWindow
         SuspendLayout();
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
-        Text = "Hinzufügen oder Entfernen von benutzerdefinierten Größen";
-        Title = "Benutzerdefinierte Größen";
-        Subtitle = "Hinzufügen oder Entfernen von benutzerdefinierten Größen";
+        Text = L.T("Hinzufügen oder Entfernen von benutzerdefinierten Größen");
+        Title = L.T("Benutzerdefinierte Größen");
+        Subtitle = L.T("Hinzufügen oder Entfernen von benutzerdefinierten Größen");
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
         HelpTopic = "custom-size-dialog";
         HeaderIcon = ColorIcon.Tile(Glyph.Ruler, IconColors.Orange);
@@ -41,7 +41,7 @@ internal class CustomSizeDialog : ModernWindow
         // === Toolbar: add / edit / remove ===
         _btnAdd = new Button
         {
-            Text = "Hinzufügen...",
+            Text = L.T("Hinzufügen..."),
             Size = new Size(132, 32),
             Margin = new Padding(0, 0, 8, 0)
         };
@@ -50,7 +50,7 @@ internal class CustomSizeDialog : ModernWindow
 
         _btnEdit = new Button
         {
-            Text = "Ändern...",
+            Text = L.T("Ändern..."),
             Size = new Size(116, 32),
             Margin = new Padding(0, 0, 8, 0),
             Enabled = false
@@ -60,7 +60,7 @@ internal class CustomSizeDialog : ModernWindow
 
         _btnRemove = new Button
         {
-            Text = "Entfernen",
+            Text = L.T("Entfernen"),
             Size = new Size(116, 32),
             Margin = Padding.Empty,
             Enabled = false
@@ -85,7 +85,7 @@ internal class CustomSizeDialog : ModernWindow
             Dock = DockStyle.Fill,
             IntegralHeight = false,
             Margin = Padding.Empty,
-            AccessibleName = "Benutzerdefinierte Größen"
+            AccessibleName = L.T("Benutzerdefinierte Größen")
         };
         // Rows: ruler icon, name, dimensions right-aligned
         ModernLists.Setup(_listBox, i => i < CustomSizes.Count
@@ -103,7 +103,7 @@ internal class CustomSizeDialog : ModernWindow
             Margin = Padding.Empty,
             TextAlign = HorizontalAlignment.Center,
             ReadOnly = true, // display only; values are edited via "Ändern..."
-            AccessibleName = "Breite"
+            AccessibleName = L.T("Breite")
         };
 
         _txtLength = new TextBox
@@ -112,7 +112,7 @@ internal class CustomSizeDialog : ModernWindow
             Margin = Padding.Empty,
             TextAlign = HorizontalAlignment.Center,
             ReadOnly = true, // display only; values are edited via "Ändern..."
-            AccessibleName = "Länge"
+            AccessibleName = L.T("Länge")
         };
 
         // Labels above the text fields
@@ -132,8 +132,8 @@ internal class CustomSizeDialog : ModernWindow
         dimTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         dimTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        var lblBreite = new Label { Text = "Breite", AutoSize = true, Margin = new Padding(0, 0, 0, 3) };
-        var lblLaenge = new Label { Text = "Länge", AutoSize = true, Margin = new Padding(0, 0, 0, 3) };
+        var lblBreite = new Label { Text = L.T("Breite"), AutoSize = true, Margin = new Padding(0, 0, 0, 3) };
+        var lblLaenge = new Label { Text = L.T("Länge"), AutoSize = true, Margin = new Padding(0, 0, 0, 3) };
         ThemeManager.SetRole(lblBreite, ThemeRole.Muted);
         ThemeManager.SetRole(lblLaenge, ThemeRole.Muted);
         dimTable.Controls.Add(lblBreite, 0, 0);
@@ -155,21 +155,21 @@ internal class CustomSizeDialog : ModernWindow
             Margin = new Padding(6, 0, 0, 0)
         }, 3, 1);
 
-        var card = new SettingsCard("Größen", $"Bis zu {MaxEntries} benutzerdefinierte Größen können hinzugefügt werden.")
+        var card = new SettingsCard(L.T("Größen"), L.F("Bis zu {0} benutzerdefinierte Größen können hinzugefügt werden.", MaxEntries))
         {
             Dense = true,
             Icon = ColorIcon.Tile(Glyph.Ruler, IconColors.Orange)
         };
         card.Add(toolbar);
         card.Add(listHost);
-        card.AddRow("Ausgewählte Größe", null, dimTable);
+        card.AddRow(L.T("Ausgewählte Größe"), null, dimTable);
 
         var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
         stack.Controls.Add(card);
         Body.Controls.Add(stack);
 
         // === Footer ===
-        _btnClose = AddFooterButton("Schließen", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
+        _btnClose = AddFooterButton(L.T("Schließen"), ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = _btnClose;
         CancelButton = _btnClose;
@@ -216,7 +216,7 @@ internal class CustomSizeDialog : ModernWindow
     {
         if (CustomSizes.Count >= MaxEntries)
         {
-            TrayMessageBox.Show(this, $"Maximal {MaxEntries} Einträge sind erlaubt.",
+            TrayMessageBox.Show(this, L.F("Maximal {0} Einträge sind erlaubt.", MaxEntries),
                 "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -286,9 +286,9 @@ internal class CustomSizeEditDialog : ModernWindow
         SuspendLayout();
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
-        Text = "Benutzerdefinierte Größe";
-        Title = "Benutzerdefinierte Größe";
-        Subtitle = "Name und Abmessungen in Millimetern";
+        Text = L.T("Benutzerdefinierte Größe");
+        Title = L.T("Benutzerdefinierte Größe");
+        Subtitle = L.T("Name und Abmessungen in Millimetern");
         HeaderButtons = ModernHeaderButtons.Close;
         AutoSizeToContent = true;
         MinimumContentWidth = 400;
@@ -316,15 +316,15 @@ internal class CustomSizeEditDialog : ModernWindow
         };
 
         var card = new SettingsCard();
-        card.AddRow("Name", null, _txtName, 200);
-        card.AddRow("Breite (mm)", null, _numWidth, 90);
-        card.AddRow("Länge (mm)", null, _numLength, 90);
+        card.AddRow(L.T("Name"), null, _txtName, 200);
+        card.AddRow(L.T("Breite (mm)"), null, _numWidth, 90);
+        card.AddRow(L.T("Länge (mm)"), null, _numLength, 90);
 
         var stack = new ModernStack { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
         stack.Controls.Add(card);
         Body.Controls.Add(stack);
 
-        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        _btnCancel = AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
         _btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = _btnOk;
@@ -348,14 +348,14 @@ internal class CustomSizeEditDialog : ModernWindow
         {
             if (string.IsNullOrWhiteSpace(_txtName.Text))
             {
-                TrayMessageBox.Show(this, "Bitte einen Namen eingeben.", "SpeedScan Manager",
+                TrayMessageBox.Show(this, L.T("Bitte einen Namen eingeben."), "SpeedScan Manager",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 e.Cancel = true;
                 return;
             }
             if (_txtName.Text.Trim().Length > ScanSettings.MaxCustomPaperSizeNameLength)
             {
-                TrayMessageBox.Show(this, $"Der Name darf höchstens {ScanSettings.MaxCustomPaperSizeNameLength} Zeichen lang sein.",
+                TrayMessageBox.Show(this, L.F("Der Name darf höchstens {0} Zeichen lang sein.", ScanSettings.MaxCustomPaperSizeNameLength),
                     "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 e.Cancel = true;
                 return;

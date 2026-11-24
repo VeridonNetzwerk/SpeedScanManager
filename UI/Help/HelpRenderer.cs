@@ -91,16 +91,16 @@ internal static class HelpRenderer
     private static void AppendStartPage(StringBuilder sb, HelpTopic root, ThemePalette p)
     {
         sb.Append("<table class='hero'><tr><td class='hero-logo'><img src='").Append(LogoUri()).Append("' width='56' height='56' alt=''></td><td>");
-        sb.Append("<h1>Willkommen bei SpeedScan Manager</h1>");
+        sb.Append(L.T("<h1>Willkommen bei SpeedScan Manager</h1>"));
         sb.Append("<p class='lead'>").Append(root.Summary).Append("</p></td></tr></table>");
 
         // Three-step flow
-        sb.Append("<h2>So einfach geht’s</h2><table class='flow'><tr>");
+        sb.Append("<h2>").Append(L.T("So einfach geht’s")).Append("</h2><table class='flow'><tr>");
         var steps = new (Glyph Glyph, string Title, string Text)[]
         {
-            (Glyph.Paper, "Dokument einlegen", "Legen Sie die Seiten in den Einzug des Scanners."),
-            (Glyph.Scanner, "Scan starten", "Drücken Sie die Scan-Taste am Scanner oder wählen Sie <b>Scan</b> im Tray-Menü."),
-            (Glyph.Folder, "Ziel wählen", "Im <b>Quick-Menü</b> entscheiden Sie, was mit dem Scan passiert."),
+            (Glyph.Paper, L.T("Dokument einlegen"), L.T("Legen Sie die Seiten in den Einzug des Scanners.")),
+            (Glyph.Scanner, L.T("Scan starten"), L.T("Drücken Sie die Scan-Taste am Scanner oder wählen Sie <b>Scan</b> im Tray-Menü.")),
+            (Glyph.Folder, L.T("Ziel wählen"), L.T("Im <b>Quick-Menü</b> entscheiden Sie, was mit dem Scan passiert.")),
         };
         for (int i = 0; i < steps.Length; i++)
         {
@@ -110,7 +110,7 @@ internal static class HelpRenderer
             sb.Append("<div class='flow-title'>").Append(steps[i].Title).Append("</div><div class='flow-text'>").Append(steps[i].Text).Append("</div></td>");
         }
         sb.Append("</tr></table>");
-        sb.Append("<p class='more'><a href='#scan-quick'>Schritt für Schritt mit Bildern ansehen</a></p>");
+        sb.Append(L.T("<p class='more'><a href='#scan-quick'>Schritt für Schritt mit Bildern ansehen</a></p>"));
 
         // Topic cards (2 columns)
         sb.Append("<h2>Themen</h2><table class='cards'>");
@@ -130,7 +130,7 @@ internal static class HelpRenderer
         sb.Append("</table>");
 
         // Frequent questions
-        sb.Append("<h2>Häufige Fragen</h2><div class='list'>");
+        sb.Append(L.T("<h2>Häufige Fragen</h2><div class='list'>"));
         foreach (var (id, question) in HelpContent.StartQuestions)
         {
             sb.Append("<a class='row' href='#").Append(id).Append("'><table><tr><td class='row-icon'>")
@@ -138,7 +138,7 @@ internal static class HelpRenderer
               .Append("</span></td><td class='row-chev'>").Append(GlyphImg(Glyph.ChevronRight, p.TextMuted, 14)).Append("</td></tr></table></a>");
         }
         sb.Append("</div>");
-        sb.Append("<p class='foot'>Tipp: Über das <b>?</b> oben rechts in jedem Fenster öffnen Sie direkt die passende Hilfeseite.</p>");
+        sb.Append(L.T("<p class='foot'>Tipp: Über das <b>?</b> oben rechts in jedem Fenster öffnen Sie direkt die passende Hilfeseite.</p>"));
     }
 
     private static void AppendCrumb(StringBuilder sb, HelpTopic topic)
@@ -150,7 +150,7 @@ internal static class HelpRenderer
         for (int i = 0; i < chain.Count; i++)
         {
             if (i > 0) sb.Append("<span class='sep'>›</span>");
-            sb.Append("<a href='#").Append(chain[i].Id).Append("'>").Append(i == 0 ? "Hilfe" : chain[i].Title).Append("</a>");
+            sb.Append("<a href='#").Append(chain[i].Id).Append("'>").Append(i == 0 ? L.T("Hilfe") : chain[i].Title).Append("</a>");
         }
         sb.Append("</div>");
     }

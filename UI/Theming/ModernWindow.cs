@@ -505,9 +505,9 @@ internal sealed class ModernWindowHeader : Panel, IThemeAware
         ResizeRedraw = true;
         Height = _logicalHeight;
 
-        _btnHelp = new HeaderIconButton(HeaderIconButton.Kind.Help) { Size = new Size(30, 30), AccessibleName = "Hilfe" };
-        _btnMinimize = new HeaderIconButton(HeaderIconButton.Kind.Minimize) { Size = new Size(30, 30), AccessibleName = "Minimieren" };
-        _btnClose = new HeaderIconButton(HeaderIconButton.Kind.Close) { Size = new Size(30, 30), AccessibleName = "Schließen" };
+        _btnHelp = new HeaderIconButton(HeaderIconButton.Kind.Help) { Size = new Size(30, 30), AccessibleName = L.T("Hilfe") };
+        _btnMinimize = new HeaderIconButton(HeaderIconButton.Kind.Minimize) { Size = new Size(30, 30), AccessibleName = L.T("Minimieren") };
+        _btnClose = new HeaderIconButton(HeaderIconButton.Kind.Close) { Size = new Size(30, 30), AccessibleName = L.T("Schließen") };
         _btnHelp.Click += (_, _) => _window.OnHeaderHelp();
         _btnMinimize.Click += (_, _) => _window.WindowState = FormWindowState.Minimized;
         _btnClose.Click += (_, _) => _window.OnHeaderClose();

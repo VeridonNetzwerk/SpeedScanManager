@@ -9,7 +9,7 @@ namespace SpeedScanManager;
 /// </summary>
 internal class ScanToEmailOptionsDialog : ModernWindow
 {
-    public const string DefaultSubject = "Gescanntes Dokument";
+    public static string DefaultSubject => L.T("Gescanntes Dokument");
 
     private readonly TextBox _txtRecipient;
     private readonly TextBox _txtSubject;
@@ -23,9 +23,9 @@ internal class ScanToEmailOptionsDialog : ModernWindow
     {
         SuspendLayout();
         StartPosition = FormStartPosition.CenterParent;
-        Text = "Scan to E-Mail – Optionen";
-        Title = "Scan to E-Mail";
-        Subtitle = "Optionen für den E-Mail-Versand";
+        Text = L.T("Scan to E-Mail – Optionen");
+        Title = L.T("Scan to E-Mail");
+        Subtitle = L.T("Optionen für den E-Mail-Versand");
         HeaderButtons = ModernHeaderButtons.Close;
         HeaderIcon = ColorIcon.Tile(Glyph.Mail, IconColors.Blue);
         ShowInTaskbar = false;
@@ -36,14 +36,14 @@ internal class ScanToEmailOptionsDialog : ModernWindow
         _txtSubject = new TextBox { AutoSize = false, Size = new Size(260, 28) };
 
         var card = new SettingsCard { Dense = true };
-        card.AddRow("Standard-Empfänger", "Empfänger der E-Mail.", _txtRecipient, 260).Icon = ColorIcon.Tile(Glyph.User, IconColors.Blue);
-        card.AddRow("Betreff-Vorlage", "Betreff der E-Mail.", _txtSubject, 260).Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Purple);
+        card.AddRow(L.T("Standard-Empfänger"), L.T("Empfänger der E-Mail."), _txtRecipient, 260).Icon = ColorIcon.Tile(Glyph.User, IconColors.Blue);
+        card.AddRow("Betreff-Vorlage", L.T("Betreff der E-Mail."), _txtSubject, 260).Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Purple);
 
         var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(16, 16, 16, 16) };
         stack.Controls.Add(card);
         Body.Controls.Add(stack);
 
-        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        _btnCancel = AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         _btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = _btnOk;

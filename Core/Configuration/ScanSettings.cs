@@ -66,7 +66,7 @@ internal class ScanSettings
 
     // Scan to E-Mail settings (Phase 12)
     public string EmailRecipient { get; set; } = "";
-    public string EmailSubjectTemplate { get; set; } = "Gescanntes Dokument";
+    public string EmailSubjectTemplate { get; set; } = L.T("Gescanntes Dokument");
 
     // Scan to Print settings (Phase 13)
     public string PrinterName { get; set; } = "";

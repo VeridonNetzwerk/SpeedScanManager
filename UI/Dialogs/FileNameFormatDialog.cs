@@ -39,9 +39,9 @@ internal class FileNameFormatDialog : ModernWindow
         SuspendLayout();
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
-        Text = "Dateinamenformat";
-        Title = "Dateinamenformat";
-        Subtitle = "Benennung der gescannten Dateien";
+        Text = L.T("Dateinamenformat");
+        Title = L.T("Dateinamenformat");
+        Subtitle = L.T("Benennung der gescannten Dateien");
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
         HelpTopic = "filename-format";
         HeaderIcon = ColorIcon.Tile(Glyph.TextField, IconColors.Amber);
@@ -49,28 +49,28 @@ internal class FileNameFormatDialog : ModernWindow
         MinimumContentWidth = 540;
 
         // All three radio buttons live in the same card (one radio group).
-        var lblHeading = new SectionHeading("Datum und Uhrzeit") { Height = 30 };
+        var lblHeading = new SectionHeading(L.T("Datum und Uhrzeit")) { Height = 30 };
 
         _rbOsDefault = new RadioButton
         {
-            Text = "Benutzen Sie die Einstellung Ihres Betriebssystems",
+            Text = L.T("Benutzen Sie die Einstellung Ihres Betriebssystems"),
             AutoSize = false,
             Height = 32
         };
 
         _rbTimestamp = new RadioButton
         {
-            Text = "JJJJMMTThhmmss",
+            Text = L.T("JJJJMMTThhmmss"),
             AutoSize = false,
             Height = 32,
             Checked = true
         };
 
-        var lblCustomHeading = new SectionHeading("Benutzerdefiniert") { Height = 30 };
+        var lblCustomHeading = new SectionHeading(L.T("Benutzerdefiniert")) { Height = 30 };
 
         _rbCustom = new RadioButton
         {
-            Text = "Benutzerdefinierter Dateiname",
+            Text = L.T("Benutzerdefinierter Dateiname"),
             AutoSize = false,
             Height = 32
         };
@@ -92,15 +92,15 @@ internal class FileNameFormatDialog : ModernWindow
         _cbCounterDigits.Items.AddRange(new object[] { "3 Ziffern", "4 Ziffern", "5 Ziffern" });
         _cbCounterDigits.SelectedIndex = 0;
 
-        var cardFormat = new SettingsCard("Dateiname") { ShowDividers = false, Dense = true, Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Amber) };
+        var cardFormat = new SettingsCard(L.T("Dateiname")) { ShowDividers = false, Dense = true, Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Amber) };
         cardFormat.Add(lblHeading);
         cardFormat.Add(_rbOsDefault);
         cardFormat.Add(_rbTimestamp);
         cardFormat.Add(new Panel { Height = 6 });
         cardFormat.Add(lblCustomHeading);
         cardFormat.Add(_rbCustom);
-        cardFormat.AddRow("Dateiname", null, _txtCustomName, 240).Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Blue);
-        cardFormat.AddRow("Zähler", null, _cbCounterDigits, 140).Icon = ColorIcon.Tile(Glyph.Hash, IconColors.Purple);
+        cardFormat.AddRow(L.T("Dateiname"), null, _txtCustomName, 240).Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Blue);
+        cardFormat.AddRow(L.T("Zähler"), null, _cbCounterDigits, 140).Icon = ColorIcon.Tile(Glyph.Hash, IconColors.Purple);
 
         // === Preview card ===
         _lblPreview = new Label
@@ -113,7 +113,7 @@ internal class FileNameFormatDialog : ModernWindow
             AutoEllipsis = true,
             Font = ThemeFonts.Semibold
         };
-        _cardPreview = new SettingsCard("Vorschau") { Dense = true, ShowDividers = false, Icon = FileIcon(FileFormat.Pdf) };
+        _cardPreview = new SettingsCard(L.T("Vorschau")) { Dense = true, ShowDividers = false, Icon = FileIcon(FileFormat.Pdf) };
         _cardPreview.Add(_lblPreview);
         _cardPreview.Add(new Panel { Height = 6 });
         var cardPreview = _cardPreview;
@@ -124,12 +124,12 @@ internal class FileNameFormatDialog : ModernWindow
         Body.Controls.Add(stack);
 
         // === Footer: Übernehmen left, Abbrechen and OK right ===
-        var btnApply = AddFooterButton("Übernehmen", ThemeRole.Secondary, Glyph.Apply, alignLeft: true);
+        var btnApply = AddFooterButton(L.T("Übernehmen"), ThemeRole.Secondary, Glyph.Apply, alignLeft: true);
         btnApply.Enabled = false;
         btnApply.Click += (s, e) => ApplySettings();
         _btnApply = btnApply;
 
-        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        var btnCancel = AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = btnOk;

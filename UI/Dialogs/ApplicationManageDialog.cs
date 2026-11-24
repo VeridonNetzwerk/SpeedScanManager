@@ -30,7 +30,7 @@ internal class ApplicationManageDialog : ModernWindow
         ShowInTaskbar = false;
         Text = "Installieren/Deinstallieren";
         Title = "Installieren/Deinstallieren";
-        Subtitle = "Eigene Anwendungen hinzufügen, ändern oder entfernen";
+        Subtitle = L.T("Eigene Anwendungen hinzufügen, ändern oder entfernen");
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
         HelpTopic = "app-manage";
         HeaderIcon = ColorIcon.Tile(Glyph.Apps, IconColors.Purple);
@@ -40,7 +40,7 @@ internal class ApplicationManageDialog : ModernWindow
         // === Toolbar: add / edit / remove ===
         _btnAdd = new Button
         {
-            Text = "Hinzufügen...",
+            Text = L.T("Hinzufügen..."),
             Size = new Size(132, 32),
             Margin = new Padding(0, 0, 8, 0)
         };
@@ -49,7 +49,7 @@ internal class ApplicationManageDialog : ModernWindow
 
         _btnEdit = new Button
         {
-            Text = "Ändern...",
+            Text = L.T("Ändern..."),
             Size = new Size(116, 32),
             Margin = new Padding(0, 0, 8, 0),
             Enabled = false
@@ -59,7 +59,7 @@ internal class ApplicationManageDialog : ModernWindow
 
         _btnRemove = new Button
         {
-            Text = "Entfernen",
+            Text = L.T("Entfernen"),
             Size = new Size(116, 32),
             Margin = Padding.Empty,
             Enabled = false
@@ -83,7 +83,7 @@ internal class ApplicationManageDialog : ModernWindow
         {
             Dock = DockStyle.Fill,
             IntegralHeight = false,
-            AccessibleName = "Hinzugefügt"
+            AccessibleName = L.T("Hinzugefügt")
         };
         // Rows: app icon, name, program path right-aligned
         ModernLists.Setup(_listBox, i => i < CustomApps.Count
@@ -95,7 +95,7 @@ internal class ApplicationManageDialog : ModernWindow
         var listHost = new Panel { Height = 176, Padding = new Padding(0, 0, 0, 14) };
         listHost.Controls.Add(_listBox);
 
-        var card = new SettingsCard("Hinzugefügt", $"Bis zu {MaxEntries} Anwendungen können hinzugefügt werden.")
+        var card = new SettingsCard(L.T("Hinzugefügt"), L.F("Bis zu {0} Anwendungen können hinzugefügt werden.", MaxEntries))
         {
             Dense = true,
             Icon = ColorIcon.Tile(Glyph.Apps, IconColors.Purple)
@@ -108,7 +108,7 @@ internal class ApplicationManageDialog : ModernWindow
         Body.Controls.Add(stack);
 
         // === Footer ===
-        _btnClose = AddFooterButton("Schließen", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
+        _btnClose = AddFooterButton(L.T("Schließen"), ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = _btnClose;
         CancelButton = _btnClose;
@@ -143,7 +143,7 @@ internal class ApplicationManageDialog : ModernWindow
         for (int i = 0; i < CustomApps.Count; i++)
         {
             if (i != exceptIndex && string.Equals(CustomApps[i].Name, name, StringComparison.OrdinalIgnoreCase))
-                return $"Eine Anwendung mit dem Namen \"{name}\" existiert bereits.";
+                return L.F("Eine Anwendung mit dem Namen \"{0}\" existiert bereits.", name);
         }
         return null;
     }
@@ -152,12 +152,12 @@ internal class ApplicationManageDialog : ModernWindow
     {
         if (CustomApps.Count >= MaxEntries)
         {
-            TrayMessageBox.Show(this, $"Maximal {MaxEntries} Einträge sind erlaubt.",
+            TrayMessageBox.Show(this, L.F("Maximal {0} Einträge sind erlaubt.", MaxEntries),
                 "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
-        using var dlg = new ApplicationEditDialog(name => ValidateName(name, -1)) { Text = "Anwendung hinzufügen" };
+        using var dlg = new ApplicationEditDialog(name => ValidateName(name, -1)) { Text = L.T("Anwendung hinzufügen") };
         if (dlg.ShowDialog(this) == DialogResult.OK)
         {
             CustomApps.Add(new CustomApplication { Name = dlg.EntryName, ExePath = dlg.ExePath, Arguments = dlg.Arguments });
@@ -184,7 +184,7 @@ internal class ApplicationManageDialog : ModernWindow
         var existing = CustomApps[idx];
         using var dlg = new ApplicationEditDialog(name => ValidateName(name, idx))
         {
-            Text = "Anwendung ändern",
+            Text = L.T("Anwendung ändern"),
             EntryName = existing.Name,
             ExePath = existing.ExePath,
             Arguments = existing.Arguments
@@ -220,33 +220,33 @@ internal class ApplicationEditDialog : ModernWindow
         SuspendLayout();
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
-        Text = "Anwendung hinzufügen";
+        Text = L.T("Anwendung hinzufügen");
         Title = Text;
-        Subtitle = "Programm, das die gescannten Dateien öffnet";
+        Subtitle = L.T("Programm, das die gescannten Dateien öffnet");
         HeaderButtons = ModernHeaderButtons.Close;
         HeaderIcon = ColorIcon.Tile(Glyph.Apps, IconColors.Purple);
         AutoSizeToContent = true;
         MinimumContentWidth = 500;
 
-        _txtName = new TextBox { MaxLength = 64, AccessibleName = "Name" };
+        _txtName = new TextBox { MaxLength = 64, AccessibleName = L.T("Name") };
 
-        _txtPath = new TextBox { AccessibleName = "Programm" };
+        _txtPath = new TextBox { AccessibleName = L.T("Programm") };
         var btnBrowse = new Button { Text = "Durchsuchen...", Size = new Size(132, 32) };
         ThemeManager.SetGlyph(btnBrowse, Glyph.Folder, IconColors.Amber);
         btnBrowse.Click += (s, e) => BrowseExe();
         var pathPicker = new PathPicker(_txtPath, btnBrowse);
 
-        _txtArgs = new TextBox { AccessibleName = "Argumente" };
+        _txtArgs = new TextBox { AccessibleName = L.T("Argumente") };
 
         // Label above the input (full width for long paths).
         var card = new SettingsCard { Dense = true };
-        var rowName = card.AddRow("Name", null, _txtName);
+        var rowName = card.AddRow(L.T("Name"), null, _txtName);
         rowName.Stacked = true;
         rowName.Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Blue);
-        var rowPath = card.AddRow("Programm", null, pathPicker);
+        var rowPath = card.AddRow(L.T("Programm"), null, pathPicker);
         rowPath.Stacked = true;
         rowPath.Icon = ColorIcon.Tile(Glyph.Apps, IconColors.Purple);
-        var rowArgs = card.AddRow("Argumente", "Optional. Die gescannten Dateien werden danach angehängt.", _txtArgs);
+        var rowArgs = card.AddRow(L.T("Argumente"), L.T("Optional. Die gescannten Dateien werden danach angehängt."), _txtArgs);
         rowArgs.Stacked = true;
         rowArgs.Icon = ColorIcon.Tile(Glyph.Sliders, IconColors.Slate);
 
@@ -254,7 +254,7 @@ internal class ApplicationEditDialog : ModernWindow
         stack.Controls.Add(card);
         Body.Controls.Add(stack);
 
-        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        var btnCancel = AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         var btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
         AcceptButton = btnOk;
         CancelButton = btnCancel;
@@ -274,8 +274,8 @@ internal class ApplicationEditDialog : ModernWindow
     {
         using var dlg = new OpenFileDialog
         {
-            Title = "Anwendung auswählen",
-            Filter = "Programme (*.exe)|*.exe",
+            Title = L.T("Anwendung auswählen"),
+            Filter = L.T("Programme (*.exe)|*.exe"),
             CheckFileExists = true
         };
         if (!string.IsNullOrEmpty(_txtPath.Text))
@@ -304,9 +304,9 @@ internal class ApplicationEditDialog : ModernWindow
         {
             string name = _txtName.Text.Trim();
             string path = _txtPath.Text.Trim().Trim('"');
-            string? error = string.IsNullOrWhiteSpace(name) ? "Bitte einen Namen eingeben." : _validateName(name);
+            string? error = string.IsNullOrWhiteSpace(name) ? L.T("Bitte einen Namen eingeben.") : _validateName(name);
             if (error == null && (string.IsNullOrWhiteSpace(path) || !File.Exists(path)))
-                error = "Bitte wählen Sie eine vorhandene Programmdatei (*.exe) aus.";
+                error = L.T("Bitte wählen Sie eine vorhandene Programmdatei (*.exe) aus.");
             if (error != null)
             {
                 TrayMessageBox.Show(this, error, "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);

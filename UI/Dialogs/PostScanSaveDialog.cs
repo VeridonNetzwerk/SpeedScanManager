@@ -58,9 +58,9 @@ internal class PostScanSaveDialog : ModernWindow
         _currentPageIndex = 0;
 
         SuspendLayout();
-        Text = "In Ordner speichern";
-        Title = "In Ordner speichern";
-        Subtitle = _scanImages.Count == 1 ? "1 Seite gescannt" : $"{_scanImages.Count} Seiten gescannt";
+        Text = L.T("In Ordner speichern");
+        Title = L.T("In Ordner speichern");
+        Subtitle = _scanImages.Count == 1 ? L.T("1 Seite gescannt") : L.F("{0} Seiten gescannt", _scanImages.Count);
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
         HelpTopic = "postscan-save";
         // Owner is the invisible tray window: center on screen and stay on top, otherwise the
@@ -77,7 +77,7 @@ internal class PostScanSaveDialog : ModernWindow
             Width = 300,
             Padding = new Padding(16, 16, 0, 16)
         };
-        _imgPreview = new PagePreview { Dock = DockStyle.Fill, AccessibleName = "Vorschau" };
+        _imgPreview = new PagePreview { Dock = DockStyle.Fill, AccessibleName = L.T("Vorschau") };
         previewHost.Controls.Add(_imgPreview);
 
         // === Right: title, folder, scan settings ===
@@ -87,7 +87,7 @@ internal class PostScanSaveDialog : ModernWindow
             AutoSize = false,
             Size = new Size(300, 28),
             Text = _defaultTitle,
-            AccessibleName = "Titel festlegen"
+            AccessibleName = L.T("Titel festlegen")
         };
 
         _txtFolderPath = new TextBox
@@ -99,7 +99,7 @@ internal class PostScanSaveDialog : ModernWindow
             Anchor = AnchorStyles.Left | AnchorStyles.Right,
             Margin = new Padding(0, 2, 8, 2),
             Text = defaultFolder,
-            AccessibleName = "Zielordner festlegen"
+            AccessibleName = L.T("Zielordner festlegen")
         };
 
         _btnBrowse = new Button
@@ -128,8 +128,8 @@ internal class PostScanSaveDialog : ModernWindow
         folderBox.Controls.Add(_btnBrowse, 1, 0);
 
         var cardTarget = new SettingsCard();
-        cardTarget.AddRow("Titel festlegen", "Name der Datei; ungültige Zeichen werden ersetzt.", _txtTitle).Stacked = true;
-        cardTarget.AddRow("Zielordner festlegen", null, folderBox).Stacked = true;
+        cardTarget.AddRow(L.T("Titel festlegen"), L.T("Name der Datei; ungültige Zeichen werden ersetzt."), _txtTitle).Stacked = true;
+        cardTarget.AddRow(L.T("Zielordner festlegen"), null, folderBox).Stacked = true;
 
         // Scan settings summary
         var dpiValue = _settings.ImageQuality switch
@@ -144,30 +144,30 @@ internal class PostScanSaveDialog : ModernWindow
         var presetText = _settings.ImageQuality switch
         {
             ImageQuality.Automatic => "200 dpi",
-            ImageQuality.Normal => "Kleine Datei",
-            ImageQuality.Fine => "Fein",
-            ImageQuality.Best => "Beste Qualität",
-            ImageQuality.Excellent => "Exzellent",
-            _ => "Empfohlen"
+            ImageQuality.Normal => L.T("Kleine Datei"),
+            ImageQuality.Fine => L.T("Fein"),
+            ImageQuality.Best => L.T("Beste Qualität"),
+            ImageQuality.Excellent => L.T("Exzellent"),
+            _ => L.T("Empfohlen")
         };
 
         var fileFormatText = _settings.FileFormat switch
         {
             FileFormat.Pdf => "PDF",
-            FileFormat.Jpeg => "JPEG",
+            FileFormat.Jpeg => L.T("JPEG"),
             FileFormat.Png => "PNG",
             _ => "PDF"
         };
 
         var summary = new SummaryList(presetText, new[]
         {
-            ("Auflösung", $"{dpiValue} dpi"),
-            ("Farbmodus", GetColorModeText(_settings.ColorMode)),
-            ("Scanseite", GetScanSideText(_settings.ScanSide)),
-            ("Dateiformat", fileFormatText),
-            ("Kompression", $"Stufe {_settings.CompressionRate}")
+            (L.T("Auflösung"), $"{dpiValue} dpi"),
+            (L.T("Farbmodus"), GetColorModeText(_settings.ColorMode)),
+            (L.T("Scanseite"), GetScanSideText(_settings.ScanSide)),
+            (L.T("Dateiformat"), fileFormatText),
+            (L.T("Kompression"), $"Stufe {_settings.CompressionRate}")
         });
-        var cardSummary = new SettingsCard("Scaneinstellungen") { ShowDividers = false };
+        var cardSummary = new SettingsCard(L.T("Scaneinstellungen")) { ShowDividers = false };
         cardSummary.Add(summary);
 
         var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(16, 16, 16, 16), Spacing = 12 };
@@ -180,14 +180,14 @@ internal class PostScanSaveDialog : ModernWindow
         Body.Controls.Add(previewHost);
 
         // === Footer: page navigation (left), Abbrechen / Speichern (right) ===
-        _btnPrev = new Button { Size = new Size(32, 32), Font = UiFont, Margin = new Padding(0), AccessibleName = "Vorherige Seite" };
-        _btnNext = new Button { Size = new Size(32, 32), Font = UiFont, Margin = new Padding(0), AccessibleName = "Nächste Seite" };
+        _btnPrev = new Button { Size = new Size(32, 32), Font = UiFont, Margin = new Padding(0), AccessibleName = L.T("Vorherige Seite") };
+        _btnNext = new Button { Size = new Size(32, 32), Font = UiFont, Margin = new Padding(0), AccessibleName = L.T("Nächste Seite") };
         _btnPrev.Image = _chevronLeft = CreateChevron(left: true);
         _btnNext.Image = _chevronRight = CreateChevron(left: false);
 
         _lblPageCounter = new Label
         {
-            Text = "Seite 1",
+            Text = L.T("Seite 1"),
             Font = UiFont,
             AutoSize = false,
             Size = new Size(110, 32),
@@ -200,8 +200,8 @@ internal class PostScanSaveDialog : ModernWindow
         AddFooterControl(_lblPageCounter, alignLeft: true);
         AddFooterControl(_btnNext, alignLeft: true);
 
-        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross);
-        _btnSave = AddFooterButton("Speichern", ThemeRole.Primary, Glyph.Check);
+        _btnCancel = AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.Cross);
+        _btnSave = AddFooterButton(L.T("Speichern"), ThemeRole.Primary, Glyph.Check);
 
         AcceptButton = _btnSave;
         CancelButton = _btnCancel;
@@ -211,7 +211,7 @@ internal class PostScanSaveDialog : ModernWindow
         {
             if (string.IsNullOrWhiteSpace(_txtFolderPath.Text))
             {
-                TrayMessageBox.Show(this, "Bitte wählen Sie einen Zielordner.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                TrayMessageBox.Show(this, L.T("Bitte wählen Sie einen Zielordner."), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             DialogResult = DialogResult.OK;
@@ -260,7 +260,7 @@ internal class PostScanSaveDialog : ModernWindow
             && e.CloseReason is CloseReason.UserClosing or CloseReason.None)
         {
             var answer = TrayMessageBox.Show(this,
-                "Scan verwerfen?\n\nJa: Der Scan wird gelöscht.\nNein: Zurück zum Dialog.",
+                L.T("Scan verwerfen?\n\nJa: Der Scan wird gelöscht.\nNein: Zurück zum Dialog."),
                 Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question, defaultSecondButton: true);
             if (answer != DialogResult.Yes)
             {
@@ -278,7 +278,7 @@ internal class PostScanSaveDialog : ModernWindow
         using var dlg = new FolderBrowserDialog
         {
             SelectedPath = _txtFolderPath.Text,
-            Description = "Zielordner wählen"
+            Description = L.T("Zielordner wählen")
         };
         if (dlg.ShowDialog(this) == DialogResult.OK)
         {
@@ -300,13 +300,13 @@ internal class PostScanSaveDialog : ModernWindow
         {
             _imgPreview.Image = _scanImages[_currentPageIndex];
             _lblPageCounter.Text = _scanImages.Count > 1
-                ? $"Seite {_currentPageIndex + 1} von {_scanImages.Count}"
+                ? L.F("Seite {0} von {1}", _currentPageIndex + 1, _scanImages.Count)
                 : $"Seite {_currentPageIndex + 1}";
         }
         else
         {
             _imgPreview.Image = null;
-            _lblPageCounter.Text = "Seite 1";
+            _lblPageCounter.Text = L.T("Seite 1");
         }
 
         _btnPrev.Enabled = _currentPageIndex > 0;
@@ -315,20 +315,20 @@ internal class PostScanSaveDialog : ModernWindow
 
     private static string GetColorModeText(ColorMode mode) => mode switch
     {
-        ColorMode.Automatic => "Farbe",
-        ColorMode.Color => "Farbe",
-        ColorMode.Grayscale => "Graustufen",
+        ColorMode.Automatic => L.T("Farbe"),
+        ColorMode.Color => L.T("Farbe"),
+        ColorMode.Grayscale => L.T("Graustufen"),
         ColorMode.BlackWhite => "S/W",
-        _ => "Farbe"
+        _ => L.T("Farbe")
     };
 
     private static string GetScanSideText(ScanSide side) => side switch
     {
-        ScanSide.Automatic => "Duplex",
-        ScanSide.Simplex => "Simplex",
-        ScanSide.Duplex => "Duplex",
-        ScanSide.Flatbed => "Flachbett",
-        _ => "Duplex"
+        ScanSide.Automatic => L.T("Duplex"),
+        ScanSide.Simplex => L.T("Simplex"),
+        ScanSide.Duplex => L.T("Duplex"),
+        ScanSide.Flatbed => L.T("Flachbett"),
+        _ => L.T("Duplex")
     };
 
     /// <summary>
@@ -355,7 +355,7 @@ internal class PostScanSaveDialog : ModernWindow
         }
 
         /// <summary>Text shown without an image.</summary>
-        public string EmptyText { get; set; } = "Kein Vorschaubild verfügbar";
+        public string EmptyText { get; set; } = L.T("Kein Vorschaubild verfügbar");
 
         public void ApplyTheme(ThemePalette palette) => Invalidate();
 
@@ -426,7 +426,7 @@ internal class PostScanSaveDialog : ModernWindow
                      | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
             SetStyle(ControlStyles.Selectable, false);
             AccessibleRole = AccessibleRole.StaticText;
-            AccessibleName = "Scaneinstellungen";
+            AccessibleName = L.T("Scaneinstellungen");
             AccessibleDescription = preset + ", " + string.Join(", ", rows.Select(r => $"{r.Label}: {r.Value}"));
         }
 

@@ -52,7 +52,7 @@ internal static class PrintHelper
         if (!string.IsNullOrEmpty(printerName))
             settings.PrinterName = printerName;
         if (!settings.IsValid)
-            throw new InvalidOperationException($"Der Drucker \"{settings.PrinterName}\" ist nicht verfügbar.");
+            throw new InvalidOperationException(L.F("Der Drucker \"{0}\" ist nicht verfügbar.", settings.PrinterName));
 
         int index = 0;
         using var doc = new PrintDocument

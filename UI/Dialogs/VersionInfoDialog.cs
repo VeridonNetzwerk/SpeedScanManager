@@ -19,8 +19,8 @@ internal class VersionInfoDialog : ModernWindow
     {
         _scannerState = scannerState;
         SuspendLayout();
-        Text = "SpeedScan Manager – Versionsinformationen";
-        Title = "Versionsinformationen";
+        Text = L.T("SpeedScan Manager – Versionsinformationen");
+        Title = L.T("Versionsinformationen");
         Subtitle = "SpeedScan Manager";
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
         HelpTopic = "version-info";
@@ -70,7 +70,7 @@ internal class VersionInfoDialog : ModernWindow
         };
         var lblVersionTitle = new Label
         {
-            Text = $"SpeedScan Manager Version {displayVersion}",
+            Text = L.F("SpeedScan Manager Version {0}", displayVersion),
             Font = ModernFonts.RowTitle,
             Location = new Point(logoW + 14, 46),
             AutoSize = true,
@@ -84,15 +84,15 @@ internal class VersionInfoDialog : ModernWindow
 
         // === License and credits ===
         var license = new WrapText(
-            "Open-Source TWAIN-Scanning-Software.\n\n" +
-            "Lizenziert unter GNU General Public License v3 (GPL-3.0).\n" +
-            "Dieses Programm ist freie Software: Sie können es weitergeben und/oder " +
-            "modifizieren unter Beachtung der GPL-3.0-Bedingungen.\n" +
-            "Credits müssen in allen Kopien und abgeleiteten Werken erhalten bleiben.\n\n" +
-            "TWAIN-Unterstützung durch NTwain.\n" +
-            "OCR-Engine: Tesseract.NET.\n" +
-            "PDF-Verarbeitung: PdfSharpCore.\n\n" +
-            "Copyright © 2026 VeridonNetzwerk");
+            L.T("Open-Source TWAIN-Scanning-Software.\n\n") +
+            L.T("Lizenziert unter GNU General Public License v3 (GPL-3.0).\n") +
+            L.T("Dieses Programm ist freie Software: Sie können es weitergeben und/oder ") +
+            L.T("modifizieren unter Beachtung der GPL-3.0-Bedingungen.\n") +
+            L.T("Credits müssen in allen Kopien und abgeleiteten Werken erhalten bleiben.\n\n") +
+            L.T("TWAIN-Unterstützung durch NTwain.\n") +
+            L.T("OCR-Engine: Tesseract.NET.\n") +
+            L.T("PDF-Verarbeitung: PdfSharpCore.\n\n") +
+            L.T("Copyright © 2026 VeridonNetzwerk"));
 
         // === GitHub + Discord link icons ===
         _githubSource = CreateGithubIcon();
@@ -121,7 +121,7 @@ internal class VersionInfoDialog : ModernWindow
             Size = new Size(28, 28),
             Location = new Point(40, 0),
             Cursor = Cursors.Hand,
-            AccessibleName = "Discord"
+            AccessibleName = L.T("Discord")
         };
         pbDiscord.Click += (s, e) =>
         {
@@ -136,9 +136,9 @@ internal class VersionInfoDialog : ModernWindow
         links.Controls.Add(pbGithub);
         links.Controls.Add(pbDiscord);
 
-        var cardLicense = new SettingsCard("Lizenz und Credits");
+        var cardLicense = new SettingsCard(L.T("Lizenz und Credits"));
         cardLicense.Add(license);
-        cardLicense.AddRow("Projekt und Community", "Quellcode auf GitHub, Austausch auf Discord.", links, 68);
+        cardLicense.AddRow(L.T("Projekt und Community"), L.T("Quellcode auf GitHub, Austausch auf Discord."), links, 68);
 
         // === Detail button: scanner and driver information ===
         var btnDetail = new Button
@@ -152,7 +152,7 @@ internal class VersionInfoDialog : ModernWindow
             OwnedWindows.Show(new ScannerDriverInfoDialog(_scannerState) { StartPosition = FormStartPosition.CenterParent }, this);
         };
         var cardDetail = new SettingsCard();
-        cardDetail.AddRow("Scanner- und Treiberinformationen", "Scanner, Treiber und Dateiversionen.", btnDetail);
+        cardDetail.AddRow(L.T("Scanner- und Treiberinformationen"), L.T("Scanner, Treiber und Dateiversionen."), btnDetail);
 
         var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(20, 18, 20, 20) };
         stack.Controls.Add(cardHero);

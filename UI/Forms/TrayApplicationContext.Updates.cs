@@ -25,14 +25,14 @@ internal partial class TrayApplicationContext
 
     private void InitUpdates()
     {
-        _miUpdate = new ToolStripMenuItem("Update installieren…") { Visible = false };
+        _miUpdate = new ToolStripMenuItem(L.T("Update installieren…")) { Visible = false };
         ThemeManager.SetMenuItemGlyph(_miUpdate, Glyph.Download);
         ThemeManager.SetMenuItemRole(_miUpdate, ThemeRole.Success);
         _miUpdate.Click += (_, _) => ShowUpdateDialog();
         int scanIndex = _contextMenu.Items.IndexOf(_miScan);
         _contextMenu.Items.Insert(scanIndex, _miUpdate);
 
-        _miCheckUpdates = new ToolStripMenuItem("Nach Updates suchen");
+        _miCheckUpdates = new ToolStripMenuItem(L.T("Nach Updates suchen"));
         ThemeManager.SetMenuItemGlyph(_miCheckUpdates, Glyph.Download);
         _miCheckUpdates.Click += async (_, _) => await CheckForUpdateAsync(manual: true);
         int versionIndex = _miHelp.DropDownItems.Count - 1; // above "Versionsinformationen"
@@ -92,7 +92,7 @@ internal partial class TrayApplicationContext
                 if (info != null)
                     ShowUpdateDialog();
                 else
-                    TrayMessageBox.Info(DialogOwner, $"SpeedScan Manager ist aktuell (Version {UpdateService.CurrentVersionText}).");
+                    TrayMessageBox.Info(DialogOwner, L.F("SpeedScan Manager ist aktuell (Version {0}).", UpdateService.CurrentVersionText));
             }
             else
             {
@@ -103,7 +103,7 @@ internal partial class TrayApplicationContext
         {
             LogDiag($"Update check failed: {ex.Message}");
             if (manual && !_disposed)
-                TrayMessageBox.Warning(DialogOwner, "Die Suche nach Updates ist fehlgeschlagen. Bitte Internetverbindung prüfen.");
+                TrayMessageBox.Warning(DialogOwner, L.T("Die Suche nach Updates ist fehlgeschlagen. Bitte Internetverbindung prüfen."));
         }
         finally
         {
@@ -125,7 +125,7 @@ internal partial class TrayApplicationContext
             }
             if (_miUpdate != null)
             {
-                _miUpdate.Text = $"Update auf {text} installieren…";
+                _miUpdate.Text = L.F("Update auf {0} installieren…", text);
                 _miUpdate.Visible = true;
             }
         }
@@ -146,7 +146,7 @@ internal partial class TrayApplicationContext
         _appSettings.UpdateRemindedVersion = text;
         _appSettings.Save();
         _balloonOpensUpdate = true;
-        ShowBalloon("Update verfügbar", $"SpeedScan Manager {text} ist da. Zum Installieren hier klicken.", ToolTipIcon.Info);
+        ShowBalloon(L.T("Update verfügbar"), L.F("SpeedScan Manager {0} ist da. Zum Installieren hier klicken.", text), ToolTipIcon.Info);
     }
 
     /// <summary>The green pill in the settings window header.</summary>
@@ -157,11 +157,11 @@ internal partial class TrayApplicationContext
             _mainForm.SetHeaderAction(null, Glyph.None, "", null);
         else
             _mainForm.SetHeaderAction($"Update {UpdateService.Format(_update.Version)}", Glyph.Download,
-                "Eine neue Version von SpeedScan Manager ist verfügbar", ShowUpdateDialog);
+                L.T("Eine neue Version von SpeedScan Manager ist verfügbar"), ShowUpdateDialog);
     }
 
     private string? UpdateBlockedReason() =>
-        _busy ? "Während eines Scans kann nicht aktualisiert werden. Danach geht es weiter." : null;
+        _busy ? L.T("Während eines Scans kann nicht aktualisiert werden. Danach geht es weiter.") : null;
 
     private void ShowUpdateDialog()
     {
@@ -192,7 +192,7 @@ internal partial class TrayApplicationContext
             _mainForm.Close();
             if (_mainForm is { IsDisposed: false, Visible: true })
             {
-                dlg.SetupNotStarted("Update abgebrochen: das Einstellungsfenster ist noch offen.");
+                dlg.SetupNotStarted(L.T("Update abgebrochen: das Einstellungsfenster ist noch offen."));
                 return;
             }
         }
@@ -204,13 +204,13 @@ internal partial class TrayApplicationContext
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
         {
-            dlg.SetupNotStarted("Das Update braucht Administratorrechte. Bitte erneut versuchen und mit „Ja“ bestätigen.");
+            dlg.SetupNotStarted(L.T("Das Update braucht Administratorrechte. Bitte erneut versuchen und mit „Ja“ bestätigen."));
             return;
         }
         catch (Exception ex)
         {
             LogDiag($"Starting the setup failed: {ex.Message}");
-            dlg.SetupNotStarted("Das Setup konnte nicht gestartet werden.");
+            dlg.SetupNotStarted(L.T("Das Setup konnte nicht gestartet werden."));
             return;
         }
         LogDiag($"Update: setup started ({setupPath}), exiting");

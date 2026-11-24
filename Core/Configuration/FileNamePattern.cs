@@ -107,17 +107,17 @@ internal static class FileNamePattern
     public static string? ValidateCustomName(string? name)
     {
         if (string.IsNullOrWhiteSpace(name))
-            return "Bitte geben Sie einen Dateinamen ein.";
+            return L.T("Bitte geben Sie einen Dateinamen ein.");
         name = name.Trim();
         if (name.Length > MaxCustomNameLength)
-            return $"Der Dateiname darf höchstens {MaxCustomNameLength} Zeichen lang sein.";
+            return L.F("Der Dateiname darf höchstens {0} Zeichen lang sein.", MaxCustomNameLength);
         if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-            return "Der Dateiname ist ungültig. Folgende Zeichen sind nicht erlaubt: \\ / : * ? \" < > |";
+            return L.T("Der Dateiname ist ungültig. Folgende Zeichen sind nicht erlaubt: \\ / : * ? \" < > |");
         if (name.EndsWith('.'))
-            return "Der Dateiname darf nicht mit einem Punkt enden.";
+            return L.T("Der Dateiname darf nicht mit einem Punkt enden.");
         string stem = name.Split('.')[0];
         if (ReservedNames.Contains(stem, StringComparer.OrdinalIgnoreCase))
-            return $"\"{name}\" ist ein reservierter Name und kann nicht verwendet werden.";
+            return L.F("\"{0}\" ist ein reservierter Name und kann nicht verwendet werden.", name);
         return null;
     }
 }

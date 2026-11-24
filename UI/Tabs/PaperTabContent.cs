@@ -43,19 +43,19 @@ internal class PaperTabContent : ModernStack
 
     private static readonly PaperSizeItem[] FixedSizes =
     {
-        new("Automatische Erkennung", PaperSizeMode.Automatic),
+        new(L.T("Automatische Erkennung"), PaperSizeMode.Automatic),
         new("A3 (297 x 420 mm)", PaperSizeMode.A3),
         new("A4 (210 x 297 mm)", PaperSizeMode.A4),
         new("A5 (148 x 210 mm)", PaperSizeMode.A5),
         new("A6 (105 x 148 mm)", PaperSizeMode.A6),
-        new("B4(JIS) (257 x 364 mm)", PaperSizeMode.B4Jis),
-        new("B5(JIS) (182 x 257 mm)", PaperSizeMode.B5Jis),
-        new("B6(JIS) (128 x 182 mm)", PaperSizeMode.B6Jis),
-        new("Postkarte (100 x 148 mm)", PaperSizeMode.Postcard),
-        new("Visitenkarte (55 x 91 mm)", PaperSizeMode.BusinessCard),
-        new("Letter (8,5 x 11 in. (216 x 279,4 mm))", PaperSizeMode.Letter),
-        new("Double Letter (11 x 17 in. (279,4 x 431,8 mm))", PaperSizeMode.DoubleLetter),
-        new("Legal (8,5 x 14 in. (216 x 355,6 mm))", PaperSizeMode.Legal)
+        new(L.T("B4(JIS) (257 x 364 mm)"), PaperSizeMode.B4Jis),
+        new(L.T("B5(JIS) (182 x 257 mm)"), PaperSizeMode.B5Jis),
+        new(L.T("B6(JIS) (128 x 182 mm)"), PaperSizeMode.B6Jis),
+        new(L.T("Postkarte (100 x 148 mm)"), PaperSizeMode.Postcard),
+        new(L.T("Visitenkarte (55 x 91 mm)"), PaperSizeMode.BusinessCard),
+        new(L.T("Letter (8,5 x 11 in. (216 x 279,4 mm))"), PaperSizeMode.Letter),
+        new(L.T("Double Letter (11 x 17 in. (279,4 x 431,8 mm))"), PaperSizeMode.DoubleLetter),
+        new(L.T("Legal (8,5 x 14 in. (216 x 355,6 mm))"), PaperSizeMode.Legal)
     };
 
     /// <summary>Width of the combo boxes on this page (96-dpi units).</summary>
@@ -77,7 +77,7 @@ internal class PaperTabContent : ModernStack
         _cbPaperSize.DrawItem += (s, e) => DrawPaperSizeItem(e);
         _cbPaperSize.SelectedIndexChanged += (s, e) => OnPaperSizeChanged();
 
-        _btnCarrierSheet = ModernButtons.SubDialog("Trägerblatteinstellungen...", Glyph.Carrier, IconColors.Blue);
+        _btnCarrierSheet = ModernButtons.SubDialog(L.T("Trägerblatteinstellungen..."), Glyph.Carrier, IconColors.Blue);
         _btnCarrierSheet.Click += (s, e) => OpenCarrierSheetDialog();
 
         _btnCustomSize = ModernButtons.SubDialog("Benutzerdefiniert...", Glyph.Ruler, IconColors.Orange);
@@ -94,10 +94,10 @@ internal class PaperTabContent : ModernStack
         _cbMultiFeed.DrawItem += (s, e) => DrawMultiFeedItem(e);
         _cbMultiFeed.Items.AddRange(new object[]
         {
-            "Aus",
-            "Überprüfung von Überlappung [Ultraschall]",
-            "Überprüfung der Länge",
-            "Überprüfung von Überlappung und Länge"
+            L.T("Aus"),
+            L.T("Überprüfung von Überlappung [Ultraschall]"),
+            L.T("Überprüfung der Länge"),
+            L.T("Überprüfung von Überlappung und Länge")
         });
         _cbMultiFeed.SelectedIndexChanged += (s, e) =>
         {
@@ -113,14 +113,14 @@ internal class PaperTabContent : ModernStack
         };
 
         var cardPaper = new SettingsCard { Dense = true };
-        _rowPaperSize = cardPaper.AddRow("Papiergröße",
-            "Beim Flachbettscannen ist „Automatische Erkennung“ nicht verfügbar.",
+        _rowPaperSize = cardPaper.AddRow(L.T("Papiergröße"),
+            L.T("Beim Flachbettscannen ist „Automatische Erkennung“ nicht verfügbar."),
             _cbPaperSize, ComboWidth);
-        cardPaper.AddRow("Benutzerdefinierte Papiergrößen", "Eigene Papiergrößen anlegen, ändern oder löschen.", _btnCustomSize);
-        cardPaper.AddRow("Trägerblatt", "Trägerblatt-Modus und Ausgabebildgröße.", _btnCarrierSheet);
+        cardPaper.AddRow(L.T("Benutzerdefinierte Papiergrößen"), L.T("Eigene Papiergrößen anlegen, ändern oder löschen."), _btnCustomSize);
+        cardPaper.AddRow(L.T("Trägerblatt"), L.T("Trägerblatt-Modus und Ausgabebildgröße."), _btnCarrierSheet);
 
-        var cardFeed = new SettingsCard("Einzug") { Dense = true, Icon = ColorIcon.Tile(Glyph.PageDuplex, IconColors.Blue) };
-        cardFeed.AddRow("Mehrfacheinzugserkennung", "Erkennt, wenn mehrere Blätter gleichzeitig eingezogen werden.", _cbMultiFeed, ComboWidth);
+        var cardFeed = new SettingsCard(L.T("Einzug")) { Dense = true, Icon = ColorIcon.Tile(Glyph.PageDuplex, IconColors.Blue) };
+        cardFeed.AddRow(L.T("Mehrfacheinzugserkennung"), L.T("Erkennt, wenn mehrere Blätter gleichzeitig eingezogen werden."), _cbMultiFeed, ComboWidth);
 
         Controls.Add(cardPaper);
         Controls.Add(cardFeed);
@@ -319,7 +319,7 @@ internal class PaperTabContent : ModernStack
         bool supported = IsMultiFeedModeSupported(mode);
         var text = _cbMultiFeed.Items[e.Index]?.ToString() ?? "";
         ComboItemPainter.Draw(_cbMultiFeed, e, e.Index < MultiFeedIcons.Length ? MultiFeedIcons[e.Index] : null, text,
-            supported ? null : "Vom Scanner nicht unterstützt", enabled: supported);
+            supported ? null : L.T("Vom Scanner nicht unterstützt"), enabled: supported);
     }
 
     private static readonly ColorIcon PaperIcon = ColorIcon.Tile(Glyph.PageSingle, IconColors.Teal);

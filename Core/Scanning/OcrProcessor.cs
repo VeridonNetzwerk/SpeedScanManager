@@ -152,9 +152,9 @@ internal class OcrProcessor : IDisposable
         if (missing.Count > 0)
         {
             if (resolved.Length > 0)
-                Warnings.Add($"OCR-Sprachdaten fehlen ({string.Join(", ", missing)}); es wird '{resolved}' verwendet.");
+                Warnings.Add(L.F("OCR-Sprachdaten fehlen ({0}); es wird '{1}' verwendet.", string.Join(", ", missing), resolved));
             else
-                Warnings.Add("Es sind keine OCR-Sprachdaten installiert; die Texterkennung wurde übersprungen.");
+                Warnings.Add(L.T("Es sind keine OCR-Sprachdaten installiert; die Texterkennung wurde übersprungen."));
         }
 
         if (resolved.Length > 0)

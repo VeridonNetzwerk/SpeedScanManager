@@ -51,14 +51,14 @@ internal class ApplicationTabContent : ModernStack
 
     private static readonly List<ApplicationEntry> BuiltInApps = new()
     {
-        new ApplicationEntry("Scan to Folder", ApplicationType.ScanToFolder),
-        new ApplicationEntry("Scan to E-Mail", ApplicationType.ScanToEmail),
-        new ApplicationEntry("Scan to Print", ApplicationType.ScanToPrint),
-        new ApplicationEntry("Scan to Word", ApplicationType.ScanToWord),
-        new ApplicationEntry("Scan to Excel", ApplicationType.ScanToExcel),
-        new ApplicationEntry("Scan to PowerPoint", ApplicationType.ScanToPowerPoint),
-        new ApplicationEntry("Scan Picture Folder", ApplicationType.ScanPictureFolder),
-        new ApplicationEntry("Edit with PDF", ApplicationType.EditWithPdf)
+        new ApplicationEntry(L.T("Scan to Folder"), ApplicationType.ScanToFolder),
+        new ApplicationEntry(L.T("Scan to E-Mail"), ApplicationType.ScanToEmail),
+        new ApplicationEntry(L.T("Scan to Print"), ApplicationType.ScanToPrint),
+        new ApplicationEntry(L.T("Scan to Word"), ApplicationType.ScanToWord),
+        new ApplicationEntry(L.T("Scan to Excel"), ApplicationType.ScanToExcel),
+        new ApplicationEntry(L.T("Scan to PowerPoint"), ApplicationType.ScanToPowerPoint),
+        new ApplicationEntry(L.T("Scan Picture Folder"), ApplicationType.ScanPictureFolder),
+        new ApplicationEntry(L.T("Edit with PDF"), ApplicationType.EditWithPdf)
     };
 
     /// <param name="settings">Working copy of the scan settings.</param>
@@ -112,16 +112,16 @@ internal class ApplicationTabContent : ModernStack
         _btnManage = ModernButtons.SubDialog("Installieren/Deinstallieren...", Glyph.PlusMinus, IconColors.Purple);
         _btnManage.Click += (s, e) => OpenManageDialog();
 
-        var cardApp = new SettingsCard("Anwendung nach dem Scan",
-            "Die gescannten Dateien werden an diese Anwendung übergeben.") { Dense = true, Icon = ColorIcon.Tile(Glyph.Apps, IconColors.Purple) };
-        cardApp.AddRow("Anwendung", "Programm, das nach dem Scan gestartet wird.", _cbApplication, 240);
-        _rowEmailOptions = cardApp.AddRow("E-Mail-Optionen", "Empfänger und Betreff der E-Mail.", _btnEmailOptions);
-        _rowPrintOptions = cardApp.AddRow("Druck-Optionen", "Drucker, auf dem gedruckt wird.", _btnPrintOptions);
+        var cardApp = new SettingsCard(L.T("Anwendung nach dem Scan"),
+            L.T("Die gescannten Dateien werden an diese Anwendung übergeben.")) { Dense = true, Icon = ColorIcon.Tile(Glyph.Apps, IconColors.Purple) };
+        cardApp.AddRow(L.T("Anwendung"), L.T("Programm, das nach dem Scan gestartet wird."), _cbApplication, 240);
+        _rowEmailOptions = cardApp.AddRow("E-Mail-Optionen", L.T("Empfänger und Betreff der E-Mail."), _btnEmailOptions);
+        _rowPrintOptions = cardApp.AddRow("Druck-Optionen", L.T("Drucker, auf dem gedruckt wird."), _btnPrintOptions);
         _rowEmailOptions.Visible = false;
         _rowPrintOptions.Visible = false;
 
         var cardManage = new SettingsCard { Dense = true };
-        cardManage.AddRow("Anwendungen verwalten", "Eigene Programme zur Liste hinzufügen oder daraus entfernen.", _btnManage);
+        cardManage.AddRow(L.T("Anwendungen verwalten"), L.T("Eigene Programme zur Liste hinzufügen oder daraus entfernen."), _btnManage);
 
         Controls.Add(cardApp);
         Controls.Add(cardManage);

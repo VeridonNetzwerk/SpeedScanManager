@@ -354,14 +354,14 @@ internal class FolderPathPicker : Panel, IThemeAware
 
         _browse = new Button { Text = browseText, Size = new Size(124, 28) };
         ThemeManager.SetGlyph(_browse, Glyph.Folder);
-        _open = new FlatIconButton(Glyph.OpenExternal) { Size = new Size(28, 28), AccessibleName = "Ordner im Explorer öffnen" };
+        _open = new FlatIconButton(Glyph.OpenExternal) { Size = new Size(28, 28), AccessibleName = L.T("Ordner im Explorer öffnen") };
         _open.Click += (_, _) => OpenInExplorer();
-        _toolTip.SetToolTip(_open, "Ordner im Explorer öffnen");
+        _toolTip.SetToolTip(_open, L.T("Ordner im Explorer öffnen"));
         Controls.Add(_open);
         Controls.Add(_browse);
 
         var menu = new ContextMenuStrip();
-        var copy = new ToolStripMenuItem("Pfad kopieren", null, (_, _) => { if (_path.Length > 0) try { Clipboard.SetText(_path); } catch { } });
+        var copy = new ToolStripMenuItem(L.T("Pfad kopieren"), null, (_, _) => { if (_path.Length > 0) try { Clipboard.SetText(_path); } catch { } });
         menu.Items.Add(copy);
         menu.Opening += (_, e) => copy.Enabled = _path.Length > 0;
         ContextMenuStrip = menu;
@@ -472,7 +472,7 @@ internal class FolderPathPicker : Panel, IThemeAware
 
         g.SmoothingMode = SmoothingMode.None;
         var area = TextArea();
-        TextRenderer.DrawText(g, _path.Length > 0 ? _path : "Kein Ordner gewählt", ModernFonts.RowTitle, area,
+        TextRenderer.DrawText(g, _path.Length > 0 ? _path : L.T("Kein Ordner gewählt"), ModernFonts.RowTitle, area,
             Enabled ? (_path.Length > 0 ? p.Text : p.TextMuted) : ModernLayout.Disabled(p.Text, p.Input),
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine
             | TextFormatFlags.PathEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);

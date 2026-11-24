@@ -125,8 +125,8 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
 
         SuspendLayout();
         StartPosition = FormStartPosition.CenterScreen;
-        Text = "SpeedScan Manager – Einstellungen";
-        Title = "Einstellungen";
+        Text = L.T("SpeedScan Manager – Einstellungen");
+        Title = L.T("Einstellungen");
         Subtitle = "SpeedScan Manager";
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Minimize | ModernHeaderButtons.Close;
         HelpClicked += (s, e) =>
@@ -150,14 +150,14 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         Body.Controls.Add(_nav);
 
         _nav.AddHeading("SpeedScan Manager");
-        _nav.AddItem("Allgemein", Glyph.Gear, IconColors.Slate);
-        _nav.AddHeading("Scaneinstellungen");
-        _nav.AddItem("Anwendung", Glyph.Apps, IconColors.Purple);
-        _nav.AddItem("Speichern", Glyph.Folder, IconColors.Amber);
-        _nav.AddItem("Scanmodus", Glyph.Scanner, IconColors.Blue);
-        _nav.AddItem("Dateiart", Glyph.FileType, IconColors.Red);
-        _nav.AddItem("Papier", Glyph.Paper, IconColors.Teal);
-        _nav.AddItem("Dateigröße", Glyph.Compress, IconColors.Green);
+        _nav.AddItem(L.T("Allgemein"), Glyph.Gear, IconColors.Slate);
+        _nav.AddHeading(L.T("Scaneinstellungen"));
+        _nav.AddItem(L.T("Anwendung"), Glyph.Apps, IconColors.Purple);
+        _nav.AddItem(L.T("Speichern"), Glyph.Folder, IconColors.Amber);
+        _nav.AddItem(L.T("Scanmodus"), Glyph.Scanner, IconColors.Blue);
+        _nav.AddItem(L.T("Dateiart"), Glyph.FileType, IconColors.Red);
+        _nav.AddItem(L.T("Papier"), Glyph.Paper, IconColors.Teal);
+        _nav.AddItem(L.T("Dateigröße"), Glyph.Compress, IconColors.Green);
 
         // === Page "Allgemein" ===
         _quickMenuCheckBox = new ToggleSwitch { Checked = _appSettings.QuickMenuEnabled };
@@ -204,15 +204,15 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         _languageDropdown.SelectedIndex = Math.Max(0, L.Languages.ToList().FindIndex(l => l.Code == SavedLanguage));
 
         var cardStart = new SettingsCard { Dense = true };
-        cardStart.AddRow("Quick-Menü verwenden",
-            "Nach jedem Scan das Ziel wählen.",
+        cardStart.AddRow(L.T("Quick-Menü verwenden"),
+            L.T("Nach jedem Scan das Ziel wählen."),
             _quickMenuCheckBox);
-        cardStart.AddRow("Mit Windows starten",
-            "Startet mit der Windows-Anmeldung.", _autoStartCheckBox);
-        cardStart.AddRow("Nach Updates suchen",
-            "Hinweis bei einer neuen Version.", _updateCheckBox);
-        cardStart.AddRow("Design", "„System“ folgt Windows.", _themeDropdown, 130);
-        cardStart.AddRow("Sprache", "Wird nach einem Neustart übernommen.", _languageDropdown, 130);
+        cardStart.AddRow(L.T("Mit Windows starten"),
+            L.T("Startet mit der Windows-Anmeldung."), _autoStartCheckBox);
+        cardStart.AddRow(L.T("Nach Updates suchen"),
+            L.T("Hinweis bei einer neuen Version."), _updateCheckBox);
+        cardStart.AddRow(L.T("Design"), L.T("„System“ folgt Windows."), _themeDropdown, 130);
+        cardStart.AddRow(L.T("Sprache"), L.T("Wird nach einem Neustart übernommen."), _languageDropdown, 130);
         _startCard = cardStart;
 
         _profileDropdown = new ComboBox
@@ -225,7 +225,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         RefreshProfileDropdown();
         _profileDropdown.SelectedIndexChanged += (s, e) => OnProfileSelected();
 
-        var btnAddProfile = ModernButtons.SubDialog("Profil hinzufügen...");
+        var btnAddProfile = ModernButtons.SubDialog(L.T("Profil hinzufügen..."));
         btnAddProfile.Click += (s, e) => AddProfile();
         var btnManageProfiles = ModernButtons.SubDialog("Profilverwaltung...");
         btnManageProfiles.Click += (s, e) => OpenProfileManagement();
@@ -233,8 +233,8 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         profileButtons.Controls.Add(btnAddProfile);
         profileButtons.Controls.Add(btnManageProfiles);
 
-        _profileCard = new SettingsCard("Profil", "Speichert alle Scaneinstellungen (nur ohne Quick-Menü).") { Dense = true, Icon = ColorIcon.Tile(Glyph.User, IconColors.Blue) };
-        _profileCard.AddRow("Aktives Profil", null, _profileDropdown, 160);
+        _profileCard = new SettingsCard(L.T("Profil"), L.T("Speichert alle Scaneinstellungen (nur ohne Quick-Menü).")) { Dense = true, Icon = ColorIcon.Tile(Glyph.User, IconColors.Blue) };
+        _profileCard.AddRow(L.T("Aktives Profil"), null, _profileDropdown, 160);
         _profileCard.AddRow("", null, profileButtons).Stacked = true;
 
         var topRow = new ModernColumns();
@@ -243,10 +243,10 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
 
         // Duotone chips: Empfohlen = award (amber), Kleine Datei = squeezed file (green),
         // Hohe Bildqualität unchanged (accent), Benutzerdefiniert = sliders (violet).
-        _btnRecommended = CreatePresetTile("Empfohlen", Glyph.Award, "Automatisch\nKomprimierung 3", IconColors.Amber);
-        _btnSmallFile = CreatePresetTile("Kleine Datei", Glyph.FileZip, "Normal\nKomprimierung 5", IconColors.Green);
-        _btnHighQuality = CreatePresetTile("Hohe Bildqualität", Glyph.ImageHq, "Fein\nKomprimierung 1", null);
-        _btnCustom = CreatePresetTile("Benutzerdefiniert", Glyph.Sliders, "Eigene\nEinstellungen", IconColors.Purple);
+        _btnRecommended = CreatePresetTile(L.T("Empfohlen"), Glyph.Award, L.T("Automatisch\nKomprimierung 3"), IconColors.Amber);
+        _btnSmallFile = CreatePresetTile(L.T("Kleine Datei"), Glyph.FileZip, L.T("Normal\nKomprimierung 5"), IconColors.Green);
+        _btnHighQuality = CreatePresetTile(L.T("Hohe Bildqualität"), Glyph.ImageHq, L.T("Fein\nKomprimierung 1"), null);
+        _btnCustom = CreatePresetTile(L.T("Benutzerdefiniert"), Glyph.Sliders, L.T("Eigene\nEinstellungen"), IconColors.Purple);
         var presetGroup = new TileGroup { Columns = 4, TileHeight = 116, VerticalPadding = 4 };
         presetGroup.Controls.AddRange(new Control[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom });
         foreach (var tile in new[] { _btnRecommended, _btnSmallFile, _btnHighQuality, _btnCustom })
@@ -254,7 +254,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
             tile.Click += PresetButton_Click;
             tile.Click += (s, e) => OnSettingsChanged();
         }
-        var cardQuality = new SettingsCard("Scanqualität", "Voreinstellungen für Bildqualität und Komprimierungsrate.") { ShowDividers = false, Dense = true, Icon = ColorIcon.Tile(Glyph.Star, IconColors.Pink) };
+        var cardQuality = new SettingsCard(L.T("Scanqualität"), L.T("Voreinstellungen für Bildqualität und Komprimierungsrate.")) { ShowDividers = false, Dense = true, Icon = ColorIcon.Tile(Glyph.Star, IconColors.Pink) };
         cardQuality.Add(presetGroup);
         cardQuality.Add(new Panel { Height = 10 });
 
@@ -270,13 +270,13 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         _paperTabContent = new PaperTabContent(_working);
         _fileSizeTabContent = new FileSizeTabContent(_working);
 
-        AddPage("Allgemein", "Start, Quick-Menü, Scanqualität, Profile und Design.", general);
-        AddPage("Anwendung", "Wählen Sie eine Anwendung.", _applicationTabContent);
-        AddPage("Speichern", "Geben Sie den zu benutzenden Ordner und das gewünschte Dateinamenformat an.", _saveTabContent);
-        AddPage("Scanmodus", "Wählen Sie den gewünschten Scanmodus.", _scanModeTabContent);
-        AddPage("Dateiart", "Geben Sie die gewünschten Dateioptionen an.", _fileTypeTabContent);
-        AddPage("Papier", "Wählen Sie ein Papier.", _paperTabContent);
-        AddPage("Dateigröße", "Geben Sie die Komprimierungsrate an (nur für Farb- und Graustufenbilder).", _fileSizeTabContent);
+        AddPage(L.T("Allgemein"), L.T("Start, Quick-Menü, Scanqualität, Profile und Design."), general);
+        AddPage(L.T("Anwendung"), L.T("Wählen Sie eine Anwendung."), _applicationTabContent);
+        AddPage(L.T("Speichern"), L.T("Geben Sie den zu benutzenden Ordner und das gewünschte Dateinamenformat an."), _saveTabContent);
+        AddPage(L.T("Scanmodus"), L.T("Wählen Sie den gewünschten Scanmodus."), _scanModeTabContent);
+        AddPage(L.T("Dateiart"), L.T("Geben Sie die gewünschten Dateioptionen an."), _fileTypeTabContent);
+        AddPage(L.T("Papier"), L.T("Wählen Sie ein Papier."), _paperTabContent);
+        AddPage(L.T("Dateigröße"), L.T("Geben Sie die Komprimierungsrate an (nur für Farb- und Graustufenbilder)."), _fileSizeTabContent);
         _nav.SelectedIndexChanged += (s, e) => ShowPage(_nav.SelectedIndex);
 
         // Cross-page dependencies
@@ -293,18 +293,18 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         };
 
         // === Footer: Abbrechen / Übernehmen / OK ===
-        _cancelButton = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross);
+        _cancelButton = AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.Cross);
         // Asks in OnFormClosing whether unsaved changes should be saved.
         _cancelButton.Click += (s, e) => Close();
 
-        _applyButton = AddFooterButton("Übernehmen", ThemeRole.Secondary, Glyph.Apply);
+        _applyButton = AddFooterButton(L.T("Übernehmen"), ThemeRole.Secondary, Glyph.Apply);
         _applyButton.Enabled = false;
         _applyButton.Click += (s, e) => ApplySettings();
 
         _okButton = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check);
         _okButton.Click += (s, e) => { if (ApplySettings()) Close(); };
 
-        _scanFab = AddFooterFab(Glyph.Scanner, "Jetzt scannen");
+        _scanFab = AddFooterFab(Glyph.Scanner, L.T("Jetzt scannen"));
         _scanFab.Click += (s, e) => OnScanClick();
 
         // Wire page content changes to enable the Apply button
@@ -397,40 +397,40 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
 
         var steps = new List<TutorialOverlay.Step>
         {
-            new("Willkommen bei SpeedScan Manager",
-                "Eine kurze Tour durch die wichtigsten Einstellungen. Du kannst sie jederzeit überspringen und später über die Hilfe (?) wieder starten.",
+            new(L.T("Willkommen bei SpeedScan Manager"),
+                L.T("Eine kurze Tour durch die wichtigsten Einstellungen. Du kannst sie jederzeit überspringen und später über die Hilfe (?) wieder starten."),
                 Glyph.Sparkle, IconColors.Purple, null, Page(PageGeneral)),
-            new("Anwendung",
-                "Hier legst du fest, was nach dem Scan passiert: in einem Ordner speichern, per E-Mail senden, drucken oder in einem Programm öffnen. Das gilt, solange das Quick-Menü aus ist.",
+            new(L.T("Anwendung"),
+                L.T("Hier legst du fest, was nach dem Scan passiert: in einem Ordner speichern, per E-Mail senden, drucken oder in einem Programm öffnen. Das gilt, solange das Quick-Menü aus ist."),
                 Glyph.Apps, IconColors.Purple, Nav(PageApplication), Page(PageApplication)),
-            new("Speichern",
-                "Ordner und Dateiname deiner Scans. Ohne Änderung landen sie in „Dokumente\\SpeedScanManager“.",
+            new(L.T("Speichern"),
+                L.T("Ordner und Dateiname deiner Scans. Ohne Änderung landen sie in „Dokumente\\SpeedScanManager“."),
                 Glyph.Folder, IconColors.Amber, Nav(PageSave), Page(PageSave)),
-            new("Scanmodus",
-                "Farbe, Auflösung und ob eine oder beide Seiten gescannt werden. Unter „Optionen...“ stellst du z. B. das automatische Drehen ein.",
+            new(L.T("Scanmodus"),
+                L.T("Farbe, Auflösung und ob eine oder beide Seiten gescannt werden. Unter „Optionen...“ stellst du z. B. das automatische Drehen ein."),
                 Glyph.Scanner, IconColors.Blue, Nav(PageScanMode), Page(PageScanMode)),
-            new("Dateiart",
-                "PDF oder Bild. Mit Texterkennung wird die PDF durchsuchbar und du kannst Text daraus kopieren.",
+            new(L.T("Dateiart"),
+                L.T("PDF oder Bild. Mit Texterkennung wird die PDF durchsuchbar und du kannst Text daraus kopieren."),
                 Glyph.FileType, IconColors.Red, Nav(PageFileType), Page(PageFileType)),
-            new("Quick-Menü – jetzt an",
-                "Ich habe es für dich eingeschaltet. Nach jedem Scan erscheint ein kleines Menü, in dem du wählst, wohin das Dokument geht: Ordner, E-Mail, Drucker oder ein Programm.\n\n"
-                + "+  Flexibel: jedes Dokument kann woanders hin.\n"
-                + "+  Du siehst sofort, dass der Scan fertig ist.\n"
-                + "–  Ein Klick mehr pro Scan.\n\n"
-                + "Aus ist es ideal, wenn du immer gleich scannst: Dann gilt ohne Nachfrage die Seite „Anwendung“. Gespeichert wird es erst mit OK.",
+            new(L.T("Quick-Menü – jetzt an"),
+                L.T("Ich habe es für dich eingeschaltet. Nach jedem Scan erscheint ein kleines Menü, in dem du wählst, wohin das Dokument geht: Ordner, E-Mail, Drucker oder ein Programm.\n\n")
+                + L.T("+  Flexibel: jedes Dokument kann woanders hin.\n")
+                + L.T("+  Du siehst sofort, dass der Scan fertig ist.\n")
+                + L.T("–  Ein Klick mehr pro Scan.\n\n")
+                + L.T("Aus ist es ideal, wenn du immer gleich scannst: Dann gilt ohne Nachfrage die Seite „Anwendung“. Gespeichert wird es erst mit OK."),
                 Glyph.Apps, IconColors.Pink, Of(_quickMenuCheckBox.Parent ?? _startCard), () =>
                 {
                     _nav.SelectedIndex = PageGeneral;
                     _quickMenuCheckBox.Checked = true;
                 }),
-            new("Scannen",
-                "Papier einlegen und auf den runden Scan-Button klicken – oder einfach die Scan-Taste am Scanner drücken. Auch über das SpeedScan-Symbol unten rechts in der Taskleiste kannst du scannen.",
+            new(L.T("Scannen"),
+                L.T("Papier einlegen und auf den runden Scan-Button klicken – oder einfach die Scan-Taste am Scanner drücken. Auch über das SpeedScan-Symbol unten rechts in der Taskleiste kannst du scannen."),
                 Glyph.Scanner, IconColors.Green, () => ((FooterFab)_scanFab).ButtonScreenBounds, Page(PageGeneral), Round: true),
-            new("Hilfe",
-                "Das Fragezeichen öffnet die Hilfe mit Bildern zur jeweiligen Seite. Dort findest du auch „Tour starten“.",
+            new(L.T("Hilfe"),
+                L.T("Das Fragezeichen öffnet die Hilfe mit Bildern zur jeweiligen Seite. Dort findest du auch „Tour starten“."),
                 Glyph.Question, IconColors.Blue, Of(HeaderHelpButton), null),
             new("Fertig!",
-                "OK speichert deine Einstellungen und schließt das Fenster, „Übernehmen“ speichert nur. Viel Spaß beim Scannen!",
+                L.T("OK speichert deine Einstellungen und schließt das Fenster, „Übernehmen“ speichert nur. Viel Spaß beim Scannen!"),
                 Glyph.Check, IconColors.Green, Of(_okButton), null),
         };
 
@@ -661,12 +661,12 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
     {
         if (!_profileManager.CanAddProfile)
         {
-            TrayMessageBox.Show(this, $"Es können höchstens {ProfileManager.MaxProfiles} Profile angelegt werden.",
+            TrayMessageBox.Show(this, L.F("Es können höchstens {0} Profile angelegt werden.", ProfileManager.MaxProfiles),
                 "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
-        string? name = ProfileNameInput.Show(this, _profileManager, "Neues Profil hinzufügen", "Profilname:", "", null);
+        string? name = ProfileNameInput.Show(this, _profileManager, L.T("Neues Profil hinzufügen"), "Profilname:", "", null);
         if (name == null) return;
 
         // New profile = current (working) settings
@@ -760,10 +760,10 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
             else
             {
                 var answer = TrayMessageBox.Show(this,
-                    $"Das Standardprofil \"{_activeProfile.DisplayName}\" kann nicht geändert werden.\n\n" +
-                    "Möchten Sie die geänderten Einstellungen als neues Profil speichern?\n\n" +
-                    "Ja: Als neues Profil speichern\n" +
-                    "Nein: Nur als aktuelle Einstellungen übernehmen",
+                    L.F("Das Standardprofil \"{0}\" kann nicht geändert werden.\n\n", _activeProfile.DisplayName) +
+                    L.T("Möchten Sie die geänderten Einstellungen als neues Profil speichern?\n\n") +
+                    L.T("Ja: Als neues Profil speichern\n") +
+                    L.T("Nein: Nur als aktuelle Einstellungen übernehmen"),
                     "SpeedScan Manager", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
                 if (answer == DialogResult.Cancel)
                     return false;
@@ -771,11 +771,11 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
                 {
                     if (!_profileManager.CanAddProfile)
                     {
-                        TrayMessageBox.Show(this, $"Es können höchstens {ProfileManager.MaxProfiles} Profile angelegt werden.",
+                        TrayMessageBox.Show(this, L.F("Es können höchstens {0} Profile angelegt werden.", ProfileManager.MaxProfiles),
                             "SpeedScan Manager", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         return false;
                     }
-                    string? name = ProfileNameInput.Show(this, _profileManager, "Neues Profil hinzufügen", "Profilname:", "", null);
+                    string? name = ProfileNameInput.Show(this, _profileManager, L.T("Neues Profil hinzufügen"), "Profilname:", "", null);
                     if (name == null)
                         return false;
                     var profile = ScanProfile.FromCurrent(_working, name, isBuiltIn: false);
@@ -831,15 +831,15 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         var list = SettingsChangeList.Of(edited, _liveSettings);
         var general = new List<SettingsChangeList.Change>();
         if (_quickMenuCheckBox.Checked != _appSettings.QuickMenuEnabled)
-            general.Add(new("Allgemein", "Quick-Menü", SettingsChangeList.OnOff(_appSettings.QuickMenuEnabled), SettingsChangeList.OnOff(_quickMenuCheckBox.Checked)));
+            general.Add(new(L.T("Allgemein"), L.T("Quick-Menü"), SettingsChangeList.OnOff(_appSettings.QuickMenuEnabled), SettingsChangeList.OnOff(_quickMenuCheckBox.Checked)));
         if (_autoStartCheckBox.Checked != _appSettings.AutoStart)
-            general.Add(new("Allgemein", "Mit Windows starten", SettingsChangeList.OnOff(_appSettings.AutoStart), SettingsChangeList.OnOff(_autoStartCheckBox.Checked)));
+            general.Add(new(L.T("Allgemein"), L.T("Mit Windows starten"), SettingsChangeList.OnOff(_appSettings.AutoStart), SettingsChangeList.OnOff(_autoStartCheckBox.Checked)));
         if (SelectedLanguage != SavedLanguage)
-            general.Add(new("Allgemein", "Sprache", L.Find(SavedLanguage)!.NativeName, L.Find(SelectedLanguage)!.NativeName));
+            general.Add(new(L.T("Allgemein"), L.T("Sprache"), L.Find(SavedLanguage)!.NativeName, L.Find(SelectedLanguage)!.NativeName));
         if (_updateCheckBox.Checked != _appSettings.CheckForUpdates)
-            general.Add(new("Allgemein", "Nach Updates suchen", SettingsChangeList.OnOff(_appSettings.CheckForUpdates), SettingsChangeList.OnOff(_updateCheckBox.Checked)));
+            general.Add(new(L.T("Allgemein"), L.T("Nach Updates suchen"), SettingsChangeList.OnOff(_appSettings.CheckForUpdates), SettingsChangeList.OnOff(_updateCheckBox.Checked)));
         if ((_activeProfile?.Name ?? "") != _appSettings.SelectedProfileName)
-            general.Add(new("Allgemein", "Profil",
+            general.Add(new(L.T("Allgemein"), L.T("Profil"),
                 _profileManager.GetByName(_appSettings.SelectedProfileName)?.DisplayName ?? "–",
                 _activeProfile?.DisplayName ?? "–"));
         general.AddRange(list);
@@ -852,7 +852,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
     {
         bool changed = HasUnappliedChanges();
         _applyButton.Enabled = changed;
-        FooterHint = changed ? "Nicht übernommene Änderungen" : "";
+        FooterHint = changed ? L.T("Nicht übernommene Änderungen") : "";
     }
 
     /// <summary>An option window of a page (PDF, Dateiname, …) was closed with OK.</summary>

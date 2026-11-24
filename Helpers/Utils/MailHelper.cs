@@ -98,7 +98,7 @@ internal static class MailHelper
     public static MailResult OpenMailWithAttachments(IntPtr ownerHandle, string subject, string recipient, IReadOnlyList<string> filePaths)
     {
         if (filePaths.Count == 0)
-            return new MailResult(false, false, "Es gibt keine Datei, die angehängt werden kann.");
+            return new MailResult(false, false, L.T("Es gibt keine Datei, die angehängt werden kann."));
 
         var strings = new List<IntPtr>();
         IntPtr filesPtr = IntPtr.Zero, recipPtr = IntPtr.Zero, msgPtr = IntPtr.Zero;
@@ -168,11 +168,11 @@ internal static class MailHelper
         }
         catch (DllNotFoundException)
         {
-            return new MailResult(false, false, "Es ist kein MAPI-fähiges E-Mail-Programm installiert (mapi32.dll fehlt).");
+            return new MailResult(false, false, L.T("Es ist kein MAPI-fähiges E-Mail-Programm installiert (mapi32.dll fehlt)."));
         }
         catch (EntryPointNotFoundException)
         {
-            return new MailResult(false, false, "Das Standard-E-Mail-Programm unterstützt kein Simple MAPI.");
+            return new MailResult(false, false, L.T("Das Standard-E-Mail-Programm unterstützt kein Simple MAPI."));
         }
         finally
         {
@@ -185,16 +185,16 @@ internal static class MailHelper
 
     private static string DescribeError(uint rc) => rc switch
     {
-        2 => "Das E-Mail-Programm meldet einen allgemeinen Fehler (MAPI_E_FAILURE). Ist ein Standard-E-Mail-Programm eingerichtet?",
-        3 => "Die Anmeldung am E-Mail-Programm ist fehlgeschlagen.",
-        5 => "Nicht genügend Arbeitsspeicher für das E-Mail-Programm.",
-        11 => "Eine Anlage wurde nicht gefunden.",
-        12 => "Eine Anlage konnte nicht geöffnet werden.",
-        9 => "Zu viele Anlagen.",
-        14 => "Der Empfänger ist unbekannt.",
-        21 => "Der Empfänger ist nicht eindeutig.",
-        25 => "Die E-Mail-Adresse des Empfängers ist ungültig.",
-        26 => "Das E-Mail-Programm unterstützt diese Funktion nicht.",
-        _ => $"Das E-Mail-Programm konnte nicht geöffnet werden (MAPI-Fehler {rc})."
+        2 => L.T("Das E-Mail-Programm meldet einen allgemeinen Fehler (MAPI_E_FAILURE). Ist ein Standard-E-Mail-Programm eingerichtet?"),
+        3 => L.T("Die Anmeldung am E-Mail-Programm ist fehlgeschlagen."),
+        5 => L.T("Nicht genügend Arbeitsspeicher für das E-Mail-Programm."),
+        11 => L.T("Eine Anlage wurde nicht gefunden."),
+        12 => L.T("Eine Anlage konnte nicht geöffnet werden."),
+        9 => L.T("Zu viele Anlagen."),
+        14 => L.T("Der Empfänger ist unbekannt."),
+        21 => L.T("Der Empfänger ist nicht eindeutig."),
+        25 => L.T("Die E-Mail-Adresse des Empfängers ist ungültig."),
+        26 => L.T("Das E-Mail-Programm unterstützt diese Funktion nicht."),
+        _ => L.F("Das E-Mail-Programm konnte nicht geöffnet werden (MAPI-Fehler {0}).", rc)
     };
 }

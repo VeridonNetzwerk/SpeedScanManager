@@ -23,7 +23,7 @@ internal sealed class UnsavedChangesDialog : ModernWindow
         SuspendLayout();
         bool scan = purpose == Purpose.Scan;
         Text = "SpeedScan Manager";
-        Title = scan ? "Vor dem Scannen speichern?" : "Änderungen speichern?";
+        Title = scan ? L.T("Vor dem Scannen speichern?") : L.T("Änderungen speichern?");
         HeaderHeight = 52;
         HeaderButtons = ModernHeaderButtons.Close;
         StartPosition = FormStartPosition.CenterParent;
@@ -54,7 +54,7 @@ internal sealed class UnsavedChangesDialog : ModernWindow
         int textWidth = scan ? 470 : 430;
         var heading = new Label
         {
-            Text = changes.Count == 1 ? "Diese Einstellung wurde geändert:" : "Diese Einstellungen wurden geändert:",
+            Text = changes.Count == 1 ? L.T("Diese Einstellung wurde geändert:") : L.T("Diese Einstellungen wurden geändert:"),
             AutoSize = true,
             Font = ThemeFonts.Heading,
             Margin = new Padding(0, 0, 0, 8),
@@ -67,7 +67,7 @@ internal sealed class UnsavedChangesDialog : ModernWindow
         {
             var hint = new Label
             {
-                Text = "„Ohne Speichern“ scannt mit den gespeicherten Einstellungen, deine Änderungen bleiben im Fenster. „Verwerfen“ setzt sie zurück.",
+                Text = L.T("„Ohne Speichern“ scannt mit den gespeicherten Einstellungen, deine Änderungen bleiben im Fenster. „Verwerfen“ setzt sie zurück."),
                 AutoSize = true,
                 MaximumSize = new Size(textWidth, 0),
                 Margin = new Padding(0, 0, 0, 6),
@@ -89,22 +89,22 @@ internal sealed class UnsavedChangesDialog : ModernWindow
         Button cancel, save;
         if (scan)
         {
-            cancel = Add("Abbrechen", ThemeRole.Secondary, Glyph.None, Choice.Cancel, left: true);
-            Add("Verwerfen", ThemeRole.Secondary, Glyph.None, Choice.Discard);
-            Add("Ohne Speichern", ThemeRole.Secondary, Glyph.None, Choice.KeepUnsaved);
-            save = Add("Speichern", ThemeRole.Primary, Glyph.Check, Choice.Save);
+            cancel = Add(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.None, Choice.Cancel, left: true);
+            Add(L.T("Verwerfen"), ThemeRole.Secondary, Glyph.None, Choice.Discard);
+            Add(L.T("Ohne Speichern"), ThemeRole.Secondary, Glyph.None, Choice.KeepUnsaved);
+            save = Add(L.T("Speichern"), ThemeRole.Primary, Glyph.Check, Choice.Save);
         }
         else
         {
-            Add("Verwerfen", ThemeRole.Secondary, Glyph.None, Choice.Discard, left: true);
-            cancel = Add("Abbrechen", ThemeRole.Secondary, Glyph.None, Choice.Cancel);
-            save = Add("Speichern", ThemeRole.Primary, Glyph.Check, Choice.Save);
+            Add(L.T("Verwerfen"), ThemeRole.Secondary, Glyph.None, Choice.Discard, left: true);
+            cancel = Add(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.None, Choice.Cancel);
+            save = Add(L.T("Speichern"), ThemeRole.Primary, Glyph.Check, Choice.Save);
         }
         CancelButton = cancel;
         AcceptButton = save;
 
         int hintHeight = scan ? TextRenderer.MeasureText(
-            "„Ohne Speichern“ scannt mit den gespeicherten Einstellungen, deine Änderungen bleiben im Fenster. „Verwerfen“ setzt sie zurück.",
+            L.T("„Ohne Speichern“ scannt mit den gespeicherten Einstellungen, deine Änderungen bleiben im Fenster. „Verwerfen“ setzt sie zurück."),
             ThemeFonts.Regular, new Size(textWidth, 0), TextFormatFlags.WordBreak).Height + 6 : 0;
         int bodyHeight = 18 + 24 + table.Height + 10 + hintHeight + 6;
         ClientSize = new Size(20 + 36 + 14 + textWidth + 22, 52 + Math.Max(36 + 24, bodyHeight) + 56);
@@ -195,7 +195,7 @@ internal sealed class UnsavedChangesDialog : ModernWindow
             {
                 using var div = new Pen(p.CardDivider);
                 g.DrawLine(div, pad, y, Width - pad, y);
-                TextRenderer.DrawText(g, $"… und {_changes.Count - shown} weitere", ThemeFonts.Regular,
+                TextRenderer.DrawText(g, L.F("… und {0} weitere", _changes.Count - shown), ThemeFonts.Regular,
                     new Rectangle(pad, y, Width - 2 * pad, rowH), p.TextMuted, F);
             }
         }

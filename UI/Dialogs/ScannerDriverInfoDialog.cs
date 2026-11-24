@@ -14,8 +14,8 @@ internal class ScannerDriverInfoDialog : ModernWindow
     public ScannerDriverInfoDialog(ScannerState? scannerState = null)
     {
         SuspendLayout();
-        Text = "SpeedScan Manager - Scanner- und Treiberinformationen";
-        Title = "Scanner- und Treiberinformationen";
+        Text = L.T("SpeedScan Manager - Scanner- und Treiberinformationen");
+        Title = L.T("Scanner- und Treiberinformationen");
         Subtitle = "SpeedScan Manager";
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
         HelpTopic = "driver-info";
@@ -25,11 +25,11 @@ internal class ScannerDriverInfoDialog : ModernWindow
         MinimumContentWidth = 540;
 
         // === Scanner info rows ===
-        var cardScanner = new SettingsCard("Scanner");
-        cardScanner.AddRow("Scannername", null, InfoBox(scannerState?.SourceName ?? "Kein Scanner verbunden"), 300);
-        cardScanner.AddRow("Hersteller", null, InfoBox(scannerState?.Manufacturer ?? "—"), 300);
-        cardScanner.AddRow("Produktfamilie", null, InfoBox(scannerState?.ProductFamily ?? "—"), 300);
-        cardScanner.AddRow("Treiberversion", null, InfoBox(scannerState?.DriverVersion ?? "—"), 300);
+        var cardScanner = new SettingsCard(L.T("Scanner"));
+        cardScanner.AddRow(L.T("Scannername"), null, InfoBox(scannerState?.SourceName ?? L.T("Kein Scanner verbunden")), 300);
+        cardScanner.AddRow(L.T("Hersteller"), null, InfoBox(scannerState?.Manufacturer ?? "—"), 300);
+        cardScanner.AddRow(L.T("Produktfamilie"), null, InfoBox(scannerState?.ProductFamily ?? "—"), 300);
+        cardScanner.AddRow(L.T("Treiberversion"), null, InfoBox(scannerState?.DriverVersion ?? "—"), 300);
 
         // === File version section ===
         var lvwVersions = new ListView
@@ -43,9 +43,9 @@ internal class ScannerDriverInfoDialog : ModernWindow
             Margin = Padding.Empty
         };
 
-        lvwVersions.Columns.Add("Dateiname", 200, HorizontalAlignment.Left);
-        lvwVersions.Columns.Add("Version", 90, HorizontalAlignment.Center);
-        lvwVersions.Columns.Add("Zeit", 150, HorizontalAlignment.Right);
+        lvwVersions.Columns.Add(L.T("Dateiname"), 200, HorizontalAlignment.Left);
+        lvwVersions.Columns.Add(L.T("Version"), 90, HorizontalAlignment.Center);
+        lvwVersions.Columns.Add(L.T("Zeit"), 150, HorizontalAlignment.Right);
         // "Dateiname" takes the remaining width of the card.
         lvwVersions.Resize += (s, e) =>
         {
@@ -69,7 +69,7 @@ internal class ScannerDriverInfoDialog : ModernWindow
         foreach (var dll in new[] { "NTwain.dll", "Tesseract.dll", "PdfSharpCore.dll", "DocumentFormat.OpenXml.dll" })
             lvwVersions.Items.Add(new ListViewItem(GetFileVersionRow(dll)));
 
-        var cardFiles = new SettingsCard("Dateiversion") { ShowDividers = false };
+        var cardFiles = new SettingsCard(L.T("Dateiversion")) { ShowDividers = false };
         cardFiles.Add(lvwVersions);
         // Space below the list inside the card.
         cardFiles.Add(new Panel { Height = 12 });

@@ -68,7 +68,7 @@ internal class HelpForm : ModernWindow
     private readonly string _initialTopic;
     private int _activeNavTab = 0; // 0=Inhalt, 1=Index, 2=Suchen
 
-    private static readonly string[] NavCaptions = { "Themen", "Stichwörter", "Suchergebnisse" };
+    private static readonly string[] NavCaptions = { L.T("Themen"), L.T("Stichwörter"), L.T("Suchergebnisse") };
 
     /// <summary>"Tour starten" was clicked: the caller starts the guided tour after closing.</summary>
     public bool TourRequested { get; private set; }
@@ -78,8 +78,8 @@ internal class HelpForm : ModernWindow
     {
         SuspendLayout();
         _initialTopic = topicId ?? "root";
-        Text = "SpeedScan Manager Hilfe";
-        Title = "SpeedScan Manager Hilfe";
+        Text = L.T("SpeedScan Manager Hilfe");
+        Title = L.T("SpeedScan Manager Hilfe");
         HeaderButtons = ModernHeaderButtons.Close;
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
@@ -91,9 +91,9 @@ internal class HelpForm : ModernWindow
         _topicMap = HelpContent.BuildTopicMap(_rootTopic);
 
         // === Header: minimize + maximize/restore (the base provides close) ===
-        _btnMinimize = new HeaderIconButton(HeaderIconButton.Kind.Minimize) { Size = new Size(30, 30), AccessibleName = "Minimieren" };
+        _btnMinimize = new HeaderIconButton(HeaderIconButton.Kind.Minimize) { Size = new Size(30, 30), AccessibleName = L.T("Minimieren") };
         _btnMinimize.Click += (_, _) => WindowState = FormWindowState.Minimized;
-        _btnMaximize = new MaximizeButton { Size = new Size(30, 30), AccessibleName = "Maximieren" };
+        _btnMaximize = new MaximizeButton { Size = new Size(30, 30), AccessibleName = L.T("Maximieren") };
         _btnMaximize.Click += (_, _) => ToggleMaximize();
         Header.Controls.Add(_btnMinimize);
         Header.Layout += (_, _) => LayoutHeaderButtons();
@@ -112,9 +112,9 @@ internal class HelpForm : ModernWindow
 
         // === Sidebar: navigation (Inhalt/Index/Suchen), caption, tree ===
         _navTabs = new NavList { Dock = DockStyle.Top, Height = 10 + 3 * 38 + 4 };
-        _navTabs.Add("Inhalt", DrawBookIcon);
-        _navTabs.Add("Index", DrawIndexIcon);
-        _navTabs.Add("Suchen", DrawSearchIcon);
+        _navTabs.Add(L.T("Inhalt"), DrawBookIcon);
+        _navTabs.Add(L.T("Index"), DrawIndexIcon);
+        _navTabs.Add(L.T("Suchen"), DrawSearchIcon);
         _navTabs.SelectedIndexChanged += (_, _) =>
         {
             _activeNavTab = _navTabs.SelectedIndex;
@@ -179,30 +179,30 @@ internal class HelpForm : ModernWindow
             e.Graphics.DrawLine(pen, 0, toolbar.Height - 1, toolbar.Width, toolbar.Height - 1);
         };
 
-        _tsBtnHide = new ToolButton("Ausblenden", DrawSidebarIcon) { ToolTipText = "Navigation aus- oder einblenden" };
+        _tsBtnHide = new ToolButton(L.T("Ausblenden"), DrawSidebarIcon) { ToolTipText = L.T("Navigation aus- oder einblenden") };
         _tsBtnHide.Click += (s, e) => ToggleNavigation();
 
-        var tsBtnHome = new ToolButton("Startseite", DrawHomeIcon) { ToolTipText = "Zur Startseite der Hilfe" };
+        var tsBtnHome = new ToolButton(L.T("Startseite"), DrawHomeIcon) { ToolTipText = L.T("Zur Startseite der Hilfe") };
         tsBtnHome.Click += (s, e) => NavigateTo("root");
 
-        _tsBtnBack = new ToolButton("Zurück", (g, c) => DrawArrowIcon(g, c, left: true)) { Enabled = false };
+        _tsBtnBack = new ToolButton(L.T("Zurück"), (g, c) => DrawArrowIcon(g, c, left: true)) { Enabled = false };
         _tsBtnBack.Click += (s, e) => GoBack();
 
-        _tsBtnForward = new ToolButton("Vorwärts", (g, c) => DrawArrowIcon(g, c, left: false)) { Enabled = false };
+        _tsBtnForward = new ToolButton(L.T("Vorwärts"), (g, c) => DrawArrowIcon(g, c, left: false)) { Enabled = false };
         _tsBtnForward.Click += (s, e) => GoForward();
 
-        var tsBtnPrint = new ToolButton("Drucken", (g, c) => ThemeGlyphs.Draw(g, Glyph.Printer, new RectangleF(0, 0, 16, 16), c));
+        var tsBtnPrint = new ToolButton(L.T("Drucken"), (g, c) => ThemeGlyphs.Draw(g, Glyph.Printer, new RectangleF(0, 0, 16, 16), c));
         tsBtnPrint.Click += (s, e) => _webBrowser?.Print();
 
-        _tsBtnOptions = new ToolButton("Optionen", (g, c) => ThemeGlyphs.Draw(g, Glyph.Gear, new RectangleF(0, 0, 16, 16), c)) { DropDown = true };
+        _tsBtnOptions = new ToolButton(L.T("Optionen"), (g, c) => ThemeGlyphs.Draw(g, Glyph.Gear, new RectangleF(0, 0, 16, 16), c)) { DropDown = true };
 
         _optionsMenu = new ContextMenuStrip();
-        _miToggleNav = (ToolStripMenuItem)_optionsMenu.Items.Add("Navigation ausblenden", null, (s, e) => ToggleNavigation());
-        _miBack = (ToolStripMenuItem)_optionsMenu.Items.Add("Zurück", null, (s, e) => GoBack());
+        _miToggleNav = (ToolStripMenuItem)_optionsMenu.Items.Add(L.T("Navigation ausblenden"), null, (s, e) => ToggleNavigation());
+        _miBack = (ToolStripMenuItem)_optionsMenu.Items.Add(L.T("Zurück"), null, (s, e) => GoBack());
         _miBack.Enabled = false;
-        _miForward = (ToolStripMenuItem)_optionsMenu.Items.Add("Vorwärts", null, (s, e) => GoForward());
+        _miForward = (ToolStripMenuItem)_optionsMenu.Items.Add(L.T("Vorwärts"), null, (s, e) => GoForward());
         _miForward.Enabled = false;
-        _optionsMenu.Items.Add("Startseite", null, (s, e) => NavigateTo("root"));
+        _optionsMenu.Items.Add(L.T("Startseite"), null, (s, e) => NavigateTo("root"));
         _optionsMenu.Items.Add(new ToolStripSeparator());
         _optionsMenu.Items.Add("Drucken...", null, (s, e) => _webBrowser?.Print());
         _tsBtnOptions.Click += (s, e) =>
@@ -227,9 +227,9 @@ internal class HelpForm : ModernWindow
         }.Where(c => c != null).ToArray());
         if (offerTour)
         {
-            var tsBtnTour = new ToolButton("Tour starten", (g, c) => ThemeGlyphs.Draw(g, Glyph.Sparkle, new RectangleF(0, 0, 16, 16), c))
+            var tsBtnTour = new ToolButton(L.T("Tour starten"), (g, c) => ThemeGlyphs.Draw(g, Glyph.Sparkle, new RectangleF(0, 0, 16, 16), c))
             {
-                ToolTipText = "Die Einführung durch das Einstellungsfenster noch einmal zeigen"
+                ToolTipText = L.T("Die Einführung durch das Einstellungsfenster noch einmal zeigen")
             };
             tsBtnTour.Click += (s, e) =>
             {
@@ -510,7 +510,7 @@ internal class HelpForm : ModernWindow
             ShowItemToolTips = true,
             Sorting = SortOrder.Ascending
         };
-        _indexListView.Columns.Add("Stichwort");
+        _indexListView.Columns.Add(L.T("Stichwort"));
         // Row height like the topic tree (a 1 px wide image list sets the height)
         _indexRowImages = new ImageList { ImageSize = new Size(1, ModernLayout.Scale(this, 26)) };
         _indexListView.SmallImageList = _indexRowImages;
@@ -567,14 +567,14 @@ internal class HelpForm : ModernWindow
             Dock = DockStyle.Fill,
             AutoSize = false,
             Font = UiFont,
-            PlaceholderText = "Suchbegriff",
-            AccessibleName = "Suchen"
+            PlaceholderText = L.T("Suchbegriff"),
+            AccessibleName = L.T("Suchen")
         };
         _searchBox.TextChanged += (s, e) => PerformSearch();
 
         var btnSearch = new Button
         {
-            Text = "Suchen",
+            Text = L.T("Suchen"),
             Dock = DockStyle.Right,
             Width = 76,
             Font = UiFont
@@ -663,8 +663,8 @@ internal class HelpForm : ModernWindow
     {
         _navVisible = !_navVisible;
         _split.Panel1Collapsed = !_navVisible;
-        _miToggleNav.Text = _navVisible ? "Navigation ausblenden" : "Navigation einblenden";
-        _tsBtnHide.Text = _navVisible ? "Ausblenden" : "Einblenden";
+        _miToggleNav.Text = _navVisible ? L.T("Navigation ausblenden") : L.T("Navigation einblenden");
+        _tsBtnHide.Text = _navVisible ? L.T("Ausblenden") : L.T("Einblenden");
     }
 
     // ───────────────────────── Window: maximize, resize ─────────────────────────
@@ -700,7 +700,7 @@ internal class HelpForm : ModernWindow
         if (_btnMaximize.Restore != max)
         {
             _btnMaximize.Restore = max;
-            _btnMaximize.AccessibleName = max ? "Wiederherstellen" : "Maximieren";
+            _btnMaximize.AccessibleName = max ? L.T("Wiederherstellen") : L.T("Maximieren");
         }
     }
 

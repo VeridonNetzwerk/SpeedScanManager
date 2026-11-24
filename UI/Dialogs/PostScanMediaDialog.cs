@@ -30,14 +30,14 @@ internal class PostScanMediaDialog : ModernWindow
 
     private readonly string[] _labels =
     {
-        "In Ordner speichern",
-        "Per E-Mail versenden",
-        "Drucken",
-        "Nach Word",
-        "Nach Excel",
-        "Nach PowerPoint",
-        "In Bilderordner",
-        "Mit PDF Edit bearbeiten"
+        L.T("In Ordner speichern"),
+        L.T("Per E-Mail versenden"),
+        L.T("Drucken"),
+        L.T("Nach Word"),
+        L.T("Nach Excel"),
+        L.T("Nach PowerPoint"),
+        L.T("In Bilderordner"),
+        L.T("Mit PDF Edit bearbeiten")
     };
 
     private readonly Bitmap[] _icons;
@@ -63,9 +63,9 @@ internal class PostScanMediaDialog : ModernWindow
         StartPosition = FormStartPosition.CenterScreen;
         TopMost = true;
         ShowInTaskbar = true;
-        Text = "SpeedScan Manager – Quick-Menü";
-        Title = "Wohin möchtest du scannen?";
-        Subtitle = pageCount == 1 ? "1 Seite gescannt" : $"{pageCount} Seiten gescannt";
+        Text = L.T("SpeedScan Manager – Quick-Menü");
+        Title = L.T("Wohin möchtest du scannen?");
+        Subtitle = pageCount == 1 ? L.T("1 Seite gescannt") : L.F("{0} Seiten gescannt", pageCount);
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
         HelpTopic = "postscan-media";
         ClientSize = new Size(520, 410);
@@ -93,9 +93,9 @@ internal class PostScanMediaDialog : ModernWindow
         Body.Controls.Add(grid);
 
         // === Footer ===
-        FooterHint = "Doppelklick startet direkt";
-        var btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
-        var btnSave = AddFooterButton("Speichern", ThemeRole.Primary, Glyph.Check);
+        FooterHint = L.T("Doppelklick startet direkt");
+        var btnCancel = AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        var btnSave = AddFooterButton(L.T("Speichern"), ThemeRole.Primary, Glyph.Check);
         btnSave.Click += (_, _) =>
         {
             SelectedMediaAction = (MediaAction)_selectedIndex;

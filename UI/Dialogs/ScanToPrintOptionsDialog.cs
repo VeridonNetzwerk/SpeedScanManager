@@ -25,9 +25,9 @@ internal class ScanToPrintOptionsDialog : ModernWindow
     {
         SuspendLayout();
         StartPosition = FormStartPosition.CenterParent;
-        Text = "Scan to Print – Optionen";
-        Title = "Scan to Print";
-        Subtitle = "Optionen für den Druck";
+        Text = L.T("Scan to Print – Optionen");
+        Title = L.T("Scan to Print");
+        Subtitle = L.T("Optionen für den Druck");
         HeaderButtons = ModernHeaderButtons.Close;
         HeaderIcon = ColorIcon.Tile(Glyph.Printer, IconColors.Slate);
         ShowInTaskbar = false;
@@ -65,13 +65,13 @@ internal class ScanToPrintOptionsDialog : ModernWindow
         _cbPrinter.SelectedIndex = 0;
 
         var card = new SettingsCard { Dense = true };
-        card.AddRow("Zieldrucker", "Drucker für den Ausdruck.", _cbPrinter, 270).Icon = ColorIcon.Tile(Glyph.Printer, IconColors.Slate);
+        card.AddRow(L.T("Zieldrucker"), L.T("Drucker für den Ausdruck."), _cbPrinter, 270).Icon = ColorIcon.Tile(Glyph.Printer, IconColors.Slate);
 
         var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(16, 16, 16, 16) };
         stack.Controls.Add(card);
         Body.Controls.Add(stack);
 
-        _btnCancel = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
+        _btnCancel = AddFooterButton(L.T("Abbrechen"), ThemeRole.Secondary, Glyph.Cross, DialogResult.Cancel);
         _btnOk = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check, DialogResult.OK);
 
         AcceptButton = _btnOk;

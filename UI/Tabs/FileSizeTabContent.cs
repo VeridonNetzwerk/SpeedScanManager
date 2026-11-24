@@ -47,9 +47,9 @@ internal class FileSizeTabContent : ModernStack
     public void UpdateEnabledState()
     {
         string? reason = _settings.ColorMode == ColorMode.BlackWhite
-            ? "Für Schwarzweiß-Scans wird die Komprimierungsrate für Schwarzweißbilder übernommen."
+            ? L.T("Für Schwarzweiß-Scans wird die Komprimierungsrate für Schwarzweißbilder übernommen.")
             : _settings.FileFormat == FileFormat.Png
-                ? "PNG-Dateien werden verlustfrei gespeichert; die Komprimierungsrate wird nicht verwendet."
+                ? L.T("PNG-Dateien werden verlustfrei gespeichert; die Komprimierungsrate wird nicht verwendet.")
                 : null;
         _scale.Enabled = reason == null;
         _lblDisabledHint.Description = reason ?? "";
@@ -61,7 +61,7 @@ internal class FileSizeTabContent : ModernStack
         _settings = settings;
 
         _scale = new CompressionScale();
-        _scale.Slider.AccessibleName = "Komprimierungsrate";
+        _scale.Slider.AccessibleName = L.T("Komprimierungsrate");
         _scale.Slider.ValueChanged += (s, e) =>
         {
             if (!_loading)
@@ -70,8 +70,8 @@ internal class FileSizeTabContent : ModernStack
 
         _lblDisabledHint = new SettingRow("", "") { DescriptionRole = ThemeRole.Danger, Visible = false, VerticalPadding = 4 };
 
-        var card = new SettingsCard("Komprimierungsrate",
-            "Eine höhere Komprimierung ergibt kleinere Dateien, aber eine geringere Bildqualität.") { Dense = true, Icon = ColorIcon.Tile(Glyph.Compress, IconColors.Green) };
+        var card = new SettingsCard(L.T("Komprimierungsrate"),
+            L.T("Eine höhere Komprimierung ergibt kleinere Dateien, aber eine geringere Bildqualität.")) { Dense = true, Icon = ColorIcon.Tile(Glyph.Compress, IconColors.Green) };
         card.Add(_scale);
         card.Add(_lblDisabledHint);
         Controls.Add(card);
@@ -152,15 +152,15 @@ internal sealed class CompressionScale : Panel, IThemeAware, IHeightForWidth
         var flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
 
         // Row labels (left column), centered on their wedge
-        DrawRowLabel(g, "Komprimierung", S(WedgeTopY) + S(WedgeHeight) / 2, label);
-        DrawRowLabel(g, "Dateigröße", S(WedgeBottomY) + S(WedgeHeight) / 2, label);
+        DrawRowLabel(g, L.T("Komprimierung"), S(WedgeTopY) + S(WedgeHeight) / 2, label);
+        DrawRowLabel(g, L.T("Dateigröße"), S(WedgeBottomY) + S(WedgeHeight) / 2, label);
 
         // Captions at the ends of the wedges
-        DrawCaption(g, "Niedrig", x0, S(CaptionTopY), muted, small, flags, align: -1);
-        DrawCaption(g, "Hoch", x1, S(CaptionTopY), muted, small, flags, align: 1);
-        DrawCaption(g, "Groß", x0, S(CaptionBottomY), muted, small, flags, align: -1);
-        DrawCaption(g, "Klein", x1, S(CaptionBottomY), muted, small, flags, align: 1);
-        DrawCaption(g, "Normal", sb.Left + Slider.XOf(3), S(CaptionBottomY), muted, small, flags, align: 0);
+        DrawCaption(g, L.T("Niedrig"), x0, S(CaptionTopY), muted, small, flags, align: -1);
+        DrawCaption(g, L.T("Hoch"), x1, S(CaptionTopY), muted, small, flags, align: 1);
+        DrawCaption(g, L.T("Groß"), x0, S(CaptionBottomY), muted, small, flags, align: -1);
+        DrawCaption(g, L.T("Klein"), x1, S(CaptionBottomY), muted, small, flags, align: 1);
+        DrawCaption(g, L.T("Normal"), sb.Left + Slider.XOf(3), S(CaptionBottomY), muted, small, flags, align: 0);
 
         // Wedges: compression grows to the right (red), file size shrinks to the right (accent)
         g.SmoothingMode = SmoothingMode.AntiAlias;

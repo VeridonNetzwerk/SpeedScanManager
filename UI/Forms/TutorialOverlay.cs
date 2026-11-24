@@ -37,7 +37,7 @@ internal sealed class TutorialOverlay : Form
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
         KeyPreview = true;
-        Text = "Einführung";
+        Text = L.T("Einführung");
     }
 
     protected override CreateParams CreateParams
@@ -222,7 +222,7 @@ internal sealed class TutorialOverlay : Form
         int textWidth = width - textLeft - pad;
         var titleSize = TextRenderer.MeasureText(step.Title, titleFont, new Size(textWidth, int.MaxValue), Wrap);
         var textSize = TextRenderer.MeasureText(step.Text, textFont, new Size(width - 2 * pad, int.MaxValue), Wrap);
-        var smallSize = TextRenderer.MeasureText("Schritt", smallFont, Size.Empty, Line);
+        var smallSize = TextRenderer.MeasureText(L.T("Schritt"), smallFont, Size.Empty, Line);
         int headerHeight = Math.Max(tile, smallSize.Height + S(2) + titleSize.Height);
         int btnHeight = S(32);
         int height = pad + headerHeight + S(12) + textSize.Height + S(18) + btnHeight + pad;
@@ -251,7 +251,7 @@ internal sealed class TutorialOverlay : Form
 
             ColorIcons.DrawTile(c, new RectangleF(pad, pad, tile, tile), step.Color, step.Glyph);
             int headerTop = pad + (headerHeight - (smallSize.Height + S(2) + titleSize.Height)) / 2;
-            TextRenderer.DrawText(c, $"Schritt {_index + 1} von {_steps.Count}", smallFont,
+            TextRenderer.DrawText(c, L.F("Schritt {0} von {1}", _index + 1, _steps.Count), smallFont,
                 new Point(textLeft, headerTop), p.TextMuted, cardBack, Line);
             TextRenderer.DrawText(c, step.Title, titleFont,
                 new Rectangle(textLeft, headerTop + smallSize.Height + S(2), textWidth, titleSize.Height), p.Text, cardBack, Wrap);
@@ -277,7 +277,7 @@ internal sealed class TutorialOverlay : Form
 
             // Buttons (right to left): Weiter / Los geht's, Zurück
             bool last = _index == _steps.Count - 1;
-            string nextText = last ? "Los geht's" : "Weiter";
+            string nextText = last ? L.T("Los geht's") : L.T("Weiter");
             int nextWidth = TextRenderer.MeasureText(nextText, buttonFont, Size.Empty, Line).Width + S(34);
             var next = new Rectangle(width - pad - nextWidth, by, nextWidth, btnHeight);
             DrawButton(c, next, nextText, buttonFont, _hover == Hit.Next ? p.AccentHover : p.Accent, Color.White);
@@ -285,9 +285,9 @@ internal sealed class TutorialOverlay : Form
 
             if (_index > 0)
             {
-                int backWidth = TextRenderer.MeasureText("Zurück", buttonFont, Size.Empty, Line).Width + S(28);
+                int backWidth = TextRenderer.MeasureText(L.T("Zurück"), buttonFont, Size.Empty, Line).Width + S(28);
                 var back = new Rectangle(next.X - S(8) - backWidth, by, backWidth, btnHeight);
-                DrawButton(c, back, "Zurück", buttonFont,
+                DrawButton(c, back, L.T("Zurück"), buttonFont,
                     _hover == Hit.Back ? p.ButtonSecondaryHover : p.ButtonSecondary, p.ButtonSecondaryText);
                 _btnBack = Offset(back, bubble);
             }
@@ -300,9 +300,9 @@ internal sealed class TutorialOverlay : Form
             {
                 // "Überspringen" in the top right corner
                 using var skipFont = _hover == Hit.Skip ? new Font(smallFont, FontStyle.Underline) : (Font)smallFont.Clone();
-                var skipSize = TextRenderer.MeasureText("Überspringen", skipFont, Size.Empty, Line);
+                var skipSize = TextRenderer.MeasureText(L.T("Überspringen"), skipFont, Size.Empty, Line);
                 var skip = new Rectangle(width - pad - skipSize.Width - S(4), headerTop - S(3), skipSize.Width + S(8), skipSize.Height + S(6));
-                TextRenderer.DrawText(c, "Überspringen", skipFont, new Point(skip.X + S(4), skip.Y + S(3)),
+                TextRenderer.DrawText(c, L.T("Überspringen"), skipFont, new Point(skip.X + S(4), skip.Y + S(3)),
                     _hover == Hit.Skip ? p.Accent : p.TextMuted, cardBack, Line);
                 _btnSkip = Offset(skip, bubble);
             }

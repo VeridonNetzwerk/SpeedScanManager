@@ -248,20 +248,20 @@ internal partial class TrayApplicationContext : ApplicationContext
         _menuHeader = new TrayMenuHeaderItem();
         _contextMenu.Opening += OnContextMenuOpening;
 
-        _miScan = new ToolStripMenuItem("Scan");
-        _miCancelScan = new ToolStripMenuItem("Scan abbrechen") { Visible = false };
-        _miSelectScanner = new ToolStripMenuItem("Scanner auswählen...");
-        _miScanKeySettings = new ToolStripMenuItem("Öffnen");
-        _miSetupScanButton = new ToolStripMenuItem("Scan-Taste initialisieren");
+        _miScan = new ToolStripMenuItem(L.T("Scan"));
+        _miCancelScan = new ToolStripMenuItem(L.T("Scan abbrechen")) { Visible = false };
+        _miSelectScanner = new ToolStripMenuItem(L.T("Scanner auswählen..."));
+        _miScanKeySettings = new ToolStripMenuItem(L.T("Öffnen"));
+        _miSetupScanButton = new ToolStripMenuItem(L.T("Scan-Taste initialisieren"));
         _miProfileManagement = new ToolStripMenuItem("Profilverwaltung...");
         _miEmailSettings = new ToolStripMenuItem("E-Mail-Einstellungen...");
         _miPrintSettings = new ToolStripMenuItem("Druckeinstellungen...");
-        _miScanResult = new ToolStripMenuItem("Scan-Ergebnis anzeigen");
-        _miHelp = new ToolStripMenuItem("Hilfe");
-        _miExit = new ToolStripMenuItem("Beenden");
+        _miScanResult = new ToolStripMenuItem(L.T("Scan-Ergebnis anzeigen"));
+        _miHelp = new ToolStripMenuItem(L.T("Hilfe"));
+        _miExit = new ToolStripMenuItem(L.T("Beenden"));
 
-        var miHelpTopics = new ToolStripMenuItem("Hilfethemen");
-        var miVersionInfo = new ToolStripMenuItem("Versionsinformationen");
+        var miHelpTopics = new ToolStripMenuItem(L.T("Hilfethemen"));
+        var miVersionInfo = new ToolStripMenuItem(L.T("Versionsinformationen"));
 
         _miScan.Click += (_, _) => StartScan(ScanTrigger.Menu);
         _miCancelScan.Click += (_, _) => CancelRunningScan();
@@ -343,17 +343,17 @@ internal partial class TrayApplicationContext : ApplicationContext
     {
         string selected = _appSettings?.SelectedSourceName ?? "";
         if (_busy)
-            _menuHeader.SetStatus(_activePipeline != null ? "Scannt…" : "Scan wird bearbeitet…", TrayMenuHeaderItem.State.Busy);
+            _menuHeader.SetStatus(_activePipeline != null ? L.T("Scannt…") : L.T("Scan wird bearbeitet…"), TrayMenuHeaderItem.State.Busy);
         else if (!_twainInitialized)
-            _menuHeader.SetStatus("Wird gestartet…", TrayMenuHeaderItem.State.Busy);
+            _menuHeader.SetStatus(L.T("Wird gestartet…"), TrayMenuHeaderItem.State.Busy);
         else if (_scannerStatus == ScannerStatus.Connected)
-            _menuHeader.SetStatus(string.IsNullOrEmpty(_currentScannerName) ? "Scanner verbunden" : _currentScannerName, TrayMenuHeaderItem.State.Ready);
+            _menuHeader.SetStatus(string.IsNullOrEmpty(_currentScannerName) ? L.T("Scanner verbunden") : _currentScannerName, TrayMenuHeaderItem.State.Ready);
         else if (!string.IsNullOrEmpty(selected))
-            _menuHeader.SetStatus($"Auswahl: {selected} (offline)", TrayMenuHeaderItem.State.Offline);
+            _menuHeader.SetStatus(L.F("Auswahl: {0} (offline)", selected), TrayMenuHeaderItem.State.Offline);
         else if (_scannerStatus == ScannerStatus.Disconnected)
-            _menuHeader.SetStatus("Kein Scanner verbunden", TrayMenuHeaderItem.State.Offline);
+            _menuHeader.SetStatus(L.T("Kein Scanner verbunden"), TrayMenuHeaderItem.State.Offline);
         else
-            _menuHeader.SetStatus("Scanner wird gesucht…", TrayMenuHeaderItem.State.Busy);
+            _menuHeader.SetStatus(L.T("Scanner wird gesucht…"), TrayMenuHeaderItem.State.Busy);
     }
 
     private void OnTrayMouseUp(object? sender, MouseEventArgs e)
@@ -466,7 +466,7 @@ internal partial class TrayApplicationContext : ApplicationContext
             if (trigger == ScanTrigger.Button)
                 LogDiag("StartScan: scan button ignored, a scan is already running");
             else
-                TrayMessageBox.Info(_hiddenWindow, "Ein Scanvorgang läuft bereits.");
+                TrayMessageBox.Info(_hiddenWindow, L.T("Ein Scanvorgang läuft bereits."));
             return;
         }
 
@@ -483,7 +483,7 @@ internal partial class TrayApplicationContext : ApplicationContext
 
         if (!_twainInitialized || _twain == null || _msgLoop == null)
         {
-            TrayMessageBox.Error(_hiddenWindow, "TWAIN ist nicht initialisiert. Es ist kein Scanner verfügbar.");
+            TrayMessageBox.Error(_hiddenWindow, L.T("TWAIN ist nicht initialisiert. Es ist kein Scanner verfügbar."));
             return;
         }
 
@@ -497,10 +497,10 @@ internal partial class TrayApplicationContext : ApplicationContext
         {
             LogDiag("StartScan: PDF password protection is on but the password could not be read");
             if (!TrayMessageBox.AskYesNo(_hiddenWindow,
-                    "Das PDF-Passwort konnte nicht gelesen werden, bitte neu eingeben " +
-                    "(Einstellungen > Dateiart > Option > Kennwort).\n\n" +
-                    "Ja: Diesen Scan ohne Kennwortschutz speichern\n" +
-                    "Nein: Abbrechen und die Einstellungen öffnen", defaultNo: true))
+                    L.T("Das PDF-Passwort konnte nicht gelesen werden, bitte neu eingeben ") +
+                    L.T("(Einstellungen > Dateiart > Option > Kennwort).\n\n") +
+                    L.T("Ja: Diesen Scan ohne Kennwortschutz speichern\n") +
+                    L.T("Nein: Abbrechen und die Einstellungen öffnen"), defaultNo: true))
             {
                 ShowMainForm();
                 return;
@@ -523,7 +523,7 @@ internal partial class TrayApplicationContext : ApplicationContext
         catch (Exception ex)
         {
             LogDiag($"Scan flow failed: {ex}");
-            TrayMessageBox.Error(_hiddenWindow, $"Beim Scannen ist ein Fehler aufgetreten:\n\n{ex.Message}");
+            TrayMessageBox.Error(_hiddenWindow, L.F("Beim Scannen ist ein Fehler aufgetreten:\n\n{0}", ex.Message));
         }
         finally
         {
@@ -585,12 +585,12 @@ internal partial class TrayApplicationContext : ApplicationContext
                         if (_cancelRequestedByUser || _exitRequested)
                         {
                             total?.DisposeImages();
-                            ShowBalloon("Scan abgebrochen", "Der Scanvorgang wurde abgebrochen.", ToolTipIcon.Info);
+                            ShowBalloon(L.T("Scan abgebrochen"), L.T("Der Scanvorgang wurde abgebrochen."), ToolTipIcon.Info);
                             return null;
                         }
-                        ShowBalloon("Scan verworfen", batch.MultiFeedDetected
-                            ? "Mehrfacheinzug: Die Seiten wurden verworfen. Bitte legen Sie das Dokument erneut ein."
-                            : "Der Scanvorgang wurde abgebrochen.", ToolTipIcon.Info);
+                        ShowBalloon(L.T("Scan verworfen"), batch.MultiFeedDetected
+                            ? L.T("Mehrfacheinzug: Die Seiten wurden verworfen. Bitte legen Sie das Dokument erneut ein.")
+                            : L.T("Der Scanvorgang wurde abgebrochen."), ToolTipIcon.Info);
                         if (total == null)
                             return null;
                     }
@@ -610,7 +610,7 @@ internal partial class TrayApplicationContext : ApplicationContext
                         {
                             // "Scan abbrechen" / Beenden while the question was open.
                             total?.DisposeImages();
-                            ShowBalloon("Scan abgebrochen", "Der Scanvorgang wurde abgebrochen.", ToolTipIcon.Info);
+                            ShowBalloon(L.T("Scan abgebrochen"), L.T("Der Scanvorgang wurde abgebrochen."), ToolTipIcon.Info);
                             return null;
                         }
                         break;
@@ -635,8 +635,8 @@ internal partial class TrayApplicationContext : ApplicationContext
             if (!errorShown && !_exitRequested)
             {
                 TrayMessageBox.Warning(_hiddenWindow, total?.TimedOut == true
-                    ? "Der Scanner hat nicht reagiert. Es wurden keine Seiten gescannt."
-                    : "Es wurden keine Seiten gescannt.\n\nBitte legen Sie das Dokument in den Scanner ein und versuchen Sie es erneut.");
+                    ? L.T("Der Scanner hat nicht reagiert. Es wurden keine Seiten gescannt.")
+                    : L.T("Es wurden keine Seiten gescannt.\n\nBitte legen Sie das Dokument in den Scanner ein und versuchen Sie es erneut."));
             }
             total?.DisposeImages();
             return null;
@@ -676,13 +676,13 @@ internal partial class TrayApplicationContext : ApplicationContext
         if (batch.FailedTransfers > 0)
         {
             messages.Add(batch.FailedTransfers == 1
-                ? "1 Seite konnte nicht übertragen werden."
-                : $"{batch.FailedTransfers} Seiten konnten nicht übertragen werden.");
+                ? L.T("1 Seite konnte nicht übertragen werden.")
+                : L.F("{0} Seiten konnten nicht übertragen werden.", batch.FailedTransfers));
             messages.AddRange(batch.FailedTransferMessages.Distinct().Take(2));
         }
         foreach (var m in messages) LogDiag($"Scan warning: {m}");
         if (messages.Count > 0)
-            ShowBalloon("Hinweis zum Scan", string.Join("\n", messages.Distinct()), ToolTipIcon.Warning);
+            ShowBalloon(L.T("Hinweis zum Scan"), string.Join("\n", messages.Distinct()), ToolTipIcon.Warning);
     }
 
     private sealed record ProcessOutcome(ScanOutputResult Output, string? FallbackMessage);
@@ -698,7 +698,7 @@ internal partial class TrayApplicationContext : ApplicationContext
         var options = ScanOutputOptions.FromScanResult(scan, settings);
         options.ProduceProcessedPages = needPages;
 
-        SetTrayText($"{AppTitle}\nVerarbeitet {scan.Images.Count} Seite(n)…");
+        SetTrayText(L.F("{0}\nVerarbeitet {1} Seite(n)…", AppTitle, scan.Images.Count));
         ProcessOutcome outcome;
         try
         {
@@ -707,7 +707,7 @@ internal partial class TrayApplicationContext : ApplicationContext
         catch (Exception ex)
         {
             LogDiag($"Process failed: {ex}");
-            TrayMessageBox.Error(_hiddenWindow, $"Der Scan konnte nicht gespeichert werden:\n\n{ex.Message}");
+            TrayMessageBox.Error(_hiddenWindow, L.F("Der Scan konnte nicht gespeichert werden:\n\n{0}", ex.Message));
             return;
         }
         finally
@@ -730,16 +730,16 @@ internal partial class TrayApplicationContext : ApplicationContext
 
         foreach (var w in output.Warnings) LogDiag($"Output warning: {w}");
         if (output.Warnings.Count > 0)
-            ShowBalloon("Hinweis", string.Join("\n", output.Warnings.Distinct()), ToolTipIcon.Warning);
+            ShowBalloon(L.T("Hinweis"), string.Join("\n", output.Warnings.Distinct()), ToolTipIcon.Warning);
 
         if (output.AllPagesBlank)
         {
-            TrayMessageBox.Info(_hiddenWindow, "Alle gescannten Seiten wurden als leer erkannt und entfernt. Es wurde keine Datei gespeichert.");
+            TrayMessageBox.Info(_hiddenWindow, L.T("Alle gescannten Seiten wurden als leer erkannt und entfernt. Es wurde keine Datei gespeichert."));
             return;
         }
         if (output.Files.Count == 0)
         {
-            TrayMessageBox.Error(_hiddenWindow, "Es wurde keine Datei erstellt.");
+            TrayMessageBox.Error(_hiddenWindow, L.T("Es wurde keine Datei erstellt."));
             return;
         }
 
@@ -810,8 +810,8 @@ internal partial class TrayApplicationContext : ApplicationContext
             DiagLog.Write($"Process: saving to '{folder}' failed ({ex.Message}), falling back to '{fallback}'");
             var output = processor.Process(images, fallback, options);
             return new ProcessOutcome(output,
-                $"Der Scan konnte nicht im Zielordner gespeichert werden:\n{folder}\n\n{ex.Message}\n\n" +
-                $"Er wurde stattdessen hier gespeichert:\n{fallback}");
+                L.F("Der Scan konnte nicht im Zielordner gespeichert werden:\n{0}\n\n{1}\n\n", folder, ex.Message) +
+                L.F("Er wurde stattdessen hier gespeichert:\n{0}", fallback));
         }
     }
 
@@ -896,7 +896,7 @@ internal partial class TrayApplicationContext : ApplicationContext
                 }
                 DeleteFiles(files);
                 _lastScanFiles = _lastScanFiles.Except(files, StringComparer.OrdinalIgnoreCase).ToList();
-                ShowBalloon("Scan verworfen", "Der Scan wurde gelöscht.", ToolTipIcon.Info);
+                ShowBalloon(L.T("Scan verworfen"), L.T("Der Scan wurde gelöscht."), ToolTipIcon.Info);
                 return null;
             }
             targetFolder = dlg.SelectedFolderPath;
@@ -915,7 +915,7 @@ internal partial class TrayApplicationContext : ApplicationContext
         catch (Exception ex)
         {
             TrayMessageBox.Error(_hiddenWindow,
-                $"Der Zielordner konnte nicht erstellt werden:\n{targetFolder}\n\n{ex.Message}\n\nDer Scan bleibt hier gespeichert:\n{currentFolder}");
+                L.F("Der Zielordner konnte nicht erstellt werden:\n{0}\n\n{1}\n\nDer Scan bleibt hier gespeichert:\n{2}", targetFolder, ex.Message, currentFolder));
             return files;
         }
 
@@ -946,7 +946,7 @@ internal partial class TrayApplicationContext : ApplicationContext
         if (failures.Count > 0)
         {
             TrayMessageBox.Error(_hiddenWindow,
-                $"Folgende Dateien konnten nicht nach \"{targetFolder}\" verschoben werden und bleiben in \"{currentFolder}\":\n\n" +
+                L.F("Folgende Dateien konnten nicht nach \"{0}\" verschoben werden und bleiben in \"{1}\":\n\n", targetFolder, currentFolder) +
                 string.Join("\n", failures.Take(5)));
         }
 
@@ -966,10 +966,10 @@ internal partial class TrayApplicationContext : ApplicationContext
     private void ShowSavedBalloon(List<string> files)
     {
         var folder = files.Count > 0 ? Path.GetDirectoryName(files[0]) : null;
-        ShowBalloon("Scan gespeichert",
+        ShowBalloon(L.T("Scan gespeichert"),
             files.Count == 1
                 ? $"{Path.GetFileName(files[0])}\nin {folder}"
-                : $"{files.Count} Dateien in {folder}",
+                : L.F("{0} Dateien in {1}", files.Count, folder),
             ToolTipIcon.Info);
     }
 
@@ -1003,7 +1003,7 @@ internal partial class TrayApplicationContext : ApplicationContext
                 break;
 
             case ApplicationType.ScanToExcel:
-                await CreateOfficeFileAsync("Excel", ".xlsx", targetFolder, baseName,
+                await CreateOfficeFileAsync(L.T("Excel"), ".xlsx", targetFolder, baseName,
                     path => OfficeExportHelper.CreateExcel(output.ProcessedPages, path, jpegQuality));
                 break;
 
@@ -1052,8 +1052,8 @@ internal partial class TrayApplicationContext : ApplicationContext
                 return;
 
             TrayMessageBox.Error(_hiddenWindow,
-                "Das E-Mail-Programm konnte nicht mit der Datei als Anhang geöffnet werden.\n\n" +
-                $"{result.ErrorMessage}\n\nDer Ordner mit der gespeicherten Datei wird geöffnet, damit Sie sie manuell anhängen können.");
+                L.T("Das E-Mail-Programm konnte nicht mit der Datei als Anhang geöffnet werden.\n\n") +
+                L.F("{0}\n\nDer Ordner mit der gespeicherten Datei wird geöffnet, damit Sie sie manuell anhängen können.", result.ErrorMessage));
             RevealInExplorer(files[0]);
         }
         catch (Exception ex)
@@ -1067,7 +1067,7 @@ internal partial class TrayApplicationContext : ApplicationContext
     {
         if (pages.Count == 0)
         {
-            TrayMessageBox.Error(_hiddenWindow, "Es gibt keine Seiten zum Drucken.");
+            TrayMessageBox.Error(_hiddenWindow, L.T("Es gibt keine Seiten zum Drucken."));
             return;
         }
 
@@ -1079,29 +1079,29 @@ internal partial class TrayApplicationContext : ApplicationContext
         }
         catch (Exception ex)
         {
-            TrayMessageBox.Error(_hiddenWindow, $"Die Drucker konnten nicht abgefragt werden:\n{ex.Message}");
+            TrayMessageBox.Error(_hiddenWindow, L.F("Die Drucker konnten nicht abgefragt werden:\n{0}", ex.Message));
             return;
         }
 
         if (printer == null)
         {
-            TrayMessageBox.Error(_hiddenWindow, "Es ist kein Drucker installiert. Der Scan wurde gespeichert, aber nicht gedruckt.");
+            TrayMessageBox.Error(_hiddenWindow, L.T("Es ist kein Drucker installiert. Der Scan wurde gespeichert, aber nicht gedruckt."));
             return;
         }
         if (missing && !TrayMessageBox.AskYesNo(_hiddenWindow,
-                $"Der Drucker \"{configuredPrinter}\" wurde nicht gefunden.\n\nAuf dem Standarddrucker drucken?"))
+                L.F("Der Drucker \"{0}\" wurde nicht gefunden.\n\nAuf dem Standarddrucker drucken?", configuredPrinter)))
             return;
 
         try
         {
-            SetTrayText($"{AppTitle}\nDruckt…");
-            await Task.Run(() => PrintHelper.PrintPages(pages, printer, "SpeedScan Manager – Gescanntes Dokument"));
-            ShowBalloon("Drucken", "Das Dokument wurde an den Drucker gesendet.", ToolTipIcon.Info);
+            SetTrayText(L.F("{0}\nDruckt…", AppTitle));
+            await Task.Run(() => PrintHelper.PrintPages(pages, printer, L.T("SpeedScan Manager – Gescanntes Dokument")));
+            ShowBalloon(L.T("Drucken"), L.T("Das Dokument wurde an den Drucker gesendet."), ToolTipIcon.Info);
         }
         catch (Exception ex)
         {
             LogDiag($"Print failed: {ex}");
-            TrayMessageBox.Error(_hiddenWindow, $"Das Drucken ist fehlgeschlagen:\n\n{ex.Message}");
+            TrayMessageBox.Error(_hiddenWindow, L.F("Das Drucken ist fehlgeschlagen:\n\n{0}", ex.Message));
         }
     }
 
@@ -1111,14 +1111,14 @@ internal partial class TrayApplicationContext : ApplicationContext
         string path = ScanOutputProcessor.MakeUniquePath(folder, baseName + extension);
         try
         {
-            SetTrayText($"{AppTitle}\nErstellt {appName}-Datei…");
+            SetTrayText(L.F("{0}\nErstellt {1}-Datei…", AppTitle, appName));
             await RunFileWorkerAsync(() => create(path));
         }
         catch (Exception ex)
         {
             LogDiag($"Create {appName} file failed: {ex}");
             try { if (File.Exists(path)) File.Delete(path); } catch { }
-            TrayMessageBox.Error(_hiddenWindow, $"Die {appName}-Datei konnte nicht erstellt werden:\n\n{ex.Message}");
+            TrayMessageBox.Error(_hiddenWindow, L.F("Die {0}-Datei konnte nicht erstellt werden:\n\n{1}", appName, ex.Message));
             return;
         }
 
@@ -1133,7 +1133,7 @@ internal partial class TrayApplicationContext : ApplicationContext
         {
             LogDiag($"Open {path} failed: {ex.Message}");
             TrayMessageBox.Error(_hiddenWindow,
-                $"Die Datei wurde erstellt, konnte aber nicht geöffnet werden (ist {appName} installiert?):\n{path}\n\n{ex.Message}");
+                L.F("Die Datei wurde erstellt, konnte aber nicht geöffnet werden (ist {0} installiert?):\n{1}\n\n{2}", appName, path, ex.Message));
             RevealInExplorer(path);
         }
     }
@@ -1149,7 +1149,7 @@ internal partial class TrayApplicationContext : ApplicationContext
         catch (Exception ex)
         {
             LogDiag($"SaveToPictureFolder failed: {ex}");
-            TrayMessageBox.Error(_hiddenWindow, $"Die Bilder konnten nicht im Bilderordner gespeichert werden:\n{folder}\n\n{ex.Message}");
+            TrayMessageBox.Error(_hiddenWindow, L.F("Die Bilder konnten nicht im Bilderordner gespeichert werden:\n{0}\n\n{1}", folder, ex.Message));
             return;
         }
 
@@ -1172,7 +1172,7 @@ internal partial class TrayApplicationContext : ApplicationContext
             catch (Exception ex)
             {
                 LogDiag($"Open {f} failed: {ex.Message}");
-                TrayMessageBox.Error(_hiddenWindow, $"Die Datei konnte nicht geöffnet werden:\n{f}\n\n{ex.Message}");
+                TrayMessageBox.Error(_hiddenWindow, L.F("Die Datei konnte nicht geöffnet werden:\n{0}\n\n{1}", f, ex.Message));
                 RevealInExplorer(f);
                 return;
             }
@@ -1186,7 +1186,7 @@ internal partial class TrayApplicationContext : ApplicationContext
         if (string.IsNullOrEmpty(exe) || !File.Exists(exe))
         {
             TrayMessageBox.Error(_hiddenWindow,
-                $"Das Programm \"{name}\" wurde nicht gefunden:\n{exe}\n\nBitte prüfen Sie die Anwendung in den Einstellungen. Der Scan wurde gespeichert.");
+                L.F("Das Programm \"{0}\" wurde nicht gefunden:\n{1}\n\nBitte prüfen Sie die Anwendung in den Einstellungen. Der Scan wurde gespeichert.", name, exe));
             RevealInExplorer(files[0]);
             return;
         }
@@ -1207,7 +1207,7 @@ internal partial class TrayApplicationContext : ApplicationContext
         catch (Exception ex)
         {
             LogDiag($"Custom application failed: {ex}");
-            TrayMessageBox.Error(_hiddenWindow, $"Das Programm \"{name}\" konnte nicht gestartet werden:\n\n{ex.Message}");
+            TrayMessageBox.Error(_hiddenWindow, L.F("Das Programm \"{0}\" konnte nicht gestartet werden:\n\n{1}", name, ex.Message));
         }
     }
 
@@ -1246,7 +1246,7 @@ internal partial class TrayApplicationContext : ApplicationContext
             catch (Exception ex) { LogDiag($"Open folder failed: {ex.Message}"); }
         }
         else
-            TrayMessageBox.Info(_hiddenWindow, $"Der Ordner \"{folder}\" existiert nicht.");
+            TrayMessageBox.Info(_hiddenWindow, L.F("Der Ordner \"{0}\" existiert nicht.", folder));
     }
 
     // ───────────────────────── Settings windows ─────────────────────────
@@ -1381,13 +1381,13 @@ internal partial class TrayApplicationContext : ApplicationContext
             bool ok = await WiaEventWatcher.SetupScanButtonInteractiveAsync();
             if (_disposed) return;
             if (ok)
-                ShowBalloon(AppTitle, "Die Scan-Taste ist eingerichtet. Ein Druck auf die Taste startet einen Scan.", ToolTipIcon.Info);
+                ShowBalloon(AppTitle, L.T("Die Scan-Taste ist eingerichtet. Ein Druck auf die Taste startet einen Scan."), ToolTipIcon.Info);
             else if (WiaEventWatcher.IsSetupDeclined())
                 TrayMessageBox.Info(_hiddenWindow,
-                    "Die Einrichtung der Scan-Taste wurde abgebrochen.\n\nSie können weiterhin über das Tray-Menü scannen.");
+                    L.T("Die Einrichtung der Scan-Taste wurde abgebrochen.\n\nSie können weiterhin über das Tray-Menü scannen."));
             else
                 TrayMessageBox.Warning(_hiddenWindow,
-                    "Die Scan-Taste konnte nicht eingerichtet werden.\n\nDetails stehen im Diagnoseprotokoll " +
+                    L.T("Die Scan-Taste konnte nicht eingerichtet werden.\n\nDetails stehen im Diagnoseprotokoll ") +
                     "(%LocalAppData%\\SpeedScanManager).");
         }
         catch (Exception ex)
@@ -1512,12 +1512,12 @@ internal partial class TrayApplicationContext : ApplicationContext
     {
         if (_busy)
         {
-            TrayMessageBox.Info(_hiddenWindow, "Ein Scanvorgang läuft bereits.");
+            TrayMessageBox.Info(_hiddenWindow, L.T("Ein Scanvorgang läuft bereits."));
             return;
         }
         if (_twain == null || !_twain.IsDsmOpen)
         {
-            TrayMessageBox.Warning(_hiddenWindow, "TWAIN ist nicht initialisiert. Die Scannerauswahl ist nicht verfügbar.");
+            TrayMessageBox.Warning(_hiddenWindow, L.T("TWAIN ist nicht initialisiert. Die Scannerauswahl ist nicht verfügbar."));
             return;
         }
 
@@ -1556,7 +1556,7 @@ internal partial class TrayApplicationContext : ApplicationContext
             if (_activePipeline != null)
             {
                 if (!TrayMessageBox.AskYesNo(_hiddenWindow,
-                        "Es läuft gerade ein Scanvorgang.\n\nScan abbrechen und SpeedScan Manager beenden?", defaultNo: true))
+                        L.T("Es läuft gerade ein Scanvorgang.\n\nScan abbrechen und SpeedScan Manager beenden?"), defaultNo: true))
                     return;
 
                 // The scan runs through the UI message loop: cancel, let the flow finish
@@ -1583,19 +1583,19 @@ internal partial class TrayApplicationContext : ApplicationContext
                 // The scan flow calls DoExit when it is done.
                 _exitRequested = true;
                 LogDiag("Exit: deferred until the scan is saved");
-                ShowBalloon(AppTitle, "Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet.", ToolTipIcon.Info);
+                ShowBalloon(AppTitle, L.T("Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet."), ToolTipIcon.Info);
                 UpdateBusyText();
                 return;
             }
 
             if (!TrayMessageBox.AskYesNo(_hiddenWindow,
-                    "Der letzte Scan ist noch nicht abgeschlossen.\n\nSpeedScan Manager trotzdem beenden?", defaultNo: true))
+                    L.T("Der letzte Scan ist noch nicht abgeschlossen.\n\nSpeedScan Manager trotzdem beenden?"), defaultNo: true))
                 return;
             if (_fileWorkers > 0)
             {
                 // The flow started writing while the question was open.
                 _exitRequested = true;
-                ShowBalloon(AppTitle, "Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet.", ToolTipIcon.Info);
+                ShowBalloon(AppTitle, L.T("Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet."), ToolTipIcon.Info);
                 UpdateBusyText();
                 return;
             }
@@ -1669,8 +1669,8 @@ internal partial class TrayApplicationContext : ApplicationContext
         // Scan button registration: cheap registry check, elevation at most once (off the UI thread).
         WiaEventWatcher.EnsureScanButtonHandlerAsync().ContinueWith(
             t => LogDiag(t.IsFaulted
-                ? $"EnsureScanButtonHandler failed: {t.Exception?.GetBaseException().Message}"
-                : $"EnsureScanButtonHandler: registered={t.Result}"),
+                ? L.F("EnsureScanButtonHandler failed: {0}", t.Exception?.GetBaseException().Message)
+                : L.F("EnsureScanButtonHandler: registered={0}", t.Result)),
             TaskScheduler.Default);
 
         // A scan requested by the scan button is user-initiated: start TWAIN right away.
@@ -1727,7 +1727,7 @@ internal partial class TrayApplicationContext : ApplicationContext
         else
         {
             _scannerStatus = ScannerStatus.Disconnected;
-            ShowBalloon(AppTitle, "TWAIN konnte nicht initialisiert werden. Es kann nicht gescannt werden.", ToolTipIcon.Error);
+            ShowBalloon(AppTitle, L.T("TWAIN konnte nicht initialisiert werden. Es kann nicht gescannt werden."), ToolTipIcon.Error);
         }
         UpdateTrayVisuals();
         _initialized = true;
@@ -1870,7 +1870,7 @@ internal partial class TrayApplicationContext : ApplicationContext
     {
         if (_disconnectBalloonShown) return;
         _disconnectBalloonShown = true;
-        ShowBalloon(AppTitle, "Der Scanner ist nicht angeschlossen oder ausgeschaltet.", ToolTipIcon.Warning);
+        ShowBalloon(AppTitle, L.T("Der Scanner ist nicht angeschlossen oder ausgeschaltet."), ToolTipIcon.Warning);
     }
 
     // ───────────────────────── Tray visuals ─────────────────────────
@@ -1892,9 +1892,9 @@ internal partial class TrayApplicationContext : ApplicationContext
         if (connected)
             SetTrayText($"{AppTitle}\n{_currentScannerName}");
         else if (!string.IsNullOrEmpty(_appSettings.SelectedSourceName))
-            SetTrayText($"{AppTitle}\nAuswahl: {_appSettings.SelectedSourceName} (offline)");
+            SetTrayText(L.F("{0}\nAuswahl: {1} (offline)", AppTitle, _appSettings.SelectedSourceName));
         else if (_scannerStatus == ScannerStatus.Disconnected)
-            SetTrayText($"{AppTitle}\nKein Scanner verbunden");
+            SetTrayText(L.F("{0}\nKein Scanner verbunden", AppTitle));
         else
             SetTrayText(AppTitle);
     }
@@ -1906,16 +1906,16 @@ internal partial class TrayApplicationContext : ApplicationContext
         {
             int pages = _pagesInEarlierBatches + (_batchRunning ? _activePipeline.AcquiredImages.Count : 0);
             SetTrayText(pages > 0
-                ? $"{AppTitle}\nScannt… ({pages} {(pages == 1 ? "Seite" : "Seiten")})"
-                : $"{AppTitle}\nScannt…");
+                ? L.F("{0}\nScannt… ({1} {2})", AppTitle, pages, (pages == 1 ? "Seite" : "Seiten"))
+                : L.F("{0}\nScannt…", AppTitle));
         }
         else if (_exitRequested)
         {
-            SetTrayText($"{AppTitle}\nWird nach dem Speichern beendet…");
+            SetTrayText(L.F("{0}\nWird nach dem Speichern beendet…", AppTitle));
         }
         else
         {
-            SetTrayText($"{AppTitle}\nScan wird bearbeitet…");
+            SetTrayText(L.F("{0}\nScan wird bearbeitet…", AppTitle));
         }
     }
 
@@ -2028,8 +2028,8 @@ internal partial class TrayApplicationContext : ApplicationContext
         {
             SuspendLayout();
             Text = AppTitle;
-            Title = "Weitere Dokumente scannen?";
-            Subtitle = pagesSoFar == 1 ? "Bisher wurde 1 Seite gescannt." : $"Bisher wurden {pagesSoFar} Seiten gescannt.";
+            Title = L.T("Weitere Dokumente scannen?");
+            Subtitle = pagesSoFar == 1 ? L.T("Bisher wurde 1 Seite gescannt.") : L.F("Bisher wurden {0} Seiten gescannt.", pagesSoFar);
             HeaderButtons = ModernHeaderButtons.Close;
             StartPosition = FormStartPosition.CenterScreen;
             TopMost = true;
@@ -2039,7 +2039,7 @@ internal partial class TrayApplicationContext : ApplicationContext
 
             var lbl = new Label
             {
-                Text = "Legen Sie dazu die nächsten Seiten in den Scanner ein.",
+                Text = L.T("Legen Sie dazu die nächsten Seiten in den Scanner ein."),
                 AutoSize = true,
                 MaximumSize = new Size(380, 0),
                 Dock = DockStyle.Fill,
@@ -2049,8 +2049,8 @@ internal partial class TrayApplicationContext : ApplicationContext
             Body.Controls.Add(lbl);
 
             // Same order as before: Fortsetzen (default) left of Scan beenden.
-            var btnContinue = AddFooterButton("Fortsetzen", ThemeRole.Primary, Glyph.Scanner, DialogResult.OK);
-            var btnFinish = AddFooterButton("Scan beenden", ThemeRole.Secondary, Glyph.Check, DialogResult.Cancel);
+            var btnContinue = AddFooterButton(L.T("Fortsetzen"), ThemeRole.Primary, Glyph.Scanner, DialogResult.OK);
+            var btnFinish = AddFooterButton(L.T("Scan beenden"), ThemeRole.Secondary, Glyph.Check, DialogResult.Cancel);
 
             AcceptButton = btnContinue;
             CancelButton = btnFinish;

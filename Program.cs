@@ -178,8 +178,8 @@ internal static class Program
         try
         {
             var text = fatal
-                ? "SpeedScan Manager wurde wegen eines unerwarteten Fehlers beendet."
-                : "In SpeedScan Manager ist ein unerwarteter Fehler aufgetreten. Das Programm läuft weiter.";
+                ? L.T("SpeedScan Manager wurde wegen eines unerwarteten Fehlers beendet.")
+                : L.T("In SpeedScan Manager ist ein unerwarteter Fehler aufgetreten. Das Programm läuft weiter.");
             TrayMessageBox.Error(null,
                 $"{text}\n\n{ex.GetType().Name}: {ex.Message}\n\nDetails stehen in:\n{CrashLogPath}");
         }
@@ -224,7 +224,7 @@ internal static class Program
             user = identity.User?.Value ?? user;
         }
         catch { }
-        return $"SpeedScanManager_ScanButton_{sessionId}_{user}";
+        return L.F("SpeedScanManager_ScanButton_{0}_{1}", sessionId, user);
     }
 
     private static bool HasArg(string[] args, string name) =>

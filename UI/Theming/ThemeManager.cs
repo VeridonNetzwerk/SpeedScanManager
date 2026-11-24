@@ -231,9 +231,9 @@ internal static class ThemeManager
     /// <summary>German display name of a mode.</summary>
     public static string GetModeName(ThemeMode mode) => mode switch
     {
-        ThemeMode.Light => "Hell",
-        ThemeMode.Dark => "Dunkel",
-        _ => "System"
+        ThemeMode.Light => L.T("Hell"),
+        ThemeMode.Dark => L.T("Dunkel"),
+        _ => L.T("System")
     };
 
     private static bool ReadSystemDark()

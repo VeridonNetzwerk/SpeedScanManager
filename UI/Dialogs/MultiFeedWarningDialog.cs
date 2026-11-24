@@ -30,9 +30,9 @@ internal class MultiFeedWarningDialog : ModernWindow
     public MultiFeedWarningDialog(Bitmap? currentPage, Bitmap? previousPage)
     {
         SuspendLayout();
-        Text = "SpeedScan Manager – Mehrfacheinzug erkannt";
-        Title = "Mehrfacheinzug erkannt!";
-        Subtitle = "Es wurden möglicherweise zwei Seiten gleichzeitig eingezogen.";
+        Text = L.T("SpeedScan Manager – Mehrfacheinzug erkannt");
+        Title = L.T("Mehrfacheinzug erkannt!");
+        Subtitle = L.T("Es wurden möglicherweise zwei Seiten gleichzeitig eingezogen.");
         _warningIcon = CreateWarningIcon();
         LogoImage = _warningIcon;
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
@@ -56,11 +56,11 @@ internal class MultiFeedWarningDialog : ModernWindow
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
         grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-        grid.Controls.Add(CreatePreviewCard("Vorherige Seite", previousPage, highlight: false), 0, 0);
-        grid.Controls.Add(CreatePreviewCard("Aktuelle Seite (Mehrfacheinzug)", currentPage, highlight: true), 1, 0);
+        grid.Controls.Add(CreatePreviewCard(L.T("Vorherige Seite"), previousPage, highlight: false), 0, 0);
+        grid.Controls.Add(CreatePreviewCard(L.T("Aktuelle Seite (Mehrfacheinzug)"), currentPage, highlight: true), 1, 0);
 
-        var hint = new HintBar("Tipp: \"Erkennung ausschalten\" deaktiviert die Mehrfacheinzugserkennung "
-                               + "für den restlichen Scan und übernimmt die aktuelle Seite.")
+        var hint = new HintBar(L.T("Tipp: \"Erkennung ausschalten\" deaktiviert die Mehrfacheinzugserkennung ")
+                               + L.T("für den restlichen Scan und übernimmt die aktuelle Seite."))
         {
             Dock = DockStyle.Bottom,
             Height = 64
@@ -70,7 +70,7 @@ internal class MultiFeedWarningDialog : ModernWindow
         Body.Controls.Add(hint);
 
         // === Footer: Erkennung ausschalten (left) | So übernehmen, Wiederholen (right) ===
-        var btnDisable = AddFooterButton("Erkennung ausschalten", ThemeRole.Secondary, alignLeft: true);
+        var btnDisable = AddFooterButton(L.T("Erkennung ausschalten"), ThemeRole.Secondary, alignLeft: true);
         btnDisable.Click += (_, _) =>
         {
             Action = MultiFeedAction.DisableDetection;
@@ -78,7 +78,7 @@ internal class MultiFeedWarningDialog : ModernWindow
             Close();
         };
 
-        var btnKeep = AddFooterButton("So übernehmen", ThemeRole.Secondary, Glyph.Check);
+        var btnKeep = AddFooterButton(L.T("So übernehmen"), ThemeRole.Secondary, Glyph.Check);
         btnKeep.Click += (_, _) =>
         {
             Action = MultiFeedAction.KeepAsIs;
@@ -86,7 +86,7 @@ internal class MultiFeedWarningDialog : ModernWindow
             Close();
         };
 
-        var btnRescan = AddFooterButton("Wiederholen", ThemeRole.Primary, Glyph.Scanner);
+        var btnRescan = AddFooterButton(L.T("Wiederholen"), ThemeRole.Primary, Glyph.Scanner);
         btnRescan.Click += (_, _) =>
         {
             Action = MultiFeedAction.Rescan;

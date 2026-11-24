@@ -159,27 +159,27 @@ internal class ScanModeTabContent : ModernStack
         QualityItems = new List<ComboItem>
         {
             // Level meters on tiles that get "hotter" as the resolution grows.
-            new("Automatisch", ImageQuality.Automatic, ColorIcon.Auto),
-            new("Normal", ImageQuality.Normal, ColorIcon.Tile(Glyph.Level1, IconColors.Teal), "Farbe/Grau: 150 dpi, S&W: 300 dpi"),
-            new("Fein", ImageQuality.Fine, ColorIcon.Tile(Glyph.Level2, IconColors.Sky), "Farbe/Grau: 200 dpi, S&W: 400 dpi"),
-            new("Beste", ImageQuality.Best, ColorIcon.Tile(Glyph.Level3, IconColors.Blue), "Farbe/Grau: 300 dpi, S&W: 600 dpi"),
-            new("Hervorragend", ImageQuality.Excellent, ColorIcon.Tile(Glyph.Level4, IconColors.Indigo), "Farbe/Grau: 600 dpi, S&W: 1200 dpi")
+            new(L.T("Automatisch"), ImageQuality.Automatic, ColorIcon.Auto),
+            new(L.T("Normal"), ImageQuality.Normal, ColorIcon.Tile(Glyph.Level1, IconColors.Teal), L.T("Farbe/Grau: 150 dpi, S&W: 300 dpi")),
+            new(L.T("Fein"), ImageQuality.Fine, ColorIcon.Tile(Glyph.Level2, IconColors.Sky), L.T("Farbe/Grau: 200 dpi, S&W: 400 dpi")),
+            new(L.T("Beste"), ImageQuality.Best, ColorIcon.Tile(Glyph.Level3, IconColors.Blue), L.T("Farbe/Grau: 300 dpi, S&W: 600 dpi")),
+            new(L.T("Hervorragend"), ImageQuality.Excellent, ColorIcon.Tile(Glyph.Level4, IconColors.Indigo), L.T("Farbe/Grau: 600 dpi, S&W: 1200 dpi"))
         };
 
         ColorItems = new List<ComboItem>
         {
-            new("Automatische Farberkennung", ColorMode.Automatic, ColorIcon.Auto),
-            new("Farbe", ColorMode.Color, ColorIcon.Gradient(Glyph.Palette, IconColors.Orange, IconColors.Pink)),
-            new("Grau", ColorMode.Grayscale, ColorIcon.Tile(Glyph.Grayscale, IconColors.Slate)),
-            new("Schwarzweiß", ColorMode.BlackWhite, ColorIcon.Tile(Glyph.Contrast, IconColors.Graphite))
+            new(L.T("Automatische Farberkennung"), ColorMode.Automatic, ColorIcon.Auto),
+            new(L.T("Farbe"), ColorMode.Color, ColorIcon.Gradient(Glyph.Palette, IconColors.Orange, IconColors.Pink)),
+            new(L.T("Grau"), ColorMode.Grayscale, ColorIcon.Tile(Glyph.Grayscale, IconColors.Slate)),
+            new(L.T("Schwarzweiß"), ColorMode.BlackWhite, ColorIcon.Tile(Glyph.Contrast, IconColors.Graphite))
         };
 
         ScanSideItems = new List<ComboItem>
         {
-            new("Duplex-Scan (doppelseitig)", ScanSide.Duplex, ColorIcon.Tile(Glyph.PageDuplex, IconColors.Blue)),
-            new("Simplex-Scan (einseitig)", ScanSide.Simplex, ColorIcon.Tile(Glyph.PageSingle, IconColors.Teal)),
-            new("Flachbettscannen", ScanSide.Flatbed, ColorIcon.Tile(Glyph.Scanner, IconColors.Orange)),
-            new("Automatisch", ScanSide.Automatic, ColorIcon.Auto)
+            new(L.T("Duplex-Scan (doppelseitig)"), ScanSide.Duplex, ColorIcon.Tile(Glyph.PageDuplex, IconColors.Blue)),
+            new(L.T("Simplex-Scan (einseitig)"), ScanSide.Simplex, ColorIcon.Tile(Glyph.PageSingle, IconColors.Teal)),
+            new(L.T("Flachbettscannen"), ScanSide.Flatbed, ColorIcon.Tile(Glyph.Scanner, IconColors.Orange)),
+            new(L.T("Automatisch"), ScanSide.Automatic, ColorIcon.Auto)
         };
     }
 
@@ -259,17 +259,17 @@ internal class ScanModeTabContent : ModernStack
         _btnOptions.Click += (s, e) => OpenOptionsDialog();
 
         var cardMode = new SettingsCard { Dense = true };
-        cardMode.AddRow("Bildqualität", "Höhere Auflösung: schärfere Bilder, größere Dateien.", _cbImageQuality, ComboWidth);
-        cardMode.AddRow("Farbmodus", "Farbe, Graustufen oder Schwarzweiß.", _cbColorMode, ComboWidth);
+        cardMode.AddRow(L.T("Bildqualität"), L.T("Höhere Auflösung: schärfere Bilder, größere Dateien."), _cbImageQuality, ComboWidth);
+        cardMode.AddRow(L.T("Farbmodus"), L.T("Farbe, Graustufen oder Schwarzweiß."), _cbColorMode, ComboWidth);
         cardMode.AddRow("Scan-Seite",
-            "Flachbettscannen ohne automatische Papiergrößenerkennung.",
+            L.T("Flachbettscannen ohne automatische Papiergrößenerkennung."),
             _cbScanSide, ComboWidth);
 
-        var cardOptions = new SettingsCard("Weitere Einstellungen") { Dense = true, Icon = ColorIcon.Tile(Glyph.Sliders, IconColors.Blue) };
-        cardOptions.AddRow("Scanvorgang nach aktuellem Scan fortsetzen",
-            "Nach dem Scan fragen, ob weitere Dokumente angehängt werden sollen.", _chkContinueScanning);
-        cardOptions.AddRow("Optionen für den Scanmodus",
-            "Helligkeit, Textdokumente, leere Seiten, Schräglauf, Drehung, Einlegerichtung.", _btnOptions);
+        var cardOptions = new SettingsCard(L.T("Weitere Einstellungen")) { Dense = true, Icon = ColorIcon.Tile(Glyph.Sliders, IconColors.Blue) };
+        cardOptions.AddRow(L.T("Scanvorgang nach aktuellem Scan fortsetzen"),
+            L.T("Nach dem Scan fragen, ob weitere Dokumente angehängt werden sollen."), _chkContinueScanning);
+        cardOptions.AddRow(L.T("Optionen für den Scanmodus"),
+            L.T("Helligkeit, Textdokumente, leere Seiten, Schräglauf, Drehung, Einlegerichtung."), _btnOptions);
 
         Controls.Add(cardMode);
         Controls.Add(cardOptions);

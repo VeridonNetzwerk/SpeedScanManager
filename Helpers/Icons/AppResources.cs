@@ -42,7 +42,7 @@ internal static class AppResources
         var asm = Assembly.GetExecutingAssembly();
         var stream = asm.GetManifestResourceStream(resourceName);
         if (stream == null)
-            throw new InvalidOperationException($"Embedded resource '{resourceName}' not found.");
+            throw new InvalidOperationException(L.F("Embedded resource '{0}' not found.", resourceName));
         return new Bitmap(stream);
     }
 }
