@@ -228,6 +228,37 @@ internal class ModernWindow : Form
         return button;
     }
 
+    private FooterFab? _fab;
+
+    /// <summary>
+    /// Round action button in the bottom right corner, half over the footer edge; the footer
+    /// gets a round notch around it and the footer buttons move to its left.
+    /// </summary>
+    public Control AddFooterFab(Glyph glyph, string toolTip)
+    {
+        _fab = new FooterFab(this, glyph) { AccessibleName = toolTip, Text = toolTip };
+        new ToolTip { InitialDelay = 400 }.SetToolTip(_fab, toolTip);
+        Controls.Add(_fab);
+        _fab.BringToFront();
+        _footer.ReserveRight = FooterFab.ReservedWidth;
+        _footer.Layout += (_, _) => PlaceFab();
+        ShowFooter = true;
+        return _fab;
+    }
+
+    private void PlaceFab()
+    {
+        if (_fab == null || !_footer.Visible) return;
+        _fab.Place(_footer.Bounds);
+        _fab.BringToFront();
+    }
+
+    protected override void OnLayout(LayoutEventArgs levent)
+    {
+        base.OnLayout(levent);
+        PlaceFab();
+    }
+
     /// <summary>Adds any control to the footer (vertically centered; see <see cref="AddFooterButton"/> for the order).</summary>
     public void AddFooterControl(Control control, bool alignLeft = false)
     {
@@ -570,6 +601,9 @@ internal sealed class ModernWindowFooter : Panel, IThemeAware
 
     public string Hint { get => _hint; set { _hint = value; Invalidate(); } }
 
+    /// <summary>Space kept free on the right (96-dpi units), e.g. for the round action button.</summary>
+    public int ReserveRight { get; set; }
+
     public void ApplyTheme(ThemePalette palette)
     {
         BackColor = palette.Secondary;
@@ -588,7 +622,7 @@ internal sealed class ModernWindowFooter : Panel, IThemeAware
     /// <summary>Width needed for all items (window auto size).</summary>
     public int GetMinimumWidth()
     {
-        int w = S(18) + S(16);
+        int w = S(18) + S(16) + S(ReserveRight);
         foreach (var c in _right.Concat(_left))
             w += c.Width + S(8);
         if (_hint.Length > 0)
@@ -599,7 +633,7 @@ internal sealed class ModernWindowFooter : Panel, IThemeAware
     protected override void OnLayout(LayoutEventArgs levent)
     {
         base.OnLayout(levent);
-        int x = Width - S(16);
+        int x = Width - S(16) - S(ReserveRight);
         for (int i = _right.Count - 1; i >= 0; i--)
         {
             var c = _right[i];
@@ -633,7 +667,7 @@ internal sealed class ModernWindowFooter : Panel, IThemeAware
         int left = S(18);
         foreach (var c in _left)
             if (c.Visible) left = Math.Max(left, c.Right + S(12));
-        int right = Width - S(16);
+        int right = Width - S(16) - S(ReserveRight);
         foreach (var c in _right)
             if (c.Visible) right = Math.Min(right, c.Left - S(12));
         var rect = new Rectangle(left, 0, Math.Max(0, right - left), Height);

@@ -1,7 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -17,7 +16,7 @@ internal sealed class TutorialOverlay : Form
 {
     /// <summary>One step. <see cref="Target"/> returns the area to highlight in screen coordinates (null = none).</summary>
     public sealed record Step(string Title, string Text, Glyph Glyph, Color Color,
-        Func<Rectangle?>? Target = null, Action? Enter = null);
+        Func<Rectangle?>? Target = null, Action? Enter = null, bool Round = false);
 
     private enum Hit { None, Next, Back, Skip }
 
@@ -158,8 +157,6 @@ internal sealed class TutorialOverlay : Form
         using (var g = Graphics.FromImage(bmp))
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             PaintFrame(g);
         }
         Present(bmp);
@@ -176,7 +173,7 @@ internal sealed class TutorialOverlay : Form
         {
             var r = screen;
             r.Offset(-Left, -Top);
-            r.Inflate(S(6), S(6));
+            r.Inflate(S(step.Round ? 4 : 6), S(step.Round ? 4 : 6));
             r.Intersect(full);
             if (!r.IsEmpty) spot = r;
         }
@@ -189,7 +186,7 @@ internal sealed class TutorialOverlay : Form
             var s = spot.GetValueOrDefault();
             if (spot.HasValue)
             {
-                hole = Rounded(s, S(10));
+                hole = Rounded(s, step.Round ? s.Width / 2 : S(10));
                 dimRegion.Exclude(hole);
             }
             g.FillRegion(dim, dimRegion);
@@ -200,7 +197,7 @@ internal sealed class TutorialOverlay : Form
                 using var glow = new Pen(Color.FromArgb(70, p.Accent), S(7));
                 var outer = s;
                 outer.Inflate(S(3), S(3));
-                using var outerPath = Rounded(outer, S(13));
+                using var outerPath = Rounded(outer, step.Round ? outer.Width / 2 : S(13));
                 g.DrawPath(glow, outerPath);
                 hole.Dispose();
             }
@@ -212,26 +209,27 @@ internal sealed class TutorialOverlay : Form
     private void DrawBubble(Graphics g, ThemePalette p, Step step, Rectangle? spot, Rectangle full)
     {
         int pad = S(18), width = S(360), tile = S(34), gap = S(12);
-        // The bitmap has 96 dpi: scale the point sizes to the window's DPI.
-        float f = DeviceDpi / 96f;
-        using var titleFont = new Font("Segoe UI Semibold", 12f * f);
-        using var textFont = new Font("Segoe UI", 9.75f * f);
-        using var smallFont = new Font("Segoe UI", 8.5f * f);
-        using var buttonFont = new Font("Segoe UI Semibold", 9.5f * f);
+        // Pixel-sized fonts: the same size in GDI (TextRenderer) and GDI+, independent of the bitmap's DPI.
+        float px = DeviceDpi / 72f;
+        using var titleFont = new Font("Segoe UI Semibold", 12f * px, GraphicsUnit.Pixel);
+        using var textFont = new Font("Segoe UI", 9.75f * px, GraphicsUnit.Pixel);
+        using var smallFont = new Font("Segoe UI", 8.5f * px, GraphicsUnit.Pixel);
+        using var buttonFont = new Font("Segoe UI Semibold", 9.5f * px, GraphicsUnit.Pixel);
 
+        const TextFormatFlags Wrap = TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
+        const TextFormatFlags Line = TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
         int textLeft = pad + tile + gap;
         int textWidth = width - textLeft - pad;
-        var fmt = new StringFormat(StringFormat.GenericTypographic) { Trimming = StringTrimming.Word };
-        fmt.FormatFlags &= ~StringFormatFlags.NoWrap;
-        var titleSize = g.MeasureString(step.Title, titleFont, textWidth, fmt);
-        var textSize = g.MeasureString(step.Text, textFont, width - 2 * pad, fmt);
-        int headerHeight = Math.Max(tile, (int)Math.Ceiling(titleSize.Height) + S(18));
+        var titleSize = TextRenderer.MeasureText(step.Title, titleFont, new Size(textWidth, int.MaxValue), Wrap);
+        var textSize = TextRenderer.MeasureText(step.Text, textFont, new Size(width - 2 * pad, int.MaxValue), Wrap);
+        var smallSize = TextRenderer.MeasureText("Schritt", smallFont, Size.Empty, Line);
+        int headerHeight = Math.Max(tile, smallSize.Height + S(2) + titleSize.Height);
         int btnHeight = S(32);
-        int height = pad + headerHeight + S(12) + (int)Math.Ceiling(textSize.Height) + S(18) + btnHeight + pad;
+        int height = pad + headerHeight + S(12) + textSize.Height + S(18) + btnHeight + pad;
 
         var bubble = PlaceBubble(new Size(width, height), spot, full);
 
-        // Shadow + card
+        // Shadow
         for (int i = 3; i >= 1; i--)
         {
             var sh = bubble;
@@ -241,84 +239,98 @@ internal sealed class TutorialOverlay : Form
             using var shadow = new SolidBrush(Color.FromArgb(18, 0, 0, 0));
             g.FillPath(shadow, shadowPath);
         }
+
+        // The card is drawn on an opaque bitmap so text gets ClearType like the rest of the app,
+        // then copied into the frame through the rounded outline.
+        Color cardBack = p.IsDark ? p.Secondary : Color.White;
+        using var card = new Bitmap(width, height, PixelFormat.Format32bppRgb);
+        using (var c = Graphics.FromImage(card))
+        {
+            c.Clear(cardBack);
+            c.SmoothingMode = SmoothingMode.AntiAlias;
+
+            ColorIcons.DrawTile(c, new RectangleF(pad, pad, tile, tile), step.Color, step.Glyph);
+            int headerTop = pad + (headerHeight - (smallSize.Height + S(2) + titleSize.Height)) / 2;
+            TextRenderer.DrawText(c, $"Schritt {_index + 1} von {_steps.Count}", smallFont,
+                new Point(textLeft, headerTop), p.TextMuted, cardBack, Line);
+            TextRenderer.DrawText(c, step.Title, titleFont,
+                new Rectangle(textLeft, headerTop + smallSize.Height + S(2), textWidth, titleSize.Height), p.Text, cardBack, Wrap);
+
+            int ty = pad + headerHeight + S(12);
+            TextRenderer.DrawText(c, step.Text, textFont, new Rectangle(pad, ty, width - 2 * pad, textSize.Height),
+                p.TextSecondary, cardBack, Wrap);
+
+            // Progress dots
+            int by = height - pad - btnHeight;
+            int dot = S(6), dotGap = S(5);
+            int dotsY = by + (btnHeight - dot) / 2;
+            int dx = pad;
+            for (int i = 0; i < _steps.Count; i++)
+            {
+                bool active = i == _index;
+                int w = active ? S(16) : dot;
+                using var dotBrush = new SolidBrush(active ? p.Accent : ThemePalette.Blend(cardBack, p.Text, p.IsDark ? 0.35f : 0.24f));
+                using var dotPath = Rounded(new Rectangle(dx, dotsY, w, dot), dot / 2);
+                c.FillPath(dotBrush, dotPath);
+                dx += w + dotGap;
+            }
+
+            // Buttons (right to left): Weiter / Los geht's, Zurück
+            bool last = _index == _steps.Count - 1;
+            string nextText = last ? "Los geht's" : "Weiter";
+            int nextWidth = TextRenderer.MeasureText(nextText, buttonFont, Size.Empty, Line).Width + S(34);
+            var next = new Rectangle(width - pad - nextWidth, by, nextWidth, btnHeight);
+            DrawButton(c, next, nextText, buttonFont, _hover == Hit.Next ? p.AccentHover : p.Accent, Color.White);
+            _btnNext = Offset(next, bubble);
+
+            if (_index > 0)
+            {
+                int backWidth = TextRenderer.MeasureText("Zurück", buttonFont, Size.Empty, Line).Width + S(28);
+                var back = new Rectangle(next.X - S(8) - backWidth, by, backWidth, btnHeight);
+                DrawButton(c, back, "Zurück", buttonFont,
+                    _hover == Hit.Back ? p.ButtonSecondaryHover : p.ButtonSecondary, p.ButtonSecondaryText);
+                _btnBack = Offset(back, bubble);
+            }
+            else
+            {
+                _btnBack = Rectangle.Empty;
+            }
+
+            if (!last)
+            {
+                // "Überspringen" in the top right corner
+                using var skipFont = _hover == Hit.Skip ? new Font(smallFont, FontStyle.Underline) : (Font)smallFont.Clone();
+                var skipSize = TextRenderer.MeasureText("Überspringen", skipFont, Size.Empty, Line);
+                var skip = new Rectangle(width - pad - skipSize.Width - S(4), headerTop - S(3), skipSize.Width + S(8), skipSize.Height + S(6));
+                TextRenderer.DrawText(c, "Überspringen", skipFont, new Point(skip.X + S(4), skip.Y + S(3)),
+                    _hover == Hit.Skip ? p.Accent : p.TextMuted, cardBack, Line);
+                _btnSkip = Offset(skip, bubble);
+            }
+            else
+            {
+                _btnSkip = Rectangle.Empty;
+            }
+        }
+
         using (var cardPath = Rounded(bubble, S(14)))
-        using (var card = new SolidBrush(p.IsDark ? p.Secondary : Color.White))
+        using (var texture = new TextureBrush(card, WrapMode.Clamp))
         using (var border = new Pen(p.CardBorder, 1f))
         {
-            g.FillPath(card, cardPath);
+            texture.TranslateTransform(bubble.X, bubble.Y);
+            g.FillPath(texture, cardPath);
             g.DrawPath(border, cardPath);
         }
-
-        // Header: icon tile, step counter, title
-        int x = bubble.X, y = bubble.Y;
-        ColorIcons.DrawTile(g, new RectangleF(x + pad, y + pad, tile, tile), step.Color, step.Glyph);
-        using (var muted = new SolidBrush(p.TextMuted))
-            g.DrawString($"Schritt {_index + 1} von {_steps.Count}", smallFont, muted, x + textLeft, y + pad - S(1), fmt);
-        using (var text = new SolidBrush(p.Text))
-            g.DrawString(step.Title, titleFont, text, new RectangleF(x + textLeft, y + pad + S(15), textWidth, titleSize.Height + S(4)), fmt);
-
-        int ty = y + pad + headerHeight + S(12);
-        using (var body = new SolidBrush(p.TextSecondary))
-            g.DrawString(step.Text, textFont, body, new RectangleF(x + pad, ty, width - 2 * pad, textSize.Height + S(4)), fmt);
-
-        // Progress dots
-        int by = bubble.Bottom - pad - btnHeight;
-        int dot = S(6), dotGap = S(5);
-        int dotsY = by + (btnHeight - dot) / 2;
-        int dx = x + pad;
-        for (int i = 0; i < _steps.Count; i++)
-        {
-            bool active = i == _index;
-            int w = active ? S(16) : dot;
-            using var dotBrush = new SolidBrush(active ? p.Accent : Color.FromArgb(p.IsDark ? 90 : 60, p.Text));
-            using var dotPath = Rounded(new Rectangle(dx, dotsY, w, dot), dot / 2);
-            g.FillPath(dotBrush, dotPath);
-            dx += w + dotGap;
-        }
-
-        // Buttons (right to left): Weiter/Fertig, Zurück; "Überspringen" as a link under the dots
-        bool last = _index == _steps.Count - 1;
-        string nextText = last ? "Los geht's" : "Weiter";
-        int nextWidth = (int)g.MeasureString(nextText, buttonFont).Width + S(34);
-        _btnNext = new Rectangle(bubble.Right - pad - nextWidth, by, nextWidth, btnHeight);
-        DrawButton(g, _btnNext, nextText, buttonFont, _hover == Hit.Next ? p.AccentHover : p.Accent, Color.White);
-
-        if (_index > 0)
-        {
-            int backWidth = (int)g.MeasureString("Zurück", buttonFont).Width + S(28);
-            _btnBack = new Rectangle(_btnNext.X - S(8) - backWidth, by, backWidth, btnHeight);
-            DrawButton(g, _btnBack, "Zurück", buttonFont,
-                _hover == Hit.Back ? p.ButtonSecondaryHover : p.ButtonSecondary, p.ButtonSecondaryText);
-        }
-        else
-        {
-            _btnBack = Rectangle.Empty;
-        }
-
-        if (!last)
-        {
-            // Small "×  Tour beenden" in the top right corner of the bubble
-            var skipSize = g.MeasureString("Überspringen", smallFont);
-            _btnSkip = new Rectangle(bubble.Right - pad - (int)skipSize.Width - S(4), y + pad - S(4),
-                (int)skipSize.Width + S(8), (int)skipSize.Height + S(6));
-            using var skip = new SolidBrush(_hover == Hit.Skip ? p.Accent : p.TextMuted);
-            using var skipFont = _hover == Hit.Skip ? new Font(smallFont, FontStyle.Underline) : (Font)smallFont.Clone();
-            g.DrawString("Überspringen", skipFont, skip, _btnSkip.X + S(4), _btnSkip.Y + S(3), fmt);
-        }
-        else
-        {
-            _btnSkip = Rectangle.Empty;
-        }
     }
+
+    private static Rectangle Offset(Rectangle r, Rectangle by) => new(r.X + by.X, r.Y + by.Y, r.Width, r.Height);
 
     private void DrawButton(Graphics g, Rectangle r, string text, Font font, Color back, Color fore)
     {
         using var path = Rounded(r, S(6));
         using var brush = new SolidBrush(back);
         g.FillPath(brush, path);
-        using var fb = new SolidBrush(fore);
-        using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-        g.DrawString(text, font, fb, r, sf);
+        TextRenderer.DrawText(g, text, font, r, fore, back,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
     }
 
     /// <summary>Right of the highlighted area, else left, below, above; centered without one.</summary>
@@ -390,7 +402,6 @@ internal sealed class TutorialOverlay : Form
         var bmp = new Bitmap(Width, Height, PixelFormat.Format32bppPArgb);
         using var g = Graphics.FromImage(bmp);
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
         PaintFrame(g);
         return bmp;
     }

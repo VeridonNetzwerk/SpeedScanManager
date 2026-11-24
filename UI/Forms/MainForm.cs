@@ -82,6 +82,12 @@ internal class MainForm : ModernWindow
     /// </summary>
     public event EventHandler? CustomApplicationsChanged;
 
+    /// <summary>The round scan button was clicked (unsaved changes were handled before).</summary>
+    public event EventHandler? ScanRequested;
+
+    private readonly Control _scanFab;
+    private bool _closeDecided;
+
     private readonly Button _okButton;
     private readonly Button _cancelButton;
     private readonly Button _applyButton;
@@ -256,7 +262,8 @@ internal class MainForm : ModernWindow
 
         // === Footer: Abbrechen / Übernehmen / OK ===
         _cancelButton = AddFooterButton("Abbrechen", ThemeRole.Secondary, Glyph.Cross);
-        _cancelButton.Click += (s, e) => { CancelSettings(); Close(); };
+        // Asks in OnFormClosing whether unsaved changes should be saved.
+        _cancelButton.Click += (s, e) => Close();
 
         _applyButton = AddFooterButton("Übernehmen", ThemeRole.Secondary, Glyph.Apply);
         _applyButton.Enabled = false;
@@ -264,6 +271,9 @@ internal class MainForm : ModernWindow
 
         _okButton = AddFooterButton("OK", ThemeRole.Primary, Glyph.Check);
         _okButton.Click += (s, e) => { if (ApplySettings()) Close(); };
+
+        _scanFab = AddFooterFab(Glyph.Scanner, "Jetzt scannen");
+        _scanFab.Click += (s, e) => OnScanClick();
 
         // Wire page content changes to enable the Apply button
         WireTabContentChanges();
@@ -281,6 +291,54 @@ internal class MainForm : ModernWindow
 
         ResumeLayout(false);
         PerformLayout();
+    }
+
+    private void OnScanClick()
+    {
+        if (HasUnappliedChanges())
+        {
+            switch (UnsavedChangesDialog.Ask(this, UnsavedChangesDialog.Purpose.Scan))
+            {
+                case UnsavedChangesDialog.Choice.Save:
+                    if (!ApplySettings()) return;
+                    break;
+                case UnsavedChangesDialog.Choice.Discard:
+                    CancelSettings();
+                    break;
+                case UnsavedChangesDialog.Choice.KeepUnsaved:
+                    break;
+                default:
+                    return;
+            }
+        }
+        ScanRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        if (!e.Cancel && !_closeDecided && e.CloseReason == CloseReason.UserClosing && HasUnappliedChanges())
+        {
+            switch (UnsavedChangesDialog.Ask(this, UnsavedChangesDialog.Purpose.Close))
+            {
+                case UnsavedChangesDialog.Choice.Save:
+                    if (!ApplySettings()) e.Cancel = true;
+                    break;
+                case UnsavedChangesDialog.Choice.Discard:
+                    CancelSettings();
+                    break;
+                default:
+                    e.Cancel = true;
+                    break;
+            }
+        }
+        base.OnFormClosing(e);
+    }
+
+    /// <summary>Closes without asking; unsaved changes are discarded (app exit).</summary>
+    public void CloseDiscarding()
+    {
+        _closeDecided = true;
+        Close();
     }
 
     /// <summary>
@@ -311,7 +369,7 @@ internal class MainForm : ModernWindow
                 "Eine kurze Tour durch die wichtigsten Einstellungen. Du kannst sie jederzeit überspringen und später über die Hilfe (?) wieder starten.",
                 Glyph.Sparkle, IconColors.Purple, null, Page(PageGeneral)),
             new("Anwendung",
-                "Hier legst du fest, was nach dem Scan passiert: in einem Ordner speichern, per E-Mail senden, drucken oder in einem Programm öffnen.",
+                "Hier legst du fest, was nach dem Scan passiert: in einem Ordner speichern, per E-Mail senden, drucken oder in einem Programm öffnen. Das gilt, solange das Quick-Menü aus ist.",
                 Glyph.Apps, IconColors.Purple, Nav(PageApplication), Page(PageApplication)),
             new("Speichern",
                 "Ordner und Dateiname deiner Scans. Ohne Änderung landen sie in „Dokumente\\SpeedScanManager“.",
@@ -322,17 +380,25 @@ internal class MainForm : ModernWindow
             new("Dateiart",
                 "PDF oder Bild. Mit Texterkennung wird die PDF durchsuchbar und du kannst Text daraus kopieren.",
                 Glyph.FileType, IconColors.Red, Nav(PageFileType), Page(PageFileType)),
-            new("Quick-Menü",
-                "Ist es an, wählst du nach jedem Scan in einem kleinen Menü, was mit dem Dokument passiert. Ist es aus, gilt immer die Seite „Anwendung“.",
-                Glyph.Apps, IconColors.Pink, Of(_startCard), Page(PageGeneral)),
+            new("Quick-Menü – jetzt an",
+                "Ich habe es für dich eingeschaltet. Nach jedem Scan erscheint ein kleines Menü, in dem du wählst, wohin das Dokument geht: Ordner, E-Mail, Drucker oder ein Programm.\n\n"
+                + "+  Flexibel: jedes Dokument kann woanders hin.\n"
+                + "+  Du siehst sofort, dass der Scan fertig ist.\n"
+                + "–  Ein Klick mehr pro Scan.\n\n"
+                + "Aus ist es ideal, wenn du immer gleich scannst: Dann gilt ohne Nachfrage die Seite „Anwendung“. Gespeichert wird es erst mit OK.",
+                Glyph.Apps, IconColors.Pink, Of(_quickMenuCheckBox.Parent ?? _startCard), () =>
+                {
+                    _nav.SelectedIndex = PageGeneral;
+                    _quickMenuCheckBox.Checked = true;
+                }),
             new("Scannen",
-                "Papier einlegen und die Scan-Taste am Scanner drücken. Oder unten rechts in der Taskleiste auf das SpeedScan-Symbol klicken und „Scannen“ wählen.",
-                Glyph.Scanner, IconColors.Green, null, Page(PageGeneral)),
+                "Papier einlegen und auf den runden Scan-Button klicken – oder einfach die Scan-Taste am Scanner drücken. Auch über das SpeedScan-Symbol unten rechts in der Taskleiste kannst du scannen.",
+                Glyph.Scanner, IconColors.Green, () => ((FooterFab)_scanFab).ButtonScreenBounds, Page(PageGeneral), Round: true),
             new("Hilfe",
                 "Das Fragezeichen öffnet die Hilfe mit Bildern zur jeweiligen Seite. Dort findest du auch „Tour starten“.",
                 Glyph.Question, IconColors.Blue, Of(HeaderHelpButton), null),
             new("Fertig!",
-                "Mit OK übernimmst du deine Einstellungen. Viel Spaß beim Scannen!",
+                "OK speichert deine Einstellungen und schließt das Fenster, „Übernehmen“ speichert nur. Viel Spaß beim Scannen!",
                 Glyph.Check, IconColors.Green, Of(_okButton), null),
         };
 

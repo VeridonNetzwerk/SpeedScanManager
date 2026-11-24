@@ -27,7 +27,7 @@ internal class AppSettings
     public const int MaxCustomApplications = 10;
 
     public int Version { get; set; } = CurrentVersion;
-    public bool QuickMenuEnabled { get; set; } = true;
+    public bool QuickMenuEnabled { get; set; }
     /// <summary>Internal name of the active profile (ScanProfile.Name); "" when none.</summary>
     public string SelectedProfileName { get; set; } = "ScanToFolder";
     public string? SelectedSourceName { get; set; }

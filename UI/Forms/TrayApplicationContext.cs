@@ -1424,6 +1424,7 @@ internal class TrayApplicationContext : ApplicationContext
             _mainForm = new MainForm(_settings, _profileManager, _appSettings);
             _mainForm.SettingsApplied += (_, _) => OnSettingsApplied();
             _mainForm.CustomApplicationsChanged += (_, _) => OnCustomApplicationsChanged();
+            _mainForm.ScanRequested += (_, _) => StartScan(ScanTrigger.Menu);
             _mainForm.FormClosed += (_, _) => _mainForm = null;
         }
         if (!_mainForm.Visible)
@@ -1952,7 +1953,7 @@ internal class TrayApplicationContext : ApplicationContext
             }
             catch { }
 
-            try { _mainForm?.Close(); } catch { }
+            try { _mainForm?.CloseDiscarding(); } catch { }
             _contextMenu.Dispose();
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
