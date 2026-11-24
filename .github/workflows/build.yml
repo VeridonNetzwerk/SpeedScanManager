@@ -59,7 +59,8 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release create "$GITHUB_REF_NAME" artifacts/* \
+        # The artifacts keep their release/vX.Y.Z folder: upload the files, not the folder
+        gh release create "$GITHUB_REF_NAME" $(find artifacts -type f) \
           --repo "$GITHUB_REPOSITORY" \
           --title "SpeedScan Manager $GITHUB_REF_NAME" \
           --generate-notes
