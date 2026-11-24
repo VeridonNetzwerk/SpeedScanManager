@@ -9,11 +9,11 @@ namespace SpeedScanManager;
 internal class HelpTopic
 {
     public string Id { get; }
-    public string Title { get; }
+    public string Title { get; private set; }
     /// <summary>One sentence: lead text below the title and description on cards / in lists.</summary>
-    public string Summary { get; }
+    public string Summary { get; private set; }
     /// <summary>Body HTML of a page (empty for groups). Pictures as <c>help-img:NAME</c>.</summary>
-    public string Html { get; }
+    public string Html { get; private set; }
     public Glyph Glyph { get; init; } = Glyph.None;
     /// <summary>Topic ids shown as "Passende Themen" below the page.</summary>
     public string[] Related { get; init; } = Array.Empty<string>();
@@ -46,6 +46,19 @@ internal class HelpTopic
         }
     }
 
+    /// <summary>Replaces the German texts with a translation (see <see cref="L.LoadHelp"/>).</summary>
+    public void Localize(Dictionary<string, L.HelpText> texts)
+    {
+        if (texts.TryGetValue(Id, out var t))
+        {
+            if (t.Title.Length > 0) Title = t.Title;
+            if (t.Summary.Length > 0) Summary = t.Summary;
+            if (t.Html.Length > 0 && Html.Length > 0) Html = t.Html;
+        }
+        foreach (var child in Children)
+            child.Localize(texts);
+    }
+
     public HelpTopic? Find(string id)
     {
         if (Id == id) return this;
@@ -68,15 +81,24 @@ internal static class HelpContent
     /// <summary>Questions on the start page (topic id, question).</summary>
     public static readonly (string Id, string Question)[] StartQuestions =
     {
-        ("scan-quick", "Wie scanne ich ein Dokument?"),
-        ("save-tab", "Wo werden meine Scans gespeichert?"),
-        ("filename-format", "Wie ändere ich den Dateinamen?"),
-        ("filetype-tab", "Wie erstelle ich eine durchsuchbare PDF?"),
-        ("faq", "Der Scanner wird nicht gefunden – was tun?"),
+        ("scan-quick", L.T("Wie scanne ich ein Dokument?")),
+        ("save-tab", L.T("Wo werden meine Scans gespeichert?")),
+        ("filename-format", L.T("Wie ändere ich den Dateinamen?")),
+        ("filetype-tab", L.T("Wie erstelle ich eine durchsuchbare PDF?")),
+        ("faq", L.T("Der Scanner wird nicht gefunden – was tun?")),
     };
 
-    /// <summary>Builds the complete help topic tree.</summary>
+    /// <summary>Builds the complete help topic tree (in the current language).</summary>
     public static HelpTopic BuildTree()
+    {
+        var root = BuildGerman();
+        if (L.LoadHelp() is { } texts)
+            root.Localize(texts);
+        return root;
+    }
+
+    /// <summary>The help as written (German source).</summary>
+    public static HelpTopic BuildGerman()
     {
         return new HelpTopic("root", "SpeedScan Manager Hilfe",
             "Scannen Sie Dokumente auf Knopfdruck und entscheiden Sie danach, wohin sie sollen – in einen Ordner, per E-Mail, auf den Drucker oder in ein Office-Dokument.",
