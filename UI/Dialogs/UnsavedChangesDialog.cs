@@ -1,12 +1,12 @@
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace SpeedScanManager;
 
 /// <summary>
-/// Asks what to do with settings that were changed but not saved, before a scan from the
-/// settings window or before closing it. The choices are large option cards.
+/// Compact prompt in the style of the app's other prompts: what to do with settings that were
+/// changed but not saved, before a scan from the settings window or before closing it. Lists
+/// the changes like a BIOS does before saving ("Farbmodus: Farbe → Graustufen").
 /// </summary>
 internal sealed class UnsavedChangesDialog : ModernWindow
 {
@@ -16,133 +16,188 @@ internal sealed class UnsavedChangesDialog : ModernWindow
 
     public Choice Result { get; private set; } = Choice.Cancel;
 
-    public UnsavedChangesDialog(Purpose purpose)
+    private const int MaxRows = 7;
+
+    public UnsavedChangesDialog(Purpose purpose, IReadOnlyList<SettingsChangeList.Change> changes)
     {
         SuspendLayout();
         bool scan = purpose == Purpose.Scan;
         Text = "SpeedScan Manager";
-        Title = "Nicht gespeicherte Änderungen";
-        Subtitle = scan ? "Womit soll gescannt werden?" : "Sollen die Änderungen gespeichert werden?";
-        HeaderIcon = ColorIcon.Tile(scan ? Glyph.Scanner : Glyph.Gear, scan ? IconColors.Blue : IconColors.Amber);
+        Title = scan ? "Vor dem Scannen speichern?" : "Änderungen speichern?";
+        HeaderHeight = 52;
         HeaderButtons = ModernHeaderButtons.Close;
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
 
-        var options = scan
-            ? new[]
-            {
-                (Choice.Save, "Speichern und scannen", "Die Änderungen übernehmen und gleich damit scannen.", Glyph.Check, IconColors.Green),
-                (Choice.KeepUnsaved, "Mit gespeicherten Einstellungen scannen", "Deine Änderungen bleiben im Fenster, sind aber noch nicht gespeichert.", Glyph.Scanner, IconColors.Blue),
-                (Choice.Discard, "Änderungen verwerfen und scannen", "Zurück zu den gespeicherten Einstellungen und damit scannen.", Glyph.Cross, IconColors.Red),
-            }
-            : new[]
-            {
-                (Choice.Save, "Speichern und schließen", "Die Änderungen übernehmen und das Fenster schließen.", Glyph.Check, IconColors.Green),
-                (Choice.Discard, "Verwerfen und schließen", "Die Änderungen gehen verloren, die gespeicherten Einstellungen bleiben.", Glyph.Cross, IconColors.Red),
-            };
-
-        var list = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16, 14, 16, 8) };
-        // Docked top in reverse order
-        for (int i = options.Length - 1; i >= 0; i--)
+        var layout = new TableLayoutPanel
         {
-            var (choice, title, text, glyph, color) = options[i];
-            var row = new OptionCard(title, text, glyph, color) { Dock = DockStyle.Top, Height = 64 };
-            row.Click += (_, _) => { Result = choice; DialogResult = DialogResult.OK; Close(); };
-            list.Controls.Add(row);
-            if (i > 0) list.Controls.Add(new Panel { Dock = DockStyle.Top, Height = 8 });
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
+            Padding = new Padding(20, 18, 22, 6),
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        layout.Controls.Add(new TrayPromptForm.PromptBadge(TrayPromptForm.PromptBadge.Kind.Question)
+        {
+            Size = new Size(36, 36),
+            Margin = new Padding(0, 0, 14, 0),
+        }, 0, 0);
+
+        var stack = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+        };
+        int textWidth = scan ? 470 : 430;
+        var heading = new Label
+        {
+            Text = changes.Count == 1 ? "Diese Einstellung wurde geändert:" : "Diese Einstellungen wurden geändert:",
+            AutoSize = true,
+            Font = ThemeFonts.Heading,
+            Margin = new Padding(0, 0, 0, 8),
+            UseMnemonic = false,
+        };
+        stack.Controls.Add(heading);
+        var table = new ChangeTable(changes, MaxRows) { Width = textWidth, Margin = new Padding(0, 0, 0, 10) };
+        stack.Controls.Add(table);
+        if (scan)
+        {
+            var hint = new Label
+            {
+                Text = "„Ohne Speichern“ scannt mit den gespeicherten Einstellungen, deine Änderungen bleiben im Fenster. „Verwerfen“ setzt sie zurück.",
+                AutoSize = true,
+                MaximumSize = new Size(textWidth, 0),
+                Margin = new Padding(0, 0, 0, 6),
+                UseMnemonic = false,
+            };
+            ThemeManager.SetRole(hint, ThemeRole.Muted);
+            stack.Controls.Add(hint);
         }
-        Body.Controls.Add(list);
+        layout.Controls.Add(stack, 1, 0);
+        Body.Controls.Add(layout);
 
-        var cancel = AddFooterButton(scan ? "Abbrechen" : "Zurück", ThemeRole.Secondary, Glyph.None, DialogResult.Cancel);
+        Button Add(string text, ThemeRole role, Glyph glyph, Choice choice, bool left = false)
+        {
+            var b = AddFooterButton(text, role, glyph, DialogResult.None, left);
+            b.Click += (_, _) => { Result = choice; DialogResult = choice == Choice.Cancel ? DialogResult.Cancel : DialogResult.OK; Close(); };
+            return b;
+        }
+
+        Button cancel, save;
+        if (scan)
+        {
+            cancel = Add("Abbrechen", ThemeRole.Secondary, Glyph.None, Choice.Cancel, left: true);
+            Add("Verwerfen", ThemeRole.Secondary, Glyph.None, Choice.Discard);
+            Add("Ohne Speichern", ThemeRole.Secondary, Glyph.None, Choice.KeepUnsaved);
+            save = Add("Speichern", ThemeRole.Primary, Glyph.Check, Choice.Save);
+        }
+        else
+        {
+            Add("Verwerfen", ThemeRole.Secondary, Glyph.None, Choice.Discard, left: true);
+            cancel = Add("Abbrechen", ThemeRole.Secondary, Glyph.None, Choice.Cancel);
+            save = Add("Speichern", ThemeRole.Primary, Glyph.Check, Choice.Save);
+        }
         CancelButton = cancel;
+        AcceptButton = save;
 
-        ClientSize = new Size(560, 64 /* header */ + 14 + options.Length * 64 + (options.Length - 1) * 8 + 8 + 56 /* footer */ + 4);
+        int hintHeight = scan ? TextRenderer.MeasureText(
+            "„Ohne Speichern“ scannt mit den gespeicherten Einstellungen, deine Änderungen bleiben im Fenster. „Verwerfen“ setzt sie zurück.",
+            ThemeFonts.Regular, new Size(textWidth, 0), TextFormatFlags.WordBreak).Height + 6 : 0;
+        int bodyHeight = 18 + 24 + table.Height + 10 + hintHeight + 6;
+        ClientSize = new Size(20 + 36 + 14 + textWidth + 22, 52 + Math.Max(36 + 24, bodyHeight) + 56);
         ThemeManager.Apply(this);
         ResumeLayout(true);
     }
 
-    /// <summary>Shows the dialog over <paramref name="owner"/> and returns the choice.</summary>
-    public static Choice Ask(IWin32Window owner, Purpose purpose)
+    /// <summary>Shows the prompt over <paramref name="owner"/> and returns the choice.</summary>
+    public static Choice Ask(IWin32Window owner, Purpose purpose, IReadOnlyList<SettingsChangeList.Change> changes)
     {
-        using var dlg = new UnsavedChangesDialog(purpose);
+        using var dlg = new UnsavedChangesDialog(purpose, changes);
         return dlg.ShowDialog(owner) == DialogResult.OK ? dlg.Result : Choice.Cancel;
     }
 
-    /// <summary>Clickable card: colored tile, title, description, chevron.</summary>
-    private sealed class OptionCard : Control, IThemeAware
+    /// <summary>Card with one line per change: "Bereich · Name   alt → neu".</summary>
+    private sealed class ChangeTable : Control, IThemeAware
     {
-        private readonly string _title, _text;
-        private readonly Glyph _glyph;
-        private readonly Color _color;
-        private bool _hover, _pressed;
+        private readonly IReadOnlyList<SettingsChangeList.Change> _changes;
+        private readonly int _rows;
+        private const int RowHeight = 26;
 
-        public OptionCard(string title, string text, Glyph glyph, Color color)
+        public ChangeTable(IReadOnlyList<SettingsChangeList.Change> changes, int maxRows)
         {
-            _title = title;
-            _text = text;
-            _glyph = glyph;
-            _color = color;
-            Cursor = Cursors.Hand;
-            AccessibleRole = AccessibleRole.PushButton;
-            AccessibleName = title;
-            AccessibleDescription = text;
+            _changes = changes;
+            _rows = Math.Min(changes.Count, maxRows) + (changes.Count > maxRows ? 1 : 0);
+            Height = 8 + _rows * RowHeight + 8;
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
                      | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
-            SetStyle(ControlStyles.Selectable, true);
-            TabStop = true;
+            SetStyle(ControlStyles.Selectable, false);
+            AccessibleRole = AccessibleRole.List;
+            AccessibleName = string.Join(", ", changes.Select(c => $"{c.Name}: {c.Old} zu {c.New}"));
         }
 
         public void ApplyTheme(ThemePalette palette) => Invalidate();
 
         private int S(float v) => ModernLayout.Scale(this, v);
 
-        protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
-        protected override void OnMouseLeave(EventArgs e) { _hover = _pressed = false; Invalidate(); base.OnMouseLeave(e); }
-        protected override void OnMouseDown(MouseEventArgs e) { _pressed = true; Invalidate(); base.OnMouseDown(e); }
-        protected override void OnMouseUp(MouseEventArgs e) { _pressed = false; Invalidate(); base.OnMouseUp(e); }
-        protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
-        protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
-
-        protected override bool IsInputKey(Keys keyData) => keyData is Keys.Enter or Keys.Space || base.IsInputKey(keyData);
-
-        protected override void OnKeyDown(KeyEventArgs e)
-        {
-            if (e.KeyCode is Keys.Enter or Keys.Space) { OnClick(EventArgs.Empty); e.Handled = true; }
-            base.OnKeyDown(e);
-        }
-
         protected override void OnPaint(PaintEventArgs e)
         {
             var p = ThemeManager.Current;
             var g = e.Graphics;
             g.Clear(ModernLayout.ParentBack(this));
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-
-            Color back = _pressed ? p.Selected : _hover ? ThemePalette.Blend(p.Card, p.Accent, p.IsDark ? 0.10f : 0.06f) : p.Card;
-            Color border = _hover || Focused ? ThemePalette.Blend(p.CardBorder, p.Accent, 0.6f) : p.CardBorder;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             var rect = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
-            using (var path = ModernLayout.RoundedRect(rect, S(10)))
+            using (var path = ModernLayout.RoundedRect(rect, S(8)))
             {
-                using (var brush = new SolidBrush(back)) g.FillPath(brush, path);
-                using var pen = new Pen(border, Focused ? 1.5f : 1f);
+                using (var brush = new SolidBrush(p.Card)) g.FillPath(brush, path);
+                using var pen = new Pen(p.CardBorder);
                 g.DrawPath(pen, path);
             }
 
-            int tile = S(36);
-            ColorIcons.DrawTile(g, new RectangleF(S(14), (Height - tile) / 2f, tile, tile), _color, _glyph);
+            const TextFormatFlags F = TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding;
+            int pad = S(12), rowH = S(RowHeight);
+            int y = S(8);
+            int shown = Math.Min(_changes.Count, MaxRows);
+            for (int i = 0; i < shown; i++)
+            {
+                var c = _changes[i];
+                var row = new Rectangle(pad, y, Width - 2 * pad, rowH);
+                if (i > 0)
+                {
+                    using var div = new Pen(p.CardDivider);
+                    g.DrawLine(div, pad, y, Width - pad, y);
+                }
 
-            int x = S(14) + tile + S(14);
-            int w = Width - x - S(40);
-            const TextFormatFlags f = TextFormatFlags.Left | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix;
-            int th = TextRenderer.MeasureText("Ag", ModernFonts.CardTitle).Height;
-            int sh = TextRenderer.MeasureText("Ag", ModernFonts.Small).Height;
-            int top = (Height - th - sh - S(1)) / 2;
-            TextRenderer.DrawText(g, _title, ModernFonts.CardTitle, new Rectangle(x, top, w, th), p.Text, back, f);
-            TextRenderer.DrawText(g, _text, ModernFonts.Small, new Rectangle(x, top + th + S(1), w, sh), p.TextMuted, back, f);
+                // Right: old (muted) → new (accent), measured from the right
+                string arrow = "  →  ";
+                int newW = TextRenderer.MeasureText(c.New, ThemeFonts.Semibold, Size.Empty, F).Width;
+                int arrowW = TextRenderer.MeasureText(arrow, ThemeFonts.Regular, Size.Empty, F).Width;
+                int maxOld = Math.Max(S(40), row.Width / 2 - newW - arrowW);
+                int oldW = Math.Min(maxOld, TextRenderer.MeasureText(c.Old, ThemeFonts.Regular, Size.Empty, F).Width);
+                int x = row.Right - newW;
+                TextRenderer.DrawText(g, c.New, ThemeFonts.Semibold, new Rectangle(x, y, newW, rowH), p.Accent, F);
+                x -= arrowW;
+                TextRenderer.DrawText(g, arrow, ThemeFonts.Regular, new Rectangle(x, y, arrowW, rowH), p.TextMuted, F);
+                x -= oldW;
+                TextRenderer.DrawText(g, c.Old, ThemeFonts.Regular, new Rectangle(x, y, oldW, rowH), p.TextMuted, F | TextFormatFlags.EndEllipsis);
 
-            float cs = S(14);
-            ThemeGlyphs.Draw(g, Glyph.ChevronRight, new RectangleF(Width - S(16) - cs, (Height - cs) / 2f, cs, cs),
-                _hover ? p.Accent : p.TextMuted);
+                // Left: "Bereich ·" muted, name
+                int areaW = TextRenderer.MeasureText(c.Area + " · ", ThemeFonts.Regular, Size.Empty, F).Width;
+                int nameRight = x - S(12);
+                TextRenderer.DrawText(g, c.Area + " · ", ThemeFonts.Regular, new Rectangle(row.X, y, Math.Min(areaW, nameRight - row.X), rowH), p.TextMuted, F);
+                TextRenderer.DrawText(g, c.Name, ThemeFonts.Regular, new Rectangle(row.X + areaW, y, Math.Max(0, nameRight - row.X - areaW), rowH),
+                    p.Text, F | TextFormatFlags.EndEllipsis);
+                y += rowH;
+            }
+            if (_changes.Count > shown)
+            {
+                using var div = new Pen(p.CardDivider);
+                g.DrawLine(div, pad, y, Width - pad, y);
+                TextRenderer.DrawText(g, $"… und {_changes.Count - shown} weitere", ThemeFonts.Regular,
+                    new Rectangle(pad, y, Width - 2 * pad, rowH), p.TextMuted, F);
+            }
         }
     }
 }

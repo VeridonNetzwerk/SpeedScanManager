@@ -14,9 +14,8 @@ namespace SpeedScanManager;
 /// Optionen) and a WebBrowser that renders the help pages of <see cref="HelpRenderer"/>
 /// (start page with topic cards, group pages, pages with pictures; re-rendered when the theme changes).
 ///
-/// The window is borderless but resizable: the edges (5 px) are hit-tested locally
-/// (WM_NCHITTEST of the form plus a message filter for the child windows, including the
-/// WebBrowser) and the maximized size is limited to the working area of the monitor.
+/// The window has a fixed size like the settings window (no resize edges, no maximize); the
+/// edge hit-testing code stays switched off via <see cref="Resizable"/>.
 /// </summary>
 internal class HelpForm : ModernWindow
 {
@@ -30,6 +29,8 @@ internal class HelpForm : ModernWindow
     private const int HTLEFT = 10, HTRIGHT = 11, HTTOP = 12, HTTOPLEFT = 13, HTTOPRIGHT = 14;
     private const int HTBOTTOM = 15, HTBOTTOMLEFT = 16, HTBOTTOMRIGHT = 17;
     private const int ResizeBorder = 5;
+    /// <summary>Fixed size like the settings window.</summary>
+    private const bool Resizable = false;
     private const int MinWidth = 600, MinHeight = 420;
 
     private readonly SplitContainer _split;
@@ -95,14 +96,7 @@ internal class HelpForm : ModernWindow
         _btnMaximize = new MaximizeButton { Size = new Size(30, 30), AccessibleName = "Maximieren" };
         _btnMaximize.Click += (_, _) => ToggleMaximize();
         Header.Controls.Add(_btnMinimize);
-        Header.Controls.Add(_btnMaximize);
         Header.Layout += (_, _) => LayoutHeaderButtons();
-        // Double-click on the header toggles maximize (raised before the header starts dragging).
-        Header.MouseDown += (_, e) =>
-        {
-            if (e.Button == MouseButtons.Left && e.Clicks == 2)
-                ToggleMaximize();
-        };
 
         // === SplitContainer: sidebar | content ===
         _split = new SplitContainer
@@ -167,10 +161,11 @@ internal class HelpForm : ModernWindow
         _split.Panel1.Controls.Add(captionHost);
         _split.Panel1.Controls.Add(_navTabs);
 
-        // === Content: toolbar + WebBrowser ===
+        // === Content: toolbar (+ "Tour starten" on the right) + WebBrowser ===
+        var toolbarRow = new Panel { Dock = DockStyle.Top, Height = 52 };
         var toolbar = new FlowLayoutPanel
         {
-            Dock = DockStyle.Top,
+            Dock = DockStyle.Fill,
             Height = 52,
             Padding = new Padding(12, 10, 12, 10),
             WrapContents = false,
@@ -217,6 +212,7 @@ internal class HelpForm : ModernWindow
         };
         _optionsMenu.Closed += (_, _) => _tsBtnOptions.Pressed = false;
 
+        toolbarRow.Controls.Add(toolbar);
         toolbar.Controls.AddRange(new Control[]
         {
             _tsBtnHide,
@@ -225,9 +221,10 @@ internal class HelpForm : ModernWindow
             _tsBtnBack,
             _tsBtnForward,
             new ToolSeparator(),
-            tsBtnPrint,
+            // "Drucken" only when there is room (no "Tour starten"); always in "Optionen"
+            offerTour ? null! : tsBtnPrint,
             _tsBtnOptions
-        });
+        }.Where(c => c != null).ToArray());
         if (offerTour)
         {
             var tsBtnTour = new ToolButton("Tour starten", (g, c) => ThemeGlyphs.Draw(g, Glyph.Sparkle, new RectangleF(0, 0, 16, 16), c))
@@ -239,8 +236,23 @@ internal class HelpForm : ModernWindow
                 TourRequested = true;
                 Close();
             };
-            toolbar.Controls.Add(new ToolSeparator());
-            toolbar.Controls.Add(tsBtnTour);
+            // Right-aligned next to the toolbar, so it never runs out of the window
+            var tourHost = new Panel { Dock = DockStyle.Right, Width = 150, Padding = new Padding(0, 10, 12, 10) };
+            ThemeManager.SetRole(tourHost, ThemeRole.Surface);
+            tsBtnTour.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            tourHost.Controls.Add(tsBtnTour);
+            tourHost.Layout += (_, _) =>
+            {
+                tsBtnTour.Location = new Point(tourHost.Width - tourHost.Padding.Right - tsBtnTour.Width,
+                    (tourHost.Height - tsBtnTour.Height) / 2);
+            };
+            tourHost.Paint += (_, e) =>
+            {
+                var p = ThemeManager.Current;
+                using var pen = new Pen(p.IsDark ? p.Tertiary : p.CardBorder);
+                e.Graphics.DrawLine(pen, 0, tourHost.Height - 1, tourHost.Width, tourHost.Height - 1);
+            };
+            toolbarRow.Controls.Add(tourHost);
         }
 
         _webBrowser = new WebBrowser
@@ -255,7 +267,7 @@ internal class HelpForm : ModernWindow
         _webBrowser.Navigating += WebBrowser_Navigating;
 
         _split.Panel2.Controls.Add(_webBrowser);
-        _split.Panel2.Controls.Add(toolbar);
+        _split.Panel2.Controls.Add(toolbarRow);
 
         Body.Controls.Add(_split);
 
@@ -662,7 +674,7 @@ internal class HelpForm : ModernWindow
         get
         {
             var cp = base.CreateParams;
-            cp.Style |= WS_MAXIMIZEBOX; // system menu / taskbar "Maximieren"
+            if (Resizable) cp.Style |= WS_MAXIMIZEBOX; // system menu / taskbar "Maximieren"
             return cp;
         }
     }
@@ -677,8 +689,7 @@ internal class HelpForm : ModernWindow
         int y = (Header.Height - size) / 2;
         // The base places the close button at the right (12 px margin): minimize, maximize, close.
         int closeX = Header.Width - ModernLayout.Scale(Header, 12) - size;
-        _btnMaximize.Bounds = new Rectangle(closeX - gap - size, y, size, size);
-        _btnMinimize.Bounds = new Rectangle(closeX - 2 * (gap + size), y, size, size);
+        _btnMinimize.Bounds = new Rectangle(closeX - gap - size, y, size, size);
     }
 
     protected override void OnResize(EventArgs e)
@@ -708,7 +719,7 @@ internal class HelpForm : ModernWindow
     /// <summary>Resize hit code for a point in client coordinates (0 = none).</summary>
     private int HitTestEdge(Point client)
     {
-        if (WindowState != FormWindowState.Normal) return 0;
+        if (!Resizable || WindowState != FormWindowState.Normal) return 0;
         int b = ModernLayout.Scale(this, ResizeBorder);
         int w = ClientSize.Width, h = ClientSize.Height;
         if (client.X < 0 || client.Y < 0 || client.X >= w || client.Y >= h) return 0;

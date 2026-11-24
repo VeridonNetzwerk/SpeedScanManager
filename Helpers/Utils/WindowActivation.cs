@@ -257,7 +257,7 @@ internal sealed class TrayPromptForm : ModernWindow
     }
 
     /// <summary>Round colored badge with the message symbol (i, !, ?, x).</summary>
-    private sealed class PromptBadge : Control, IThemeAware
+    internal sealed class PromptBadge : Control, IThemeAware
     {
         public enum Kind { None, Info, Warning, Error, Question }
 

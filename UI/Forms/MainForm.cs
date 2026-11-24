@@ -297,7 +297,7 @@ internal class MainForm : ModernWindow
     {
         if (HasUnappliedChanges())
         {
-            switch (UnsavedChangesDialog.Ask(this, UnsavedChangesDialog.Purpose.Scan))
+            switch (UnsavedChangesDialog.Ask(this, UnsavedChangesDialog.Purpose.Scan, DescribeChanges()))
             {
                 case UnsavedChangesDialog.Choice.Save:
                     if (!ApplySettings()) return;
@@ -318,7 +318,7 @@ internal class MainForm : ModernWindow
     {
         if (!e.Cancel && !_closeDecided && e.CloseReason == CloseReason.UserClosing && HasUnappliedChanges())
         {
-            switch (UnsavedChangesDialog.Ask(this, UnsavedChangesDialog.Purpose.Close))
+            switch (UnsavedChangesDialog.Ask(this, UnsavedChangesDialog.Purpose.Close, DescribeChanges()))
             {
                 case UnsavedChangesDialog.Choice.Save:
                     if (!ApplySettings()) e.Cancel = true;
@@ -774,11 +774,29 @@ internal class MainForm : ModernWindow
         UpdateApplyButton();
     }
 
-    private bool HasUnappliedChanges()
-        => !_working.SettingsEqual(_liveSettings)
-           || _quickMenuCheckBox.Checked != _appSettings.QuickMenuEnabled
-           || _autoStartCheckBox.Checked != _appSettings.AutoStart
-           || (_activeProfile?.Name ?? "") != _appSettings.SelectedProfileName;
+    /// <summary>
+    /// What differs from the saved state. Compares the normalized working copy, so setting a
+    /// value back to what it was counts as unchanged again.
+    /// </summary>
+    private List<SettingsChangeList.Change> DescribeChanges()
+    {
+        var edited = _working.Clone();
+        edited.Normalize();
+        var list = SettingsChangeList.Of(edited, _liveSettings);
+        var general = new List<SettingsChangeList.Change>();
+        if (_quickMenuCheckBox.Checked != _appSettings.QuickMenuEnabled)
+            general.Add(new("Allgemein", "Quick-Menü", SettingsChangeList.OnOff(_appSettings.QuickMenuEnabled), SettingsChangeList.OnOff(_quickMenuCheckBox.Checked)));
+        if (_autoStartCheckBox.Checked != _appSettings.AutoStart)
+            general.Add(new("Allgemein", "Mit Windows starten", SettingsChangeList.OnOff(_appSettings.AutoStart), SettingsChangeList.OnOff(_autoStartCheckBox.Checked)));
+        if ((_activeProfile?.Name ?? "") != _appSettings.SelectedProfileName)
+            general.Add(new("Allgemein", "Profil",
+                _profileManager.GetByName(_appSettings.SelectedProfileName)?.DisplayName ?? "–",
+                _activeProfile?.DisplayName ?? "–"));
+        general.AddRange(list);
+        return general;
+    }
+
+    private bool HasUnappliedChanges() => DescribeChanges().Count > 0;
 
     private void UpdateApplyButton()
     {
