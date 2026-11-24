@@ -100,7 +100,6 @@ internal class TrayApplicationContext : ApplicationContext
     private ToolStripMenuItem _miEmailSettings = null!;
     private ToolStripMenuItem _miPrintSettings = null!;
     private ToolStripMenuItem _miScanResult = null!;
-    private ToolStripMenuItem _miDesign = null!;
     private ToolStripMenuItem _miHelp = null!;
     private ToolStripMenuItem _miExit = null!;
     private TrayMenuHeaderItem _menuHeader = null!;
@@ -278,30 +277,15 @@ internal class TrayApplicationContext : ApplicationContext
 
         _miHelp.DropDownItems.AddRange(new ToolStripItem[] { miHelpTopics, _miSetupScanButton, new ToolStripSeparator(), miVersionInfo });
 
-        // Design: System / Hell / Dunkel (checked = current)
-        _miDesign = new ToolStripMenuItem("Design");
-        foreach (ThemeMode mode in Enum.GetValues<ThemeMode>())
-        {
-            var item = new ToolStripMenuItem(ThemeManager.GetModeName(mode)) { Tag = mode };
-            item.Click += (_, _) => ThemeManager.SetMode(mode);
-            _miDesign.DropDownItems.Add(item);
-        }
-        if (_miDesign.DropDown is ToolStripDropDownMenu designMenu)
-        {
-            designMenu.ShowImageMargin = false;
-            designMenu.ShowCheckMargin = true;
-        }
-
         ThemeManager.SetMenuItemGlyph(_miScan, Glyph.Scanner);
         ThemeManager.SetMenuItemGlyph(_miCancelScan, Glyph.Cross);
         ThemeManager.SetMenuItemGlyph(_miSelectScanner, Glyph.Apps);
-        ThemeManager.SetMenuItemGlyph(_miScanKeySettings, Glyph.Gear);
+        ThemeManager.SetMenuItemGlyph(_miScanKeySettings, Glyph.OpenExternal);
         ThemeManager.SetMenuItemGlyph(_miSetupScanButton, Glyph.Sliders);
         ThemeManager.SetMenuItemGlyph(_miProfileManagement, Glyph.User);
         ThemeManager.SetMenuItemGlyph(_miEmailSettings, Glyph.Mail);
         ThemeManager.SetMenuItemGlyph(_miPrintSettings, Glyph.Printer);
         ThemeManager.SetMenuItemGlyph(_miScanResult, Glyph.Folder);
-        ThemeManager.SetMenuItemGlyph(_miDesign, Glyph.Palette);
         ThemeManager.SetMenuItemGlyph(_miHelp, Glyph.Question);
         ThemeManager.SetMenuItemGlyph(_miExit, Glyph.Power);
 
@@ -312,37 +296,25 @@ internal class TrayApplicationContext : ApplicationContext
             _miScan,
             _miCancelScan,
             new ToolStripSeparator(),
-            _miSelectScanner,
             _miScanKeySettings,
+            _miSelectScanner,
             _miProfileManagement,
             _miEmailSettings,
             _miPrintSettings,
             new ToolStripSeparator(),
             _miScanResult,
             new ToolStripSeparator(),
-            _miDesign,
             _miHelp,
             _miExit
         });
 
         ThemeManager.SetMenuItemRole(_miExit, ThemeRole.Danger);
         ThemeManager.Apply(_contextMenu);
-        UpdateDesignMenu();
     }
 
-    private void UpdateDesignMenu()
-    {
-        foreach (ToolStripItem item in _miDesign.DropDownItems)
-        {
-            if (item is ToolStripMenuItem mi && mi.Tag is ThemeMode mode)
-                mi.Checked = mode == ThemeManager.Mode;
-        }
-    }
-
-    /// <summary>The design was changed (tray menu or settings window): persist it.</summary>
+    /// <summary>The design was changed (settings window): persist it.</summary>
     private void OnThemeModeChanged(object? sender, EventArgs e)
     {
-        UpdateDesignMenu();
         if (_appSettings.ThemeMode == ThemeManager.Mode) return;
         _appSettings.ThemeMode = ThemeManager.Mode;
         _appSettings.Save();
