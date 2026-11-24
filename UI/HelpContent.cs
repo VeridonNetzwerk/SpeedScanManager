@@ -464,7 +464,9 @@ internal static class HelpContent
         <p>In diesem Modus erlaubt das Programm Seiten bis 8,5 × 125 Zoll (ca. 21,6 × 317 cm). Bei Scannern von Fujitsu, PFU und Ricoh
         (PaperStream IP) setzt es zusätzlich die herstellerspezifischen Einstellungen für lange Seiten. Ob das Bild auf die echte Länge
         zugeschnitten wird, entscheidet der Scannertreiber.</p>
-        " + Warn("Die maximale Länge hängt vom Scannermodell ab. Lange Seiten ergeben größere Dateien."),
+        " + Warn("Seiten über 86 cm gehen nur bis 200 dpi (Bildqualität <b>Automatisch</b> oder <b>Fein</b>); bei höherer Auflösung ist bei 86 cm Schluss. " +
+                 "Der ältere Treiber „FUJITSU fi-…“ schafft nur 35,6 cm; sind beide installiert, nimmt das Programm PaperStream IP. " +
+                 "Die maximale Länge hängt vom Scannermodell ab. Lange Seiten ergeben größere Dateien."),
         "paper-tab");
 
     private static HelpTopic TopicScanCarrierSheet() => Page("scan-carrier", "Mit dem Trägerblatt scannen",

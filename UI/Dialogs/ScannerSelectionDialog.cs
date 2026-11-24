@@ -258,6 +258,10 @@ internal class ScannerSelectionDialog : ModernWindow
         return ConnectionType.Unknown;
     }
 
+    private static bool IsPaperStream(DataSource s)
+        => (s.ProductFamily ?? "").Contains("PaperStream", StringComparison.OrdinalIgnoreCase)
+        || (s.Name ?? "").Contains("PaperStream", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>
     /// Selects the best TWAIN data source based on saved preference and USB preference.
     /// Called by ScanPipeline, ScannerStateService, and TrayApplicationContext.
@@ -279,9 +283,12 @@ internal class ScannerSelectionDialog : ModernWindow
         if (sources.Count == 0)
             return null;
 
-        // Sort by connection type: USB first, then Unknown, then Network
+        // Sort by connection type: USB first, then Unknown, then Network. For the same device
+        // PaperStream IP comes before the older Fujitsu TWAIN driver: only it supports long
+        // pages beyond 14 inches, border detection and multi-feed detection.
         var sorted = sources
             .OrderBy(s => GetConnectionType(s))
+            .ThenBy(s => IsPaperStream(s) ? 0 : 1)
             .ThenBy(s => s.Name)
             .ToList();
 

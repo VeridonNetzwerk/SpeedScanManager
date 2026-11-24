@@ -823,7 +823,9 @@ internal class ScanPipeline : IDisposable
         if (IsLongPageMode)
         {
             // Long page: custom frame of 8.5 x 125 inches (Automatic paper size, no length detection).
-            var longFrame = new TWFrame { Left = 0, Top = 0, Right = 8.5f, Bottom = 125f };
+            // Fujitsu scanners allow pages longer than 34 inches (864 mm) only up to 200 dpi.
+            float maxLength = _result.NegotiatedDpiY is > 0 and <= 200 ? 125f : 34f;
+            var longFrame = new TWFrame { Left = 0, Top = 0, Right = 8.5f, Bottom = maxLength };
             SetSupportedSizeNone();
             SetCap("ICapFrames", caps.ICapFrames, longFrame);
             try
@@ -846,7 +848,7 @@ internal class ScanPipeline : IDisposable
             if (IsFujitsuFamily(src))
             {
                 SetCustomCapFix32(40983, 8.5f);
-                SetCustomCapFix32(40984, 125f);
+                SetCustomCapFix32(40984, maxLength);
                 SetCustomCapUInt16(41095, 3);
             }
             else
