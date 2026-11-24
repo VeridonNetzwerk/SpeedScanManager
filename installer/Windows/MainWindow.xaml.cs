@@ -353,6 +353,9 @@ public partial class MainWindow : Window
         BtnStartInstall.IsEnabled = false;
         BtnBrowse.IsEnabled = false;
         TxtInstallPath.IsEnabled = false;
+        SetOptionsEnabled(false);
+        bool desktop = ChkDesktop.IsChecked == true, startMenu = ChkStartMenu.IsChecked == true,
+            scanButton = ChkScanButton.IsChecked == true;
 
         // Show progress
         ProgressPanel.Visibility = Visibility.Visible;
@@ -459,15 +462,18 @@ public partial class MainWindow : Window
             await Task.Delay(100);
 
             // Scan button setup (WIA handler registration) — the setup already runs elevated
-            StatusText.Text = "Registriere Scan-Taste...";
             InstallProgress.Value = 88;
-            var setupExit = await InstallerCore.RunAppHelperAsync(targetDir, "/setup", TimeSpan.FromSeconds(30));
-            Debug.WriteLine($"Scan button setup exit code: {setupExit?.ToString() ?? "n/a"}");
+            if (scanButton)
+            {
+                StatusText.Text = "Registriere Scan-Taste...";
+                var setupExit = await InstallerCore.RunAppHelperAsync(targetDir, "/setup", TimeSpan.FromSeconds(30));
+                Debug.WriteLine($"Scan button setup exit code: {setupExit?.ToString() ?? "n/a"}");
+            }
 
             // Shortcuts
             StatusText.Text = "Erstelle Verknüpfungen...";
             InstallProgress.Value = 94;
-            CreateShortcuts(targetDir);
+            CreateShortcuts(targetDir, desktop, startMenu);
             await Task.Delay(100);
 
             // Done
@@ -501,6 +507,7 @@ public partial class MainWindow : Window
             BtnStartInstall.IsEnabled = true;
             BtnBrowse.IsEnabled = true;
             TxtInstallPath.IsEnabled = true;
+            SetOptionsEnabled(true);
         }
     }
 
@@ -546,27 +553,50 @@ public partial class MainWindow : Window
         appKey.SetValue("InstallDir", targetDir);
     }
 
-    private static void CreateShortcuts(string targetDir)
+    private void SetOptionsEnabled(bool enabled)
+    {
+        ChkDesktop.IsEnabled = enabled;
+        ChkStartMenu.IsEnabled = enabled;
+        ChkScanButton.IsEnabled = enabled;
+    }
+
+    /// <summary>
+    /// Creates the selected shortcuts. Unselected ones are removed, so an update with a
+    /// changed choice doesn't leave an old shortcut behind.
+    /// </summary>
+    private static void CreateShortcuts(string targetDir, bool desktop, bool startMenu)
     {
         var exePath = Path.Combine(targetDir, InstallerCore.AppExeName);
         var startMenuDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms),
             ProductName);
-        Directory.CreateDirectory(startMenuDir);
-
-        // Start Menu shortcut
         var shortcutPath = Path.Combine(startMenuDir, $"{ProductName}.lnk");
-        CreateShortcut(shortcutPath, exePath, targetDir);
-
-        // Uninstall shortcut
         var uninstallPath = Path.Combine(startMenuDir, "Deinstallieren.lnk");
-        CreateShortcut(uninstallPath, Path.Combine(targetDir, InstallerCore.UninstallerExeName), targetDir, "--uninstall");
+        if (startMenu)
+        {
+            Directory.CreateDirectory(startMenuDir);
+            CreateShortcut(shortcutPath, exePath, targetDir);
+            CreateShortcut(uninstallPath, Path.Combine(targetDir, InstallerCore.UninstallerExeName), targetDir, "--uninstall");
+        }
+        else
+        {
+            try { File.Delete(shortcutPath); } catch { }
+            try { File.Delete(uninstallPath); } catch { }
+            try
+            {
+                if (Directory.Exists(startMenuDir) && !Directory.EnumerateFileSystemEntries(startMenuDir).Any())
+                    Directory.Delete(startMenuDir);
+            }
+            catch { }
+        }
 
-        // Desktop shortcut
         var desktopPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory),
             $"{ProductName}.lnk");
-        CreateShortcut(desktopPath, exePath, targetDir);
+        if (desktop)
+            CreateShortcut(desktopPath, exePath, targetDir);
+        else
+            try { File.Delete(desktopPath); } catch { }
     }
 
     private static void CreateShortcut(string shortcutPath, string targetPath, string workingDir, string? arguments = null)

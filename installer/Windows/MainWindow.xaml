@@ -166,34 +166,24 @@
                                 </Grid>
                             </Border>
 
-                            <!-- What gets set up -->
+                            <!-- Options -->
                             <Border Grid.Row="2" Style="{StaticResource Card}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <Border Style="{StaticResource BigIconTile}" Background="#10B981">
-                                        <TextBlock Text="&#xE73E;" Style="{StaticResource BigTileGlyph}"/>
+                                    <Border Style="{StaticResource BigIconTile}" Background="#8B5CF6">
+                                        <TextBlock Text="&#xE713;" Style="{StaticResource BigTileGlyph}"/>
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="14,0,0,0">
-                                        <TextBlock Text="Das wird eingerichtet" Style="{StaticResource CardTitle}"
-                                                   Margin="0,0,0,6"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,2">
-                                            <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="11"
-                                                       Foreground="{DynamicResource AccentBrush}" Margin="0,2,8,0"/>
-                                            <TextBlock Text="Verknüpfungen im Startmenü und auf dem Desktop" Style="{StaticResource CardText}"/>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,2">
-                                            <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="11"
-                                                       Foreground="{DynamicResource AccentBrush}" Margin="0,2,8,0"/>
-                                            <TextBlock Text="Die Scan-Taste am Scanner startet SpeedScan Manager" Style="{StaticResource CardText}"/>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,2">
-                                            <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="11"
-                                                       Foreground="{DynamicResource AccentBrush}" Margin="0,2,8,0"/>
-                                            <TextBlock Text="Deinstallation über Windows-Einstellungen › Apps" Style="{StaticResource CardText}"/>
-                                        </StackPanel>
+                                        <TextBlock Text="Optionen" Style="{StaticResource CardTitle}" Margin="0,0,0,10"/>
+                                        <CheckBox x:Name="ChkDesktop" Style="{StaticResource FlatCheckBox}" IsChecked="True"
+                                                  Content="Verknüpfung auf dem Desktop" Margin="0,0,0,8"/>
+                                        <CheckBox x:Name="ChkStartMenu" Style="{StaticResource FlatCheckBox}" IsChecked="True"
+                                                  Content="Eintrag im Startmenü" Margin="0,0,0,8"/>
+                                        <CheckBox x:Name="ChkScanButton" Style="{StaticResource FlatCheckBox}" IsChecked="True"
+                                                  Content="Scan-Taste am Scanner startet SpeedScan Manager"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>
