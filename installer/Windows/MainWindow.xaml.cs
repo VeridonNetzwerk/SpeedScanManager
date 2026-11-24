@@ -356,8 +356,7 @@ public partial class MainWindow : Window
         BtnBrowse.IsEnabled = false;
         TxtInstallPath.IsEnabled = false;
         SetOptionsEnabled(false);
-        bool desktop = ChkDesktop.IsChecked == true, startMenu = ChkStartMenu.IsChecked == true,
-            launch = ChkLaunch.IsChecked == true;
+        bool desktop = ChkDesktop.IsChecked == true, startMenu = ChkStartMenu.IsChecked == true;
 
         // Show progress
         ProgressPanel.Visibility = Visibility.Visible;
@@ -479,15 +478,8 @@ public partial class MainWindow : Window
             InstallProgress.Value = 100;
             StatusText.Text = "Installation erfolgreich abgeschlossen!";
 
-            await Task.Delay(1200);
-
-            if (launch)
-            {
-                // The setup runs elevated; start the app with normal user rights
-                InstallerCore.StartDeElevated(Path.Combine(targetDir, InstallerCore.AppExeName));
-            }
-
-            Close();
+            await Task.Delay(400);
+            ShowFinish(targetDir);
         }
         catch (Exception ex)
         {
@@ -547,11 +539,34 @@ public partial class MainWindow : Window
         appKey.SetValue("InstallDir", targetDir);
     }
 
+    private string? _installedDir;
+
+    /// <summary>Finish page: replaces the install page, navigation is locked.</summary>
+    private void ShowFinish(string targetDir)
+    {
+        _installedDir = targetDir;
+        WelcomeView.Visibility = Visibility.Collapsed;
+        ReadmeView.Visibility = Visibility.Collapsed;
+        SupportView.Visibility = Visibility.Collapsed;
+        FinishView.Visibility = Visibility.Visible;
+        BtnInstall.IsEnabled = BtnReadme.IsEnabled = BtnSupport.IsEnabled = false;
+        BtnClose.IsEnabled = true;
+    }
+
+    private void OnFinishClick(object sender, RoutedEventArgs e)
+    {
+        if (_installedDir != null && ChkLaunch.IsChecked == true)
+        {
+            // The setup runs elevated; start the app with normal user rights
+            InstallerCore.StartDeElevated(Path.Combine(_installedDir, InstallerCore.AppExeName));
+        }
+        Close();
+    }
+
     private void SetOptionsEnabled(bool enabled)
     {
         ChkDesktop.IsEnabled = enabled;
         ChkStartMenu.IsEnabled = enabled;
-        ChkLaunch.IsEnabled = enabled;
     }
 
     /// <summary>

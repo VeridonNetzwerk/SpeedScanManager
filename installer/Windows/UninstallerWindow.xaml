@@ -61,7 +61,62 @@
 
             <!-- ===== CONTENT ===== -->
             <Grid Grid.Row="1" Background="{DynamicResource ContentBrush}">
-                <Grid Margin="28,22,28,20">
+                <!-- ===== FINISH VIEW ===== -->
+                <Grid x:Name="FinishView" Visibility="Collapsed" Margin="28,22,28,20">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="440">
+                        <Border Width="64" Height="64" CornerRadius="32" Background="#23A55A" HorizontalAlignment="Center">
+                            <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="28" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Deinstallation abgeschlossen" Style="{StaticResource PageTitle}" FontSize="22"
+                                   HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                        <TextBlock Text="SpeedScan Manager wurde von diesem Computer entfernt." Style="{StaticResource PageSubtitle}"
+                                   HorizontalAlignment="Center" TextAlignment="Center" Margin="0,4,0,18"/>
+                        <Border Style="{StaticResource Card}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource BigIconTile}" Background="#3B82F6">
+                                    <TextBlock Text="&#xE946;" Style="{StaticResource BigTileGlyph}"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                                    <TextBlock Text="Danke fürs Ausprobieren" Style="{StaticResource CardTitle}"/>
+                                    <TextBlock Text="Programm, Verknüpfungen und Scan-Tasten-Registrierung sind entfernt. Du kannst SpeedScan Manager jederzeit wieder installieren." Style="{StaticResource CardText}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <Border x:Name="FinishWarning" Style="{StaticResource Card}" Margin="0,10,0,0" Visibility="Collapsed">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource BigIconTile}" Background="#F59E0B">
+                                    <TextBlock Text="&#xE7BA;" Style="{StaticResource BigTileGlyph}"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                                    <TextBlock Text="Bitte beachten" Style="{StaticResource CardTitle}"/>
+                                    <TextBlock x:Name="FinishWarningText" Style="{StaticResource CardText}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                    <Button Grid.Row="1" Style="{StaticResource AccentButton}" HorizontalAlignment="Right"
+                            MinWidth="140" Click="OnCancelClick">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE73E;" Style="{StaticResource ButtonGlyph}"/>
+                            <TextBlock Text="Schließen"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <Grid x:Name="MainView" Margin="28,22,28,20">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>

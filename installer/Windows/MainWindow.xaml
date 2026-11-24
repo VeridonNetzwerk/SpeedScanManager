@@ -180,9 +180,7 @@
                                         <CheckBox x:Name="ChkDesktop" Style="{StaticResource FlatCheckBox}" IsChecked="True"
                                                   Content="Verknüpfung auf dem Desktop" Margin="0,0,0,8"/>
                                         <CheckBox x:Name="ChkStartMenu" Style="{StaticResource FlatCheckBox}" IsChecked="True"
-                                                  Content="Eintrag im Startmenü" Margin="0,0,0,8"/>
-                                        <CheckBox x:Name="ChkLaunch" Style="{StaticResource FlatCheckBox}" IsChecked="True"
-                                                  Content="SpeedScan Manager nach der Installation starten"/>
+                                                  Content="Eintrag im Startmenü"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -204,6 +202,63 @@
                                 <Button Grid.Column="1" x:Name="BtnStartInstall" Style="{StaticResource AccentButton}"
                                         Content="Installieren" MinWidth="140" Click="OnStartInstallClick"/>
                             </Grid>
+                        </Grid>
+
+                        <!-- ===== FINISH VIEW ===== -->
+                        <Grid x:Name="FinishView" Visibility="Collapsed" Margin="28,22,28,20">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="440">
+                                <Border Width="64" Height="64" CornerRadius="32" Background="#23A55A" HorizontalAlignment="Center">
+                                    <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="28" Foreground="White"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Installation abgeschlossen" Style="{StaticResource PageTitle}" FontSize="22"
+                                           HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                                <TextBlock Text="SpeedScan Manager ist bereit zum Scannen." Style="{StaticResource PageSubtitle}"
+                                           HorizontalAlignment="Center" TextAlignment="Center" Margin="0,4,0,18"/>
+                                <Border Style="{StaticResource Card}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Style="{StaticResource BigIconTile}" Background="#3B82F6">
+                                            <TextBlock Text="&#xE946;" Style="{StaticResource BigTileGlyph}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                                            <TextBlock Text="So geht es los" Style="{StaticResource CardTitle}"/>
+                                            <TextBlock Text="SpeedScan Manager läuft im Infobereich der Taskleiste (unten rechts). Papier einlegen und die Scan-Taste am Scanner drücken – fertig." Style="{StaticResource CardText}" Margin="0,2,0,0"/>
+                                            <CheckBox x:Name="ChkLaunch" Style="{StaticResource FlatCheckBox}" IsChecked="True"
+                                                      Content="SpeedScan Manager jetzt starten" Margin="0,10,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <Border x:Name="FinishWarning" Style="{StaticResource Card}" Margin="0,10,0,0" Visibility="Collapsed">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Style="{StaticResource BigIconTile}" Background="#F59E0B">
+                                            <TextBlock Text="&#xE7BA;" Style="{StaticResource BigTileGlyph}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                                            <TextBlock Text="Bitte beachten" Style="{StaticResource CardTitle}"/>
+                                            <TextBlock x:Name="FinishWarningText" Style="{StaticResource CardText}" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                            <Button Grid.Row="1" Style="{StaticResource AccentButton}" HorizontalAlignment="Right"
+                                    MinWidth="140" Click="OnFinishClick">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE73E;" Style="{StaticResource ButtonGlyph}"/>
+                                    <TextBlock Text="Fertig"/>
+                                </StackPanel>
+                            </Button>
                         </Grid>
 
                         <!-- ===== README VIEW ===== -->

@@ -204,22 +204,15 @@ public partial class UninstallerWindow : Window
                     "Die Sicherung der ursprünglichen Windows-Einstellungen bleibt in der Registry erhalten.");
             }
 
-            if (warnings.Count == 0)
+            // Finish page instead of a message box
+            if (warnings.Count > 0)
             {
-                MessageBox.Show(
-                    "SpeedScan Manager wurde erfolgreich deinstalliert.",
-                    "Deinstallation abgeschlossen",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                FinishWarningText.Text = string.Join("\n\n", warnings);
+                FinishWarning.Visibility = Visibility.Visible;
             }
-            else
-            {
-                MessageBox.Show(
-                    "SpeedScan Manager wurde aus Windows entfernt, aber:\n\n" + string.Join("\n\n", warnings),
-                    "Deinstallation abgeschlossen",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-
-            Close();
+            MainView.Visibility = Visibility.Collapsed;
+            FinishView.Visibility = Visibility.Visible;
+            BtnClose.IsEnabled = true;
         }
         catch (Exception ex)
         {
