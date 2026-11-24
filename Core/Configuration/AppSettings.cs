@@ -39,6 +39,8 @@ internal class AppSettings
     public ThemeMode ThemeMode { get; set; } = ThemeMode.System;
     /// <summary>The guided tour of the settings window was shown (first start).</summary>
     public bool TutorialShown { get; set; }
+    /// <summary>The guided tour of the profile management was shown.</summary>
+    public bool ProfileTourShown { get; set; }
 
     /// <summary>Current scan settings (full payload). Null only in files written by old versions.</summary>
     public ScanSettings? ScanSettings { get; set; }

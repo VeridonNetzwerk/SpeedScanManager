@@ -112,7 +112,7 @@ internal class SaveTabContent : ModernStack
 
     private void OpenFileNameFormatDialog()
     {
-        using var dialog = new FileNameFormatDialog
+        var dialog = new FileNameFormatDialog
         {
             // Restore previous settings
             SelectedMode = _settings.FileNameFormat,
@@ -129,13 +129,13 @@ internal class SaveTabContent : ModernStack
             UpdatePreview();
         };
 
-        if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
+        OwnedWindows.Show(dialog, FindForm(), key: "edit:FileNameFormatDialog", onOk: () =>
         {
             _settings.FileNameFormat = dialog.SelectedMode;
             _settings.CustomFileName = dialog.CustomFileName;
             _settings.CounterDigits = dialog.CounterDigits;
             UpdatePreview();
-        }
+        });
     }
 
     /// <summary>

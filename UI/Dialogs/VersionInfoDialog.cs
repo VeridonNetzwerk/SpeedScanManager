@@ -149,8 +149,7 @@ internal class VersionInfoDialog : ModernWindow
         ThemeManager.SetGlyph(btnDetail, Glyph.Scanner);
         btnDetail.Click += (s, e) =>
         {
-            using var dlg = new ScannerDriverInfoDialog(_scannerState);
-            dlg.ShowDialog(this);
+            OwnedWindows.Show(new ScannerDriverInfoDialog(_scannerState) { StartPosition = FormStartPosition.CenterParent }, this);
         };
         var cardDetail = new SettingsCard();
         cardDetail.AddRow("Scanner- und Treiberinformationen", "Scanner, Treiber und Dateiversionen.", btnDetail);

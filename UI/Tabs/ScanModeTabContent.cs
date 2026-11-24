@@ -314,7 +314,7 @@ internal class ScanModeTabContent : ModernStack
 
     private void OpenOptionsDialog()
     {
-        using var dialog = new ScanModeOptionsDialog(_settings.ColorMode)
+        var dialog = new ScanModeOptionsDialog(_settings.ColorMode)
         {
             Brightness = _settings.Brightness,
             TextOnlySettings = _settings.TextOnlySettings,
@@ -324,7 +324,7 @@ internal class ScanModeTabContent : ModernStack
             FaceUpFeeding = _settings.FaceUpFeeding
         };
 
-        if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
+        OwnedWindows.Show(dialog, FindForm(), key: "edit:ScanModeOptionsDialog", onOk: () =>
         {
             _settings.Brightness = dialog.Brightness;
             _settings.TextOnlySettings = dialog.TextOnlySettings;
@@ -332,6 +332,6 @@ internal class ScanModeTabContent : ModernStack
             _settings.AllowDeskew = dialog.AllowDeskew;
             _settings.AllowAutoRotate = dialog.AllowAutoRotate;
             _settings.FaceUpFeeding = dialog.FaceUpFeeding;
-        }
+        });
     }
 }

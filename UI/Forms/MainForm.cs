@@ -11,7 +11,7 @@ namespace SpeedScanManager;
 /// the live settings and raise <see cref="SettingsApplied"/>. Abbrechen, Esc and the
 /// window's close button discard unapplied changes.
 /// </summary>
-internal class MainForm : ModernWindow
+internal class MainForm : ModernWindow, IOwnedWindowHost
 {
     private const int PageGeneral = 0;
     private const int PageApplication = 1;
@@ -107,6 +107,9 @@ internal class MainForm : ModernWindow
         _profileManager = profileManager;
         _appSettings = appSettings;
         _activeProfile = _profileManager.GetByName(_appSettings.SelectedProfileName);
+        // Profilverwaltung isn't modal any more: follow its changes while both are open
+        _profileManager.Changed += OnProfilesChanged;
+        FormClosed += (_, _) => _profileManager.Changed -= OnProfilesChanged;
 
         SuspendLayout();
         StartPosition = FormStartPosition.CenterScreen;
@@ -117,10 +120,12 @@ internal class MainForm : ModernWindow
         HelpClicked += (s, e) =>
         {
             int page = Math.Max(0, _nav!.SelectedIndex);
-            using var help = new HelpForm(PageHelpTopics[page], offerTour: true);
-            help.ShowDialog(this);
-            if (help.TourRequested)
-                StartTutorial();
+            var help = new HelpForm(PageHelpTopics[page], offerTour: true);
+            OwnedWindows.Show(help, this, key: "help:main", onClosed: () =>
+            {
+                if (help.TourRequested && !IsDisposed && Visible)
+                    BeginInvoke(StartTutorial);
+            });
         };
         ShowInTaskbar = true;
         // Every page fits without scrolling at this size (compact cards, two columns on Allgemein).
@@ -616,6 +621,7 @@ internal class MainForm : ModernWindow
 
     private void LoadProfile(ScanProfile profile)
     {
+        OwnedWindows.CancelPrefix("edit:"); // they hold values of the previous profile
         profile.ApplyTo(_working);
         _working.Normalize();
         _activeProfile = profile;
@@ -647,10 +653,15 @@ internal class MainForm : ModernWindow
 
     private void OpenProfileManagement()
     {
-        using var dlg = new ProfileManagementDialog(_profileManager);
-        dlg.ShowDialog(this);
-        RefreshProfileDropdown();
-        UpdateApplyButton();
+        // This window follows the changes itself (ProfileManager.Changed)
+        var dlg = new ProfileManagementDialog(_profileManager) { StartPosition = FormStartPosition.CenterParent };
+        if (!_appSettings.ProfileTourShown && OwnedWindows.Find<ProfileManagementDialog>() == null)
+        {
+            _appSettings.ProfileTourShown = true;
+            _appSettings.Save();
+            dlg.StartTutorial(); // starts once the window is shown
+        }
+        OwnedWindows.Show(dlg, this);
     }
 
     /// <summary>
@@ -764,6 +775,7 @@ internal class MainForm : ModernWindow
     /// </summary>
     private void CancelSettings()
     {
+        OwnedWindows.CancelPrefix("edit:");
         _working.RestoreFrom(_liveSettings);
         _sessionBaseline.RestoreFrom(_working);
         _activeProfile = _profileManager.GetByName(_appSettings.SelectedProfileName);
@@ -804,6 +816,25 @@ internal class MainForm : ModernWindow
         _applyButton.Enabled = changed;
         FooterHint = changed ? "Nicht übernommene Änderungen" : "";
     }
+
+    /// <summary>An option window of a page (PDF, Dateiname, …) was closed with OK.</summary>
+    void IOwnedWindowHost.OwnedWindowApplied() => OnSettingsChanged();
+
+    private void OnProfilesChanged()
+    {
+        // Coalesce: profile changes come in bursts (save, rename, …) and during own actions
+        if (_profilesRefreshPending || IsDisposed || !IsHandleCreated) return;
+        _profilesRefreshPending = true;
+        BeginInvoke(() =>
+        {
+            _profilesRefreshPending = false;
+            if (IsDisposed) return;
+            RefreshProfileDropdown();
+            UpdateApplyButton();
+        });
+    }
+
+    private bool _profilesRefreshPending;
 
     private void OnSettingsChanged()
     {

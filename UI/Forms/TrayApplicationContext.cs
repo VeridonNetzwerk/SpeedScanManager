@@ -251,8 +251,8 @@ internal class TrayApplicationContext : ApplicationContext
         _miScan = new ToolStripMenuItem("Scan");
         _miCancelScan = new ToolStripMenuItem("Scan abbrechen") { Visible = false };
         _miSelectScanner = new ToolStripMenuItem("Scanner auswählen...");
-        _miScanKeySettings = new ToolStripMenuItem("Einstellungen der SCAN Taste...");
-        _miSetupScanButton = new ToolStripMenuItem("Scan-Taste einrichten...");
+        _miScanKeySettings = new ToolStripMenuItem("Öffnen");
+        _miSetupScanButton = new ToolStripMenuItem("Scan-Taste initialisieren");
         _miProfileManagement = new ToolStripMenuItem("Profilverwaltung...");
         _miEmailSettings = new ToolStripMenuItem("E-Mail-Einstellungen...");
         _miPrintSettings = new ToolStripMenuItem("Druckeinstellungen...");
@@ -276,7 +276,7 @@ internal class TrayApplicationContext : ApplicationContext
         miVersionInfo.Click += (_, _) => ShowVersionInfo();
         _miExit.Click += (_, _) => ExitApplication();
 
-        _miHelp.DropDownItems.AddRange(new ToolStripItem[] { miHelpTopics, miVersionInfo });
+        _miHelp.DropDownItems.AddRange(new ToolStripItem[] { miHelpTopics, _miSetupScanButton, new ToolStripSeparator(), miVersionInfo });
 
         // Design: System / Hell / Dunkel (checked = current)
         _miDesign = new ToolStripMenuItem("Design");
@@ -314,7 +314,6 @@ internal class TrayApplicationContext : ApplicationContext
             new ToolStripSeparator(),
             _miSelectScanner,
             _miScanKeySettings,
-            _miSetupScanButton,
             _miProfileManagement,
             _miEmailSettings,
             _miPrintSettings,
@@ -537,6 +536,7 @@ internal class TrayApplicationContext : ApplicationContext
         }
 
         _busy = true;
+        OwnedWindows.Cancel<ScannerSelectionDialog>(); // it talks to TWAIN, the scan needs it
         _cancelRequestedByUser = false;
         UpdateTrayVisuals();
         ScanResult? scan = null;
@@ -1274,6 +1274,16 @@ internal class TrayApplicationContext : ApplicationContext
 
     // ───────────────────────── Settings windows ─────────────────────────
 
+    /// <summary>
+    /// Owner for dialogs opened from the tray: the settings window when it is open (the
+    /// dialog then opens over it), otherwise the hidden helper window (the dialog opens on
+    /// the screen with the mouse cursor, see ModernWindow).
+    /// </summary>
+    private IWin32Window DialogOwner =>
+        _mainForm is { IsDisposed: false, Visible: true } && _mainForm.WindowState != FormWindowState.Minimized
+            ? _mainForm
+            : _hiddenWindow;
+
     private void ShowHelpDialog()
     {
         if (_helpForm != null && !_helpForm.IsDisposed)
@@ -1284,28 +1294,27 @@ internal class TrayApplicationContext : ApplicationContext
 
         _helpForm = new HelpForm("root");
         _helpForm.FormClosed += (_, _) => _helpForm = null;
-        _helpForm.Show(_hiddenWindow);
+        _helpForm.Show(DialogOwner);
         WindowActivation.BringToFront(_helpForm);
     }
 
     private void ShowVersionInfo()
     {
-        using var dlg = new VersionInfoDialog(_scannerStateService?.LastState);
-        dlg.StartPosition = FormStartPosition.CenterScreen;
-        dlg.TopMost = true;
-        dlg.ShowDialog(_hiddenWindow);
+        var dlg = new VersionInfoDialog(_scannerStateService?.LastState) { StartPosition = FormStartPosition.CenterParent };
+        OwnedWindows.Show(dlg, DialogOwner);
     }
 
     private void OpenProfileManagement()
     {
-        using var dlg = new ProfileManagementDialog(_profileManager);
-        if (_mainForm == null || !_mainForm.Visible)
+        // The settings window follows profile changes itself (ProfileManager.Changed)
+        var dlg = new ProfileManagementDialog(_profileManager) { StartPosition = FormStartPosition.CenterParent };
+        if (!_appSettings.ProfileTourShown && OwnedWindows.Find<ProfileManagementDialog>() == null)
         {
-            dlg.StartPosition = FormStartPosition.CenterScreen;
-            dlg.TopMost = true;
+            _appSettings.ProfileTourShown = true;
+            _appSettings.Save();
+            dlg.StartTutorial(); // starts once the window is shown
         }
-        dlg.ShowDialog(_mainForm != null && _mainForm.Visible ? _mainForm : _hiddenWindow);
-        _mainForm?.RefreshProfileDropdown();
+        OwnedWindows.Show(dlg, DialogOwner);
     }
 
     /// <summary>
@@ -1315,37 +1324,35 @@ internal class TrayApplicationContext : ApplicationContext
     /// </summary>
     private void ShowEmailSettings()
     {
-        using var dlg = new ScanToEmailOptionsDialog
+        var dlg = new ScanToEmailOptionsDialog
         {
             Recipient = _settings.EmailRecipient,
             SubjectTemplate = _settings.EmailSubjectTemplate,
-            StartPosition = FormStartPosition.CenterScreen,
-            TopMost = true
+            StartPosition = FormStartPosition.CenterParent,
         };
-        if (dlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
-            return;
-
-        string recipient = dlg.Recipient, subject = dlg.SubjectTemplate;
-        ApplyTraySettingChange(s =>
+        OwnedWindows.Show(dlg, DialogOwner, onOk: () =>
         {
-            s.EmailRecipient = recipient;
-            s.EmailSubjectTemplate = subject;
+            string recipient = dlg.Recipient, subject = dlg.SubjectTemplate;
+            ApplyTraySettingChange(s =>
+            {
+                s.EmailRecipient = recipient;
+                s.EmailSubjectTemplate = subject;
+            });
         });
     }
 
     private void ShowPrintSettings()
     {
-        using var dlg = new ScanToPrintOptionsDialog
+        var dlg = new ScanToPrintOptionsDialog
         {
             SelectedPrinterName = _settings.PrinterName,
-            StartPosition = FormStartPosition.CenterScreen,
-            TopMost = true
+            StartPosition = FormStartPosition.CenterParent,
         };
-        if (dlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
-            return;
-
-        string printer = dlg.SelectedPrinterName;
-        ApplyTraySettingChange(s => s.PrinterName = printer);
+        OwnedWindows.Show(dlg, DialogOwner, onOk: () =>
+        {
+            string printer = dlg.SelectedPrinterName;
+            ApplyTraySettingChange(s => s.PrinterName = printer);
+        });
     }
 
     /// <summary>
@@ -1388,7 +1395,7 @@ internal class TrayApplicationContext : ApplicationContext
         _appSettings.Save();
     }
 
-    /// <summary>"Scan-Taste einrichten...": runs the scan button setup again (one UAC prompt).</summary>
+    /// <summary>"Hilfe > Scan-Taste initialisieren": runs the scan button setup again (one UAC prompt).</summary>
     private async void SetupScanButton()
     {
         _miSetupScanButton.Enabled = false;
@@ -1502,15 +1509,17 @@ internal class TrayApplicationContext : ApplicationContext
             return;
         }
 
-        string? selected;
-        using (var dlg = new ScannerSelectionDialog(_twain, _appSettings.SelectedSourceName))
+        // Closed when a scan starts (it talks to TWAIN, see StartScan)
+        var dlg = new ScannerSelectionDialog(_twain, _appSettings.SelectedSourceName) { StartPosition = FormStartPosition.CenterParent };
+        OwnedWindows.Show(dlg, DialogOwner, onOk: () =>
         {
-            dlg.TopMost = true;
-            if (dlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
-                return;
-            selected = dlg.SelectedSourceName;
-        }
+            string? selected = dlg.SelectedSourceName;
+            _hiddenWindow.BeginInvoke(() => ApplyScannerSelection(selected));
+        });
+    }
 
+    private void ApplyScannerSelection(string? selected)
+    {
         _appSettings.SelectedSourceName = selected;
         _appSettings.Save();
         LogDiag($"Scanner selection changed to: {selected ?? "(auto)"}");
@@ -1908,12 +1917,31 @@ internal class TrayApplicationContext : ApplicationContext
         {
             if (text.Length > 250) text = text.Substring(0, 249) + "…";
             if (title.Length > 60) title = title.Substring(0, 60);
+            // Windows shows the tray icon in the notification header: use the app logo for it
+            // (not the "not connected" or "scanning" state icon), then restore the state icon.
+            _notifyIcon.Icon = GetConnectedIcon();
             _notifyIcon.ShowBalloonTip(6000, title, text, icon);
+            _balloonIconTimer ??= CreateBalloonIconTimer();
+            _balloonIconTimer.Stop();
+            _balloonIconTimer.Start();
         }
         catch (Exception ex)
         {
             LogDiag($"ShowBalloon failed: {ex.Message}");
         }
+    }
+
+    private System.Windows.Forms.Timer? _balloonIconTimer;
+
+    private System.Windows.Forms.Timer CreateBalloonIconTimer()
+    {
+        var timer = new System.Windows.Forms.Timer { Interval = 1500 };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            UpdateTrayVisuals();
+        };
+        return timer;
     }
 
     private Icon GetConnectedIcon() => _cachedConnectedIcon ??= TrayIcons.CreateConnectedIcon();
@@ -1945,6 +1973,7 @@ internal class TrayApplicationContext : ApplicationContext
             _progressTimer.Dispose();
             _leftClickTimer.Stop();
             _leftClickTimer.Dispose();
+            _balloonIconTimer?.Dispose();
 
             try
             {

@@ -103,6 +103,64 @@ internal class ProfileManagementDialog : ModernWindow
         RefreshList();
         ThemeManager.Apply(this);
         ResumeLayout(true);
+
+        // The settings window may change profiles while this one is open (it isn't locked)
+        _manager.Changed += OnProfilesChanged;
+        FormClosed += (_, _) => _manager.Changed -= OnProfilesChanged;
+    }
+
+    private void OnProfilesChanged()
+    {
+        if (IsDisposed) return;
+        string? selected = _listBox.SelectedItem?.ToString();
+        RefreshList();
+        int idx = selected == null ? -1 : _listBox.Items.IndexOf(selected);
+        if (idx >= 0) _listBox.SelectedIndex = idx;
+    }
+
+    private TutorialOverlay? _tour;
+
+    /// <summary>Guided tour through the profile management (first time it is opened).</summary>
+    public void StartTutorial()
+    {
+        if (_tour != null || IsDisposed) return;
+        if (!Visible || !IsHandleCreated)
+        {
+            Shown += (_, _) => BeginInvoke(StartTutorial);
+            return;
+        }
+        Func<Rectangle?> Of(params Control[] controls) => () =>
+        {
+            var r = controls[0].RectangleToScreen(controls[0].ClientRectangle);
+            foreach (var c in controls.Skip(1))
+                r = Rectangle.Union(r, c.RectangleToScreen(c.ClientRectangle));
+            return r;
+        };
+
+        var steps = new List<TutorialOverlay.Step>
+        {
+            new("Profile",
+                "Ein Profil speichert alle Scaneinstellungen unter einem Namen – z. B. „Belege“ in Schwarzweiß und „Fotos“ in Farbe. So wechselst du mit einem Klick zwischen ihnen.",
+                Glyph.User, IconColors.Blue),
+            new("Deine Profile",
+                "Hier stehen alle Profile. Die Standardprofile sind fest, eigene Profile kannst du umbenennen, löschen und sortieren.",
+                Glyph.Apps, IconColors.Purple, Of(_listBox)),
+            new("Neues Profil",
+                "„Hinzufügen...“ legt ein neues Profil an. Wähle es danach im Einstellungsfenster unter „Aktives Profil“ aus und stell alles ein – mit OK wird es im Profil gespeichert.",
+                Glyph.Plus, IconColors.Green, Of(_btnAdd)),
+            new("Umbenennen und löschen",
+                "Für eigene Profile: erst in der Liste auswählen, dann umbenennen oder löschen.",
+                Glyph.TextField, IconColors.Blue, Of(_btnRename, _btnDelete)),
+            new("Reihenfolge",
+                "„Nach oben“ und „Nach unten“ sortieren die Profile – in dieser Reihenfolge erscheinen sie auch in der Auswahl.",
+                Glyph.ChevronUp, IconColors.Slate, Of(_btnUp, _btnDown)),
+            new("Gut zu wissen",
+                "Profile gelten nur, wenn das Quick-Menü aus ist. Mit dem Quick-Menü wählst du das Ziel nach jedem Scan selbst.",
+                Glyph.Check, IconColors.Green, Of(_btnClose)),
+        };
+        _tour = new TutorialOverlay(this, steps);
+        _tour.Finished += (_, _) => _tour = null;
+        _tour.Start();
     }
 
     private static Button CreateActionButton(string text, Glyph glyph, Color? color = null)

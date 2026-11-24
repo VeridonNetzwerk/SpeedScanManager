@@ -221,9 +221,9 @@ internal class PaperTabContent : ModernStack
 
     private void OpenCustomSizeDialog()
     {
-        using var dialog = new CustomSizeDialog(_settings.CustomPaperSizes);
+        var dialog = new CustomSizeDialog(_settings.CustomPaperSizes);
 
-        if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
+        OwnedWindows.Show(dialog, FindForm(), key: "edit:CustomSizeDialog", onOk: () =>
         {
             // Keep the selected custom size if it still exists (matched by value)
             CustomPaperSize? selected = _settings.PaperSize == PaperSizeMode.Custom
@@ -252,7 +252,7 @@ internal class PaperTabContent : ModernStack
             }
 
             LoadFromSettings();
-        }
+        });
     }
 
     /// <summary>
@@ -354,7 +354,7 @@ internal class PaperTabContent : ModernStack
 
     private void OpenCarrierSheetDialog()
     {
-        using var dlg = new CarrierSheetDialog
+        var dlg = new CarrierSheetDialog
         {
             CarrierSheetEnabled = _settings.CarrierSheetEnabled,
             OutputSize = _settings.CarrierSheetOutputSize,
@@ -362,12 +362,12 @@ internal class PaperTabContent : ModernStack
             CustomHeight = _settings.CarrierSheetCustomHeight
         };
 
-        if (dlg.ShowDialog(FindForm()) == DialogResult.OK)
+        OwnedWindows.Show(dlg, FindForm(), key: "edit:CarrierSheetDialog", onOk: () =>
         {
             _settings.CarrierSheetEnabled = dlg.CarrierSheetEnabled;
             _settings.CarrierSheetOutputSize = dlg.OutputSize;
             _settings.CarrierSheetCustomWidth = dlg.CustomWidth;
             _settings.CarrierSheetCustomHeight = dlg.CustomHeight;
-        }
+        });
     }
 }

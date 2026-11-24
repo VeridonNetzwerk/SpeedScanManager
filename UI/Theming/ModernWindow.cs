@@ -312,14 +312,55 @@ internal class ModernWindow : Form
         base.OnLoad(e);
         IsLayoutScaled = true;
         if (AutoSizeToContent)
-        {
             FitToContent();
-            if (StartPosition == FormStartPosition.CenterParent && Owner != null)
-                CenterToParent();
-            else if (StartPosition is FormStartPosition.CenterScreen or FormStartPosition.CenterParent)
-                CenterToScreen();
-        }
+        PlaceOnVisibleScreen();
         UpdateRegion();
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetWindow(IntPtr hWnd, uint cmd);
+
+    private static bool IsShown(Form? f) =>
+        f is { IsDisposed: false, Visible: true } && f.Opacity > 0 && f.WindowState != FormWindowState.Minimized;
+
+    /// <summary>
+    /// Centers the window on its owner; with a hidden owner on the screen of the open
+    /// settings window, otherwise on the screen with the mouse cursor. Tray dialogs are owned
+    /// by an invisible, minimized helper window at -32000/-32000; WinForms would center them
+    /// on the screen nearest to that point (on multi-monitor setups a monitor the user is not
+    /// looking at, so a modal dialog seemed to lock up the settings window).
+    /// A window owned by a topmost window becomes topmost too, so it never opens behind it.
+    /// </summary>
+    private void PlaceOnVisibleScreen()
+    {
+        var owner = Owner;
+        if (owner == null && IsHandleCreated)
+            owner = FromHandle(GetWindow(Handle, 4 /* GW_OWNER */)) as Form;
+        if (owner is { TopMost: true } && !TopMost)
+            TopMost = true;
+        if (StartPosition is not (FormStartPosition.CenterScreen or FormStartPosition.CenterParent)) return;
+        bool ownerShown = IsShown(owner);
+        if (!ownerShown)
+        {
+            // The settings window, if it is open, is where the user is working
+            var main = Application.OpenForms.OfType<MainForm>().FirstOrDefault(f => !ReferenceEquals(f, this) && IsShown(f));
+            if (main != null)
+            {
+                owner = main;
+                ownerShown = true;
+            }
+        }
+        if (StartPosition == FormStartPosition.CenterParent && ownerShown)
+        {
+            var o = owner!.Bounds;
+            var area = Screen.FromControl(owner).WorkingArea;
+            int x = o.X + (o.Width - Width) / 2, y = o.Y + (o.Height - Height) / 2;
+            Location = new Point(Math.Clamp(x, area.Left, Math.Max(area.Left, area.Right - Width)),
+                                 Math.Clamp(y, area.Top, Math.Max(area.Top, area.Bottom - Height)));
+            return;
+        }
+        var wa = (ownerShown ? Screen.FromControl(owner!) : Screen.FromPoint(Cursor.Position)).WorkingArea;
+        Location = new Point(wa.X + Math.Max(0, (wa.Width - Width) / 2), wa.Y + Math.Max(0, (wa.Height - Height) / 2));
     }
 
     protected override void OnShown(EventArgs e)
@@ -389,8 +430,7 @@ internal class ModernWindow : Form
             return;
         }
         if (string.IsNullOrEmpty(HelpTopic)) return;
-        using var help = new HelpForm(HelpTopic);
-        help.ShowDialog(this);
+        OwnedWindows.Show(new HelpForm(HelpTopic), this, key: "help:" + GetHashCode());
     }
 
     internal void OnHeaderClose()

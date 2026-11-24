@@ -386,7 +386,7 @@ internal class FileTypeTabContent : ModernStack
 
     private void OpenPdfOptionsDialog()
     {
-        using var dialog = new PdfOptionsDialog
+        var dialog = new PdfOptionsDialog
         {
             SplitMode = _settings.PdfSplitMode,
             SplitPages = _settings.PdfSplitPages,
@@ -394,12 +394,12 @@ internal class FileTypeTabContent : ModernStack
             Password = _settings.PdfPassword
         };
 
-        if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
+        OwnedWindows.Show(dialog, FindForm(), key: "edit:PdfOptionsDialog", onOk: () =>
         {
             _settings.PdfSplitMode = dialog.SplitMode;
             _settings.PdfSplitPages = dialog.SplitPages;
             _settings.PdfUsePassword = dialog.UsePassword;
             _settings.PdfPassword = dialog.Password;
-        }
+        });
     }
 }

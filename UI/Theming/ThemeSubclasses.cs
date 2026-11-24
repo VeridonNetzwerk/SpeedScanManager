@@ -259,6 +259,139 @@ internal sealed class ComboSubclass : ControlSubclass
     }
 }
 
+/// <summary>
+/// Single-line TextBox drawn like the combo boxes: rounded field in the input color, inner
+/// padding (the text sits centered), border muted on hover and accent while focused. The
+/// non-client area is painted completely here (the native themed frame isn't drawn at all, it
+/// flashed white when the mouse moved over the field); the padding counts as client for the
+/// mouse, so it shows the I-beam and clicking it focuses the field.
+/// </summary>
+internal sealed class TextBoxSubclass : ControlSubclass
+{
+    private const int WM_NCCALCSIZE = 0x0083;
+    private const int WM_NCHITTEST = 0x0084;
+    private const int HTCLIENT = 1;
+    private const uint SWP_FRAMECHANGED = 0x0020, SWP_NOMOVE = 0x0002, SWP_NOSIZE = 0x0001, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010;
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+
+    private bool _hover;
+    private Rectangle _client; // client area in window coordinates
+
+    public TextBoxSubclass(TextBox box) : base(box)
+    {
+        box.HandleCreated += (_, _) => Reframe();
+        box.FontChanged += (_, _) => Reframe();
+        if (box.IsHandleCreated) Reframe();
+    }
+
+    private void Reframe()
+    {
+        if (!Owner.IsHandleCreated) return;
+        ThemeNative.SetTheme(Owner.Handle, ""); // no visual-style frame (hot tracking flashed it)
+        SetWindowPos(Owner.Handle, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    }
+
+    private (int H, int V) Padding(int height)
+    {
+        int line = Owner.Font.Height;
+        int v = Math.Max(1, (height - line) / 2);
+        int h = Math.Max(2, (int)Math.Round(8 * Scale));
+        return (h, v);
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        switch (m.Msg)
+        {
+            case WM_NCCALCSIZE:
+            {
+                // lParam points to a RECT in both cases (first member of NCCALCSIZE_PARAMS)
+                var r = Marshal.PtrToStructure<ThemePainters.RECT>(m.LParam);
+                int w = r.Right - r.Left, h = r.Bottom - r.Top;
+                var (ph, pv) = Padding(h);
+                _client = new Rectangle(ph, pv, Math.Max(0, w - 2 * ph), Math.Max(0, h - 2 * pv));
+                r.Left += ph; r.Right -= ph; r.Top += pv; r.Bottom -= pv;
+                if (r.Right < r.Left) r.Right = r.Left;
+                if (r.Bottom < r.Top) r.Bottom = r.Top;
+                Marshal.StructureToPtr(r, m.LParam, false);
+                m.Result = IntPtr.Zero;
+                return;
+            }
+            case WM_NCPAINT:
+                PaintFrame();
+                m.Result = IntPtr.Zero;
+                return;
+            case WM_NCHITTEST:
+                base.WndProc(ref m);
+                if ((int)m.Result != HTCLIENT && (int)m.Result > 0)
+                    m.Result = (IntPtr)HTCLIENT;
+                return;
+            case WM_MOUSEMOVE:
+                if (!_hover)
+                {
+                    _hover = true;
+                    TrackMouseLeave();
+                    PaintFrame();
+                }
+                break;
+            case WM_MOUSELEAVE:
+                _hover = false;
+                base.WndProc(ref m);
+                PaintFrame();
+                return;
+            case WM_SETFOCUS:
+            case WM_KILLFOCUS:
+            case WM_ENABLE:
+                base.WndProc(ref m);
+                PaintFrame();
+                return;
+        }
+        base.WndProc(ref m);
+    }
+
+    private void PaintFrame()
+    {
+        if (Handle == IntPtr.Zero || !GetWindowRect(Handle, out var wr)) return;
+        int w = wr.Right - wr.Left, h = wr.Bottom - wr.Top;
+        if (w <= 0 || h <= 0) return;
+        IntPtr hdc = GetWindowDC(Handle);
+        if (hdc == IntPtr.Zero) return;
+        try
+        {
+            var p = ThemeManager.Current;
+            var box = (TextBox)Owner;
+            var parentBg = ParentBack(box);
+            var fill = box.BackColor;
+            bool lowContrast = Math.Abs(parentBg.GetBrightness() - fill.GetBrightness()) < 0.03f;
+            var border = box.Focused && box.Enabled ? p.Accent
+                : _hover && box.Enabled && !box.ReadOnly ? (p.IsDark ? p.ButtonSecondary : p.TextMuted)
+                : lowContrast ? p.Border
+                : p.InputBorder;
+
+            using var bmp = new Bitmap(w, h);
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.Clear(parentBg);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using var path = ThemeGlyphs.Rounded(new RectangleF(0.5f, 0.5f, w - 1f, h - 1f), 4 * Scale);
+                using (var brush = new SolidBrush(fill)) g.FillPath(brush, path);
+                using var pen = new Pen(border, 1f);
+                g.DrawPath(pen, path);
+            }
+            using var target = Graphics.FromHdc(hdc);
+            if (_client.Width > 0 && _client.Height > 0)
+                target.ExcludeClip(_client); // the edit paints its own text area
+            target.DrawImageUnscaled(bmp, 0, 0);
+        }
+        finally
+        {
+            ReleaseDC(Handle, hdc);
+        }
+    }
+}
+
 /// <summary>Themed 1-2 px border for controls with a native border (TextBox, ListBox, TreeView).</summary>
 internal class BorderSubclass : ControlSubclass
 {

@@ -22,6 +22,9 @@ internal class ProfileManager
     /// <summary>A user profile was deleted (its name).</summary>
     public event Action<string>? ProfileRemoved;
 
+    /// <summary>The list changed (added, removed, renamed, moved or saved). Open windows refresh on it.</summary>
+    public event Action? Changed;
+
     public ProfileManager()
     {
         Load();
@@ -165,6 +168,7 @@ internal class ProfileManager
         {
             DiagLog.Write($"[Settings] Profile save failed: {ex.Message}");
         }
+        Changed?.Invoke();
     }
 
     public ScanProfile? GetByName(string? name)

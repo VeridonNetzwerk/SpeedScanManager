@@ -200,8 +200,8 @@ internal class ApplicationTabContent : ModernStack
     private void OpenManageDialog()
     {
         var previous = SelectedApplication;
-        using var dialog = new ApplicationManageDialog(_customApps);
-        if (dialog.ShowDialog(FindForm()) == DialogResult.OK)
+        var dialog = new ApplicationManageDialog(_customApps);
+        OwnedWindows.Show(dialog, FindForm(), key: "edit:ApplicationManageDialog", onOk: () =>
         {
             _customApps.Clear();
             _customApps.AddRange(dialog.CustomApps.Select(a => a.Clone()));
@@ -220,7 +220,7 @@ internal class ApplicationTabContent : ModernStack
             }
             WriteSelectionToSettings();
             CustomApplicationsChanged?.Invoke(this, EventArgs.Empty);
-        }
+        });
     }
 
     private void UpdateEmailOptionsVisibility()
@@ -242,29 +242,29 @@ internal class ApplicationTabContent : ModernStack
 
     private void OpenEmailOptionsDialog()
     {
-        using var dlg = new ScanToEmailOptionsDialog
+        var dlg = new ScanToEmailOptionsDialog
         {
             Recipient = _settings.EmailRecipient,
             SubjectTemplate = _settings.EmailSubjectTemplate
         };
 
-        if (dlg.ShowDialog(FindForm()) == DialogResult.OK)
+        OwnedWindows.Show(dlg, FindForm(), key: "edit:ScanToEmailOptionsDialog", onOk: () =>
         {
             _settings.EmailRecipient = dlg.Recipient;
             _settings.EmailSubjectTemplate = dlg.SubjectTemplate;
-        }
+        });
     }
 
     private void OpenPrintOptionsDialog()
     {
-        using var dlg = new ScanToPrintOptionsDialog
+        var dlg = new ScanToPrintOptionsDialog
         {
             SelectedPrinterName = _settings.PrinterName
         };
 
-        if (dlg.ShowDialog(FindForm()) == DialogResult.OK)
+        OwnedWindows.Show(dlg, FindForm(), key: "edit:ScanToPrintOptionsDialog", onOk: () =>
         {
             _settings.PrinterName = dlg.SelectedPrinterName;
-        }
+        });
     }
 }

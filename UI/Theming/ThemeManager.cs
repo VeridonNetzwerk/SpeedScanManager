@@ -541,7 +541,9 @@ internal static class ThemeManager
             case TextBoxBase text:
                 text.BackColor = p.Input;
                 text.ForeColor = p.Text;
-                if (st.Subclass == null && text is TextBox { BorderStyle: not BorderStyle.None } or RichTextBox { BorderStyle: not BorderStyle.None })
+                if (st.Subclass == null && text is TextBox { BorderStyle: not BorderStyle.None, Multiline: false } single)
+                    st.Subclass = new TextBoxSubclass(single);
+                else if (st.Subclass == null && text is TextBox { BorderStyle: not BorderStyle.None } or RichTextBox { BorderStyle: not BorderStyle.None })
                     st.Subclass = new BorderSubclass(text, focusAccent: true);
                 ThemePainters.RedrawFrame(text);
                 break;
