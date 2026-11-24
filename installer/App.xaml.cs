@@ -19,6 +19,8 @@ public partial class App : Application
             return;
         }
 
+        Theme.ApplySystem();
+
         if (e.Args.Length > 0 && e.Args[0] == "--uninstall")
         {
             var window = new UninstallerWindow();

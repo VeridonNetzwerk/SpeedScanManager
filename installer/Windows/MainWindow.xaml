@@ -3,519 +3,326 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:WPF="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="SpeedScan Manager Setup"
-        Height="520" Width="780"
+        Height="540" Width="800"
         WindowStyle="None"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
-        Background="White"
+        Background="{DynamicResource WindowBrush}"
+        FontFamily="Segoe UI"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
         ShowInTaskbar="True">
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0"
                       ResizeBorderThickness="0"
                       GlassFrameThickness="0"
-                      CornerRadius="8"
+                      CornerRadius="0"
                       UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
-    <Window.Resources>
-        <!-- ===== Sidebar Gradient ===== -->
-        <LinearGradientBrush x:Key="SidebarBrush" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#2b3a4d" Offset="0"/>
-            <GradientStop Color="#1c2633" Offset="1"/>
-        </LinearGradientBrush>
-
-        <!-- ===== Content Background ===== -->
-        <LinearGradientBrush x:Key="ContentBrush" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#ffffff" Offset="0"/>
-            <GradientStop Color="#f0f2f5" Offset="1"/>
-        </LinearGradientBrush>
-
-        <!-- ===== Footer Background ===== -->
-        <SolidColorBrush x:Key="FooterBrush" Color="#e8eaed"/>
-
-        <!-- ===== Metallic Gloss Button Template ===== -->
-        <ControlTemplate x:Key="SidebarButtonTemplate" TargetType="Button">
-            <Border x:Name="bd"
-                    CornerRadius="4"
-                    BorderThickness="1"
-                    BorderBrush="#4a6080"
-                    Margin="0,0,0,6"
-                    Padding="10,0"
-                    Height="36">
-                <Border.Background>
-                    <LinearGradientBrush x:Name="btnBg" StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#dfe6ef" Offset="0"/>
-                        <GradientStop Color="#c5d0dd" Offset="0.5"/>
-                        <GradientStop Color="#b0bccb" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.Background>
-                <Border.Effect>
-                    <DropShadowEffect Color="#000000" BlurRadius="4" ShadowDepth="1" Opacity="0.3" Direction="270"/>
-                </Border.Effect>
-                <ContentPresenter x:Name="cp" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                  TextBlock.Foreground="#1c2633" TextBlock.FontFamily="Segoe UI"
-                                  TextBlock.FontSize="12" TextBlock.FontWeight="SemiBold"/>
-            </Border>
-            <ControlTemplate.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter TargetName="bd" Property="Background">
-                        <Setter.Value>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#e8f0fc" Offset="0"/>
-                                <GradientStop Color="#b8d0f0" Offset="0.5"/>
-                                <GradientStop Color="#9ab8e0" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Setter.Value>
-                    </Setter>
-                    <Setter TargetName="bd" Property="BorderBrush" Value="#6a8cb5"/>
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter TargetName="bd" Property="Background">
-                        <Setter.Value>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#a0b8d8" Offset="0"/>
-                                <GradientStop Color="#88a0c8" Offset="0.5"/>
-                                <GradientStop Color="#7088b0" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Setter.Value>
-                    </Setter>
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter TargetName="cp" Property="Opacity" Value="0.4"/>
-                    <Setter TargetName="bd" Property="Opacity" Value="0.5"/>
-                </Trigger>
-            </ControlTemplate.Triggers>
-        </ControlTemplate>
-
-        <!-- ===== Inline Button Template (no shadow, no bottom margin) ===== -->
-        <ControlTemplate x:Key="InlineButtonTemplate" TargetType="Button">
-            <Border x:Name="bd"
-                    CornerRadius="4"
-                    BorderThickness="1"
-                    BorderBrush="#a0b0c0"
-                    Padding="10,0"
-                    Height="28">
-                <Border.Background>
-                    <LinearGradientBrush x:Name="btnBg" StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#f5f7fa" Offset="0"/>
-                        <GradientStop Color="#e8edf3" Offset="0.5"/>
-                        <GradientStop Color="#d8dfe8" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.Background>
-                <ContentPresenter x:Name="cp" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                  TextBlock.Foreground="#1c2633" TextBlock.FontFamily="Segoe UI"
-                                  TextBlock.FontSize="12" TextBlock.FontWeight="Normal"/>
-            </Border>
-            <ControlTemplate.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter TargetName="bd" Property="Background">
-                        <Setter.Value>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#eef4fc" Offset="0"/>
-                                <GradientStop Color="#d8e4f4" Offset="0.5"/>
-                                <GradientStop Color="#c4d4e8" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Setter.Value>
-                    </Setter>
-                    <Setter TargetName="bd" Property="BorderBrush" Value="#8aa0c0"/>
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter TargetName="bd" Property="Background">
-                        <Setter.Value>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#d0dce8" Offset="0"/>
-                                <GradientStop Color="#bccce0" Offset="0.5"/>
-                                <GradientStop Color="#a8bcd4" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Setter.Value>
-                    </Setter>
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter TargetName="cp" Property="Opacity" Value="0.4"/>
-                </Trigger>
-            </ControlTemplate.Triggers>
-        </ControlTemplate>
-
-        <!-- ===== Install Button (accent) ===== -->
-        <ControlTemplate x:Key="InstallButtonTemplate" TargetType="Button">
-            <Border x:Name="bd"
-                    CornerRadius="4"
-                    BorderThickness="1"
-                    BorderBrush="#2a6ad8"
-                    Padding="0">
-                <Border.Background>
-                    <LinearGradientBrush x:Name="btnBg" StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#4a90e2" Offset="0"/>
-                        <GradientStop Color="#2a6ad8" Offset="0.5"/>
-                        <GradientStop Color="#1a5ac0" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.Background>
-                <Border.Effect>
-                    <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="2" Opacity="0.35" Direction="270"/>
-                </Border.Effect>
-                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
-                                  Margin="0"
-                                  TextBlock.Foreground="White" TextBlock.FontFamily="Segoe UI"
-                                  TextBlock.FontSize="13" TextBlock.FontWeight="Bold"/>
-            </Border>
-            <ControlTemplate.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter TargetName="bd" Property="Background">
-                        <Setter.Value>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#6aa8f5" Offset="0"/>
-                                <GradientStop Color="#3a7ae8" Offset="0.5"/>
-                                <GradientStop Color="#2a6ad8" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Setter.Value>
-                    </Setter>
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter TargetName="bd" Property="Background">
-                        <Setter.Value>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#2a6ad8" Offset="0"/>
-                                <GradientStop Color="#1a5ac0" Offset="0.5"/>
-                                <GradientStop Color="#0a4aa8" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Setter.Value>
-                    </Setter>
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter TargetName="bd" Property="Opacity" Value="0.4"/>
-                </Trigger>
-            </ControlTemplate.Triggers>
-        </ControlTemplate>
-
-        <!-- ===== Window Border Shadow ===== -->
-        <DropShadowEffect x:Key="WindowShadow" Color="#000000" BlurRadius="15" ShadowDepth="0" Opacity="0.3"/>
-    </Window.Resources>
-
-    <!-- ===== Outer border with rounded corners + shadow ===== -->
-    <Border CornerRadius="8" Background="White" ClipToBounds="True">
+    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
         <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
+                <RowDefinition Height="56"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="36"/>
+                <RowDefinition Height="34"/>
             </Grid.RowDefinitions>
 
-            <!-- ===== Top drag bar (15px, spans full width) ===== -->
-            <Rectangle Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
-                       Height="15" VerticalAlignment="Top"
-                       Fill="Transparent"
-                       MouseLeftButtonDown="OnDragMove"
-                       Panel.ZIndex="100"/>
-
-            <!-- ===== Minimize button (top-right, in content area) ===== -->
-            <Button Grid.Row="0" Grid.Column="1"
-                    x:Name="BtnMinimize"
-                    Width="28" Height="18"
-                    HorizontalAlignment="Right" VerticalAlignment="Top"
-                    Margin="0,0,2,0"
-                    Panel.ZIndex="101"
-                    Click="OnMinimizeClick"
-                    Background="Transparent" BorderThickness="0"
-                    Cursor="Hand">
-                <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" Background="Transparent" CornerRadius="0,8,0,0">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <!-- ===== TITLE BAR ===== -->
+            <Border Grid.Row="0" Background="{DynamicResource HeaderBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+                    MouseLeftButtonDown="OnDragMove">
+                <Grid Margin="14,0,10,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource SidebarBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <Image Source="pack://application:,,,/SpeedScanInstaller;component/Assets/SpeedScanManager_Logo.png"
+                                   Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality"/>
                         </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#e0e4e8"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Button.Template>
-                <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                           Foreground="#555555"/>
-            </Button>
-
-            <!-- ===== LEFT SIDEBAR ===== -->
-            <Border Grid.Row="0" Grid.Column="0" Background="{StaticResource SidebarBrush}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Logo area -->
-                    <StackPanel Grid.Row="0" Margin="20,24,20,20">
-                        <Image Source="pack://application:,,,/Assets/SpeedScanManager_Text_2Rows.png"
-                               Width="150" Stretch="Uniform"
-                               RenderOptions.BitmapScalingMode="HighQuality"/>
-                    </StackPanel>
-
-                    <!-- Navigation buttons -->
-                    <StackPanel Grid.Row="1" Margin="14,8,14,8">
-
-                        <Button x:Name="BtnInstall"
-                                Template="{StaticResource SidebarButtonTemplate}"
-                                Click="OnInstallClick"
-                                Margin="0,0,0,8">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE9D5;" FontFamily="Segoe MDL2 Assets" FontSize="16"
-                                           VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#2a6ad8"/>
-                                <TextBlock x:Name="LblInstall" Text="Installieren"
-                                           FontFamily="Segoe UI" FontSize="12"
-                                           Foreground="#1c2633"/>
-                            </StackPanel>
-                        </Button>
-
-                        <Button x:Name="BtnReadme"
-                                Template="{StaticResource SidebarButtonTemplate}"
-                                Click="OnReadmeClick">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE736;" FontFamily="Segoe MDL2 Assets" FontSize="16"
-                                           VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#4a6080"/>
-                                <TextBlock x:Name="LblReadme" Text="README anzeigen" FontFamily="Segoe UI" FontSize="12"
-                                           Foreground="#1c2633"/>
-                            </StackPanel>
-                        </Button>
-
-                        <Button x:Name="BtnSupport"
-                                Template="{StaticResource SidebarButtonTemplate}"
-                                Click="OnSupportClick"
-                                Margin="0,0,0,8">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="16"
-                                           VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#4a6080"/>
-                                <TextBlock x:Name="LblSupport" Text="Support" FontFamily="Segoe UI" FontSize="12"
-                                           Foreground="#1c2633"/>
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-
-                    <!-- Exit button at bottom -->
-                    <Button Grid.Row="2" x:Name="BtnExit"
-                            Template="{StaticResource SidebarButtonTemplate}"
-                            Click="OnExitClick"
-                            Margin="14,0,14,16">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="16"
-                                       VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#4a6080"/>
-                            <TextBlock Text="Beenden" FontFamily="Segoe UI" FontSize="12"
-                                       Foreground="#1c2633"/>
+                        <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Setup" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextBrush}"/>
+                            <TextBlock Text="SpeedScan Manager" FontSize="11"
+                                       Foreground="{DynamicResource TextMutedBrush}"/>
                         </StackPanel>
-                    </Button>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button x:Name="BtnTheme" Style="{StaticResource TitleButton}" FontSize="13"
+                                Content="{DynamicResource ThemeToggleGlyph}"
+                                ToolTip="{DynamicResource ThemeToggleTip}"
+                                Click="OnThemeClick"/>
+                        <Button x:Name="BtnMinimize" Style="{StaticResource TitleButton}" Content="&#xE921;"
+                                ToolTip="Minimieren" Click="OnMinimizeClick"/>
+                        <Button x:Name="BtnClose" Style="{StaticResource CloseTitleButton}" Content="&#xE8BB;"
+                                ToolTip="Schließen" Click="OnExitClick"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- ===== RIGHT CONTENT AREA ===== -->
-            <Border Grid.Row="0" Grid.Column="1" Background="{StaticResource ContentBrush}">
-                <Grid>
+            <!-- ===== BODY ===== -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="210"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-                    <!-- ===== WELCOME VIEW ===== -->
-                    <Grid x:Name="WelcomeView" Margin="32,24,32,12">
+                <!-- ===== SIDEBAR ===== -->
+                <Border Grid.Column="0" Background="{DynamicResource SidebarBrush}">
+                    <Grid Margin="10,18,10,14">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <!-- Welcome title -->
-                        <StackPanel Grid.Row="0" Margin="0,0,0,16">
-                            <TextBlock Text="Willkommen beim"
-                                       FontFamily="Segoe UI" FontSize="24" FontWeight="SemiBold"
-                                       Foreground="#1c2633"/>
-                            <TextBlock Text="SpeedScan Manager Setup"
-                                       FontFamily="Segoe UI" FontSize="24" FontWeight="SemiBold"
-                                       Foreground="#2a6ad8" Margin="0,2,0,0"/>
+                        <StackPanel Grid.Row="0">
+                            <TextBlock Text="SPEEDSCAN MANAGER" Style="{StaticResource SectionLabel}"/>
+
+                            <RadioButton x:Name="BtnInstall" Style="{StaticResource NavItem}" IsChecked="True"
+                                         Click="OnInstallClick">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Style="{StaticResource IconTile}" Background="#3B82F6">
+                                        <TextBlock Text="&#xE896;" Style="{StaticResource TileGlyph}"/>
+                                    </Border>
+                                    <TextBlock Text="Installieren" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </RadioButton>
+
+                            <RadioButton x:Name="BtnReadme" Style="{StaticResource NavItem}" Click="OnReadmeClick">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Style="{StaticResource IconTile}" Background="#F59E0B">
+                                        <TextBlock Text="&#xE736;" Style="{StaticResource TileGlyph}"/>
+                                    </Border>
+                                    <TextBlock Text="README" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </RadioButton>
+
+                            <RadioButton x:Name="BtnSupport" Style="{StaticResource NavItem}" Click="OnSupportClick">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Style="{StaticResource IconTile}" Background="#EC4899">
+                                        <TextBlock Text="&#xE8F2;" Style="{StaticResource TileGlyph}"/>
+                                    </Border>
+                                    <TextBlock Text="Support" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </RadioButton>
                         </StackPanel>
 
-                        <!-- Description -->
-                        <TextBlock Grid.Row="1" TextWrapping="Wrap"
-                                   Text="Klicke auf &quot;Installieren&quot;, um SpeedScan Manager auf deinem Computer einzurichten."
-                                   FontFamily="Segoe UI" FontSize="13"
-                                   Foreground="#555555" Margin="0,0,0,20"/>
+                        <TextBlock Grid.Row="2" x:Name="LblVersion" Text="" FontSize="11" Margin="12,0,0,0"
+                                   Foreground="{DynamicResource TextMutedBrush}"/>
+                    </Grid>
+                </Border>
 
-                        <!-- Install path -->
-                        <StackPanel Grid.Row="2" Margin="0,0,0,24" VerticalAlignment="Top">
-                            <TextBlock Text="Zielordner:" FontFamily="Segoe UI"
-                                       FontSize="15" FontWeight="SemiBold" Foreground="#333333"
-                                       Margin="0,0,0,8"/>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBox x:Name="TxtInstallPath"
-                                         Width="370" Height="28"
-                                         FontFamily="Segoe UI" FontSize="13"
-                                         VerticalContentAlignment="Center"
-                                         Padding="6,0,0,0"
-                                         BorderBrush="#c0c8d0" BorderThickness="1"/>
-                                <Button x:Name="BtnBrowse"
-                                        Template="{StaticResource InlineButtonTemplate}"
-                                        Content="Durchsuchen..."
-                                        Margin="8,0,0,0"
-                                        Click="OnBrowseClick"/>
+                <!-- ===== CONTENT ===== -->
+                <Border Grid.Column="1" Background="{DynamicResource ContentBrush}">
+                    <Grid>
+
+                        <!-- ===== WELCOME / INSTALL VIEW ===== -->
+                        <Grid x:Name="WelcomeView" Margin="28,22,28,20">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Margin="0,0,0,18">
+                                <TextBlock Text="Willkommen" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Style="{StaticResource PageSubtitle}"
+                                           Text="Richtet SpeedScan Manager auf diesem Computer ein."/>
                             </StackPanel>
-                        </StackPanel>
 
-                        <!-- Progress + status (hidden initially) -->
-                        <StackPanel Grid.Row="2" x:Name="ProgressPanel" Visibility="Collapsed"
-                                    VerticalAlignment="Bottom" Margin="0,0,0,8">
-                            <ProgressBar x:Name="InstallProgress" Height="22" Width="510"
-                                         Minimum="0" Maximum="100" Value="0"/>
-                            <TextBlock x:Name="StatusText" Text="" FontFamily="Segoe UI" FontSize="12"
-                                       Foreground="#555555" Margin="0,6,0,0"/>
-                        </StackPanel>
-
-                        <!-- Install button -->
-                        <StackPanel Grid.Row="3" Orientation="Horizontal"
-                                    HorizontalAlignment="Right" VerticalAlignment="Bottom">
-                            <Button x:Name="BtnStartInstall"
-                                    Content="Installieren"
-                                    Template="{StaticResource InstallButtonTemplate}"
-                                    Width="130" Height="36"
-                                    Margin="0,0,0,0"
-                                    Click="OnStartInstallClick"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- ===== README VIEW ===== -->
-                    <Grid x:Name="ReadmeView" Visibility="Collapsed">
-                        <!-- WebView2 for rendered HTML (Chromium engine: color emoji, images, CSS, SVG) -->
-                        <WPF:WebView2 x:Name="ReadmeBrowser" Margin="0,15,0,0"/>
-
-                        <!-- Loading overlay (on top) -->
-                        <StackPanel x:Name="ReadmeLoadingPanel"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                                    Background="White">
-                            <TextBlock Text="Lade README..." FontFamily="Segoe UI" FontSize="14"
-                                       Foreground="#555555" HorizontalAlignment="Center"/>
-                            <ProgressBar IsIndeterminate="True" Width="240" Height="4" Margin="0,12,0,0"/>
-                        </StackPanel>
-
-                        <!-- Error overlay -->
-                        <TextBlock x:Name="ReadmeErrorText" Visibility="Collapsed"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   TextWrapping="Wrap" TextAlignment="Center"
-                                   FontFamily="Segoe UI" FontSize="13" Foreground="#c0392b"
-                                   Margin="32,0,32,0" Background="White"/>
-                    </Grid>
-
-                    <!-- ===== SUPPORT VIEW ===== -->
-                    <Grid x:Name="SupportView" Visibility="Collapsed" Margin="32,24,32,12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-
-                        <!-- Support title -->
-                        <StackPanel Grid.Row="0" Margin="0,0,0,16">
-                            <TextBlock Text="Support &amp; Hilfe"
-                                       FontFamily="Segoe UI" FontSize="24" FontWeight="SemiBold"
-                                       Foreground="#1c2633"/>
-                            <TextBlock Text="Wir sind für dich da."
-                                       FontFamily="Segoe UI" FontSize="11"
-                                       Foreground="#555555" Margin="0,2,0,0"/>
-                        </StackPanel>
-
-                        <!-- Support cards -->
-                        <StackPanel Grid.Row="1">
-
-                            <!-- Bug report card -->
-                            <Border Background="#f8f9fb" CornerRadius="6" Padding="16,12" Margin="0,0,0,8"
-                                    BorderBrush="#e0e4e8" BorderThickness="1">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                        <TextBlock Text="&#xE71C;" FontFamily="Segoe MDL2 Assets" FontSize="18"
-                                                   Foreground="#e74c3c" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <TextBlock Text="Bug gefunden?" FontFamily="Segoe UI" FontSize="15" FontWeight="SemiBold"
-                                                   Foreground="#1c2633" VerticalAlignment="Center"/>
+                            <!-- Target folder -->
+                            <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource BigIconTile}" Background="#F97316">
+                                        <TextBlock Text="&#xE8B7;" Style="{StaticResource BigTileGlyph}"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                                        <TextBlock Text="Zielordner" Style="{StaticResource CardTitle}"/>
+                                        <TextBlock Text="Hier werden die Programmdateien abgelegt."
+                                                   Style="{StaticResource CardText}" Margin="0,2,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="TxtInstallPath" Style="{StaticResource PathBox}"/>
+                                            <Button Grid.Column="1" x:Name="BtnBrowse" Style="{StaticResource SecondaryButton}"
+                                                    Margin="8,0,0,0" Padding="14,0" Click="OnBrowseClick">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="&#xE8DA;" Style="{StaticResource ButtonGlyph}"/>
+                                                    <TextBlock Text="Durchsuchen..."/>
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
                                     </StackPanel>
-                                    <TextBlock Text="Issue auf GitHub mit Scannermodell und Fehlerbeschreibung erstellen."
-                                               FontFamily="Segoe UI" FontSize="12" Foreground="#555555" TextWrapping="Wrap"
-                                               Margin="0,0,0,8"/>
-                                    <TextBlock Text="GitHub Issue melden →" FontFamily="Segoe UI" FontSize="12"
-                                               Foreground="#2a6ad8" Cursor="Hand"
-                                               MouseLeftButtonDown="OnGitHubIssueClick"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- What gets set up -->
+                            <Border Grid.Row="2" Style="{StaticResource Card}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource BigIconTile}" Background="#10B981">
+                                        <TextBlock Text="&#xE73E;" Style="{StaticResource BigTileGlyph}"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                                        <TextBlock Text="Das wird eingerichtet" Style="{StaticResource CardTitle}"
+                                                   Margin="0,0,0,6"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                                            <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                                       Foreground="{DynamicResource AccentBrush}" Margin="0,2,8,0"/>
+                                            <TextBlock Text="Verknüpfungen im Startmenü und auf dem Desktop" Style="{StaticResource CardText}"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                                            <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                                       Foreground="{DynamicResource AccentBrush}" Margin="0,2,8,0"/>
+                                            <TextBlock Text="Die Scan-Taste am Scanner startet SpeedScan Manager" Style="{StaticResource CardText}"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                                            <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                                       Foreground="{DynamicResource AccentBrush}" Margin="0,2,8,0"/>
+                                            <TextBlock Text="Deinstallation über Windows-Einstellungen › Apps" Style="{StaticResource CardText}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Progress + install button -->
+                            <Grid Grid.Row="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel x:Name="ProgressPanel" Visibility="Collapsed"
+                                            VerticalAlignment="Center" Margin="0,0,20,0">
+                                    <TextBlock x:Name="StatusText" Text="" FontSize="12"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               TextTrimming="CharacterEllipsis" Margin="0,0,0,7"/>
+                                    <ProgressBar x:Name="InstallProgress" Style="{StaticResource FlatProgress}"
+                                                 Minimum="0" Maximum="100" Value="0"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" x:Name="BtnStartInstall" Style="{StaticResource AccentButton}"
+                                        Content="Installieren" MinWidth="140" Click="OnStartInstallClick"/>
+                            </Grid>
+                        </Grid>
+
+                        <!-- ===== README VIEW ===== -->
+                        <Grid x:Name="ReadmeView" Visibility="Collapsed">
+                            <!-- WebView2 for rendered HTML (Chromium engine: color emoji, images, CSS, SVG) -->
+                            <WPF:WebView2 x:Name="ReadmeBrowser"/>
+
+                            <Border x:Name="ReadmeLoadingPanel" Background="{DynamicResource ContentBrush}">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="README wird geladen..." FontSize="13"
+                                               Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                                    <ProgressBar IsIndeterminate="True" Width="220" Height="4" Margin="0,12,0,0"
+                                                 Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource TrackBrush}"
+                                                 BorderThickness="0"/>
                                 </StackPanel>
                             </Border>
 
-                            <!-- Feature request card -->
-                            <Border Background="#f8f9fb" CornerRadius="6" Padding="16,12" Margin="0,0,0,8"
-                                    BorderBrush="#e0e4e8" BorderThickness="1">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                        <TextBlock Text="&#xE701;" FontFamily="Segoe MDL2 Assets" FontSize="18"
-                                                   Foreground="#f39c12" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <TextBlock Text="Verbesserungsidee?" FontFamily="Segoe UI" FontSize="15" FontWeight="SemiBold"
-                                                   Foreground="#1c2633" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ReadmeErrorText" Visibility="Collapsed"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       TextWrapping="Wrap" TextAlignment="Center"
+                                       FontSize="13" Foreground="{DynamicResource DangerBrush}"
+                                       Margin="32,0,32,0"/>
+                        </Grid>
+
+                        <!-- ===== SUPPORT VIEW ===== -->
+                        <StackPanel x:Name="SupportView" Visibility="Collapsed" Margin="28,22,28,20">
+                            <StackPanel Margin="0,0,0,18">
+                                <TextBlock Text="Support &amp; Hilfe" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="Wir sind für dich da." Style="{StaticResource PageSubtitle}"/>
+                            </StackPanel>
+
+                            <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource BigIconTile}" Background="#E5484D">
+                                        <TextBlock Text="&#xEBE8;" Style="{StaticResource BigTileGlyph}"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                                        <TextBlock Text="Bug gefunden?" Style="{StaticResource CardTitle}"/>
+                                        <TextBlock Text="Issue auf GitHub mit Scannermodell und Fehlerbeschreibung erstellen."
+                                                   Style="{StaticResource CardText}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="GitHub Issue melden →" Style="{StaticResource Link}"
+                                                   HorizontalAlignment="Left" MouseLeftButtonDown="OnGitHubIssueClick"/>
                                     </StackPanel>
-                                    <TextBlock Text="Ideen und Vorschläge auf Discord teilen."
-                                               FontFamily="Segoe UI" FontSize="12" Foreground="#555555" TextWrapping="Wrap"
-                                               Margin="0,0,0,8"/>
-                                    <TextBlock Text="Discord Feedback →" FontFamily="Segoe UI" FontSize="12"
-                                               Foreground="#5865f2" Cursor="Hand"
-                                               MouseLeftButtonDown="OnDiscordFeedbackClick"/>
-                                </StackPanel>
+                                </Grid>
                             </Border>
 
-                            <!-- Help card -->
-                            <Border Background="#f8f9fb" CornerRadius="6" Padding="16,12" Margin="0,0,0,8"
-                                    BorderBrush="#e0e4e8" BorderThickness="1">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                        <TextBlock Text="&#xE9CE;" FontFamily="Segoe MDL2 Assets" FontSize="18"
-                                                   Foreground="#2a6ad8" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <TextBlock Text="Hilfe benötigt?" FontFamily="Segoe UI" FontSize="15" FontWeight="SemiBold"
-                                                   Foreground="#1c2633" VerticalAlignment="Center"/>
+                            <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource BigIconTile}" Background="#F59E0B">
+                                        <TextBlock Text="&#xE82F;" Style="{StaticResource BigTileGlyph}"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                                        <TextBlock Text="Verbesserungsidee?" Style="{StaticResource CardTitle}"/>
+                                        <TextBlock Text="Ideen und Vorschläge auf Discord teilen."
+                                                   Style="{StaticResource CardText}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Discord Feedback →" Style="{StaticResource Link}"
+                                                   HorizontalAlignment="Left" MouseLeftButtonDown="OnDiscordFeedbackClick"/>
                                     </StackPanel>
-                                    <TextBlock Text="Im Discord FAQ findest du Antworten auf häufige Fragen."
-                                               FontFamily="Segoe UI" FontSize="12" Foreground="#555555" TextWrapping="Wrap"
-                                               Margin="0,0,0,8"/>
-                                    <TextBlock Text="Discord FAQ →" FontFamily="Segoe UI" FontSize="12"
-                                               Foreground="#5865f2" Cursor="Hand"
-                                               MouseLeftButtonDown="OnDiscordFaqClick"/>
-                                </StackPanel>
+                                </Grid>
                             </Border>
 
+                            <Border Style="{StaticResource Card}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource BigIconTile}" Background="#6366F1">
+                                        <TextBlock Text="&#xE897;" Style="{StaticResource BigTileGlyph}"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                                        <TextBlock Text="Hilfe benötigt?" Style="{StaticResource CardTitle}"/>
+                                        <TextBlock Text="Im Discord-FAQ findest du Antworten auf häufige Fragen."
+                                                   Style="{StaticResource CardText}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Discord FAQ →" Style="{StaticResource Link}"
+                                                   HorizontalAlignment="Left" MouseLeftButtonDown="OnDiscordFaqClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
                         </StackPanel>
+
                     </Grid>
+                </Border>
+            </Grid>
 
-                </Grid>
-            </Border>
-
-            <!-- ===== FOOTER BAR ===== -->
-            <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                    Background="{StaticResource FooterBrush}"
-                    BorderBrush="#d0d4d8" BorderThickness="0,1,0,0">
+            <!-- ===== FOOTER ===== -->
+            <Border Grid.Row="2" Background="{DynamicResource FooterBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
                 <Grid>
-                    <!-- Left: Copyright + License -->
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
-                        <TextBlock Text="© 2026 VeridonNetzwerk" FontFamily="Segoe UI" FontSize="10"
-                                   Foreground="#888888" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBlock Text="·" FontFamily="Segoe UI" FontSize="10"
-                                   Foreground="#888888" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBlock Text="GPL-3.0 License" FontFamily="Segoe UI" FontSize="10"
-                                   Foreground="#5566aa" Cursor="Hand" VerticalAlignment="Center"
+                    <Rectangle Fill="Transparent" MouseLeftButtonDown="OnDragMove"/>
+                    <StackPanel Orientation="Horizontal" Margin="16,0,0,0" HorizontalAlignment="Left">
+                        <TextBlock Text="© 2026 VeridonNetzwerk" Style="{StaticResource FooterText}"/>
+                        <TextBlock Text="·" Style="{StaticResource FooterText}" Margin="6,0"/>
+                        <TextBlock Text="GPL-3.0 License" Style="{StaticResource FooterLink}"
                                    MouseLeftButtonDown="OnLicenseLinkClick"/>
                     </StackPanel>
-
-                    <!-- Window drag area (entire footer, behind links) -->
-                    <Rectangle x:Name="DragArea" Fill="Transparent"
-                               Panel.ZIndex="-1"
-                               MouseLeftButtonDown="OnDragMove"/>
-
-                    <!-- Right: Discord + GitHub icons -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
-                                VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock x:Name="LnkDiscord"
-                                   Text="Discord" FontFamily="Segoe UI" FontSize="10"
-                                   Foreground="#5566aa" Cursor="Hand"
-                                   Margin="0,0,16,0" VerticalAlignment="Center"
-                                   MouseLeftButtonDown="OnDiscordLinkClick"/>
-                        <TextBlock x:Name="LnkGitHub"
-                                   Text="GitHub" FontFamily="Segoe UI" FontSize="10"
-                                   Foreground="#5566aa" Cursor="Hand"
-                                   VerticalAlignment="Center"
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,16,0">
+                        <TextBlock x:Name="LnkDiscord" Text="Discord" Style="{StaticResource FooterLink}"
+                                   Margin="0,0,16,0" MouseLeftButtonDown="OnDiscordLinkClick"/>
+                        <TextBlock x:Name="LnkGitHub" Text="GitHub" Style="{StaticResource FooterLink}"
                                    MouseLeftButtonDown="OnGitHubLinkClick"/>
                     </StackPanel>
                 </Grid>

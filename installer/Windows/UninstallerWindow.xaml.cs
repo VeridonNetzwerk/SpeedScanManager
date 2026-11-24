@@ -20,7 +20,10 @@ public partial class UninstallerWindow : Window
     public UninstallerWindow()
     {
         InitializeComponent();
+        SourceInitialized += (_, _) => Theme.RoundCorners(this);
     }
+
+    private void OnThemeClick(object sender, RoutedEventArgs e) => Theme.Toggle();
 
     private void OnDragMove(object sender, MouseButtonEventArgs e)
     {
@@ -74,6 +77,7 @@ public partial class UninstallerWindow : Window
 
         BtnUninstall.IsEnabled = false;
         BtnCancel.IsEnabled = false;
+        BtnClose.IsEnabled = false;
         ChkRemoveSettings.IsEnabled = false;
         ProgressPanel.Visibility = Visibility.Visible;
         UninstallProgress.Value = 0;
@@ -221,6 +225,7 @@ public partial class UninstallerWindow : Window
 
             BtnUninstall.IsEnabled = true;
             BtnCancel.IsEnabled = true;
+            BtnClose.IsEnabled = true;
             ChkRemoveSettings.IsEnabled = true;
         }
     }

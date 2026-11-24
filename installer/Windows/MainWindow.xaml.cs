@@ -13,7 +13,6 @@ using MessageBoxResult = System.Windows.MessageBoxResult;
 using Visibility = System.Windows.Visibility;
 using Window = System.Windows.Window;
 using RoutedEventArgs = System.Windows.RoutedEventArgs;
-using FontWeights = System.Windows.FontWeights;
 
 namespace SpeedScanInstaller;
 
@@ -30,6 +29,7 @@ public partial class MainWindow : Window
     private bool _readmeLoaded = false;
     private bool _webViewReady = false;
     private bool _allowNextNavigation = false;
+    private string? _readmeBody;
 
     public MainWindow()
     {
@@ -46,22 +46,44 @@ public partial class MainWindow : Window
         {
             TxtInstallPath.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), InstallerCore.AppFolderName);
         }
+        var version = typeof(MainWindow).Assembly.GetName().Version;
+        LblVersion.Text = version != null ? $"Version {version.Major}.{version.Minor}.{version.Build}" : "";
         UpdateActiveTab("install");
+        SourceInitialized += (_, _) => Theme.RoundCorners(this);
+        Theme.Changed += OnThemeChanged;
+        Closed += (_, _) => Theme.Changed -= OnThemeChanged;
         _ = InitWebViewAsync();
     }
 
     private void UpdateActiveTab(string tab)
     {
-        LblInstall.FontWeight = tab == "install" ? FontWeights.SemiBold : FontWeights.Normal;
-        LblReadme.FontWeight = tab == "readme" ? FontWeights.SemiBold : FontWeights.Normal;
-        LblSupport.FontWeight = tab == "support" ? FontWeights.SemiBold : FontWeights.Normal;
+        BtnInstall.IsChecked = tab == "install";
+        BtnReadme.IsChecked = tab == "readme";
+        BtnSupport.IsChecked = tab == "support";
     }
+
+    // ===== Light / dark =====
+    private void OnThemeClick(object sender, RoutedEventArgs e) => Theme.Toggle();
+
+    private void OnThemeChanged()
+    {
+        if (!_webViewReady) return;
+        ReadmeBrowser.DefaultBackgroundColor = ToDrawingColor(Theme.Css("ContentBrush"));
+        if (_readmeBody != null)
+        {
+            _allowNextNavigation = true;
+            ReadmeBrowser.NavigateToString(WrapHtml(_readmeBody));
+        }
+    }
+
+    private static System.Drawing.Color ToDrawingColor(string css) =>
+        System.Drawing.ColorTranslator.FromHtml(css);
 
     private async Task InitWebViewAsync()
     {
         try
         {
-            ReadmeBrowser.DefaultBackgroundColor = System.Drawing.Color.White;
+            ReadmeBrowser.DefaultBackgroundColor = ToDrawingColor(Theme.Css("ContentBrush"));
             await ReadmeBrowser.EnsureCoreWebView2Async();
             var settings = ReadmeBrowser.CoreWebView2.Settings;
             settings.IsScriptEnabled = false;
@@ -161,6 +183,7 @@ public partial class MainWindow : Window
             client.Timeout = TimeSpan.FromSeconds(15);
             var markdown = await client.GetStringAsync(ReadmeUrl);
             var html = MarkdownToHtml(markdown);
+            _readmeBody = html;
             var fullHtml = WrapHtml(html);
 
             _allowNextNavigation = true;
@@ -326,6 +349,7 @@ public partial class MainWindow : Window
 
         // Disable buttons
         BtnInstall.IsEnabled = false;
+        BtnClose.IsEnabled = false;
         BtnStartInstall.IsEnabled = false;
         BtnBrowse.IsEnabled = false;
         TxtInstallPath.IsEnabled = false;
@@ -473,6 +497,7 @@ public partial class MainWindow : Window
 
             // Re-enable buttons
             BtnInstall.IsEnabled = true;
+            BtnClose.IsEnabled = true;
             BtnStartInstall.IsEnabled = true;
             BtnBrowse.IsEnabled = true;
             TxtInstallPath.IsEnabled = true;
@@ -560,6 +585,10 @@ public partial class MainWindow : Window
     // ===== Markdown to HTML =====
     private static string WrapHtml(string body)
     {
+        string bg = Theme.Css("ContentBrush"), text = Theme.Css("TextBrush"), heading = Theme.Css("TextBrush"),
+            muted = Theme.Css("TextMutedBrush"), border = Theme.Css("BorderBrush"), card = Theme.Css("CardBrush"),
+            link = Theme.Css("LinkBrush"), accent = Theme.Css("AccentBrush"), thumb = Theme.Css("ButtonSecondaryHoverBrush"),
+            scheme = Theme.IsDark ? "dark" : "light";
         return $@"<!DOCTYPE html>
 <html>
 <head>
@@ -569,39 +598,39 @@ public partial class MainWindow : Window
     font-family: 'Segoe UI', 'Segoe UI Emoji', sans-serif;
     font-size: 14px;
     line-height: 1.6;
-    color: #333;
-    background: #ffffff;
-    color-scheme: light;
+    color: {text};
+    background: {bg};
+    color-scheme: {scheme};
     max-width: 680px;
     margin: 24px auto;
-    padding: 0 20px;
+    padding: 0 24px;
   }}
-  h1, h2, h3, h4, h5, h6 {{ color: #1c2633; margin-top: 24px; margin-bottom: 12px; }}
-  h1 {{ font-size: 28px; border-bottom: 2px solid #e0e4e8; padding-bottom: 8px; }}
-  h2 {{ font-size: 22px; border-bottom: 1px solid #e0e4e8; padding-bottom: 6px; }}
-  h3 {{ font-size: 18px; }}
-  a {{ color: #2a6ad8; text-decoration: none; }}
+  h1, h2, h3, h4, h5, h6 {{ color: {heading}; margin-top: 24px; margin-bottom: 12px; }}
+  h1 {{ font-size: 26px; border-bottom: 1px solid {border}; padding-bottom: 8px; }}
+  h2 {{ font-size: 20px; border-bottom: 1px solid {border}; padding-bottom: 6px; }}
+  h3 {{ font-size: 17px; }}
+  a {{ color: {link}; text-decoration: none; }}
   a:hover {{ text-decoration: underline; }}
-  code {{ font-family: 'Cascadia Code', 'Consolas', monospace; background: #f0f2f5; padding: 2px 6px; border-radius: 3px; font-size: 13px; }}
-  pre {{ background: #1c2633; color: #dfe6ef; padding: 16px; border-radius: 6px; overflow-x: auto; }}
-  pre code {{ background: transparent; color: inherit; padding: 0; }}
+  code {{ font-family: 'Cascadia Code', 'Consolas', monospace; background: {card}; border: 1px solid {border}; padding: 1px 6px; border-radius: 4px; font-size: 13px; }}
+  pre {{ background: {card}; border: 1px solid {border}; padding: 14px 16px; border-radius: 8px; overflow-x: auto; }}
+  pre code {{ background: transparent; border: none; color: inherit; padding: 0; }}
   ul, ol {{ padding-left: 24px; }}
   li {{ margin: 4px 0; }}
   img {{ max-width: 100%; height: auto; }}
   p img {{ display: inline-block; margin: 0 4px; vertical-align: middle; }}
   a img {{ border: none; }}
-  blockquote {{ border-left: 4px solid #2a6ad8; margin: 12px 0; padding: 8px 16px; background: #f0f2f5; color: #555; }}
+  blockquote {{ border-left: 4px solid {accent}; margin: 12px 0; padding: 8px 16px; background: {card}; color: {muted}; border-radius: 0 8px 8px 0; }}
   table {{ border-collapse: collapse; width: 100%; margin: 12px 0; }}
-  th, td {{ border: 1px solid #d0d4d8; padding: 8px 12px; text-align: left; }}
-  th {{ background: #f0f2f5; font-weight: 600; }}
-  hr {{ border: none; border-top: 1px solid #e0e4e8; margin: 24px 0; }}
+  th, td {{ border: 1px solid {border}; padding: 8px 12px; text-align: left; }}
+  th {{ background: {card}; font-weight: 600; }}
+  hr {{ border: none; border-top: 1px solid {border}; margin: 24px 0; }}
   p {{ margin: 12px 0; }}
   div.align-center {{ text-align: center; }}
-  sub {{ font-size: 11px; color: #888; }}
+  sub {{ font-size: 11px; color: {muted}; }}
   ::-webkit-scrollbar {{ width: 12px; }}
-  ::-webkit-scrollbar-track {{ background: #ffffff; }}
-  ::-webkit-scrollbar-thumb {{ background: #c0c8d0; border-radius: 6px; border: 3px solid #ffffff; }}
-  ::-webkit-scrollbar-thumb:hover {{ background: #a0a8b0; }}
+  ::-webkit-scrollbar-track {{ background: {bg}; }}
+  ::-webkit-scrollbar-thumb {{ background: {thumb}; border-radius: 6px; border: 3px solid {bg}; }}
+  ::-webkit-scrollbar-thumb:hover {{ background: {muted}; }}
 </style>
 </head>
 <body>
