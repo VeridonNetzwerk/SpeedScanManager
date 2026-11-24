@@ -35,18 +35,18 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         // Default to an existing installation (upgrade), otherwise Program Files (x86)
+        var version = typeof(MainWindow).Assembly.GetName().Version;
         var existing = InstallerCore.GetExistingInstallLocation();
         if (existing != null && InstallerCore.IsSafeAppDirectory(existing, out _) &&
             File.Exists(Path.Combine(existing, InstallerCore.AppExeName)))
         {
             TxtInstallPath.Text = existing;
-            BtnStartInstall.Content = "Aktualisieren";
+            ShowExistingInstall(existing, version);
         }
         else
         {
             TxtInstallPath.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), InstallerCore.AppFolderName);
         }
-        var version = typeof(MainWindow).Assembly.GetName().Version;
         LblVersion.Text = version != null ? $"Version {version.Major}.{version.Minor}.{version.Build}" : "";
         UpdateActiveTab("install");
         BtnTheme.IsChecked = Theme.IsDark;
@@ -540,6 +540,49 @@ public partial class MainWindow : Window
     }
 
     private string? _installedDir;
+    private string? _existingDir;
+
+    /// <summary>Already installed: say which version and offer update / repair or uninstall.</summary>
+    private void ShowExistingInstall(string dir, Version? ownVersion)
+    {
+        _existingDir = dir;
+        var own = ownVersion ?? new Version(0, 0, 0);
+        var ownText = $"{own.Major}.{own.Minor}.{own.Build}";
+        var installedText = InstallerCore.GetAppVersion(dir);
+        Version.TryParse(installedText, out var installed);
+        int cmp = installed == null ? -1 : installed.CompareTo(new Version(own.Major, own.Minor, Math.Max(0, own.Build)));
+
+        WelcomeTitle.Text = "Bereits installiert";
+        if (cmp < 0)
+        {
+            WelcomeSubtitle.Text = $"Version {installedText} ist installiert. Aktualisiere auf {ownText} – deine Einstellungen bleiben erhalten.";
+            BtnStartInstall.Content = "Aktualisieren";
+        }
+        else if (cmp == 0)
+        {
+            WelcomeSubtitle.Text = $"Version {installedText} ist schon installiert. Du kannst sie reparieren oder entfernen.";
+            BtnStartInstall.Content = "Reparieren";
+        }
+        else
+        {
+            WelcomeSubtitle.Text = $"Eine neuere Version ({installedText}) ist installiert. Diese Version ist {ownText}.";
+            BtnStartInstall.Content = "Trotzdem installieren";
+        }
+        BtnUninstallExisting.Visibility = Visibility.Visible;
+    }
+
+    private void OnUninstallExistingClick(object sender, RoutedEventArgs e)
+    {
+        if (_existingDir == null) return;
+        var uninstaller = Path.Combine(_existingDir, InstallerCore.UninstallerExeName);
+        if (!File.Exists(uninstaller))
+        {
+            WelcomeSubtitle.Text = "Das Deinstallationsprogramm wurde nicht gefunden. Bitte über die Windows-Einstellungen entfernen.";
+            return;
+        }
+        Process.Start(new ProcessStartInfo(uninstaller, "--uninstall") { UseShellExecute = true, WorkingDirectory = _existingDir });
+        Close();
+    }
 
     /// <summary>Finish page: replaces the install page, navigation is locked.</summary>
     private void ShowFinish(string targetDir, bool scanButtonOk, bool desktop, bool startMenu)
@@ -562,9 +605,7 @@ public partial class MainWindow : Window
         FinishView.Visibility = Visibility.Visible;
         BtnInstall.IsEnabled = BtnReadme.IsEnabled = BtnSupport.IsEnabled = false;
         BtnClose.IsEnabled = true;
-        // A warning takes the place of the three steps
-        FinishSteps.Visibility = FinishWarning.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
-        FinishPage.Play(FinishBanner, FinishCheck, FinishSummary, FinishSteps, FinishWarning, FinishFooter);
+        FinishPage.Play(FinishBanner, FinishCheck, FinishSummary, FinishWarning, FinishFooter);
     }
 
     private void OnFinishClick(object sender, RoutedEventArgs e)
@@ -581,6 +622,7 @@ public partial class MainWindow : Window
     {
         ChkDesktop.IsEnabled = enabled;
         ChkStartMenu.IsEnabled = enabled;
+        BtnUninstallExisting.IsEnabled = enabled;
     }
 
     /// <summary>
