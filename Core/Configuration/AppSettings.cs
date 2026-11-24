@@ -42,6 +42,9 @@ internal class AppSettings
     /// <summary>The guided tour of the profile management was shown.</summary>
     public bool ProfileTourShown { get; set; }
 
+    /// <summary>UI language ("de-DE", "en-US", …); empty = setup default / Windows language.</summary>
+    public string Language { get; set; } = "";
+
     /// <summary>Look for a newer version on GitHub in the background.</summary>
     public bool CheckForUpdates { get; set; } = true;
 
@@ -61,6 +64,23 @@ internal class AppSettings
     public int CounterDigits { get; set; } = 3;
 
     private static readonly string SettingsPath = Path.Combine(SettingsStorage.SettingsDir, "settings.json");
+
+    /// <summary>Only the language setting (read before anything else starts, see Program.Main).</summary>
+    public static string PeekLanguage()
+    {
+        foreach (var path in new[] { SettingsPath, SettingsPath + ".bak" })
+        {
+            try
+            {
+                if (!File.Exists(path)) continue;
+                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                return doc.RootElement.TryGetProperty(nameof(Language), out var v) && v.ValueKind == JsonValueKind.String
+                    ? v.GetString() ?? "" : "";
+            }
+            catch { }
+        }
+        return "";
+    }
 
     public static AppSettings Load()
     {

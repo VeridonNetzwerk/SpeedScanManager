@@ -57,13 +57,29 @@ internal interface IThemeAware
     void ApplyTheme(ThemePalette palette);
 }
 
-/// <summary>Fonts of the themed UI (Segoe UI).</summary>
+/// <summary>
+/// Fonts of the themed UI: Segoe UI, or the Windows UI font of the language for Japanese,
+/// Chinese and Korean (Segoe UI has no CJK characters; GDI+ text would show boxes).
+/// </summary>
 internal static class ThemeFonts
 {
-    public static readonly Font Regular = new("Segoe UI", 9f);
-    public static readonly Font Semibold = new("Segoe UI Semibold", 9f);
-    public static readonly Font Heading = new("Segoe UI Semibold", 10.5f);
-    public static readonly Font Large = new("Segoe UI", 14f);
+    /// <summary>Regular UI font family of the current language.</summary>
+    public static string Family => L.Current.FontFamily;
+
+    /// <summary>Semibold family (for CJK the regular family drawn bold).</summary>
+    public static string SemiboldFamily => L.Current.SemiboldFamily;
+
+    /// <summary>New regular UI font (caller owns it when not static).</summary>
+    public static Font New(float size, GraphicsUnit unit = GraphicsUnit.Point) => new(Family, size, FontStyle.Regular, unit);
+
+    /// <summary>New semibold UI font.</summary>
+    public static Font NewSemibold(float size, GraphicsUnit unit = GraphicsUnit.Point) =>
+        new(SemiboldFamily, size, L.Current.BoldForSemibold ? FontStyle.Bold : FontStyle.Regular, unit);
+
+    public static readonly Font Regular = New(9f);
+    public static readonly Font Semibold = NewSemibold(9f);
+    public static readonly Font Heading = NewSemibold(10.5f);
+    public static readonly Font Large = New(14f);
 
     private static readonly Dictionary<(string, float, FontStyle), Font> Cache = new();
 
@@ -80,7 +96,8 @@ internal static class ThemeFonts
         bool bold = font.Bold;
         var style = font.Style & ~FontStyle.Bold;
         float size = font.SizeInPoints <= 8.6f ? 9f : font.SizeInPoints;
-        string family = bold ? "Segoe UI Semibold" : "Segoe UI";
+        string family = bold ? SemiboldFamily : Family;
+        if (bold && L.Current.BoldForSemibold) style |= FontStyle.Bold;
         if (style == FontStyle.Regular && size == 9f)
             return bold ? Semibold : Regular;
         if (style == FontStyle.Regular && size == 14f && !bold)
@@ -91,11 +108,12 @@ internal static class ThemeFonts
     /// <summary>Semibold variant of a font (same size).</summary>
     public static Font SemiboldOf(Font font)
     {
-        if (font.FontFamily.Name.Equals("Segoe UI Semibold", StringComparison.OrdinalIgnoreCase))
+        if (font.FontFamily.Name.Equals(SemiboldFamily, StringComparison.OrdinalIgnoreCase)
+            && (!L.Current.BoldForSemibold || font.Bold))
             return font;
         if (font.SizeInPoints == 9f && font.Style == FontStyle.Regular)
             return Semibold;
-        return Get("Segoe UI Semibold", font.SizeInPoints, font.Style & ~FontStyle.Bold);
+        return Get(SemiboldFamily, font.SizeInPoints, L.Current.BoldForSemibold ? font.Style | FontStyle.Bold : font.Style & ~FontStyle.Bold);
     }
 
     private static Font Get(string family, float size, FontStyle style)

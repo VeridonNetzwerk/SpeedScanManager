@@ -1409,6 +1409,7 @@ internal partial class TrayApplicationContext : ApplicationContext
             _mainForm.SettingsApplied += (_, _) => OnSettingsApplied();
             _mainForm.CustomApplicationsChanged += (_, _) => OnCustomApplicationsChanged();
             _mainForm.ScanRequested += (_, _) => StartScan(ScanTrigger.Menu);
+            _mainForm.LanguageChanged += (_, _) => OnLanguageChanged();
             _mainForm.FormClosed += (_, _) => _mainForm = null;
             UpdateMainFormUpdatePill();
         }
@@ -1418,6 +1419,38 @@ internal partial class TrayApplicationContext : ApplicationContext
             UpdateMainFormCapabilities();
         }
         WindowActivation.BringToFront(_mainForm);
+    }
+
+    /// <summary>Another language was saved: restart so every text uses it.</summary>
+    private void OnLanguageChanged()
+    {
+        _appSettings.Save();
+        if (_busy)
+        {
+            TrayMessageBox.Info(DialogOwner, L.T("Die neue Sprache wird beim nächsten Start von SpeedScan Manager übernommen."));
+            return;
+        }
+        if (!TrayMessageBox.AskYesNo(DialogOwner, L.T("Die Sprache wird nach einem Neustart übernommen.\n\nSpeedScan Manager jetzt neu starten?")))
+            return;
+        RestartApp(showSettings: _mainForm is { IsDisposed: false, Visible: true });
+    }
+
+    /// <summary>Starts a new instance (it waits until this one is gone) and exits.</summary>
+    private void RestartApp(bool showSettings)
+    {
+        var exe = Environment.ProcessPath;
+        if (exe == null) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe, showSettings ? "/restart /settings" : "/restart") { UseShellExecute = false });
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"Restart failed: {ex.Message}");
+            return;
+        }
+        try { _mainForm?.CloseDiscarding(); } catch { }
+        DoExit();
     }
 
     /// <summary>OK/Übernehmen in the settings window: _settings already holds the applied values.</summary>
@@ -1645,6 +1678,13 @@ internal partial class TrayApplicationContext : ApplicationContext
         {
             CompleteStartup();
             return;
+        }
+
+        // Restarted after a language change: open the settings window again
+        if (Program.ShowSettingsOnStart)
+        {
+            Program.ShowSettingsOnStart = false;
+            ShowMainForm();
         }
 
         // First start: open the settings window with the guided tour (once).

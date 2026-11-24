@@ -37,6 +37,8 @@
     <EmbeddedResource Include="assets\discord_logo.svg" LogicalName="discord_logo.svg" />
     <!-- Help pictures (generated screenshots, NAME_light.png / NAME_dark.png), see HelpRenderer -->
     <EmbeddedResource Include="Resources\Help\*.png" LogicalName="Help.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="lang\*.json" LogicalName="lang.%(Filename).json" />
+    <EmbeddedResource Include="lang\help\*.json" LogicalName="lang.help.%(Filename).json" />
   </ItemGroup>
 
   <ItemGroup>

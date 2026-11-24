@@ -39,6 +39,9 @@ internal static class Program
     /// </summary>
     internal static bool ScanOnStartRequested { get; set; }
 
+    /// <summary>Restarted after a language change from the settings window: open it again.</summary>
+    internal static bool ShowSettingsOnStart { get; set; }
+
     [STAThread]
     static int Main(string[] args)
     {
@@ -73,6 +76,18 @@ internal static class Program
             using var mutex = new Mutex(false, MutexName);
             bool ownsMutex = TryAcquire(mutex);
 
+            // Restart (language change): the old instance is still exiting, wait for it
+            if (!ownsMutex && HasArg(args, "/restart"))
+            {
+                var wait = Stopwatch.StartNew();
+                while (!ownsMutex && wait.ElapsedMilliseconds < 15000)
+                {
+                    Thread.Sleep(100);
+                    ownsMutex = TryAcquire(mutex);
+                }
+            }
+            ShowSettingsOnStart = HasArg(args, "/settings");
+
             if (!ownsMutex)
             {
                 // Another instance is running: hand the request over and exit.
@@ -104,6 +119,9 @@ internal static class Program
                 ScanOnStartRequested = true;
 
             InstallExceptionHandlers();
+
+            // Language first: every window and static text below uses it
+            L.Init(AppSettings.PeekLanguage());
 
             // App-lifetime pipe server (independent of scanner/WIA state).
             ScanButtonPipeServer.Shared.Start();

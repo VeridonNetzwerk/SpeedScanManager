@@ -211,10 +211,10 @@ internal sealed class TutorialOverlay : Form
         int pad = S(18), width = S(360), tile = S(34), gap = S(12);
         // Pixel-sized fonts: the same size in GDI (TextRenderer) and GDI+, independent of the bitmap's DPI.
         float px = DeviceDpi / 72f;
-        using var titleFont = new Font("Segoe UI Semibold", 12f * px, GraphicsUnit.Pixel);
-        using var textFont = new Font("Segoe UI", 9.75f * px, GraphicsUnit.Pixel);
-        using var smallFont = new Font("Segoe UI", 8.5f * px, GraphicsUnit.Pixel);
-        using var buttonFont = new Font("Segoe UI Semibold", 9.5f * px, GraphicsUnit.Pixel);
+        using var titleFont = ThemeFonts.NewSemibold(12f * px, GraphicsUnit.Pixel);
+        using var textFont = ThemeFonts.New(9.75f * px, GraphicsUnit.Pixel);
+        using var smallFont = ThemeFonts.New(8.5f * px, GraphicsUnit.Pixel);
+        using var buttonFont = ThemeFonts.NewSemibold(9.5f * px, GraphicsUnit.Pixel);
 
         const TextFormatFlags Wrap = TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
         const TextFormatFlags Line = TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;

@@ -10,17 +10,17 @@ namespace SpeedScanManager;
 internal static class ModernFonts
 {
     /// <summary>Window header title.</summary>
-    public static readonly Font WindowTitle = new("Segoe UI Semibold", 12f);
+    public static readonly Font WindowTitle = ThemeFonts.NewSemibold(12f);
     /// <summary>Page title (settings pages).</summary>
-    public static readonly Font PageTitle = new("Segoe UI Semibold", 14f);
+    public static readonly Font PageTitle = ThemeFonts.NewSemibold(14f);
     /// <summary>Card title.</summary>
-    public static readonly Font CardTitle = new("Segoe UI Semibold", 10f);
+    public static readonly Font CardTitle = ThemeFonts.NewSemibold(10f);
     /// <summary>Setting row title.</summary>
-    public static readonly Font RowTitle = new("Segoe UI", 9.5f);
+    public static readonly Font RowTitle = ThemeFonts.New(9.5f);
     /// <summary>Descriptions and hints.</summary>
-    public static readonly Font Small = new("Segoe UI", 8.5f);
+    public static readonly Font Small = ThemeFonts.New(8.5f);
     /// <summary>Upper-case section caption (sidebar groups).</summary>
-    public static readonly Font Caption = new("Segoe UI Semibold", 7.5f);
+    public static readonly Font Caption = ThemeFonts.NewSemibold(7.5f);
 }
 
 /// <summary>

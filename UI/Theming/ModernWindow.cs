@@ -460,7 +460,7 @@ internal class ModernWindow : Form
 /// <summary>Header zone of a <see cref="ModernWindow"/> (painted; hosts the round buttons).</summary>
 internal sealed class ModernWindowHeader : Panel, IThemeAware
 {
-    private static readonly Font TitleFont = new("Segoe UI Semibold", 12f);
+    private static readonly Font TitleFont = ThemeFonts.NewSemibold(12f);
 
     private readonly ModernWindow _window;
     private readonly HeaderIconButton _btnHelp;

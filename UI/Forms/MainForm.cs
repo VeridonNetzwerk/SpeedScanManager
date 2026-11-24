@@ -77,6 +77,17 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
     /// </summary>
     public event EventHandler? SettingsApplied;
 
+    /// <summary>OK/Übernehmen saved another language; the app restarts to show it.</summary>
+    public event EventHandler? LanguageChanged;
+
+    private readonly ComboBox _languageDropdown;
+
+    /// <summary>Language shown in the dropdown when the window opened (the one the app runs in).</summary>
+    private string SavedLanguage => L.Find(_appSettings.Language)?.Code ?? L.Current.Code;
+
+    private string SelectedLanguage =>
+        _languageDropdown.SelectedIndex >= 0 ? L.Languages[_languageDropdown.SelectedIndex].Code : SavedLanguage;
+
     /// <summary>
     /// Raised when the list of custom applications changed (persist immediately, independent
     /// of OK/Abbrechen like ScanSnap).
@@ -130,7 +141,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         };
         ShowInTaskbar = true;
         // Every page fits without scrolling at this size (compact cards, two columns on Allgemein).
-        ClientSize = new Size(920, 660);
+        ClientSize = new Size(920, 706);
 
         // === Sidebar + page area ===
         _nav = new NavSidebar { Dock = DockStyle.Left, Width = 212 };
@@ -181,6 +192,17 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
                 ThemeManager.SetMode((ThemeMode)_themeDropdown.SelectedIndex);
         };
 
+        _languageDropdown = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Size = new Size(130, 24),
+            DropDownWidth = 180,
+            MaxDropDownItems = 14,
+        };
+        foreach (var language in L.Languages)
+            _languageDropdown.Items.Add(language.NativeName);
+        _languageDropdown.SelectedIndex = Math.Max(0, L.Languages.ToList().FindIndex(l => l.Code == SavedLanguage));
+
         var cardStart = new SettingsCard { Dense = true };
         cardStart.AddRow("Quick-Menü verwenden",
             "Nach jedem Scan das Ziel wählen.",
@@ -190,6 +212,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         cardStart.AddRow("Nach Updates suchen",
             "Hinweis bei einer neuen Version.", _updateCheckBox);
         cardStart.AddRow("Design", "„System“ folgt Windows.", _themeDropdown, 130);
+        cardStart.AddRow("Sprache", "Wird nach einem Neustart übernommen.", _languageDropdown, 130);
         _startCard = cardStart;
 
         _profileDropdown = new ComboBox
@@ -767,10 +790,14 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         _appSettings.QuickMenuEnabled = _quickMenuCheckBox.Checked;
         _appSettings.AutoStart = _autoStartCheckBox.Checked;
         _appSettings.CheckForUpdates = _updateCheckBox.Checked;
+        bool languageChanged = SelectedLanguage != SavedLanguage;
+        if (languageChanged) _appSettings.Language = SelectedLanguage;
         _appSettings.SelectedProfileName = _activeProfile?.Name ?? "";
         _sessionBaseline.RestoreFrom(_working);
 
         SettingsApplied?.Invoke(this, EventArgs.Empty);
+        if (languageChanged)
+            BeginInvoke(() => LanguageChanged?.Invoke(this, EventArgs.Empty));
         UpdateApplyButton();
         return true;
     }
@@ -787,6 +814,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         _quickMenuCheckBox.Checked = _appSettings.QuickMenuEnabled;
         _autoStartCheckBox.Checked = _appSettings.AutoStart;
         _updateCheckBox.Checked = _appSettings.CheckForUpdates;
+        _languageDropdown.SelectedIndex = Math.Max(0, L.Languages.ToList().FindIndex(l => l.Code == SavedLanguage));
         LoadAllTabs();
         RefreshProfileDropdown();
         UpdateApplyButton();
@@ -806,6 +834,8 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
             general.Add(new("Allgemein", "Quick-Menü", SettingsChangeList.OnOff(_appSettings.QuickMenuEnabled), SettingsChangeList.OnOff(_quickMenuCheckBox.Checked)));
         if (_autoStartCheckBox.Checked != _appSettings.AutoStart)
             general.Add(new("Allgemein", "Mit Windows starten", SettingsChangeList.OnOff(_appSettings.AutoStart), SettingsChangeList.OnOff(_autoStartCheckBox.Checked)));
+        if (SelectedLanguage != SavedLanguage)
+            general.Add(new("Allgemein", "Sprache", L.Find(SavedLanguage)!.NativeName, L.Find(SelectedLanguage)!.NativeName));
         if (_updateCheckBox.Checked != _appSettings.CheckForUpdates)
             general.Add(new("Allgemein", "Nach Updates suchen", SettingsChangeList.OnOff(_appSettings.CheckForUpdates), SettingsChangeList.OnOff(_updateCheckBox.Checked)));
         if ((_activeProfile?.Name ?? "") != _appSettings.SelectedProfileName)
@@ -895,6 +925,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         _quickMenuCheckBox.CheckedChanged += (s, e) => { OnQuickMenuToggled(); OnSettingsChanged(); };
         _autoStartCheckBox.CheckedChanged += (s, e) => OnSettingsChanged();
         _updateCheckBox.CheckedChanged += (s, e) => OnSettingsChanged();
+        _languageDropdown.SelectedIndexChanged += (s, e) => OnSettingsChanged();
 
         // Wire the scan setting pages (the Allgemein page is wired explicitly above)
         foreach (var content in new Control[]
