@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- Overridden by build-release.ps1 / CI with -p:Version=<SpeedScanManager.csproj Version> -->
-    <Version>0.1.2</Version>
+    <Version>0.1.3</Version>
     <AssemblyName>SpeedScanInstaller</AssemblyName>
     <RootNamespace>SpeedScanInstaller</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
