@@ -158,6 +158,9 @@ internal class ModernWindow : Form
     /// <summary>The header zone (custom painted). Add own controls only if really needed.</summary>
     public Control Header => _header;
 
+    /// <summary>The "?" button in the title bar (for the guided tour).</summary>
+    internal Control HeaderHelpButton => _header.HelpButton;
+
     /// <summary>The footer bar (shown automatically by <see cref="AddFooterButton"/> / <see cref="FooterHint"/>).</summary>
     public Control Footer => _footer;
 
@@ -389,6 +392,8 @@ internal sealed class ModernWindowHeader : Panel, IThemeAware
     private Image? _logo = AppResources.Logo;
     private ModernHeaderButtons _buttons = ModernHeaderButtons.Close;
     private int _logicalHeight = 60;
+
+    internal Control HelpButton => _btnHelp;
 
     public ModernWindowHeader(ModernWindow window)
     {

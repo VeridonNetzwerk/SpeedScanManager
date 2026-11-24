@@ -36,6 +36,8 @@ internal class MainForm : ModernWindow
 
     private readonly ComboBox _profileDropdown;
     private readonly SettingsCard _profileCard;
+    private readonly SettingsCard _startCard;
+    private TutorialOverlay? _tutorial;
 
     private readonly NavSidebar _nav;
     private readonly Panel _pageHost;
@@ -109,8 +111,10 @@ internal class MainForm : ModernWindow
         HelpClicked += (s, e) =>
         {
             int page = Math.Max(0, _nav!.SelectedIndex);
-            using var help = new HelpForm(PageHelpTopics[page]);
+            using var help = new HelpForm(PageHelpTopics[page], offerTour: true);
             help.ShowDialog(this);
+            if (help.TourRequested)
+                StartTutorial();
         };
         ShowInTaskbar = true;
         // Every page fits without scrolling at this size (compact cards, two columns on Allgemein).
@@ -171,6 +175,7 @@ internal class MainForm : ModernWindow
         cardStart.AddRow("Mit Windows starten",
             "Startet nach der Anmeldung bei Windows.", _autoStartCheckBox);
         cardStart.AddRow("Design", "„System“ folgt Windows.", _themeDropdown, 130);
+        _startCard = cardStart;
 
         _profileDropdown = new ComboBox
         {
@@ -277,6 +282,71 @@ internal class MainForm : ModernWindow
         ResumeLayout(false);
         PerformLayout();
     }
+
+    /// <summary>
+    /// Guided tour through the settings window (first start, or "Tour starten" in the help).
+    /// Only switches pages; settings are not changed.
+    /// </summary>
+    public void StartTutorial()
+    {
+        if (_tutorial != null || IsDisposed) return;
+        // After the window is shown and laid out
+        if (!Visible || !IsHandleCreated)
+        {
+            Shown += (_, _) => BeginInvoke(StartTutorial);
+            return;
+        }
+        if (WindowState == FormWindowState.Minimized)
+            WindowState = FormWindowState.Normal;
+
+        int startPage = Math.Max(0, _nav.SelectedIndex);
+        Rectangle Screen(Control c, Rectangle r) => c.RectangleToScreen(r);
+        Func<Rectangle?> Nav(int page) => () => Screen(_nav, _nav.GetItemBounds(page));
+        Action Page(int page) => () => _nav.SelectedIndex = page;
+        Func<Rectangle?> Of(Control c) => () => c.Visible ? Screen(c, c.ClientRectangle) : null;
+
+        var steps = new List<TutorialOverlay.Step>
+        {
+            new("Willkommen bei SpeedScan Manager",
+                "Eine kurze Tour durch die wichtigsten Einstellungen. Du kannst sie jederzeit überspringen und später über die Hilfe (?) wieder starten.",
+                Glyph.Sparkle, IconColors.Purple, null, Page(PageGeneral)),
+            new("Anwendung",
+                "Hier legst du fest, was nach dem Scan passiert: in einem Ordner speichern, per E-Mail senden, drucken oder in einem Programm öffnen.",
+                Glyph.Apps, IconColors.Purple, Nav(PageApplication), Page(PageApplication)),
+            new("Speichern",
+                "Ordner und Dateiname deiner Scans. Ohne Änderung landen sie in „Dokumente\\SpeedScanManager“.",
+                Glyph.Folder, IconColors.Amber, Nav(PageSave), Page(PageSave)),
+            new("Scanmodus",
+                "Farbe, Auflösung und ob eine oder beide Seiten gescannt werden. Unter „Optionen...“ stellst du z. B. das automatische Drehen ein.",
+                Glyph.Scanner, IconColors.Blue, Nav(PageScanMode), Page(PageScanMode)),
+            new("Dateiart",
+                "PDF oder Bild. Mit Texterkennung wird die PDF durchsuchbar und du kannst Text daraus kopieren.",
+                Glyph.FileType, IconColors.Red, Nav(PageFileType), Page(PageFileType)),
+            new("Quick-Menü",
+                "Ist es an, wählst du nach jedem Scan in einem kleinen Menü, was mit dem Dokument passiert. Ist es aus, gilt immer die Seite „Anwendung“.",
+                Glyph.Apps, IconColors.Pink, Of(_startCard), Page(PageGeneral)),
+            new("Scannen",
+                "Papier einlegen und die Scan-Taste am Scanner drücken. Oder unten rechts in der Taskleiste auf das SpeedScan-Symbol klicken und „Scannen“ wählen.",
+                Glyph.Scanner, IconColors.Green, null, Page(PageGeneral)),
+            new("Hilfe",
+                "Das Fragezeichen öffnet die Hilfe mit Bildern zur jeweiligen Seite. Dort findest du auch „Tour starten“.",
+                Glyph.Question, IconColors.Blue, Of(HeaderHelpButton), null),
+            new("Fertig!",
+                "Mit OK übernimmst du deine Einstellungen. Viel Spaß beim Scannen!",
+                Glyph.Check, IconColors.Green, Of(_okButton), null),
+        };
+
+        _tutorial = new TutorialOverlay(this, steps);
+        _tutorial.Finished += (_, _) =>
+        {
+            _tutorial = null;
+            if (!IsDisposed) _nav.SelectedIndex = startPage;
+        };
+        _tutorial.Start();
+    }
+
+    /// <summary>Test helper (screenshots): the tour without showing it.</summary>
+    internal TutorialOverlay? Tutorial => _tutorial;
 
     private void OnThemeModeChanged(object? sender, EventArgs e)
     {

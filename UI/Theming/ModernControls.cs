@@ -1183,6 +1183,9 @@ internal class NavSidebar : Control, IThemeAware
 
     public string GetItemText(int index) => _entries[_itemIndexes[index]].Text;
 
+    /// <summary>Bounds of an item in client coordinates (for the guided tour).</summary>
+    public Rectangle GetItemBounds(int index) => _entries[_itemIndexes[index]].Bounds;
+
     public bool IsItemEnabled(int index) => _entries[_itemIndexes[index]].Enabled;
 
     public void SetItemEnabled(int index, bool enabled)

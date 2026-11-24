@@ -1658,6 +1658,15 @@ internal class TrayApplicationContext : ApplicationContext
             return;
         }
 
+        // First start: open the settings window with the guided tour (once).
+        if (!_appSettings.TutorialShown)
+        {
+            _appSettings.TutorialShown = true;
+            _appSettings.Save();
+            ShowMainForm();
+            _mainForm?.StartTutorial();
+        }
+
         // TWAIN (DSM open loads every driver to enumerate the sources) and the first scanner
         // query are deferred: right after the start the process is often slowed down (antivirus
         // scanning the new exe, logon), and drivers like Fujitsu's then show error dialogs.

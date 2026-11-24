@@ -37,6 +37,8 @@ internal class AppSettings
     public List<CustomApplication> CustomApplications { get; set; } = new();
     /// <summary>Design: follow Windows (System), Hell or Dunkel.</summary>
     public ThemeMode ThemeMode { get; set; } = ThemeMode.System;
+    /// <summary>The guided tour of the settings window was shown (first start).</summary>
+    public bool TutorialShown { get; set; }
 
     /// <summary>Current scan settings (full payload). Null only in files written by old versions.</summary>
     public ScanSettings? ScanSettings { get; set; }

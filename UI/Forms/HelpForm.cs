@@ -69,7 +69,11 @@ internal class HelpForm : ModernWindow
 
     private static readonly string[] NavCaptions = { "Themen", "Stichwörter", "Suchergebnisse" };
 
-    public HelpForm(string? topicId = null)
+    /// <summary>"Tour starten" was clicked: the caller starts the guided tour after closing.</summary>
+    public bool TourRequested { get; private set; }
+
+    /// <param name="offerTour">Shows "Tour starten" in the toolbar (help opened from the settings window).</param>
+    public HelpForm(string? topicId = null, bool offerTour = false)
     {
         SuspendLayout();
         _initialTopic = topicId ?? "root";
@@ -224,6 +228,20 @@ internal class HelpForm : ModernWindow
             tsBtnPrint,
             _tsBtnOptions
         });
+        if (offerTour)
+        {
+            var tsBtnTour = new ToolButton("Tour starten", (g, c) => ThemeGlyphs.Draw(g, Glyph.Sparkle, new RectangleF(0, 0, 16, 16), c))
+            {
+                ToolTipText = "Die Einführung durch das Einstellungsfenster noch einmal zeigen"
+            };
+            tsBtnTour.Click += (s, e) =>
+            {
+                TourRequested = true;
+                Close();
+            };
+            toolbar.Controls.Add(new ToolSeparator());
+            toolbar.Controls.Add(tsBtnTour);
+        }
 
         _webBrowser = new WebBrowser
         {
