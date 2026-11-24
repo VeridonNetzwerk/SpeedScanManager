@@ -161,6 +161,14 @@ internal class ModernWindow : Form
     /// <summary>The "?" button in the title bar (for the guided tour).</summary>
     internal Control HeaderHelpButton => _header.HelpButton;
 
+    /// <summary>
+    /// Highlighted pill in the header left of the window buttons (e.g. "Update 0.1.3", like the
+    /// update button in the Modrinth App). <paramref name="text"/> null removes it.
+    /// </summary>
+    public void SetHeaderAction(string? text, Glyph glyph, string toolTip, Action? click) => _header.SetAction(text, glyph, toolTip, click);
+
+    internal Control? HeaderActionButton => _header.ActionButton;
+
     /// <summary>The footer bar (shown automatically by <see cref="AddFooterButton"/> / <see cref="FooterHint"/>).</summary>
     public Control Footer => _footer;
 
@@ -466,6 +474,30 @@ internal sealed class ModernWindowHeader : Panel, IThemeAware
 
     internal Control HelpButton => _btnHelp;
 
+    private HeaderPillButton? _action;
+    private readonly ToolTip _actionTip = new();
+
+    internal Control? ActionButton => _action;
+
+    public void SetAction(string? text, Glyph glyph, string toolTip, Action? click)
+    {
+        if (_action != null)
+        {
+            Controls.Remove(_action);
+            _action.Dispose();
+            _action = null;
+        }
+        if (text != null && click != null)
+        {
+            _action = new HeaderPillButton(text, glyph) { AccessibleName = text };
+            _action.Click += (_, _) => click();
+            _actionTip.SetToolTip(_action, toolTip);
+            Controls.Add(_action);
+        }
+        PerformLayout();
+        Invalidate();
+    }
+
     public ModernWindowHeader(ModernWindow window)
     {
         _window = window;
@@ -543,6 +575,12 @@ internal sealed class ModernWindowHeader : Panel, IThemeAware
             b.Bounds = new Rectangle(x, y, size, size);
             x -= S(4);
         }
+        if (_action != null)
+        {
+            var pref = _action.PreferredSize;
+            x -= S(6) + pref.Width;
+            _action.Bounds = new Rectangle(x, (Height - pref.Height) / 2, pref.Width, pref.Height);
+        }
     }
 
     private int ButtonsLeft()
@@ -553,6 +591,7 @@ internal sealed class ModernWindowHeader : Panel, IThemeAware
                 || (c == _btnMinimize && (_buttons & ModernHeaderButtons.Minimize) != 0)
                 || (c == _btnHelp && (_buttons & ModernHeaderButtons.Help) != 0)))
                 left = Math.Min(left, c.Left);
+        if (_action != null) left = Math.Min(left, _action.Left);
         return left;
     }
 
@@ -718,6 +757,60 @@ internal sealed class ModernWindowFooter : Panel, IThemeAware
 }
 
 /// <summary>Round icon button (help "?", minimize "–", close "x" turning red on hover).</summary>
+/// <summary>Green pill with glyph and text in the window header (update available).</summary>
+internal sealed class HeaderPillButton : Control, IThemeAware
+{
+    private readonly Glyph _glyph;
+    private bool _hover;
+    private bool _pressed;
+
+    public HeaderPillButton(string text, Glyph glyph)
+    {
+        Text = text;
+        _glyph = glyph;
+        Cursor = Cursors.Hand;
+        Font = ThemeFonts.Semibold;
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
+                 | ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
+        SetStyle(ControlStyles.Selectable, false);
+        AccessibleRole = AccessibleRole.PushButton;
+    }
+
+    private int S(float v) => (int)Math.Round(v * DeviceDpi / 96f);
+
+    public override Size GetPreferredSize(Size proposedSize)
+    {
+        int textW = TextRenderer.MeasureText(Text, Font, Size.Empty, TextFormatFlags.NoPadding | TextFormatFlags.SingleLine).Width;
+        return new Size(S(12) + S(16) + S(6) + textW + S(14), S(30));
+    }
+
+    public void ApplyTheme(ThemePalette palette) => Invalidate();
+
+    protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
+    protected override void OnMouseLeave(EventArgs e) { _hover = false; _pressed = false; Invalidate(); base.OnMouseLeave(e); }
+    protected override void OnMouseDown(MouseEventArgs e) { if (e.Button == MouseButtons.Left) { _pressed = true; Invalidate(); } base.OnMouseDown(e); }
+    protected override void OnMouseUp(MouseEventArgs e) { _pressed = false; Invalidate(); base.OnMouseUp(e); }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var p = ThemeManager.Current;
+        var g = e.Graphics;
+        g.Clear(Parent?.BackColor ?? p.Header);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        var green = IconColors.Green;
+        var fill = _pressed ? ColorIcons.Darken(green, 0.18f) : _hover ? ColorIcons.Darken(green, 0.09f) : green;
+        var rect = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
+        using (var path = ThemeGlyphs.Rounded(rect, rect.Height / 2f))
+        using (var brush = new SolidBrush(fill))
+            g.FillPath(brush, path);
+        float gs = S(16);
+        ThemeGlyphs.Draw(g, _glyph, new RectangleF(S(12), (Height - gs) / 2f, gs, gs), Color.White, 1.15f);
+        int tx = S(12) + S(16) + S(6);
+        TextRenderer.DrawText(g, Text, Font, new Rectangle(tx, 0, Width - tx - S(10), Height), Color.White, fill,
+            TextFormatFlags.NoPadding | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+    }
+}
+
 internal sealed class HeaderIconButton : Control, IThemeAware
 {
     public enum Kind { Help, Minimize, Close }

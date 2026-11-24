@@ -88,7 +88,9 @@ internal enum Glyph
     /// <summary>Crescent moon (dark design).</summary>
     Moon,
     /// <summary>Monitor (follow the system).</summary>
-    Monitor
+    Monitor,
+    /// <summary>Arrow down into a tray (update / download).</summary>
+    Download
 }
 
 internal static class ThemeGlyphs
@@ -548,6 +550,12 @@ internal static class ThemeGlyphs
                 g.DrawLines(pen, new PointF[] { new(7f, 2.75f), new(3.75f, 2.75f), new(2.75f, 3.75f), new(2.75f, 12.25f), new(3.75f, 13.25f), new(12.25f, 13.25f), new(13.25f, 12.25f), new(13.25f, 9f) });
                 g.DrawLine(pen, 7.5f, 8.5f, 13.25f, 2.75f);
                 g.DrawLines(pen, new PointF[] { new(9.5f, 2.75f), new(13.25f, 2.75f), new(13.25f, 6.5f) });
+                break;
+
+            case Glyph.Download:
+                g.DrawLine(pen, 8f, 2f, 8f, 10f);
+                g.DrawLines(pen, new PointF[] { new(4.75f, 7f), new(8f, 10.25f), new(11.25f, 7f) });
+                g.DrawLines(pen, new PointF[] { new(2.5f, 10.5f), new(2.5f, 12.75f), new(3.25f, 13.5f), new(12.75f, 13.5f), new(13.5f, 12.75f), new(13.5f, 10.5f) });
                 break;
         }
     }

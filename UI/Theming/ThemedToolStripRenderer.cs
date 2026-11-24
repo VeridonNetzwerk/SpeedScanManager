@@ -46,6 +46,11 @@ internal sealed class ThemedToolStripRenderer : ToolStripRenderer
 
     private static bool IsDanger(ToolStripItem item) => ThemeManager.GetMenuItemRole(item) == ThemeRole.Danger;
 
+    /// <summary>Green item (update available).</summary>
+    private static bool IsSuccess(ToolStripItem item) => ThemeManager.GetMenuItemRole(item) == ThemeRole.Success;
+
+    private static readonly Color SuccessGreen = IconColors.Green;
+
     protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
     {
         var p = ThemeManager.Current;
@@ -61,7 +66,7 @@ internal sealed class ThemedToolStripRenderer : ToolStripRenderer
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             using var path = ThemeGlyphs.Rounded(rect, 3 * s);
-            using var brush = new SolidBrush(IsDanger(item) ? p.Danger : p.Accent);
+            using var brush = new SolidBrush(IsDanger(item) ? p.Danger : IsSuccess(item) ? SuccessGreen : p.Accent);
             g.FillPath(brush, path);
             return;
         }
@@ -116,6 +121,8 @@ internal sealed class ThemedToolStripRenderer : ToolStripRenderer
             color = p.TextOnAccent;
         else if (IsDanger(item))
             color = p.Danger;
+        else if (IsSuccess(item))
+            color = SuccessGreen;
         else
             color = inDropDown ? p.Text : p.TextSecondary;
         e.TextColor = color;
@@ -125,7 +132,7 @@ internal sealed class ThemedToolStripRenderer : ToolStripRenderer
         {
             float s = Dpi(item.Owner);
             float size = 16 * s;
-            var glyphColor = !item.Enabled || item.Selected || IsDanger(item) ? color : p.TextSecondary;
+            var glyphColor = !item.Enabled || item.Selected || IsDanger(item) || IsSuccess(item) ? color : p.TextSecondary;
             ThemeGlyphs.Draw(e.Graphics, glyph, new RectangleF(12 * s, (item.Height - size) / 2f, size, size), glyphColor);
         }
         if (inDropDown)

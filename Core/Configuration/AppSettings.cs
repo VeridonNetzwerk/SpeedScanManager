@@ -42,6 +42,14 @@ internal class AppSettings
     /// <summary>The guided tour of the profile management was shown.</summary>
     public bool ProfileTourShown { get; set; }
 
+    /// <summary>Look for a newer version on GitHub in the background.</summary>
+    public bool CheckForUpdates { get; set; } = true;
+
+    /// <summary>Newest version that was found, and when (the reminder comes 24 h later, once).</summary>
+    public string UpdateSeenVersion { get; set; } = "";
+    public DateTime? UpdateSeenUtc { get; set; }
+    public string UpdateRemindedVersion { get; set; } = "";
+
     /// <summary>Current scan settings (full payload). Null only in files written by old versions.</summary>
     public ScanSettings? ScanSettings { get; set; }
 

@@ -28,6 +28,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
 
     private readonly CheckBox _quickMenuCheckBox;
     private readonly CheckBox _autoStartCheckBox;
+    private readonly CheckBox _updateCheckBox;
 
     private readonly TileButton _btnRecommended;
     private readonly TileButton _btnSmallFile;
@@ -150,6 +151,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         // === Page "Allgemein" ===
         _quickMenuCheckBox = new ToggleSwitch { Checked = _appSettings.QuickMenuEnabled };
         _autoStartCheckBox = new ToggleSwitch { Checked = _appSettings.AutoStart };
+        _updateCheckBox = new ToggleSwitch { Checked = _appSettings.CheckForUpdates };
 
         // Two columns: start options + design | profiles; the quality presets below.
         _themeDropdown = new ComboBox
@@ -181,10 +183,12 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
 
         var cardStart = new SettingsCard { Dense = true };
         cardStart.AddRow("Quick-Menü verwenden",
-            "Nach jedem Scan das Ziel wählen; ersetzt die Seite „Anwendung“.",
+            "Nach jedem Scan das Ziel wählen.",
             _quickMenuCheckBox);
         cardStart.AddRow("Mit Windows starten",
-            "Startet nach der Anmeldung bei Windows.", _autoStartCheckBox);
+            "Startet mit der Windows-Anmeldung.", _autoStartCheckBox);
+        cardStart.AddRow("Nach Updates suchen",
+            "Hinweis bei einer neuen Version.", _updateCheckBox);
         cardStart.AddRow("Design", "„System“ folgt Windows.", _themeDropdown, 130);
         _startCard = cardStart;
 
@@ -762,6 +766,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         _liveSettings.RestoreFrom(_working);
         _appSettings.QuickMenuEnabled = _quickMenuCheckBox.Checked;
         _appSettings.AutoStart = _autoStartCheckBox.Checked;
+        _appSettings.CheckForUpdates = _updateCheckBox.Checked;
         _appSettings.SelectedProfileName = _activeProfile?.Name ?? "";
         _sessionBaseline.RestoreFrom(_working);
 
@@ -781,6 +786,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         _activeProfile = _profileManager.GetByName(_appSettings.SelectedProfileName);
         _quickMenuCheckBox.Checked = _appSettings.QuickMenuEnabled;
         _autoStartCheckBox.Checked = _appSettings.AutoStart;
+        _updateCheckBox.Checked = _appSettings.CheckForUpdates;
         LoadAllTabs();
         RefreshProfileDropdown();
         UpdateApplyButton();
@@ -800,6 +806,8 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
             general.Add(new("Allgemein", "Quick-Menü", SettingsChangeList.OnOff(_appSettings.QuickMenuEnabled), SettingsChangeList.OnOff(_quickMenuCheckBox.Checked)));
         if (_autoStartCheckBox.Checked != _appSettings.AutoStart)
             general.Add(new("Allgemein", "Mit Windows starten", SettingsChangeList.OnOff(_appSettings.AutoStart), SettingsChangeList.OnOff(_autoStartCheckBox.Checked)));
+        if (_updateCheckBox.Checked != _appSettings.CheckForUpdates)
+            general.Add(new("Allgemein", "Nach Updates suchen", SettingsChangeList.OnOff(_appSettings.CheckForUpdates), SettingsChangeList.OnOff(_updateCheckBox.Checked)));
         if ((_activeProfile?.Name ?? "") != _appSettings.SelectedProfileName)
             general.Add(new("Allgemein", "Profil",
                 _profileManager.GetByName(_appSettings.SelectedProfileName)?.DisplayName ?? "–",
@@ -886,6 +894,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         // Wire quick-menu and autostart switches
         _quickMenuCheckBox.CheckedChanged += (s, e) => { OnQuickMenuToggled(); OnSettingsChanged(); };
         _autoStartCheckBox.CheckedChanged += (s, e) => OnSettingsChanged();
+        _updateCheckBox.CheckedChanged += (s, e) => OnSettingsChanged();
 
         // Wire the scan setting pages (the Allgemein page is wired explicitly above)
         foreach (var content in new Control[]

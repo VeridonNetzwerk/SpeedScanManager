@@ -31,7 +31,10 @@ public partial class MainWindow : Window
     private bool _allowNextNavigation = false;
     private string? _readmeBody;
 
-    public MainWindow()
+    /// <summary>Started by the app's updater: update the existing installation right away.</summary>
+    private readonly bool _updateMode;
+
+    public MainWindow(bool update = false)
     {
         InitializeComponent();
         // Default to an existing installation (upgrade), otherwise Program Files (x86)
@@ -42,6 +45,7 @@ public partial class MainWindow : Window
         {
             TxtInstallPath.Text = existing;
             ShowExistingInstall(existing, version);
+            _updateMode = update;
         }
         else
         {
@@ -54,6 +58,25 @@ public partial class MainWindow : Window
         Theme.Changed += OnThemeChanged;
         Closed += (_, _) => Theme.Changed -= OnThemeChanged;
         _ = InitWebViewAsync();
+        if (_updateMode)
+        {
+            // Keep the shortcuts as they are
+            ChkDesktop.IsChecked = File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), $"{ProductName}.lnk"));
+            ChkStartMenu.IsChecked = File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), ProductName, $"{ProductName}.lnk"));
+            WelcomeTitle.Text = "Update wird installiert";
+            Loaded += async (_, _) =>
+            {
+                await WaitForAppExitAsync();
+                _ = DoInstallAsync();
+            };
+        }
+    }
+
+    /// <summary>The app exits by itself after starting the update; give it a moment.</summary>
+    private static async Task WaitForAppExitAsync()
+    {
+        for (int i = 0; i < 50 && InstallerCore.GetRunningAppProcesses().Length > 0; i++)
+            await Task.Delay(200);
     }
 
     private void UpdateActiveTab(string tab)
@@ -335,7 +358,7 @@ public partial class MainWindow : Window
         // Running instance must be closed before files can be replaced
         if (InstallerCore.GetRunningAppProcesses().Length > 0)
         {
-            var answer = MessageBox.Show(
+            var answer = _updateMode ? MessageBoxResult.OK : MessageBox.Show(
                 "SpeedScan Manager läuft gerade und wird beendet.\n\nFortfahren?",
                 "SpeedScan Manager läuft",
                 MessageBoxButton.OKCancel, MessageBoxImage.Information);
@@ -606,6 +629,13 @@ public partial class MainWindow : Window
         BtnInstall.IsEnabled = BtnReadme.IsEnabled = BtnSupport.IsEnabled = false;
         BtnClose.IsEnabled = true;
         FinishPage.Play(FinishBanner, FinishCheck, FinishSummary, FinishWarning, FinishFooter);
+        if (_updateMode)
+        {
+            // Like after an update in the Modrinth App: the app is back right away
+            ChkLaunch.Visibility = Visibility.Collapsed;
+            InstallerCore.StartDeElevated(Path.Combine(targetDir, InstallerCore.AppExeName));
+            _installedDir = null; // "Fertig" only closes
+        }
     }
 
     private void OnFinishClick(object sender, RoutedEventArgs e)

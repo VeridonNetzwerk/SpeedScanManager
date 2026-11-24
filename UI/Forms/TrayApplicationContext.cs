@@ -71,7 +71,7 @@ internal sealed class TrayHiddenWindow : Form
 /// Dialogs run on the UI thread; problems are shown as balloon (info/warnings) or
 /// message box (errors).
 /// </summary>
-internal class TrayApplicationContext : ApplicationContext
+internal partial class TrayApplicationContext : ApplicationContext
 {
     private const int PollIntervalMs = 10000;
     /// <summary>Poll interval while no scanner is connected (cheap check, see ScannerStateService).</summary>
@@ -230,6 +230,7 @@ internal class TrayApplicationContext : ApplicationContext
         ScanButtonPipeServer.Shared.CommandReceived += OnPipeCommand;
 
         ApplyAutoStart();
+        InitUpdates();
 
         // Defer TWAIN init until the message loop is running (WindowsFormsMessageLoopHook requires it).
         Application.Idle += OnFirstIdle;
@@ -509,6 +510,7 @@ internal class TrayApplicationContext : ApplicationContext
 
         _busy = true;
         OwnedWindows.Cancel<ScannerSelectionDialog>(); // it talks to TWAIN, the scan needs it
+        RefreshUpdateDialog();
         _cancelRequestedByUser = false;
         UpdateTrayVisuals();
         ScanResult? scan = null;
@@ -531,7 +533,10 @@ internal class TrayApplicationContext : ApplicationContext
             if (_exitRequested)
                 DoExit();
             else
+            {
                 UpdateTrayVisuals();
+                RefreshUpdateDialog();
+            }
         }
     }
 
@@ -1405,6 +1410,7 @@ internal class TrayApplicationContext : ApplicationContext
             _mainForm.CustomApplicationsChanged += (_, _) => OnCustomApplicationsChanged();
             _mainForm.ScanRequested += (_, _) => StartScan(ScanTrigger.Menu);
             _mainForm.FormClosed += (_, _) => _mainForm = null;
+            UpdateMainFormUpdatePill();
         }
         if (!_mainForm.Visible)
         {
@@ -1418,6 +1424,7 @@ internal class TrayApplicationContext : ApplicationContext
     private void OnSettingsApplied()
     {
         _appSettings.Save();
+        OnUpdateSettingApplied();
         ApplyAutoStart();
     }
 
@@ -1946,6 +1953,7 @@ internal class TrayApplicationContext : ApplicationContext
             _leftClickTimer.Stop();
             _leftClickTimer.Dispose();
             _balloonIconTimer?.Dispose();
+            DisposeUpdates();
 
             try
             {

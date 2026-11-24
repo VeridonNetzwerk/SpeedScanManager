@@ -28,7 +28,8 @@ public partial class App : Application
         }
         else
         {
-            var window = new MainWindow();
+            // "--update": started by the app's updater (install right away, start the app again)
+            var window = new MainWindow(update: e.Args.Contains("--update"));
             window.Show();
         }
         base.OnStartup(e);
