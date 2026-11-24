@@ -639,9 +639,10 @@ internal class ScanPipeline : IDisposable
         ConfigureMultiFeed();
 
         // ── Auto scan (optional throughput improvement) ──
+        // Not for long pages: with PaperStream IP the fi-6130 then stopped long receipts with a paper jam.
         try
         {
-            if (caps.CapAutoScan.IsSupported && caps.CapAutoScan.CanSet)
+            if (!IsLongPageMode && caps.CapAutoScan.IsSupported && caps.CapAutoScan.CanSet)
                 SetCap("CapAutoScan", caps.CapAutoScan, BoolType.True);
         }
         catch (Exception ex)
@@ -827,24 +828,11 @@ internal class ScanPipeline : IDisposable
             float maxLength = _result.NegotiatedDpiY is > 0 and <= 200 ? 125f : 34f;
             var longFrame = new TWFrame { Left = 0, Top = 0, Right = 8.5f, Bottom = maxLength };
             SetSupportedSizeNone();
-            SetCap("ICapFrames", caps.ICapFrames, longFrame);
-            try
-            {
-                if (src.DGImage.ImageLayout.Get(out var layout) == ReturnCode.Success)
-                {
-                    layout.Frame = longFrame;
-                    var rc = src.DGImage.ImageLayout.Set(layout);
-                    LogDiag($"Long page mode: ImageLayout set rc={rc}");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogDiag($"Long page mode: ImageLayout failed: {ex.Message}");
-            }
 
             // PaperStream IP (Fujitsu/PFU/Ricoh) vendor caps, only for those drivers:
             // 40983 = paper width (TW_FIX32), 40984 = paper length (TW_FIX32),
-            // 41095 = cropping mode (0=Fixed, 1=DetectLength, 2=Automatic, 3=LongPage)
+            // 41095 = cropping mode (0=Fixed, 1=DetectLength, 2=Automatic, 3=LongPage).
+            // Set before the frame: tested on the fi-6130 in this order.
             if (IsFujitsuFamily(src))
             {
                 SetCustomCapFix32(40983, 8.5f);
@@ -855,6 +843,7 @@ internal class ScanPipeline : IDisposable
             {
                 LogDiag("Long page mode: not a Fujitsu/PFU/Ricoh source, vendor caps skipped");
             }
+            SetCap("ICapFrames", caps.ICapFrames, longFrame);
 
             TryLogFrame();
             return;
