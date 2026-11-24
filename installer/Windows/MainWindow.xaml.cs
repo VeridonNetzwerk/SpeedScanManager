@@ -49,6 +49,7 @@ public partial class MainWindow : Window
         var version = typeof(MainWindow).Assembly.GetName().Version;
         LblVersion.Text = version != null ? $"Version {version.Major}.{version.Minor}.{version.Build}" : "";
         UpdateActiveTab("install");
+        BtnTheme.IsChecked = Theme.IsDark;
         SourceInitialized += (_, _) => Theme.RoundCorners(this);
         Theme.Changed += OnThemeChanged;
         Closed += (_, _) => Theme.Changed -= OnThemeChanged;
@@ -67,6 +68,7 @@ public partial class MainWindow : Window
 
     private void OnThemeChanged()
     {
+        BtnTheme.IsChecked = Theme.IsDark;
         if (!_webViewReady) return;
         ReadmeBrowser.DefaultBackgroundColor = ToDrawingColor(Theme.Css("ContentBrush"));
         if (_readmeBody != null)

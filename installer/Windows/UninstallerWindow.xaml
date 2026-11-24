@@ -48,10 +48,9 @@
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button x:Name="BtnTheme" Style="{StaticResource TitleButton}" FontSize="13"
-                                Content="{DynamicResource ThemeToggleGlyph}"
-                                ToolTip="{DynamicResource ThemeToggleTip}"
-                                Click="OnThemeClick"/>
+                        <ToggleButton x:Name="BtnTheme" Style="{StaticResource ThemeSwitch}"
+                                      ToolTip="{DynamicResource ThemeToggleTip}"
+                                      Click="OnThemeClick"/>
                         <Button x:Name="BtnMinimize" Style="{StaticResource TitleButton}" Content="&#xE921;"
                                 ToolTip="Minimieren" Click="OnMinimizeClick"/>
                         <Button x:Name="BtnClose" Style="{StaticResource CloseTitleButton}" Content="&#xE8BB;"

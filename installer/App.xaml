@@ -216,6 +216,83 @@
             </Style.Triggers>
         </Style>
 
+        <!-- Light/dark switch in the title bar: sun left (light), moon right (dark) -->
+        <Style x:Key="ThemeSwitch" TargetType="ToggleButton">
+            <Setter Property="Width" Value="56"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid>
+                            <Border x:Name="track" CornerRadius="14" Background="{DynamicResource ButtonSecondaryBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"/>
+                            <!-- faint icon of the other mode on the track -->
+                            <TextBlock x:Name="moonHint" Text="&#xE708;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                       Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right"
+                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
+                            <TextBlock x:Name="sunHint" Text="&#xE706;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                       Foreground="#D0FFFFFF" HorizontalAlignment="Left"
+                                       VerticalAlignment="Center" Margin="9,0,0,0" Opacity="0"/>
+                            <Border x:Name="thumb" Width="22" Height="22" CornerRadius="11" Background="White"
+                                    HorizontalAlignment="Left" Margin="3,0,0,0">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#000000" BlurRadius="4" ShadowDepth="1" Opacity="0.25" Direction="270"/>
+                                </Border.Effect>
+                                <Border.RenderTransform>
+                                    <TranslateTransform x:Name="shift" X="0"/>
+                                </Border.RenderTransform>
+                                <Grid>
+                                    <TextBlock x:Name="sun" Text="&#xE706;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                               Foreground="#F59E0B" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="moon" Text="&#xE708;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                               Foreground="#5865F2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Opacity="0"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="shift" Storyboard.TargetProperty="X" To="28" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="sun" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.18"/>
+                                            <DoubleAnimation Storyboard.TargetName="moon" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.18"/>
+                                            <DoubleAnimation Storyboard.TargetName="moonHint" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.18"/>
+                                            <DoubleAnimation Storyboard.TargetName="sunHint" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.18"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="shift" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="sun" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.18"/>
+                                            <DoubleAnimation Storyboard.TargetName="moon" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.18"/>
+                                            <DoubleAnimation Storyboard.TargetName="moonHint" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.18"/>
+                                            <DoubleAnimation Storyboard.TargetName="sunHint" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.18"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                                <Setter TargetName="track" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- ===== Inputs ===== -->
         <Style x:Key="PathBox" TargetType="TextBox">
             <Setter Property="Height" Value="36"/>

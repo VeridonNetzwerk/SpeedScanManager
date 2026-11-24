@@ -21,6 +21,10 @@ public partial class UninstallerWindow : Window
     {
         InitializeComponent();
         SourceInitialized += (_, _) => Theme.RoundCorners(this);
+        BtnTheme.IsChecked = Theme.IsDark;
+        Action sync = () => BtnTheme.IsChecked = Theme.IsDark;
+        Theme.Changed += sync;
+        Closed += (_, _) => Theme.Changed -= sync;
     }
 
     private void OnThemeClick(object sender, RoutedEventArgs e) => Theme.Toggle();
