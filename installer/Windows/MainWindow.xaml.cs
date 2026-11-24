@@ -34,9 +34,15 @@ public partial class MainWindow : Window
     /// <summary>Started by the app's updater: update the existing installation right away.</summary>
     private readonly bool _updateMode;
 
+    private readonly LanguagePicker _languagePicker = new();
+
     public MainWindow(bool update = false)
     {
         InitializeComponent();
+        TitleButtons.Children.Insert(0, _languagePicker.Button);
+        I18n.Apply(this);
+        I18n.Changed += OnLanguageChanged;
+        Closed += (_, _) => I18n.Changed -= OnLanguageChanged;
         // Default to an existing installation (upgrade), otherwise Program Files (x86)
         var version = typeof(MainWindow).Assembly.GetName().Version;
         var existing = InstallerCore.GetExistingInstallLocation();
@@ -51,7 +57,7 @@ public partial class MainWindow : Window
         {
             TxtInstallPath.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), InstallerCore.AppFolderName);
         }
-        LblVersion.Text = version != null ? $"Version {version.Major}.{version.Minor}.{version.Build}" : "";
+        LblVersion.Text = version != null ? I18n.F("Version {0}.{1}.{2}", version.Major, version.Minor, version.Build) : "";
         UpdateActiveTab("install");
         BtnTheme.IsChecked = Theme.IsDark;
         SourceInitialized += (_, _) => Theme.RoundCorners(this);
@@ -63,13 +69,27 @@ public partial class MainWindow : Window
             // Keep the shortcuts as they are
             ChkDesktop.IsChecked = File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), $"{ProductName}.lnk"));
             ChkStartMenu.IsChecked = File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), ProductName, $"{ProductName}.lnk"));
-            WelcomeTitle.Text = "Update wird installiert";
+            WelcomeTitle.Text = I18n.T("Update wird installiert");
             Loaded += async (_, _) =>
             {
                 await WaitForAppExitAsync();
                 _ = DoInstallAsync();
             };
         }
+    }
+
+    /// <summary>Language chosen in the title bar: translate the window again.</summary>
+    private void OnLanguageChanged()
+    {
+        I18n.Apply(this);
+        _languagePicker.Refresh();
+        Theme.Apply(Theme.IsDark); // tooltip of the light / dark switch
+        var version = typeof(MainWindow).Assembly.GetName().Version;
+        LblVersion.Text = version != null ? I18n.F("Version {0}.{1}.{2}", version.Major, version.Minor, version.Build) : "";
+        if (_existingDir != null && !_updateMode)
+            ShowExistingInstall(_existingDir, version);
+        if (_updateMode)
+            WelcomeTitle.Text = I18n.T("Update wird installiert");
     }
 
     /// <summary>The app exits by itself after starting the update; give it a moment.</summary>
@@ -220,7 +240,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             ReadmeLoadingPanel.Visibility = Visibility.Collapsed;
-            ReadmeErrorText.Text = $"README konnte nicht geladen werden:\n\n{ex.Message}";
+            ReadmeErrorText.Text = I18n.F("README konnte nicht geladen werden:\n\n{0}", ex.Message);
             ReadmeErrorText.Visibility = Visibility.Visible;
         }
     }
@@ -229,7 +249,7 @@ public partial class MainWindow : Window
     {
         var dialog = new System.Windows.Forms.FolderBrowserDialog
         {
-            Description = "Zielordner wählen (SpeedScanManager wird automatisch als Unterordner erstellt)"
+            Description = I18n.T("Zielordner wählen (SpeedScanManager wird automatisch als Unterordner erstellt)")
         };
         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
         {
@@ -290,15 +310,15 @@ public partial class MainWindow : Window
         var targetDir = InstallerCore.ValidateInstallPath(TxtInstallPath.Text, out var pathError);
         if (targetDir == null)
         {
-            MessageBox.Show(pathError, "Ungültiger Installationspfad",
+            MessageBox.Show(pathError, I18n.T("Ungültiger Installationspfad"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
         TxtInstallPath.Text = targetDir;
         if (InstallerCore.IsReparsePoint(targetDir))
         {
-            MessageBox.Show($"Der Ordner \"{targetDir}\" ist ein Link (Junction/Symlink). Bitte wählen Sie einen normalen Ordner.",
-                "Ungültiger Installationspfad", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(I18n.F("Der Ordner \"{0}\" ist ein Link (Junction/Symlink). Bitte wählen Sie einen normalen Ordner.", targetDir),
+                I18n.T("Ungültiger Installationspfad"), MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -311,11 +331,11 @@ public partial class MainWindow : Window
             File.Exists(Path.Combine(existingDir, InstallerCore.AppExeName)))
         {
             var answer = MessageBox.Show(
-                $"SpeedScan Manager ist bereits in einem anderen Ordner installiert:\n{existingDir}\n\n" +
-                $"Vorhandene Installation in {existingDir} entfernen?\n\n" +
-                "Ja: alte Programmdateien löschen und neu installieren\n" +
-                "Nein: alte Dateien behalten (die Windows-Einträge zeigen danach auf den neuen Ordner)",
-                "Vorhandene Installation",
+                I18n.F("SpeedScan Manager ist bereits in einem anderen Ordner installiert:\n{0}\n\n" +
+                    "Vorhandene Installation in {0} entfernen?\n\n" +
+                    "Ja: alte Programmdateien löschen und neu installieren\n" +
+                    "Nein: alte Dateien behalten (die Windows-Einträge zeigen danach auf den neuen Ordner)", existingDir),
+                I18n.T("Vorhandene Installation"),
                 MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
             if (answer == MessageBoxResult.Cancel)
                 return;
@@ -323,10 +343,9 @@ public partial class MainWindow : Window
             {
                 if (!InstallerCore.IsSafeAppDirectory(existingDir, out var oldDirError) || InstallerCore.IsReparsePoint(existingDir))
                 {
-                    MessageBox.Show("Die vorhandene Installation kann nicht automatisch entfernt werden:\n\n" +
-                        (oldDirError.Length > 0 ? oldDirError : $"\"{existingDir}\" ist ein Link (Junction/Symlink).") +
-                        "\n\nBitte löschen Sie den alten Ordner bei Bedarf manuell.",
-                        "Vorhandene Installation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(I18n.F("Die vorhandene Installation kann nicht automatisch entfernt werden:\n\n{0}\n\nBitte löschen Sie den alten Ordner bei Bedarf manuell.",
+                        oldDirError.Length > 0 ? oldDirError : I18n.F("\"{0}\" ist ein Link (Junction/Symlink).", existingDir)),
+                        I18n.T("Vorhandene Installation"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 else
                 {
@@ -342,7 +361,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ex.Message, I18n.T("Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -350,8 +369,8 @@ public partial class MainWindow : Window
 
         if (!payload.Files.Any(f => string.Equals(f.RelativePath, InstallerCore.AppExeName, StringComparison.OrdinalIgnoreCase)))
         {
-            MessageBox.Show($"Das Installationspaket ({payload.Source}) enthält keine {InstallerCore.AppExeName}.",
-                "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(I18n.F("Das Installationspaket ({0}) enthält keine {1}.", payload.Source, InstallerCore.AppExeName),
+                I18n.T("Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -359,21 +378,22 @@ public partial class MainWindow : Window
         if (InstallerCore.GetRunningAppProcesses().Length > 0)
         {
             var answer = _updateMode ? MessageBoxResult.OK : MessageBox.Show(
-                "SpeedScan Manager läuft gerade und wird beendet.\n\nFortfahren?",
-                "SpeedScan Manager läuft",
+                I18n.T("SpeedScan Manager läuft gerade und wird beendet.\n\nFortfahren?"),
+                I18n.T("SpeedScan Manager läuft"),
                 MessageBoxButton.OKCancel, MessageBoxImage.Information);
             if (answer != MessageBoxResult.OK)
                 return;
             if (!InstallerCore.KillRunningApp())
             {
-                MessageBox.Show("SpeedScan Manager konnte nicht beendet werden. Bitte beenden Sie das Programm manuell und versuchen Sie es erneut.",
-                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(I18n.T("SpeedScan Manager konnte nicht beendet werden. Bitte beenden Sie das Programm manuell und versuchen Sie es erneut."),
+                    I18n.T("Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
         }
 
         // Disable buttons
         BtnInstall.IsEnabled = false;
+        _languagePicker.Button.IsEnabled = false;
         BtnClose.IsEnabled = false;
         BtnStartInstall.IsEnabled = false;
         BtnBrowse.IsEnabled = false;
@@ -384,14 +404,14 @@ public partial class MainWindow : Window
         // Show progress
         ProgressPanel.Visibility = Visibility.Visible;
         InstallProgress.Value = 0;
-        StatusText.Text = "Bereite Installation vor...";
+        StatusText.Text = I18n.T("Bereite Installation vor...");
 
         try
         {
             // Remove the installation in the other folder first (manifest-based)
             if (oldInstallDir != null)
             {
-                StatusText.Text = "Entferne vorhandene Installation...";
+                StatusText.Text = I18n.T("Entferne vorhandene Installation...");
                 InstallProgress.Value = 2;
                 var oldDir = oldInstallDir;
                 var allOldFilesKnown = await Task.Run(() =>
@@ -408,17 +428,17 @@ public partial class MainWindow : Window
                 });
                 if (!allOldFilesKnown)
                 {
-                    MessageBox.Show(InstallerCore.LegacyLeftoverMessage(oldDir), "Vorhandene Installation",
+                    MessageBox.Show(InstallerCore.LegacyLeftoverMessage(oldDir), I18n.T("Vorhandene Installation"),
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
 
             // Create target directory
-            StatusText.Text = "Erstelle Installationsverzeichnis...";
+            StatusText.Text = I18n.T("Erstelle Installationsverzeichnis...");
             InstallProgress.Value = 5;
             Directory.CreateDirectory(targetDir);
             if (InstallerCore.IsReparsePoint(targetDir))
-                throw new IOException($"Der Installationsordner ist ein Link (Junction/Symlink): {targetDir}");
+                throw new IOException(I18n.F("Der Installationsordner ist ein Link (Junction/Symlink): {0}", targetDir));
             try
             {
                 // Outside Program Files: keep standard users from modifying the install folder
@@ -427,10 +447,10 @@ public partial class MainWindow : Window
             catch (Exception aclEx)
             {
                 MessageBox.Show(
-                    "Die Zugriffsrechte des Installationsordners konnten nicht eingeschränkt werden:\n\n" + aclEx.Message +
-                    "\n\nDie Installation wird fortgesetzt. Ohne eingeschränkte Rechte können auch Standardbenutzer " +
-                    "die Programmdateien verändern.",
-                    "Warnung", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    I18n.F("Die Zugriffsrechte des Installationsordners konnten nicht eingeschränkt werden:\n\n{0}\n\n" +
+                        "Die Installation wird fortgesetzt. Ohne eingeschränkte Rechte können auch Standardbenutzer " +
+                        "die Programmdateien verändern.", aclEx.Message),
+                    I18n.T("Warnung"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             await Task.Delay(100);
 
@@ -447,7 +467,7 @@ public partial class MainWindow : Window
             {
                 var file = payload.Files[i];
 
-                StatusText.Text = $"Kopiere: {Path.GetFileName(file.RelativePath)}  ({i + 1}/{totalFiles})";
+                StatusText.Text = I18n.F("Kopiere: {0}  ({1}/{2})", Path.GetFileName(file.RelativePath), i + 1, totalFiles);
                 await Task.Run(() =>
                 {
                     // Refuses paths through links and replaces (never follows) existing links
@@ -461,13 +481,22 @@ public partial class MainWindow : Window
             }
 
             // Uninstaller (payload-less build of this setup, started with --uninstall)
-            StatusText.Text = "Erstelle Deinstallationsprogramm...";
+            StatusText.Text = I18n.T("Erstelle Deinstallationsprogramm...");
             InstallProgress.Value = 82;
             await Task.Run(() => InstallerCore.WriteUninstaller(targetDir));
             installed.Add(InstallerCore.UninstallerExeName);
 
+            // Language chosen here: the app starts in it (until it is changed in the app's settings)
+            await Task.Run(() =>
+            {
+                using var file = InstallerCore.CreateFileInside(targetDir, I18n.LanguageFileName);
+                var bytes = Encoding.UTF8.GetBytes(I18n.Current.Code);
+                file.Write(bytes, 0, bytes.Length);
+            });
+            installed.Add(I18n.LanguageFileName);
+
             // Remove files of the previous version that are no longer part of the payload
-            StatusText.Text = "Entferne veraltete Dateien...";
+            StatusText.Text = I18n.T("Entferne veraltete Dateien...");
             InstallProgress.Value = 84;
             var keep = new HashSet<string>(installed, StringComparer.OrdinalIgnoreCase);
             foreach (var rel in oldFiles.Append("scanbutton.vbs"))
@@ -486,20 +515,20 @@ public partial class MainWindow : Window
             await Task.Delay(100);
 
             // Scan button setup (WIA handler registration) — the setup already runs elevated
-            StatusText.Text = "Registriere Scan-Taste...";
+            StatusText.Text = I18n.T("Registriere Scan-Taste...");
             InstallProgress.Value = 88;
             var setupExit = await InstallerCore.RunAppHelperAsync(targetDir, "/setup", TimeSpan.FromSeconds(30));
             Debug.WriteLine($"Scan button setup exit code: {setupExit?.ToString() ?? "n/a"}");
 
             // Shortcuts
-            StatusText.Text = "Erstelle Verknüpfungen...";
+            StatusText.Text = I18n.T("Erstelle Verknüpfungen...");
             InstallProgress.Value = 94;
             CreateShortcuts(targetDir, desktop, startMenu);
             await Task.Delay(100);
 
             // Done
             InstallProgress.Value = 100;
-            StatusText.Text = "Installation erfolgreich abgeschlossen!";
+            StatusText.Text = I18n.T("Installation erfolgreich abgeschlossen!");
 
             await Task.Delay(400);
             ShowFinish(targetDir, setupExit == 0, desktop, startMenu);
@@ -507,11 +536,12 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             StatusText.Text = $"Fehler: {ex.Message}";
-            MessageBox.Show($"Während der Installation ist ein Fehler aufgetreten:\n\n{ex.Message}",
-                "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(I18n.F("Während der Installation ist ein Fehler aufgetreten:\n\n{0}", ex.Message),
+                I18n.T("Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
 
             // Re-enable buttons
             BtnInstall.IsEnabled = true;
+            _languagePicker.Button.IsEnabled = true;
             BtnClose.IsEnabled = true;
             BtnStartInstall.IsEnabled = true;
             BtnBrowse.IsEnabled = true;
@@ -575,21 +605,21 @@ public partial class MainWindow : Window
         Version.TryParse(installedText, out var installed);
         int cmp = installed == null ? -1 : installed.CompareTo(new Version(own.Major, own.Minor, Math.Max(0, own.Build)));
 
-        WelcomeTitle.Text = "Bereits installiert";
+        WelcomeTitle.Text = I18n.T("Bereits installiert");
         if (cmp < 0)
         {
-            WelcomeSubtitle.Text = $"Version {installedText} ist installiert. Aktualisiere auf {ownText} – deine Einstellungen bleiben erhalten.";
-            BtnStartInstall.Content = "Aktualisieren";
+            WelcomeSubtitle.Text = I18n.F("Version {0} ist installiert. Aktualisiere auf {1} – deine Einstellungen bleiben erhalten.", installedText, ownText);
+            BtnStartInstall.Content = I18n.T("Aktualisieren");
         }
         else if (cmp == 0)
         {
-            WelcomeSubtitle.Text = $"Version {installedText} ist schon installiert. Du kannst sie reparieren oder entfernen.";
-            BtnStartInstall.Content = "Reparieren";
+            WelcomeSubtitle.Text = I18n.F("Version {0} ist schon installiert. Du kannst sie reparieren oder entfernen.", installedText);
+            BtnStartInstall.Content = I18n.T("Reparieren");
         }
         else
         {
-            WelcomeSubtitle.Text = $"Eine neuere Version ({installedText}) ist installiert. Diese Version ist {ownText}.";
-            BtnStartInstall.Content = "Trotzdem installieren";
+            WelcomeSubtitle.Text = I18n.F("Eine neuere Version ({0}) ist installiert. Diese Version ist {1}.", installedText, ownText);
+            BtnStartInstall.Content = I18n.T("Trotzdem installieren");
         }
         BtnUninstallExisting.Visibility = Visibility.Visible;
     }
@@ -600,7 +630,7 @@ public partial class MainWindow : Window
         var uninstaller = Path.Combine(_existingDir, InstallerCore.UninstallerExeName);
         if (!File.Exists(uninstaller))
         {
-            WelcomeSubtitle.Text = "Das Deinstallationsprogramm wurde nicht gefunden. Bitte über die Windows-Einstellungen entfernen.";
+            WelcomeSubtitle.Text = I18n.T("Das Deinstallationsprogramm wurde nicht gefunden. Bitte über die Windows-Einstellungen entfernen.");
             return;
         }
         Process.Start(new ProcessStartInfo(uninstaller, "--uninstall") { UseShellExecute = true, WorkingDirectory = _existingDir });
@@ -612,16 +642,16 @@ public partial class MainWindow : Window
     {
         _installedDir = targetDir;
         FinishChecks.Children.Clear();
-        FinishChecks.Children.Add(FinishPage.Row("Programm installiert", targetDir, CheckState.Ok));
+        FinishChecks.Children.Add(FinishPage.Row(I18n.T("Programm installiert"), targetDir, CheckState.Ok));
         FinishChecks.Children.Add(scanButtonOk
-            ? FinishPage.Row("Scan-Taste eingerichtet", "Startet den Scan direkt am Scanner", CheckState.Ok)
-            : FinishPage.Row("Scan-Taste nicht eingerichtet", "Beim ersten Start erneut versuchen", CheckState.Warn));
+            ? FinishPage.Row(I18n.T("Scan-Taste eingerichtet"), I18n.T("Startet den Scan direkt am Scanner"), CheckState.Ok)
+            : FinishPage.Row(I18n.T("Scan-Taste nicht eingerichtet"), I18n.T("Beim ersten Start erneut versuchen"), CheckState.Warn));
         FinishChecks.Children.Add(desktop
-            ? FinishPage.Row("Desktop-Verknüpfung", null, CheckState.Ok)
-            : FinishPage.Row("Keine Desktop-Verknüpfung", null, CheckState.Off));
+            ? FinishPage.Row(I18n.T("Desktop-Verknüpfung"), null, CheckState.Ok)
+            : FinishPage.Row(I18n.T("Keine Desktop-Verknüpfung"), null, CheckState.Off));
         FinishChecks.Children.Add(startMenu
-            ? FinishPage.Row("Eintrag im Startmenü", null, CheckState.Ok)
-            : FinishPage.Row("Kein Startmenü-Eintrag", null, CheckState.Off));
+            ? FinishPage.Row(I18n.T("Eintrag im Startmenü"), null, CheckState.Ok)
+            : FinishPage.Row(I18n.T("Kein Startmenü-Eintrag"), null, CheckState.Off));
         WelcomeView.Visibility = Visibility.Collapsed;
         ReadmeView.Visibility = Visibility.Collapsed;
         SupportView.Visibility = Visibility.Collapsed;

@@ -66,7 +66,7 @@ internal static class Theme
         var overlay = new SolidColorBrush(dark ? Color.FromArgb(0xB0, 0x11, 0x12, 0x14) : Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
         overlay.Freeze();
         res["OverlayBrush"] = overlay;
-        res["ThemeToggleTip"] = dark ? "Helles Design" : "Dunkles Design";
+        res["ThemeToggleTip"] = dark ? I18n.T("Helles Design") : I18n.T("Dunkles Design");
         Changed?.Invoke();
     }
 

@@ -48,7 +48,7 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <StackPanel x:Name="TitleButtons" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <ToggleButton x:Name="BtnTheme" Style="{StaticResource ThemeSwitch}"
                                       ToolTip="{DynamicResource ThemeToggleTip}"
                                       Click="OnThemeClick"/>

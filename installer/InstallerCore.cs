@@ -107,10 +107,10 @@ internal static class InstallerCore
             }
 
             throw new InvalidOperationException(
-                "Das Installationspaket wurde nicht gefunden.\n\n" +
-                "Dieses Setup enthält keine eingebetteten Programmdateien und es wurde auch kein " +
-                $"\"dist\"-Ordner mit {AppExeName} gefunden. Bitte das Setup mit build-release.ps1 erstellen " +
-                "oder die App vorher nach \"dist\" veröffentlichen (dotnet publish ... -o dist).");
+                I18n.T("Das Installationspaket wurde nicht gefunden.\n\n") +
+                I18n.T("Dieses Setup enthält keine eingebetteten Programmdateien und es wurde auch kein ") +
+                I18n.F("\"dist\"-Ordner mit {0} gefunden. Bitte das Setup mit build-release.ps1 erstellen ", AppExeName) +
+                I18n.T("oder die App vorher nach \"dist\" veröffentlichen (dotnet publish ... -o dist)."));
         }
 
         private static bool IncludeFile(string rel)
@@ -130,7 +130,7 @@ internal static class InstallerCore
     {
         var norm = rel.Replace('/', '\\').TrimStart('\\');
         if (Path.IsPathRooted(norm) || norm.Split('\\').Any(p => p == ".."))
-            throw new InvalidDataException($"Ungültiger Pfad im Installationspaket: {rel}");
+            throw new InvalidDataException(I18n.F("Ungültiger Pfad im Installationspaket: {0}", rel));
         return norm;
     }
 
@@ -147,14 +147,14 @@ internal static class InstallerCore
         var root = rootDir + "\\";
         var full = Path.GetFullPath(Path.Combine(root, NormalizeRelative(rel)));
         if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException($"Pfad liegt außerhalb des Installationsordners: {rel}");
+            throw new InvalidDataException(I18n.F("Pfad liegt außerhalb des Installationsordners: {0}", rel));
 
         if (IsReparsePoint(rootDir))
-            throw new IOException($"Der Installationsordner ist ein Link (Junction/Symlink) und wird nicht verwendet: {rootDir}");
+            throw new IOException(I18n.F("Der Installationsordner ist ein Link (Junction/Symlink) und wird nicht verwendet: {0}", rootDir));
         for (var dir = Path.GetDirectoryName(full); dir != null && dir.Length > rootDir.Length; dir = Path.GetDirectoryName(dir))
         {
             if (IsReparsePoint(dir))
-                throw new IOException($"Pfad führt über einen Link (Junction/Symlink) und wird nicht verwendet: {dir}");
+                throw new IOException(I18n.F("Pfad führt über einen Link (Junction/Symlink) und wird nicht verwendet: {0}", dir));
         }
         return full;
     }
@@ -267,7 +267,7 @@ internal static class InstallerCore
         var raw = Environment.ExpandEnvironmentVariables((input ?? "").Trim().Trim('"'));
         if (string.IsNullOrWhiteSpace(raw))
         {
-            error = "Bitte geben Sie einen Installationspfad an.";
+            error = I18n.T("Bitte geben Sie einen Installationspfad an.");
             return null;
         }
 
@@ -276,19 +276,19 @@ internal static class InstallerCore
         {
             if (!Path.IsPathFullyQualified(raw))
             {
-                error = "Bitte geben Sie einen vollständigen Pfad an (z. B. C:\\Programme\\SpeedScanManager).";
+                error = I18n.T("Bitte geben Sie einen vollständigen Pfad an (z. B. C:\\Programme\\SpeedScanManager).");
                 return null;
             }
             if (raw.StartsWith(@"\\"))
             {
-                error = "Netzwerkpfade werden nicht unterstützt. Bitte wählen Sie einen lokalen Ordner.";
+                error = I18n.T("Netzwerkpfade werden nicht unterstützt. Bitte wählen Sie einen lokalen Ordner.");
                 return null;
             }
             full = Path.GetFullPath(raw).TrimEnd('\\');
         }
         catch (Exception ex)
         {
-            error = $"Der Pfad ist ungültig: {ex.Message}";
+            error = I18n.F("Der Pfad ist ungültig: {0}", ex.Message);
             return null;
         }
 
@@ -300,7 +300,7 @@ internal static class InstallerCore
 
         if (File.Exists(full))
         {
-            error = "Unter diesem Pfad existiert bereits eine Datei.";
+            error = I18n.T("Unter diesem Pfad existiert bereits eine Datei.");
             return null;
         }
         return full;
@@ -315,7 +315,7 @@ internal static class InstallerCore
         error = "";
         if (string.IsNullOrWhiteSpace(dir) || !Path.IsPathFullyQualified(dir))
         {
-            error = "Kein gültiger Installationsordner.";
+            error = I18n.T("Kein gültiger Installationsordner.");
             return false;
         }
 
@@ -323,7 +323,7 @@ internal static class InstallerCore
         var root = Path.GetPathRoot(full)?.TrimEnd('\\') ?? "";
         if (string.Equals(full, root, StringComparison.OrdinalIgnoreCase))
         {
-            error = "Ein Laufwerks-Stammverzeichnis kann nicht als Installationsordner verwendet werden.";
+            error = I18n.T("Ein Laufwerks-Stammverzeichnis kann nicht als Installationsordner verwendet werden.");
             return false;
         }
 
@@ -357,7 +357,7 @@ internal static class InstallerCore
             if (string.Equals(full, f, StringComparison.OrdinalIgnoreCase) ||
                 f.StartsWith(full + "\\", StringComparison.OrdinalIgnoreCase))
             {
-                error = $"Dieser Ordner ist ein Systemordner und kann nicht verwendet werden:\n{full}";
+                error = I18n.F("Dieser Ordner ist ein Systemordner und kann nicht verwendet werden:\n{0}", full);
                 return false;
             }
         }
@@ -368,7 +368,7 @@ internal static class InstallerCore
             var dataDir = Path.Combine(Environment.GetFolderPath(dataRoot), AppFolderName);
             if (string.Equals(full, dataDir, StringComparison.OrdinalIgnoreCase))
             {
-                error = "Der Einstellungsordner von SpeedScan Manager kann nicht als Installationsordner verwendet werden.";
+                error = I18n.T("Der Einstellungsordner von SpeedScan Manager kann nicht als Installationsordner verwendet werden.");
                 return false;
             }
         }
@@ -376,7 +376,7 @@ internal static class InstallerCore
         var windir = Environment.GetFolderPath(Environment.SpecialFolder.Windows).TrimEnd('\\');
         if (!string.IsNullOrEmpty(windir) && full.StartsWith(windir + "\\", StringComparison.OrdinalIgnoreCase))
         {
-            error = "Eine Installation im Windows-Ordner ist nicht erlaubt.";
+            error = I18n.T("Eine Installation im Windows-Ordner ist nicht erlaubt.");
             return false;
         }
         return true;
@@ -603,7 +603,7 @@ internal static class InstallerCore
     public static bool RemoveInstalledFiles(string installDir, string? skipPath)
     {
         if (IsReparsePoint(installDir))
-            throw new IOException($"Der Installationsordner ist ein Link (Junction/Symlink) und wird nicht verwendet: {installDir}");
+            throw new IOException(I18n.F("Der Installationsordner ist ein Link (Junction/Symlink) und wird nicht verwendet: {0}", installDir));
 
         var restricted = false;
         var files = ReadManifest(installDir) ?? GetLegacyFileList(installDir, out restricted);
@@ -621,9 +621,9 @@ internal static class InstallerCore
 
     /// <summary>User message for <see cref="RemoveInstalledFiles"/> returning false.</summary>
     public static string LegacyLeftoverMessage(string installDir) =>
-        $"Für die ältere Installation in \"{installDir}\" gibt es keine Dateiliste. Da dies kein eigener " +
-        $"{AppFolderName}-Ordner ist, wurden nur {AppExeName} und {UninstallerExeName} entfernt. " +
-        "Bitte löschen Sie die übrigen Programmdateien (DLLs sowie die Ordner x86 und x64) manuell.";
+        I18n.F("Für die ältere Installation in \"{0}\" gibt es keine Dateiliste. Da dies kein eigener {1}-Ordner ist, " +
+            "wurden nur {2} und {3} entfernt. Bitte löschen Sie die übrigen Programmdateien (DLLs sowie die Ordner x86 und x64) manuell.",
+            installDir, AppFolderName, AppExeName, UninstallerExeName);
 
     /// <summary>
     /// Writes the uninstaller to installDir\uninstall.exe: the payload-less build embedded by
@@ -635,7 +635,7 @@ internal static class InstallerCore
         if (source == null)
         {
             var self = Environment.ProcessPath;
-            if (self == null) throw new InvalidOperationException("Der Pfad des Setups konnte nicht ermittelt werden.");
+            if (self == null) throw new InvalidOperationException(I18n.T("Der Pfad des Setups konnte nicht ermittelt werden."));
             if (string.Equals(Path.GetFullPath(self), ResolveInside(installDir, UninstallerExeName), StringComparison.OrdinalIgnoreCase))
                 return; // running as the installed uninstaller already
             source = File.OpenRead(self);

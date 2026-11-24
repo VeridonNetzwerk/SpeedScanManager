@@ -11,10 +11,13 @@ public partial class App : Application
 
     protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
+        // Language: the app's setting, the existing installation, or Windows
+        I18n.Set(I18n.Initial(InstallerCore.GetExistingInstallLocation()));
+
         _mutex = new Mutex(true, "SpeedScanInstaller_SingleInstance", out bool createdNew);
         if (!createdNew)
         {
-            MessageBox.Show("Das Setup wird bereits ausgeführt.", "SpeedScan Manager Setup", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(I18n.T("Das Setup wird bereits ausgeführt."), I18n.T("SpeedScan Manager Setup"), MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
             return;
         }

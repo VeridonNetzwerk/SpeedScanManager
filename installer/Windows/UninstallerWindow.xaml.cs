@@ -20,6 +20,7 @@ public partial class UninstallerWindow : Window
     public UninstallerWindow()
     {
         InitializeComponent();
+        I18n.Apply(this);
         SourceInitialized += (_, _) => Theme.RoundCorners(this);
         BtnTheme.IsChecked = Theme.IsDark;
         Action sync = () => BtnTheme.IsChecked = Theme.IsDark;
@@ -90,7 +91,7 @@ public partial class UninstallerWindow : Window
         ChkRemoveSettings.IsEnabled = false;
         ProgressPanel.Visibility = Visibility.Visible;
         UninstallProgress.Value = 0;
-        StatusText.Text = "Bereite Deinstallation vor...";
+        StatusText.Text = I18n.T("Bereite Deinstallation vor...");
 
         var removeSettings = ChkRemoveSettings.IsChecked == true;
 
@@ -104,19 +105,19 @@ public partial class UninstallerWindow : Window
             else if (!InstallerCore.IsSafeAppDirectory(targetDir, out var dirError))
                 filesError = dirError;
             else if (InstallerCore.IsReparsePoint(targetDir))
-                filesError = $"Der Installationsordner \"{targetDir}\" ist ein Link (Junction/Symlink) und wird aus Sicherheitsgründen nicht bearbeitet.";
+                filesError = I18n.F("Der Installationsordner \"{0}\" ist ein Link (Junction/Symlink) und wird aus Sicherheitsgründen nicht bearbeitet.", targetDir);
             else if (!File.Exists(Path.Combine(targetDir, InstallerCore.AppExeName)))
-                filesError = $"Im Ordner \"{targetDir}\" wurde keine {InstallerCore.AppExeName} gefunden.";
+                filesError = I18n.F("Im Ordner \"{0}\" wurde keine {1} gefunden.", targetDir, InstallerCore.AppExeName);
             var canRemoveFiles = filesError == null;
 
             // Kill running processes
-            StatusText.Text = "Beende laufende Prozesse...";
+            StatusText.Text = I18n.T("Beende laufende Prozesse...");
             UninstallProgress.Value = 10;
             await Task.Run(InstallerCore.KillRunningApp);
 
             // Remove scanner button handler and restore the Windows default (needs admin; we are elevated).
             // Preferably via the app itself; if it is missing or fails, the uninstaller does it directly.
-            StatusText.Text = "Entferne Scan-Tasten-Registrierung...";
+            StatusText.Text = I18n.T("Entferne Scan-Tasten-Registrierung...");
             UninstallProgress.Value = 18;
             int? unregisterExit = null;
             if (canRemoveFiles)
@@ -127,7 +128,7 @@ public partial class UninstallerWindow : Window
             var scanButtonRestored = unregisterExit == 0 || await Task.Run(ScanButtonRegistry.Unregister);
 
             // Remove shortcuts
-            StatusText.Text = "Entferne Verknüpfungen...";
+            StatusText.Text = I18n.T("Entferne Verknüpfungen...");
             UninstallProgress.Value = 25;
             var startMenuDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms),
@@ -165,7 +166,7 @@ public partial class UninstallerWindow : Window
             // Remove settings if requested
             if (removeSettings)
             {
-                StatusText.Text = "Entferne Einstellungen und Profildaten...";
+                StatusText.Text = I18n.T("Entferne Einstellungen und Profildaten...");
                 UninstallProgress.Value = 55;
                 foreach (var root in new[] { Environment.SpecialFolder.ApplicationData, Environment.SpecialFolder.LocalApplicationData })
                 {
@@ -179,7 +180,7 @@ public partial class UninstallerWindow : Window
             }
 
             // Remove program files (only those listed in the install manifest)
-            StatusText.Text = "Entferne Programmdateien...";
+            StatusText.Text = I18n.T("Entferne Programmdateien...");
             UninstallProgress.Value = 70;
             var allFilesKnown = true;
             if (canRemoveFiles)
@@ -189,15 +190,14 @@ public partial class UninstallerWindow : Window
             await Task.Delay(300);
 
             UninstallProgress.Value = 100;
-            StatusText.Text = "Deinstallation erfolgreich abgeschlossen!";
+            StatusText.Text = I18n.T("Deinstallation erfolgreich abgeschlossen!");
 
             await Task.Delay(800);
 
             var warnings = new List<string>();
             if (!canRemoveFiles)
             {
-                warnings.Add("Die Programmdateien konnten nicht automatisch gelöscht werden:\n" + filesError +
-                    "\nBitte löschen Sie den Programmordner bei Bedarf manuell.");
+                warnings.Add(I18n.F("Die Programmdateien konnten nicht automatisch gelöscht werden:\n{0}\nBitte löschen Sie den Programmordner bei Bedarf manuell.", filesError));
             }
             else if (!allFilesKnown)
             {
@@ -205,22 +205,22 @@ public partial class UninstallerWindow : Window
             }
             if (!scanButtonRestored)
             {
-                warnings.Add("Die Scan-Tasten-Registrierung konnte nicht vollständig zurückgesetzt werden. " +
-                    "Die Sicherung der ursprünglichen Windows-Einstellungen bleibt in der Registry erhalten.");
+                warnings.Add(I18n.T("Die Scan-Tasten-Registrierung konnte nicht vollständig zurückgesetzt werden. " +
+                    "Die Sicherung der ursprünglichen Windows-Einstellungen bleibt in der Registry erhalten."));
             }
 
             // Finish page instead of a message box
             FinishChecks.Children.Clear();
             FinishChecks.Children.Add(canRemoveFiles && allFilesKnown
-                ? FinishPage.Row("Programmdateien entfernt", null, CheckState.Ok)
-                : FinishPage.Row("Programmdateien teilweise übrig", "Siehe Hinweis unten", CheckState.Warn));
-            FinishChecks.Children.Add(FinishPage.Row("Verknüpfungen entfernt", null, CheckState.Ok));
+                ? FinishPage.Row(I18n.T("Programmdateien entfernt"), null, CheckState.Ok)
+                : FinishPage.Row(I18n.T("Programmdateien teilweise übrig"), I18n.T("Siehe Hinweis unten"), CheckState.Warn));
+            FinishChecks.Children.Add(FinishPage.Row(I18n.T("Verknüpfungen entfernt"), null, CheckState.Ok));
             FinishChecks.Children.Add(scanButtonRestored
-                ? FinishPage.Row("Scan-Taste zurückgesetzt", "Windows-Standard wiederhergestellt", CheckState.Ok)
-                : FinishPage.Row("Scan-Taste nicht zurückgesetzt", "Siehe Hinweis unten", CheckState.Warn));
+                ? FinishPage.Row(I18n.T("Scan-Taste zurückgesetzt"), I18n.T("Windows-Standard wiederhergestellt"), CheckState.Ok)
+                : FinishPage.Row(I18n.T("Scan-Taste nicht zurückgesetzt"), I18n.T("Siehe Hinweis unten"), CheckState.Warn));
             FinishChecks.Children.Add(removeSettings
-                ? FinishPage.Row("Einstellungen gelöscht", null, CheckState.Ok)
-                : FinishPage.Row("Einstellungen behalten", "Für eine spätere Neuinstallation", CheckState.Off));
+                ? FinishPage.Row(I18n.T("Einstellungen gelöscht"), null, CheckState.Ok)
+                : FinishPage.Row(I18n.T("Einstellungen behalten"), I18n.T("Für eine spätere Neuinstallation"), CheckState.Off));
             if (warnings.Count > 0)
             {
                 FinishWarningText.Text = string.Join("\n\n", warnings);
@@ -235,8 +235,8 @@ public partial class UninstallerWindow : Window
         catch (Exception ex)
         {
             StatusText.Text = $"Fehler: {ex.Message}";
-            MessageBox.Show($"Während der Deinstallation ist ein Fehler aufgetreten:\n\n{ex.Message}",
-                "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(I18n.F("Während der Deinstallation ist ein Fehler aufgetreten:\n\n{0}", ex.Message),
+                I18n.T("Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
 
             BtnUninstall.IsEnabled = true;
             BtnCancel.IsEnabled = true;
