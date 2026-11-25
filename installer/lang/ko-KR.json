@@ -135,5 +135,8 @@
  "Einstellungen behalten": "설정 유지됨",
  "Für eine spätere Neuinstallation": "나중에 다시 설치하기 위해",
  "Während der Deinstallation ist ein Fehler aufgetreten:\n\n{0}": "제거 중 오류가 발생했습니다:\n\n{0}",
- "Sprache": "언어"
+ "Sprache": "언어",
+ "OK": "확인",
+ "Ja": "예",
+ "Nein": "아니요"
 }

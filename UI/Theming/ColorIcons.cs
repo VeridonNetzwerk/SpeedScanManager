@@ -311,6 +311,18 @@ internal static class ColorIcons
             DrawTile(g, r, IconColors.Sky, Glyph.Globe, IconColors.Purple, sparkle: true);
             return;
         }
+        DrawFlagFrame(g, r, f => DrawFlagContent(g, f, language));
+    }
+
+    /// <summary>Flag of an app language (<see cref="L.Languages"/> code), e.g. "pt-BR" → Brazil.</summary>
+    public static void DrawFlag(Graphics g, RectangleF r, string languageCode) =>
+        DrawFlagFrame(g, r, f => DrawLanguageFlagContent(g, f, languageCode));
+
+    public static ColorIcon Flag(string languageCode) => ColorIcon.Custom((g, r) => DrawFlag(g, r, languageCode));
+
+    /// <summary>Rounded 3:2 frame with shadow, gloss and border around <paramref name="content"/>.</summary>
+    private static void DrawFlagFrame(Graphics g, RectangleF r, Action<RectangleF> content)
+    {
         float w = r.Width, h = Math.Min(r.Height, (float)Math.Round(w * 0.7f));
         var f = new RectangleF(r.X, r.Y + (r.Height - h) / 2f, w, h);
         float rad = Math.Max(1.5f, h * 0.18f);
@@ -323,7 +335,7 @@ internal static class ColorIcons
 
         var state = g.Save();
         g.SetClip(path, CombineMode.Intersect);
-        DrawFlagContent(g, f, language);
+        content(f);
         g.Restore(state);
 
         // Gloss and frame
@@ -366,6 +378,66 @@ internal static class ColorIcons
         }
         using var brush = new SolidBrush(color);
         g.FillPolygon(brush, pts);
+    }
+
+    private static void DrawLanguageFlagContent(Graphics g, RectangleF f, string code)
+    {
+        float w = f.Width, h = f.Height;
+        switch (code)
+        {
+            case "en-US":
+            {
+                var red = Color.FromArgb(0xB2, 0x22, 0x34);
+                var stripes = new Color[7];
+                for (int i = 0; i < 7; i++) stripes[i] = i % 2 == 0 ? red : Color.White;
+                Stripes(g, f, false, stripes);
+                using (var b = new SolidBrush(Color.FromArgb(0x3C, 0x3B, 0x6E))) g.FillRectangle(b, f.X, f.Y, w * 0.44f, h * 4f / 7f);
+                break;
+            }
+            case "pt-BR":
+            {
+                using (var b = new SolidBrush(Color.FromArgb(0x00, 0x9C, 0x3B))) g.FillRectangle(b, f);
+                float mx = w * 0.1f, my = h * 0.14f;
+                using (var b = new SolidBrush(Color.FromArgb(0xFF, 0xDF, 0x00)))
+                    g.FillPolygon(b, new[] { new PointF(f.X + w / 2f, f.Y + my), new PointF(f.Right - mx, f.Y + h / 2f),
+                                             new PointF(f.X + w / 2f, f.Bottom - my), new PointF(f.X + mx, f.Y + h / 2f) });
+                float d = h * 0.44f;
+                using (var b = new SolidBrush(Color.FromArgb(0x00, 0x27, 0x76))) g.FillEllipse(b, f.X + (w - d) / 2f, f.Y + (h - d) / 2f, d, d);
+                break;
+            }
+            case "pl-PL":
+                Stripes(g, f, false, Color.White, Color.FromArgb(0xDC, 0x14, 0x3C));
+                break;
+            case "nl-NL":
+                Stripes(g, f, false, Color.FromArgb(0xAE, 0x1C, 0x28), Color.White, Color.FromArgb(0x21, 0x46, 0x8B));
+                break;
+            case "tr-TR":
+            {
+                var red = Color.FromArgb(0xE3, 0x0A, 0x17);
+                using (var b = new SolidBrush(red)) g.FillRectangle(b, f);
+                float d = h * 0.5f, cx = f.X + w * 0.38f, cy = f.Y + h / 2f;
+                using (var b = new SolidBrush(Color.White)) g.FillEllipse(b, cx - d / 2f, cy - d / 2f, d, d);
+                float d2 = d * 0.8f;
+                using (var b = new SolidBrush(red)) g.FillEllipse(b, cx - d2 / 2f + d * 0.12f, cy - d2 / 2f, d2, d2);
+                Star(g, cx + d * 0.5f, cy, h * 0.13f, Color.White, -Math.PI / 2);
+                break;
+            }
+            default:
+                DrawFlagContent(g, f, code switch
+                {
+                    "de-DE" => OcrLanguage.Deutsch,
+                    "ja-JP" => OcrLanguage.Japanisch,
+                    "fr-FR" => OcrLanguage.Franzoesisch,
+                    "es-ES" => OcrLanguage.Spanisch,
+                    "zh-CN" => OcrLanguage.ChinesischVereinfacht,
+                    "zh-TW" => OcrLanguage.ChinesischTraditionell,
+                    "ru-RU" => OcrLanguage.Russisch,
+                    "ko-KR" => OcrLanguage.Koreanisch,
+                    "it-IT" => OcrLanguage.Italienisch,
+                    _ => OcrLanguage.English,
+                });
+                break;
+        }
     }
 
     private static void DrawFlagContent(Graphics g, RectangleF f, OcrLanguage language)

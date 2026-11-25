@@ -135,5 +135,8 @@
  "Einstellungen behalten": "Configuración conservada",
  "Für eine spätere Neuinstallation": "Para una reinstalación posterior",
  "Während der Deinstallation ist ein Fehler aufgetreten:\n\n{0}": "Se produjo un error durante la desinstalación:\n\n{0}",
- "Sprache": "Idioma"
+ "Sprache": "Idioma",
+ "OK": "Aceptar",
+ "Ja": "Sí",
+ "Nein": "No"
 }

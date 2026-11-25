@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 using Thickness = System.Windows.Thickness;
-using MessageBox = System.Windows.MessageBox;
+using MessageBox = SpeedScanInstaller.SetupDialog;
 using MessageBoxButton = System.Windows.MessageBoxButton;
 using MessageBoxImage = System.Windows.MessageBoxImage;
 using MessageBoxResult = System.Windows.MessageBoxResult;

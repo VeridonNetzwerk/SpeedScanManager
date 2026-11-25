@@ -135,5 +135,8 @@
  "Einstellungen behalten": "Settings kept",
  "Für eine spätere Neuinstallation": "For a later reinstallation",
  "Während der Deinstallation ist ein Fehler aufgetreten:\n\n{0}": "An error occurred during uninstall:\n\n{0}",
- "Sprache": "Language"
+ "Sprache": "Language",
+ "OK": "OK",
+ "Ja": "Yes",
+ "Nein": "No"
 }

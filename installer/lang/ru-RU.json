@@ -135,5 +135,8 @@
  "Einstellungen behalten": "Параметры сохранены",
  "Für eine spätere Neuinstallation": "Для последующей повторной установки",
  "Während der Deinstallation ist ein Fehler aufgetreten:\n\n{0}": "Во время удаления произошла ошибка:\n\n{0}",
- "Sprache": "Язык"
+ "Sprache": "Язык",
+ "OK": "ОК",
+ "Ja": "Да",
+ "Nein": "Нет"
 }

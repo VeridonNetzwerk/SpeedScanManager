@@ -135,5 +135,8 @@
  "Einstellungen behalten": "Paramètres conservés",
  "Für eine spätere Neuinstallation": "Pour une réinstallation ultérieure",
  "Während der Deinstallation ist ein Fehler aufgetreten:\n\n{0}": "Une erreur s'est produite pendant la désinstallation :\n\n{0}",
- "Sprache": "Langue"
+ "Sprache": "Langue",
+ "OK": "OK",
+ "Ja": "Oui",
+ "Nein": "Non"
 }

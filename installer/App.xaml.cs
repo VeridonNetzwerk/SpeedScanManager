@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Windows;
 using Application = System.Windows.Application;
-using MessageBox = System.Windows.MessageBox;
+using MessageBox = SpeedScanInstaller.SetupDialog;
 
 namespace SpeedScanInstaller;
 
@@ -14,6 +14,8 @@ public partial class App : Application
         // Language: the app's setting, the existing installation, or Windows
         I18n.Set(I18n.Initial(InstallerCore.GetExistingInstallLocation()));
 
+        Theme.ApplySystem();
+
         _mutex = new Mutex(true, "SpeedScanInstaller_SingleInstance", out bool createdNew);
         if (!createdNew)
         {
@@ -21,8 +23,6 @@ public partial class App : Application
             Shutdown();
             return;
         }
-
-        Theme.ApplySystem();
 
         if (e.Args.Length > 0 && e.Args[0] == "--uninstall")
         {

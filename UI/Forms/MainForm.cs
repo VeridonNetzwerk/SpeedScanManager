@@ -195,12 +195,21 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         _languageDropdown = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Size = new Size(130, 24),
-            DropDownWidth = 180,
+            Size = new Size(170, 24),
+            DrawMode = DrawMode.OwnerDrawFixed,
+            ItemHeight = 20,
             MaxDropDownItems = 14,
         };
+        ComboLists.SetRowHeight(_languageDropdown, ComboLists.IconRow);
         foreach (var language in L.Languages)
             _languageDropdown.Items.Add(language.NativeName);
+        // Flag per language, like the text recognition language on the Dateiart page
+        var languageFlags = L.Languages.Select(l => ColorIcons.Flag(l.Code)).ToArray();
+        _languageDropdown.DrawItem += (_, e) =>
+        {
+            if (e.Index < 0) { ThemeManager.DrawItemBackground(_languageDropdown, e); return; }
+            ComboItemPainter.Draw(_languageDropdown, e, languageFlags[e.Index], L.Languages[e.Index].NativeName, null);
+        };
         _languageDropdown.SelectedIndex = Math.Max(0, L.Languages.ToList().FindIndex(l => l.Code == SavedLanguage));
 
         var cardStart = new SettingsCard { Dense = true };
@@ -212,7 +221,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         cardStart.AddRow(L.T("Nach Updates suchen"),
             L.T("Hinweis bei einer neuen Version."), _updateCheckBox);
         cardStart.AddRow(L.T("Design"), L.T("„System“ folgt Windows."), _themeDropdown, 130);
-        cardStart.AddRow(L.T("Sprache"), L.T("Wird nach einem Neustart übernommen."), _languageDropdown, 130);
+        cardStart.AddRow(L.T("Sprache"), L.T("Wird nach einem Neustart übernommen."), _languageDropdown, 170);
         _startCard = cardStart;
 
         _profileDropdown = new ComboBox

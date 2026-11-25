@@ -135,5 +135,8 @@
  "Einstellungen behalten": "设置已保留",
  "Für eine spätere Neuinstallation": "供以后重新安装时使用",
  "Während der Deinstallation ist ein Fehler aufgetreten:\n\n{0}": "卸载期间发生错误：\n\n{0}",
- "Sprache": "语言"
+ "Sprache": "语言",
+ "OK": "确定",
+ "Ja": "是",
+ "Nein": "否"
 }

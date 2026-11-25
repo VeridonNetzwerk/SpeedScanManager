@@ -135,5 +135,8 @@
  "Einstellungen behalten": "Configurações mantidas",
  "Für eine spätere Neuinstallation": "Para uma reinstalação posterior",
  "Während der Deinstallation ist ein Fehler aufgetreten:\n\n{0}": "Ocorreu um erro durante a desinstalação:\n\n{0}",
- "Sprache": "Idioma"
+ "Sprache": "Idioma",
+ "OK": "OK",
+ "Ja": "Sim",
+ "Nein": "Não"
 }

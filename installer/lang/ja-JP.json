@@ -135,5 +135,8 @@
  "Einstellungen behalten": "設定を残しました",
  "Für eine spätere Neuinstallation": "後で再インストールする場合のために",
  "Während der Deinstallation ist ein Fehler aufgetreten:\n\n{0}": "アンインストール中にエラーが発生しました:\n\n{0}",
- "Sprache": "言語"
+ "Sprache": "言語",
+ "OK": "OK",
+ "Ja": "はい",
+ "Nein": "いいえ"
 }
