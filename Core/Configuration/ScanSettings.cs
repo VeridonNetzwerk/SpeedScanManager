@@ -59,6 +59,7 @@ internal class ScanSettings
     public bool OcrEnabled { get; set; }
     public OcrLanguage OcrLanguage { get; set; } = OcrLanguage.Automatisch;
     public OcrTargetPages OcrTargetPages { get; set; } = OcrTargetPages.AllPages;
+    public OcrQuality OcrQuality { get; set; } = OcrQuality.Genau;
 
     // Keyword marking settings (Dateiart tab)
     public bool AddKeywordToPdf { get; set; }
@@ -351,7 +352,17 @@ internal enum OcrLanguage
     Koreanisch,
     Russisch,
     Portugiesisch,
-    Arabisch
+    Arabisch,
+    Polnisch,
+    Niederlaendisch,
+    Tuerkisch
+}
+
+/// <summary>OCR model set: "best" (accurate, default) or "fast" (tessdata_best / tessdata_fast).</summary>
+internal enum OcrQuality
+{
+    Genau,
+    Schnell
 }
 
 internal enum OcrTargetPages

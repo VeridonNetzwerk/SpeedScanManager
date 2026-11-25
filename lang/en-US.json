@@ -681,5 +681,22 @@
  "Speicherordner: ": "Save folder: ",
  "Der Scan wird noch gespeichert …": "The scan is still being saved …",
  "SpeedScan Manager wird danach beendet.": "SpeedScan Manager will close afterwards.",
- "Wird gespeichert": "Saving"
+ "Wird gespeichert": "Saving",
+ "Die Sprachdaten konnten nicht heruntergeladen werden:\n\n{0}": "The language data could not be downloaded:\n\n{0}",
+ "Die Texterkennung für {0} ist nicht installiert.": "Text recognition for {0} is not installed.",
+ "Die heruntergeladene Datei ist ungültig.": "The downloaded file is invalid.",
+ "Genau": "Accurate",
+ "Jetzt herunterladen (ca. {0} MB)?": "Download now (about {0} MB)?",
+ "Niederländisch": "Dutch",
+ "Polnisch": "Polish",
+ "Qualität": "Quality",
+ "Schnell": "Fast",
+ "Texterkennung installieren": "Install text recognition",
+ "Texterkennung-Qualität": "Text recognition quality",
+ "Türkisch": "Turkish",
+ "Verbinde …": "Connecting …",
+ "nicht installiert": "not installed",
+ "{0} % von ca. {1} MB": "{0} % of about {1} MB",
+ "{0} wird heruntergeladen …": "Downloading {0} …",
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "“Fast” recognizes about twice as fast, but a little less accurately."
 }

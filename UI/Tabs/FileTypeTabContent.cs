@@ -31,6 +31,9 @@ internal class FileTypeTabContent : ModernStack
     private readonly RadioButton _rbFirstPage;
     private readonly RadioButton _rbAllPages;
     private readonly SettingRow _lblOcrLanguage;
+    private readonly RadioButton _rbQualityBest;
+    private readonly RadioButton _rbQualityFast;
+    private SettingRow? _lblOcrQuality;
     private readonly SettingRow _lblOcrTarget;
 
     // Card of the OCR options (enabled for PDF only)
@@ -124,8 +127,27 @@ internal class FileTypeTabContent : ModernStack
         _cbOcrLanguage.DrawItem += (s, e) => DrawOcrLanguageItem(e);
         _cbOcrLanguage.SelectedIndexChanged += (s, e) =>
         {
-            if (!_loading && _cbOcrLanguage.SelectedItem is OcrLanguageItem item)
-                _settings.OcrLanguage = item.Language;
+            if (_loading || _cbOcrLanguage.SelectedItem is not OcrLanguageItem item) return;
+            if (!item.Installed)
+            {
+                // Not installed: ask and download (after the dropdown has closed)
+                BeginInvoke(() => InstallOcrLanguage(item.Language));
+                return;
+            }
+            _settings.OcrLanguage = item.Language;
+        };
+
+        _rbQualityBest = new RadioButton { Text = L.T("Genau"), AutoSize = true, Margin = new Padding(0, 0, 14, 0) };
+        _rbQualityBest.CheckedChanged += (s, e) =>
+        {
+            if (!_loading && _rbQualityBest.Checked)
+                _settings.OcrQuality = OcrQuality.Genau;
+        };
+        _rbQualityFast = new RadioButton { Text = L.T("Schnell"), AutoSize = true, Margin = Padding.Empty };
+        _rbQualityFast.CheckedChanged += (s, e) =>
+        {
+            if (!_loading && _rbQualityFast.Checked)
+                _settings.OcrQuality = OcrQuality.Schnell;
         };
 
         _rbFirstPage = new RadioButton
@@ -168,6 +190,8 @@ internal class FileTypeTabContent : ModernStack
 
         _grpOcrOptions = new SettingsCard(L.T("Texterkennungsoptionen")) { Dense = true, Icon = ColorIcon.Tile(Glyph.Globe, IconColors.Sky) };
         _lblOcrLanguage = _grpOcrOptions.AddRow(L.T("Sprache"), null, _cbOcrLanguage, ComboWidth);
+        _lblOcrQuality = _grpOcrOptions.AddRow(L.T("Qualität"), L.T("„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer."),
+            RadioGroup(_rbQualityBest, _rbQualityFast));
         _lblOcrTarget = _grpOcrOptions.AddRow(L.T("Zielseiten"), null, RadioGroup(_rbFirstPage, _rbAllPages));
 
         Controls.Add(cardFormat);
@@ -211,6 +235,8 @@ internal class FileTypeTabContent : ModernStack
             _rbAllSections.Checked = _settings.KeywordTarget == KeywordTarget.AllMarkedSections;
             _chkOcr.Checked = _settings.OcrEnabled;
             PopulateOcrLanguages(_settings.OcrLanguage);
+            _rbQualityBest.Checked = _settings.OcrQuality == OcrQuality.Genau;
+            _rbQualityFast.Checked = _settings.OcrQuality == OcrQuality.Schnell;
             _rbFirstPage.Checked = _settings.OcrTargetPages == OcrTargetPages.FirstPage;
             _rbAllPages.Checked = _settings.OcrTargetPages == OcrTargetPages.AllPages;
         }
@@ -270,12 +296,12 @@ internal class FileTypeTabContent : ModernStack
     }
 
     /// <summary>Entry of the OCR language list.</summary>
-    private sealed record OcrLanguageItem(OcrLanguage Language, string Text)
+    private sealed record OcrLanguageItem(OcrLanguage Language, string Text, bool Installed)
     {
         public override string ToString() => Text;
     }
 
-    private static string GetOcrLanguageName(OcrLanguage language) => language switch
+    internal static string GetOcrLanguageName(OcrLanguage language) => language switch
     {
         OcrLanguage.Automatisch => L.T("Automatische Erkennung"),
         OcrLanguage.Deutsch => L.T("Deutsch"),
@@ -290,17 +316,18 @@ internal class FileTypeTabContent : ModernStack
         OcrLanguage.Russisch => L.T("Russisch"),
         OcrLanguage.Portugiesisch => L.T("Portugiesisch"),
         OcrLanguage.Arabisch => L.T("Arabisch"),
+        OcrLanguage.Polnisch => L.T("Polnisch"),
+        OcrLanguage.Niederlaendisch => L.T("Niederländisch"),
+        OcrLanguage.Tuerkisch => L.T("Türkisch"),
         _ => language.ToString()
     };
 
     /// <summary>
-    /// Fills the language list with "Automatische Erkennung" and the languages whose
-    /// traineddata is installed. A saved language that is not installed stays visible
-    /// (marked "(nicht installiert)") so the setting is not changed silently.
+    /// Fills the language list with "Automatische Erkennung" and all languages. Languages
+    /// without installed data are marked "nicht installiert"; choosing one offers the download.
     /// </summary>
     private void PopulateOcrLanguages(OcrLanguage selected)
     {
-        var installed = OcrProcessor.GetInstalledLanguages();
         _cbOcrLanguage.BeginUpdate();
         try
         {
@@ -308,14 +335,9 @@ internal class FileTypeTabContent : ModernStack
             OcrLanguageItem? selectedItem = null;
             foreach (OcrLanguage language in Enum.GetValues<OcrLanguage>())
             {
-                bool available = language == OcrLanguage.Automatisch
-                    || OcrProcessor.GetLanguageCode(language).Split('+')
-                        .All(c => installed.Contains(c, StringComparer.OrdinalIgnoreCase));
-                if (!available && language != selected)
-                    continue;
-
-                var item = new OcrLanguageItem(language,
-                    available ? GetOcrLanguageName(language) : L.F("{0} (nicht installiert)", GetOcrLanguageName(language)));
+                bool installed = language == OcrLanguage.Automatisch
+                    || OcrProcessor.IsLanguageInstalled(OcrProcessor.GetLanguageCode(language));
+                var item = new OcrLanguageItem(language, GetOcrLanguageName(language), installed);
                 _cbOcrLanguage.Items.Add(item);
                 if (language == selected) selectedItem = item;
             }
@@ -325,6 +347,16 @@ internal class FileTypeTabContent : ModernStack
         {
             _cbOcrLanguage.EndUpdate();
         }
+    }
+
+    /// <summary>Offers the download of a missing language; selects it if it is installed afterwards.</summary>
+    private void InstallOcrLanguage(OcrLanguage language)
+    {
+        bool ok = OcrDownloadDialog.Offer(FindForm(), OcrProcessor.GetLanguageCode(language));
+        if (ok) _settings.OcrLanguage = language;
+        _loading = true;
+        try { PopulateOcrLanguages(_settings.OcrLanguage); }
+        finally { _loading = false; } // the refill raises SelectedIndexChanged: MainForm re-compares
     }
 
     private static readonly Dictionary<OcrLanguage, ColorIcon> FlagCache = new();
@@ -347,7 +379,8 @@ internal class FileTypeTabContent : ModernStack
         string text = entry?.ToString() ?? "";
         // Flag per language; "Automatische Erkennung" = globe tile with a sparkle
         ColorIcon? icon = entry is OcrLanguageItem item ? FlagOf(item.Language) : null;
-        ComboItemPainter.Draw(_cbOcrLanguage, e, icon, text, null);
+        bool missing = entry is OcrLanguageItem { Installed: false };
+        ComboItemPainter.Draw(_cbOcrLanguage, e, icon, text, null, hint: missing ? L.T("nicht installiert") : null);
     }
 
     private void UpdateOptionsButtonState()
@@ -380,6 +413,9 @@ internal class FileTypeTabContent : ModernStack
         _lblOcrLanguage.Enabled = ocrOn;
         _cbOcrLanguage.Enabled = ocrOn;
         _lblOcrTarget.Enabled = ocrOn;
+        if (_lblOcrQuality != null) _lblOcrQuality.Enabled = ocrOn;
+        _rbQualityBest.Enabled = ocrOn;
+        _rbQualityFast.Enabled = ocrOn;
         _rbFirstPage.Enabled = ocrOn;
         _rbAllPages.Enabled = ocrOn;
     }

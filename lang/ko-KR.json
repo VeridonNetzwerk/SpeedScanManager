@@ -681,5 +681,22 @@
  "Speicherordner: ": "저장 폴더: ",
  "Der Scan wird noch gespeichert …": "스캔을 저장하는 중입니다…",
  "SpeedScan Manager wird danach beendet.": "저장 후 SpeedScan Manager가 종료됩니다.",
- "Wird gespeichert": "저장 중"
+ "Wird gespeichert": "저장 중",
+ "Die Sprachdaten konnten nicht heruntergeladen werden:\n\n{0}": "언어 데이터를 다운로드할 수 없습니다:\n\n{0}",
+ "Die Texterkennung für {0} ist nicht installiert.": "{0} 문자 인식이 설치되어 있지 않습니다.",
+ "Die heruntergeladene Datei ist ungültig.": "다운로드한 파일이 올바르지 않습니다.",
+ "Genau": "정확",
+ "Jetzt herunterladen (ca. {0} MB)?": "지금 다운로드하시겠습니까(약 {0} MB)?",
+ "Niederländisch": "네덜란드어",
+ "Polnisch": "폴란드어",
+ "Qualität": "품질",
+ "Schnell": "빠름",
+ "Texterkennung installieren": "문자 인식 설치",
+ "Texterkennung-Qualität": "문자 인식 품질",
+ "Türkisch": "튀르키예어",
+ "Verbinde …": "연결 중…",
+ "nicht installiert": "설치되지 않음",
+ "{0} % von ca. {1} MB": "약 {1} MB 중 {0}%",
+ "{0} wird heruntergeladen …": "{0} 다운로드 중…",
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "‘빠름’은 약 두 배 빠르게 인식하지만 정확도가 약간 낮습니다."
 }

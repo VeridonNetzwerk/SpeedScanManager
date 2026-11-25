@@ -681,5 +681,22 @@
  "System": "UI/Theming/ThemeManager.cs",
  "Der Scan wird noch gespeichert …": "UI/Dialogs/ExitWaitDialog.cs",
  "SpeedScan Manager wird danach beendet.": "UI/Dialogs/ExitWaitDialog.cs",
- "Wird gespeichert": "UI/Dialogs/ExitWaitDialog.cs"
+ "Wird gespeichert": "UI/Dialogs/ExitWaitDialog.cs",
+ "Die Sprachdaten konnten nicht heruntergeladen werden:\n\n{0}": "UI/Dialogs/OcrDownloadDialog.cs",
+ "Die Texterkennung für {0} ist nicht installiert.": "UI/Dialogs/OcrDownloadDialog.cs",
+ "Die heruntergeladene Datei ist ungültig.": "Core/Scanning/OcrData.cs",
+ "Genau": "UI/Tabs/FileTypeTabContent.cs",
+ "Jetzt herunterladen (ca. {0} MB)?": "UI/Dialogs/OcrDownloadDialog.cs",
+ "Niederländisch": "UI/Tabs/FileTypeTabContent.cs",
+ "Polnisch": "UI/Tabs/FileTypeTabContent.cs",
+ "Qualität": "UI/Tabs/FileTypeTabContent.cs",
+ "Schnell": "UI/Tabs/FileTypeTabContent.cs",
+ "Texterkennung installieren": "UI/Dialogs/OcrDownloadDialog.cs",
+ "Texterkennung-Qualität": "UI/Dialogs/SettingsChangeList.cs",
+ "Türkisch": "UI/Tabs/FileTypeTabContent.cs",
+ "Verbinde …": "UI/Dialogs/OcrDownloadDialog.cs",
+ "nicht installiert": "UI/Tabs/FileTypeTabContent.cs",
+ "{0} % von ca. {1} MB": "UI/Dialogs/OcrDownloadDialog.cs",
+ "{0} wird heruntergeladen …": "UI/Dialogs/OcrDownloadDialog.cs",
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "UI/Tabs/FileTypeTabContent.cs"
 }

@@ -55,3 +55,6 @@ help_extract.txt
 installer/cert/SpeedScanDev.pfx
 installer/cert/SpeedScan.pfx
 
+
+# OCR models downloaded by build-release.ps1
+tessdata-cache/

@@ -681,5 +681,22 @@
  "Speicherordner: ": "Cartella di salvataggio: ",
  "Der Scan wird noch gespeichert …": "La scansione è ancora in fase di salvataggio …",
  "SpeedScan Manager wird danach beendet.": "SpeedScan Manager verrà chiuso subito dopo.",
- "Wird gespeichert": "Salvataggio"
+ "Wird gespeichert": "Salvataggio",
+ "Die Sprachdaten konnten nicht heruntergeladen werden:\n\n{0}": "Impossibile scaricare i dati della lingua:\n\n{0}",
+ "Die Texterkennung für {0} ist nicht installiert.": "Il riconoscimento del testo per {0} non è installato.",
+ "Die heruntergeladene Datei ist ungültig.": "Il file scaricato non è valido.",
+ "Genau": "Preciso",
+ "Jetzt herunterladen (ca. {0} MB)?": "Scaricare ora (circa {0} MB)?",
+ "Niederländisch": "Olandese",
+ "Polnisch": "Polacco",
+ "Qualität": "Qualità",
+ "Schnell": "Veloce",
+ "Texterkennung installieren": "Installa riconoscimento del testo",
+ "Texterkennung-Qualität": "Qualità del riconoscimento del testo",
+ "Türkisch": "Turco",
+ "Verbinde …": "Connessione …",
+ "nicht installiert": "non installato",
+ "{0} % von ca. {1} MB": "{0} % di circa {1} MB",
+ "{0} wird heruntergeladen …": "Download di {0} …",
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "«Veloce» riconosce circa due volte più rapidamente, ma in modo un po' meno preciso."
 }

@@ -681,5 +681,22 @@
  "Speicherordner: ": "Carpeta de destino: ",
  "Der Scan wird noch gespeichert …": "El escaneo todavía se está guardando …",
  "SpeedScan Manager wird danach beendet.": "SpeedScan Manager se cerrará después.",
- "Wird gespeichert": "Guardando"
+ "Wird gespeichert": "Guardando",
+ "Die Sprachdaten konnten nicht heruntergeladen werden:\n\n{0}": "No se pudieron descargar los datos de idioma:\n\n{0}",
+ "Die Texterkennung für {0} ist nicht installiert.": "El reconocimiento de texto para {0} no está instalado.",
+ "Die heruntergeladene Datei ist ungültig.": "El archivo descargado no es válido.",
+ "Genau": "Preciso",
+ "Jetzt herunterladen (ca. {0} MB)?": "¿Descargar ahora (aprox. {0} MB)?",
+ "Niederländisch": "Neerlandés",
+ "Polnisch": "Polaco",
+ "Qualität": "Calidad",
+ "Schnell": "Rápido",
+ "Texterkennung installieren": "Instalar reconocimiento de texto",
+ "Texterkennung-Qualität": "Calidad del reconocimiento de texto",
+ "Türkisch": "Turco",
+ "Verbinde …": "Conectando …",
+ "nicht installiert": "no instalado",
+ "{0} % von ca. {1} MB": "{0} % de aprox. {1} MB",
+ "{0} wird heruntergeladen …": "Descargando {0} …",
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "«Rápido» reconoce aproximadamente el doble de rápido, pero con algo menos de precisión."
 }

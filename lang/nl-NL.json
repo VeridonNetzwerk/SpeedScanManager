@@ -681,5 +681,22 @@
  "Speicherordner: ": "Opslagmap: ",
  "Der Scan wird noch gespeichert …": "De scan wordt nog opgeslagen …",
  "SpeedScan Manager wird danach beendet.": "SpeedScan Manager wordt daarna afgesloten.",
- "Wird gespeichert": "Opslaan"
+ "Wird gespeichert": "Opslaan",
+ "Die Sprachdaten konnten nicht heruntergeladen werden:\n\n{0}": "De taalgegevens konden niet worden gedownload:\n\n{0}",
+ "Die Texterkennung für {0} ist nicht installiert.": "Tekstherkenning voor {0} is niet geïnstalleerd.",
+ "Die heruntergeladene Datei ist ungültig.": "Het gedownloade bestand is ongeldig.",
+ "Genau": "Nauwkeurig",
+ "Jetzt herunterladen (ca. {0} MB)?": "Nu downloaden (ca. {0} MB)?",
+ "Niederländisch": "Nederlands",
+ "Polnisch": "Pools",
+ "Qualität": "Kwaliteit",
+ "Schnell": "Snel",
+ "Texterkennung installieren": "Tekstherkenning installeren",
+ "Texterkennung-Qualität": "Kwaliteit van tekstherkenning",
+ "Türkisch": "Turks",
+ "Verbinde …": "Verbinden …",
+ "nicht installiert": "niet geïnstalleerd",
+ "{0} % von ca. {1} MB": "{0} % van ca. {1} MB",
+ "{0} wird heruntergeladen …": "{0} wordt gedownload …",
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "„Snel” herkent ongeveer twee keer zo snel, maar iets minder nauwkeurig."
 }

@@ -681,5 +681,22 @@
  "Speicherordner: ": "Kayıt klasörü: ",
  "Der Scan wird noch gespeichert …": "Tarama hâlâ kaydediliyor …",
  "SpeedScan Manager wird danach beendet.": "SpeedScan Manager ardından kapanacak.",
- "Wird gespeichert": "Kaydediliyor"
+ "Wird gespeichert": "Kaydediliyor",
+ "Die Sprachdaten konnten nicht heruntergeladen werden:\n\n{0}": "Dil verileri indirilemedi:\n\n{0}",
+ "Die Texterkennung für {0} ist nicht installiert.": "{0} için metin tanıma yüklü değil.",
+ "Die heruntergeladene Datei ist ungültig.": "İndirilen dosya geçersiz.",
+ "Genau": "Hassas",
+ "Jetzt herunterladen (ca. {0} MB)?": "Şimdi indirilsin mi (yaklaşık {0} MB)?",
+ "Niederländisch": "Felemenkçe",
+ "Polnisch": "Lehçe",
+ "Qualität": "Kalite",
+ "Schnell": "Hızlı",
+ "Texterkennung installieren": "Metin tanımayı yükle",
+ "Texterkennung-Qualität": "Metin tanıma kalitesi",
+ "Türkisch": "Türkçe",
+ "Verbinde …": "Bağlanıyor …",
+ "nicht installiert": "yüklü değil",
+ "{0} % von ca. {1} MB": "Yaklaşık {1} MB'ın %{0}'i",
+ "{0} wird heruntergeladen …": "{0} indiriliyor …",
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "“Hızlı” yaklaşık iki kat daha hızlı tanır, ancak biraz daha az doğrudur."
 }

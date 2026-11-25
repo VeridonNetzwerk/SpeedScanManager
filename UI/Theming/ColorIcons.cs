@@ -311,6 +311,16 @@ internal static class ColorIcons
             DrawTile(g, r, IconColors.Sky, Glyph.Globe, IconColors.Purple, sparkle: true);
             return;
         }
+        // Same flag as the app language (Portuguese = Brazil, like pt-BR)
+        string? code = language switch
+        {
+            OcrLanguage.Portugiesisch => "pt-BR",
+            OcrLanguage.Polnisch => "pl-PL",
+            OcrLanguage.Niederlaendisch => "nl-NL",
+            OcrLanguage.Tuerkisch => "tr-TR",
+            _ => null
+        };
+        if (code != null) { DrawFlag(g, r, code); return; }
         DrawFlagFrame(g, r, f => DrawFlagContent(g, f, language));
     }
 

@@ -99,18 +99,13 @@ internal sealed class OsdDetector : IDisposable
 /// Runs Tesseract OCR on scanned images and returns word-level data
 /// with positions for embedding as invisible text layer in PDF.
 ///
-/// TESSDATA SETUP:
-///   Tesseract requires traineddata files in a "tessdata" folder.
-///   Download from: https://github.com/tesseract-ocr/tessdata_fast
-///   Shipped: deu.traineddata, eng.traineddata, osd.traineddata (orientation/script detection)
-///   Optional: jpn, fra, ita, spa, chi_sim, chi_tra, kor, rus, por, ara
-///   Place them in: [app directory]/tessdata/
-///   Missing languages fall back to the installed ones (see <see cref="Warnings"/>).
+/// Language models: see <see cref="OcrData"/> (setup language + English shipped, others
+/// installed by the app). Missing languages fall back to the installed ones (see <see cref="Warnings"/>).
 /// </summary>
 internal class OcrProcessor : IDisposable
 {
     private TesseractEngine? _engine;
-    private readonly string _tessDataPath;
+    private readonly OcrQuality _quality;
     private readonly bool _isAutoMode;
     private readonly OsdDetector? _sharedOsd;
     private OsdDetector? _ownOsd;
@@ -118,10 +113,9 @@ internal class OcrProcessor : IDisposable
     private bool _disposed;
 
     /// <summary>
-    /// Path to the tessdata folder (next to the executable).
+    /// The tessdata folder next to the executable (holds osd.traineddata).
     /// </summary>
-    internal static string DefaultTessDataPath =>
-        Path.Combine(AppContext.BaseDirectory, "tessdata");
+    internal static string DefaultTessDataPath => OcrData.ShippedRoot;
 
     /// <summary>User-facing (German) notes, e.g. missing language data and the fallback used.</summary>
     public List<string> Warnings { get; } = new();
@@ -129,11 +123,7 @@ internal class OcrProcessor : IDisposable
     /// <summary>The Tesseract language code(s) currently loaded (e.g. "deu+eng").</summary>
     public string CurrentLanguage => _currentLanguage;
 
-    public OcrProcessor(OcrLanguage language) : this(language, DefaultTessDataPath)
-    {
-    }
-
-    public OcrProcessor(OcrLanguage language, string tessDataPath) : this(language, tessDataPath, null)
+    public OcrProcessor(OcrLanguage language, OcrQuality quality = OcrQuality.Genau) : this(language, quality, null)
     {
     }
 
@@ -141,9 +131,9 @@ internal class OcrProcessor : IDisposable
     /// <paramref name="sharedOsd"/>: optional OSD engine shared with auto-rotation
     /// (not disposed by this instance).
     /// </summary>
-    public OcrProcessor(OcrLanguage language, string tessDataPath, OsdDetector? sharedOsd)
+    public OcrProcessor(OcrLanguage language, OcrQuality quality, OsdDetector? sharedOsd)
     {
-        _tessDataPath = tessDataPath;
+        _quality = quality;
         _sharedOsd = sharedOsd;
         _isAutoMode = language == OcrLanguage.Automatisch;
 
@@ -179,6 +169,9 @@ internal class OcrProcessor : IDisposable
         OcrLanguage.Russisch => "rus",
         OcrLanguage.Portugiesisch => "por",
         OcrLanguage.Arabisch => "ara",
+        OcrLanguage.Polnisch => "pol",
+        OcrLanguage.Niederlaendisch => "nld",
+        OcrLanguage.Tuerkisch => "tur",
         _ => "deu+eng"
     };
 
@@ -186,31 +179,10 @@ internal class OcrProcessor : IDisposable
     /// Lists the installed OCR languages (traineddata files in tessdata, without "osd"),
     /// e.g. ["deu", "eng"].
     /// </summary>
-    public static IReadOnlyList<string> GetInstalledLanguages(string? tessDataPath = null)
-    {
-        var path = tessDataPath ?? DefaultTessDataPath;
-        try
-        {
-            if (!Directory.Exists(path)) return Array.Empty<string>();
-            return Directory.GetFiles(path, "*.traineddata")
-                .Select(f => Path.GetFileNameWithoutExtension(f))
-                .Where(n => !n.Equals("osd", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-        catch
-        {
-            return Array.Empty<string>();
-        }
-    }
+    public static IReadOnlyList<string> GetInstalledLanguages() => OcrData.InstalledLanguages();
 
     /// <summary>True if the traineddata for all codes of <paramref name="languageCode"/> ("deu+eng") exist.</summary>
-    public static bool IsLanguageInstalled(string languageCode, string? tessDataPath = null)
-    {
-        var installed = GetInstalledLanguages(tessDataPath);
-        return languageCode.Split('+', StringSplitOptions.RemoveEmptyEntries)
-            .All(c => installed.Contains(c, StringComparer.OrdinalIgnoreCase));
-    }
+    public static bool IsLanguageInstalled(string languageCode) => OcrData.AreInstalled(languageCode);
 
     /// <summary>
     /// Keeps the installed codes of a "a+b" request. If none is installed, falls back to
@@ -218,7 +190,7 @@ internal class OcrProcessor : IDisposable
     /// </summary>
     private string ResolveInstalled(string requested, out List<string> missing)
     {
-        var installed = GetInstalledLanguages(_tessDataPath);
+        var installed = GetInstalledLanguages();
         var codes = requested.Split('+', StringSplitOptions.RemoveEmptyEntries);
         missing = codes.Where(c => !installed.Contains(c, StringComparer.OrdinalIgnoreCase)).ToList();
         var present = codes.Where(c => installed.Contains(c, StringComparer.OrdinalIgnoreCase)).ToList();
@@ -253,12 +225,14 @@ internal class OcrProcessor : IDisposable
     /// <summary>
     /// Checks if a .traineddata file exists in the tessdata folder.
     /// </summary>
-    private bool IsTessDataAvailable(string langCode)
-    {
-        return File.Exists(Path.Combine(_tessDataPath, langCode + ".traineddata"));
-    }
+    private static bool IsTessDataAvailable(string langCode) => OcrData.IsInstalled(langCode);
 
-    private OsdDetector? Osd => _sharedOsd ?? (_ownOsd ??= new OsdDetector(_tessDataPath));
+    /// <summary>Folder with the models of "a+b" in the chosen quality.</summary>
+    private string PathFor(string langCode) =>
+        OcrData.DataPath(_quality, langCode.Split('+', StringSplitOptions.RemoveEmptyEntries))
+        ?? throw new FileNotFoundException($"OCR data missing: {langCode}");
+
+    private OsdDetector? Osd => _sharedOsd ?? (_ownOsd ??= new OsdDetector(DefaultTessDataPath));
 
     /// <summary>
     /// Runs OCR on a single bitmap and returns recognized words with positions.
@@ -358,7 +332,8 @@ internal class OcrProcessor : IDisposable
         try
         {
             _engine?.Dispose();
-            _engine = new TesseractEngine(_tessDataPath, langCode, EngineMode.Default);
+            _engine = null;
+            _engine = new TesseractEngine(PathFor(langCode), langCode, EngineMode.Default);
             _engine.DefaultPageSegMode = PageSegMode.Auto;
             _currentLanguage = langCode;
         }
@@ -372,7 +347,7 @@ internal class OcrProcessor : IDisposable
             {
                 try
                 {
-                    _engine = new TesseractEngine(_tessDataPath, fallback, EngineMode.Default);
+                    _engine = new TesseractEngine(PathFor(fallback), fallback, EngineMode.Default);
                     _engine.DefaultPageSegMode = PageSegMode.Auto;
                     _currentLanguage = fallback;
                 }

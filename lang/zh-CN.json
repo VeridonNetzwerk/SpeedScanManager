@@ -681,5 +681,22 @@
  "Speicherordner: ": "保存文件夹: ",
  "Der Scan wird noch gespeichert …": "正在保存扫描…",
  "SpeedScan Manager wird danach beendet.": "保存后 SpeedScan Manager 将退出。",
- "Wird gespeichert": "正在保存"
+ "Wird gespeichert": "正在保存",
+ "Die Sprachdaten konnten nicht heruntergeladen werden:\n\n{0}": "无法下载语言数据：\n\n{0}",
+ "Die Texterkennung für {0} ist nicht installiert.": "{0}的文字识别尚未安装。",
+ "Die heruntergeladene Datei ist ungültig.": "下载的文件无效。",
+ "Genau": "精确",
+ "Jetzt herunterladen (ca. {0} MB)?": "立即下载（约 {0} MB）？",
+ "Niederländisch": "荷兰语",
+ "Polnisch": "波兰语",
+ "Qualität": "质量",
+ "Schnell": "快速",
+ "Texterkennung installieren": "安装文字识别",
+ "Texterkennung-Qualität": "文字识别质量",
+ "Türkisch": "土耳其语",
+ "Verbinde …": "正在连接…",
+ "nicht installiert": "未安装",
+ "{0} % von ca. {1} MB": "{0}%，共约 {1} MB",
+ "{0} wird heruntergeladen …": "正在下载{0}…",
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "“快速”识别速度约快一倍，但准确度略低。"
 }

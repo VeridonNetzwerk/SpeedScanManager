@@ -681,5 +681,22 @@
  "Speicherordner: ": "Folder zapisu: ",
  "Der Scan wird noch gespeichert …": "Skan jest jeszcze zapisywany …",
  "SpeedScan Manager wird danach beendet.": "Następnie SpeedScan Manager zostanie zamknięty.",
- "Wird gespeichert": "Zapisywanie"
+ "Wird gespeichert": "Zapisywanie",
+ "Die Sprachdaten konnten nicht heruntergeladen werden:\n\n{0}": "Nie udało się pobrać danych języka:\n\n{0}",
+ "Die Texterkennung für {0} ist nicht installiert.": "Rozpoznawanie tekstu dla języka {0} nie jest zainstalowane.",
+ "Die heruntergeladene Datei ist ungültig.": "Pobrany plik jest nieprawidłowy.",
+ "Genau": "Dokładna",
+ "Jetzt herunterladen (ca. {0} MB)?": "Pobrać teraz (ok. {0} MB)?",
+ "Niederländisch": "Niderlandzki",
+ "Polnisch": "Polski",
+ "Qualität": "Jakość",
+ "Schnell": "Szybka",
+ "Texterkennung installieren": "Zainstaluj rozpoznawanie tekstu",
+ "Texterkennung-Qualität": "Jakość rozpoznawania tekstu",
+ "Türkisch": "Turecki",
+ "Verbinde …": "Łączenie …",
+ "nicht installiert": "nie zainstalowano",
+ "{0} % von ca. {1} MB": "{0} % z ok. {1} MB",
+ "{0} wird heruntergeladen …": "Pobieranie: {0} …",
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "„Szybka” rozpoznaje mniej więcej dwa razy szybciej, ale nieco mniej dokładnie."
 }

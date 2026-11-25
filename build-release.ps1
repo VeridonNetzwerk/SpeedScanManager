@@ -89,6 +89,30 @@ if (-not (Test-Path (Join-Path $distDir "SpeedScanManager.exe"))) {
     throw "SpeedScanManager.exe missing in $distDir."
 }
 
+# --- 1b) OCR models: all languages, accurate (best) and fast ---
+# Downloaded once into tessdata-cache (gitignored). The setup installs only the setup language
+# + English; the app downloads others on demand (Core/Scanning/OcrData.cs).
+# tessdata_fast for ita/nld/tur/ara is broken (random accents), the app uses best for them.
+$ocrCodes = @("deu","eng","jpn","fra","spa","chi_sim","chi_tra","por","rus","kor","ita","pol","nld","tur","ara")
+$brokenFast = @("ita","nld","tur","ara")
+$ocrCache = Join-Path $root "tessdata-cache"
+Write-Host "[1b] OCR models (cache: $ocrCache)..." -ForegroundColor Yellow
+foreach ($quality in @("best","fast")) {
+    $cacheDir = Join-Path $ocrCache $quality
+    $outDir = Join-Path $distDir "tessdata\$quality"
+    New-Item -ItemType Directory -Path $cacheDir, $outDir -Force | Out-Null
+    foreach ($code in $ocrCodes) {
+        if ($quality -eq "fast" -and $brokenFast -contains $code) { continue }
+        $file = Join-Path $cacheDir "$code.traineddata"
+        if (-not (Test-Path $file) -or (Get-Item $file).Length -lt 100000) {
+            Write-Host "  download $quality/$code"
+            Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/tesseract-ocr/tessdata_$quality/raw/main/$code.traineddata" -OutFile "$file.part"
+            Move-Item "$file.part" $file -Force
+        }
+        Copy-Item $file (Join-Path $outDir "$code.traineddata") -Force
+    }
+}
+
 # --- 2) Zip app (portable release + installer payload) ---
 Write-Host "[2/4] Zipping app -> $portableZip" -ForegroundColor Yellow
 Add-Type -AssemblyName System.IO.Compression.FileSystem

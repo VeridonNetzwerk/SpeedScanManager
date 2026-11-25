@@ -681,5 +681,22 @@
  "Speicherordner: ": "Dossier d'enregistrement : ",
  "Der Scan wird noch gespeichert …": "La numérisation est encore en cours d'enregistrement …",
  "SpeedScan Manager wird danach beendet.": "SpeedScan Manager se fermera ensuite.",
- "Wird gespeichert": "Enregistrement"
+ "Wird gespeichert": "Enregistrement",
+ "Die Sprachdaten konnten nicht heruntergeladen werden:\n\n{0}": "Les données de langue n'ont pas pu être téléchargées :\n\n{0}",
+ "Die Texterkennung für {0} ist nicht installiert.": "La reconnaissance de texte pour {0} n'est pas installée.",
+ "Die heruntergeladene Datei ist ungültig.": "Le fichier téléchargé n'est pas valide.",
+ "Genau": "Précise",
+ "Jetzt herunterladen (ca. {0} MB)?": "Télécharger maintenant (env. {0} Mo) ?",
+ "Niederländisch": "Néerlandais",
+ "Polnisch": "Polonais",
+ "Qualität": "Qualité",
+ "Schnell": "Rapide",
+ "Texterkennung installieren": "Installer la reconnaissance de texte",
+ "Texterkennung-Qualität": "Qualité de la reconnaissance de texte",
+ "Türkisch": "Turc",
+ "Verbinde …": "Connexion …",
+ "nicht installiert": "non installé",
+ "{0} % von ca. {1} MB": "{0} % sur env. {1} Mo",
+ "{0} wird heruntergeladen …": "Téléchargement de {0} …",
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "« Rapide » reconnaît environ deux fois plus vite, mais un peu moins précisément."
 }

@@ -460,12 +460,16 @@ public partial class MainWindow : Window
                     ? InstallerCore.GetLegacyFileList(targetDir, out _)
                     : new List<string>());
 
-            // Copy files
+            // Copy files (OCR models: only the setup language + English, see InstallerCore)
+            var ocrKeep = InstallerCore.OcrLanguagesToInstall(I18n.Current.Code, oldFiles);
+            var files = payload.Files
+                .Where(f => InstallerCore.OcrModelCode(f.RelativePath) is not { } code || ocrKeep.Contains(code))
+                .ToList();
             var installed = new List<string>();
-            var totalFiles = payload.Files.Count;
+            var totalFiles = files.Count;
             for (int i = 0; i < totalFiles; i++)
             {
-                var file = payload.Files[i];
+                var file = files[i];
 
                 StatusText.Text = I18n.F("Kopiere: {0}  ({1}/{2})", Path.GetFileName(file.RelativePath), i + 1, totalFiles);
                 await Task.Run(() =>

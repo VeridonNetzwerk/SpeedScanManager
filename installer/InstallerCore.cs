@@ -122,6 +122,44 @@ internal static class InstallerCore
         }
     }
 
+    // ===== OCR models =====
+
+    /// <summary>
+    /// Language code of an OCR model in the payload (tessdata\best\ita.traineddata → "ita"),
+    /// null for every other file. The payload holds all languages; only some are installed.
+    /// </summary>
+    public static string? OcrModelCode(string relativePath)
+    {
+        var parts = relativePath.Replace('/', '\\').Split('\\');
+        if (parts.Length == 3 && parts[0].Equals("tessdata", StringComparison.OrdinalIgnoreCase)
+            && (parts[1].Equals("best", StringComparison.OrdinalIgnoreCase) || parts[1].Equals("fast", StringComparison.OrdinalIgnoreCase))
+            && parts[2].EndsWith(".traineddata", StringComparison.OrdinalIgnoreCase))
+            return Path.GetFileNameWithoutExtension(parts[2]).ToLowerInvariant();
+        return null;
+    }
+
+    /// <summary>OCR language code for a setup / app language ("it-IT" → "ita").</summary>
+    public static string? OcrCodeFor(string language) => language switch
+    {
+        "de-DE" => "deu", "en-US" => "eng", "ja-JP" => "jpn", "fr-FR" => "fra", "es-ES" => "spa",
+        "zh-CN" => "chi_sim", "zh-TW" => "chi_tra", "pt-BR" => "por", "ru-RU" => "rus", "ko-KR" => "kor",
+        "it-IT" => "ita", "pl-PL" => "pol", "nl-NL" => "nld", "tr-TR" => "tur",
+        _ => null
+    };
+
+    /// <summary>
+    /// OCR languages to install: English (automatic detection), the setup language and those a
+    /// previous installation in this folder already had.
+    /// </summary>
+    public static HashSet<string> OcrLanguagesToInstall(string setupLanguage, IEnumerable<string> previousFiles)
+    {
+        var keep = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "eng" };
+        if (OcrCodeFor(setupLanguage) is { } code) keep.Add(code);
+        foreach (var rel in previousFiles)
+            if (OcrModelCode(rel) is { } old) keep.Add(old);
+        return keep;
+    }
+
     /// <summary>
     /// Normalizes a relative path to backslashes and rejects anything that would escape the
     /// install directory (absolute paths, "..").

@@ -1422,6 +1422,10 @@ internal partial class TrayApplicationContext : ApplicationContext
     private void OnLanguageChanged()
     {
         _appSettings.Save();
+        // Text recognition for the new language (both qualities), if it isn't installed yet
+        var ocrCode = OcrData.CodeForAppLanguage(_appSettings.Language);
+        if (!_busy && ocrCode != null && !OcrData.IsInstalled(ocrCode))
+            OcrDownloadDialog.Offer(DialogOwner, ocrCode);
         if (_busy)
         {
             TrayMessageBox.Info(DialogOwner, L.T("Die neue Sprache wird beim nächsten Start von SpeedScan Manager übernommen."));

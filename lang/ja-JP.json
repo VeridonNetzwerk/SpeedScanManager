@@ -681,5 +681,22 @@
  "Speicherordner: ": "保存先フォルダー: ",
  "Der Scan wird noch gespeichert …": "スキャンを保存しています…",
  "SpeedScan Manager wird danach beendet.": "保存後に SpeedScan Manager を終了します。",
- "Wird gespeichert": "保存中"
+ "Wird gespeichert": "保存中",
+ "Die Sprachdaten konnten nicht heruntergeladen werden:\n\n{0}": "言語データをダウンロードできませんでした:\n\n{0}",
+ "Die Texterkennung für {0} ist nicht installiert.": "{0}の文字認識はインストールされていません。",
+ "Die heruntergeladene Datei ist ungültig.": "ダウンロードしたファイルが無効です。",
+ "Genau": "高精度",
+ "Jetzt herunterladen (ca. {0} MB)?": "今すぐダウンロードしますか (約 {0} MB)?",
+ "Niederländisch": "オランダ語",
+ "Polnisch": "ポーランド語",
+ "Qualität": "品質",
+ "Schnell": "高速",
+ "Texterkennung installieren": "文字認識をインストール",
+ "Texterkennung-Qualität": "文字認識の品質",
+ "Türkisch": "トルコ語",
+ "Verbinde …": "接続しています…",
+ "nicht installiert": "未インストール",
+ "{0} % von ca. {1} MB": "{0} % / 約 {1} MB",
+ "{0} wird heruntergeladen …": "{0}をダウンロードしています…",
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "「高速」は約2倍速く認識しますが、精度はやや下がります。"
 }

@@ -681,5 +681,22 @@
  "Speicherordner: ": "Папка сохранения: ",
  "Der Scan wird noch gespeichert …": "Скан ещё сохраняется …",
  "SpeedScan Manager wird danach beendet.": "После этого SpeedScan Manager будет закрыт.",
- "Wird gespeichert": "Сохранение"
+ "Wird gespeichert": "Сохранение",
+ "Die Sprachdaten konnten nicht heruntergeladen werden:\n\n{0}": "Не удалось загрузить языковые данные:\n\n{0}",
+ "Die Texterkennung für {0} ist nicht installiert.": "Распознавание текста для языка «{0}» не установлено.",
+ "Die heruntergeladene Datei ist ungültig.": "Загруженный файл недействителен.",
+ "Genau": "Точное",
+ "Jetzt herunterladen (ca. {0} MB)?": "Загрузить сейчас (около {0} МБ)?",
+ "Niederländisch": "Нидерландский",
+ "Polnisch": "Польский",
+ "Qualität": "Качество",
+ "Schnell": "Быстрое",
+ "Texterkennung installieren": "Установить распознавание текста",
+ "Texterkennung-Qualität": "Качество распознавания текста",
+ "Türkisch": "Турецкий",
+ "Verbinde …": "Подключение …",
+ "nicht installiert": "не установлен",
+ "{0} % von ca. {1} MB": "{0} % из примерно {1} МБ",
+ "{0} wird heruntergeladen …": "Загрузка: {0} …",
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "«Быстрое» распознаёт примерно вдвое быстрее, но немного менее точно."
 }

@@ -42,7 +42,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="tessdata\*.traineddata" Link="tessdata\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- osd + fast deu/eng for dev builds; build-release.ps1 adds all languages (best + fast) -->
+    <Content Include="tessdata\**\*.traineddata" Link="tessdata\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -421,7 +421,7 @@ internal class ScanOutputProcessor
         {
             try
             {
-                using var ocr = new OcrProcessor(s.OcrLanguage, OcrProcessor.DefaultTessDataPath, osd);
+                using var ocr = new OcrProcessor(s.OcrLanguage, s.OcrQuality, osd);
                 foreach (var w in ocr.Warnings) AddWarning(result, w);
                 if (ocr.IsAvailable)
                 {

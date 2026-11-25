@@ -22,15 +22,13 @@ internal sealed class PageOrientationDetector : IDisposable
 
     private readonly OsdDetector _osd;
     private readonly string _languages;
-    private readonly string _tessDataPath;
     private TesseractEngine? _engine;
     private bool _engineAttempted;
 
-    public PageOrientationDetector(OsdDetector osd, OcrLanguage language, string? tessDataPath = null)
+    public PageOrientationDetector(OsdDetector osd, OcrLanguage language)
     {
         _osd = osd;
-        _tessDataPath = tessDataPath ?? OcrProcessor.DefaultTessDataPath;
-        var installed = OcrProcessor.GetInstalledLanguages(_tessDataPath);
+        var installed = OcrProcessor.GetInstalledLanguages();
         var codes = OcrProcessor.GetLanguageCode(language).Split('+')
             .Where(c => installed.Contains(c, StringComparer.OrdinalIgnoreCase)).ToList();
         if (codes.Count == 0) codes = installed.Where(c => c is "deu" or "eng").ToList();
@@ -111,7 +109,8 @@ internal sealed class PageOrientationDetector : IDisposable
         if (_languages.Length == 0) return null;
         try
         {
-            _engine = new TesseractEngine(_tessDataPath, _languages, EngineMode.Default);
+            _engine = new TesseractEngine(
+                OcrData.DataPath(OcrQuality.Schnell, _languages.Split('+')) ?? OcrProcessor.DefaultTessDataPath, _languages, EngineMode.Default);
         }
         catch (Exception ex)
         {
