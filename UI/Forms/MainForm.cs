@@ -805,8 +805,10 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
         _sessionBaseline.RestoreFrom(_working);
 
         SettingsApplied?.Invoke(this, EventArgs.Empty);
+        // Raised directly: OK closes this form right after, so a BeginInvoke on it would never run.
+        // The tray defers its restart question itself.
         if (languageChanged)
-            BeginInvoke(() => LanguageChanged?.Invoke(this, EventArgs.Empty));
+            LanguageChanged?.Invoke(this, EventArgs.Empty);
         UpdateApplyButton();
         return true;
     }

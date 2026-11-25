@@ -1400,7 +1400,13 @@ internal partial class TrayApplicationContext : ApplicationContext
             _mainForm.SettingsApplied += (_, _) => OnSettingsApplied();
             _mainForm.CustomApplicationsChanged += (_, _) => OnCustomApplicationsChanged();
             _mainForm.ScanRequested += (_, _) => StartScan(ScanTrigger.Menu);
-            _mainForm.LanguageChanged += (_, _) => OnLanguageChanged();
+            // Posted to the UI thread (not the form): after OK the settings window is already gone
+            _mainForm.LanguageChanged += (_, _) =>
+            {
+                var ui = SynchronizationContext.Current;
+                if (ui != null) ui.Post(_ => OnLanguageChanged(), null);
+                else OnLanguageChanged();
+            };
             _mainForm.FormClosed += (_, _) => _mainForm = null;
             UpdateMainFormUpdatePill();
         }
