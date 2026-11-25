@@ -678,5 +678,8 @@
  "Optionen...": "Opcje...",
  "Dateinamenformat...": "Format nazwy pliku...",
  "Scan-Seite": "Strona skanowania",
- "Speicherordner: ": "Folder zapisu: "
+ "Speicherordner: ": "Folder zapisu: ",
+ "Der Scan wird noch gespeichert …": "Skan jest jeszcze zapisywany …",
+ "SpeedScan Manager wird danach beendet.": "Następnie SpeedScan Manager zostanie zamknięty.",
+ "Wird gespeichert": "Zapisywanie"
 }

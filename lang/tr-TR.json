@@ -678,5 +678,8 @@
  "Optionen...": "Seçenekler...",
  "Dateinamenformat...": "Dosya adı biçimi...",
  "Scan-Seite": "Tarama yüzü",
- "Speicherordner: ": "Kayıt klasörü: "
+ "Speicherordner: ": "Kayıt klasörü: ",
+ "Der Scan wird noch gespeichert …": "Tarama hâlâ kaydediliyor …",
+ "SpeedScan Manager wird danach beendet.": "SpeedScan Manager ardından kapanacak.",
+ "Wird gespeichert": "Kaydediliyor"
 }

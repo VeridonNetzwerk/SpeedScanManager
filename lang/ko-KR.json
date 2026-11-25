@@ -678,5 +678,8 @@
  "Optionen...": "옵션...",
  "Dateinamenformat...": "파일 이름 형식...",
  "Scan-Seite": "스캔 면",
- "Speicherordner: ": "저장 폴더: "
+ "Speicherordner: ": "저장 폴더: ",
+ "Der Scan wird noch gespeichert …": "스캔을 저장하는 중입니다…",
+ "SpeedScan Manager wird danach beendet.": "저장 후 SpeedScan Manager가 종료됩니다.",
+ "Wird gespeichert": "저장 중"
 }

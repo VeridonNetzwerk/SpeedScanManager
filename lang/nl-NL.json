@@ -678,5 +678,8 @@
  "Optionen...": "Opties...",
  "Dateinamenformat...": "Bestandsnaamindeling...",
  "Scan-Seite": "Scanzijde",
- "Speicherordner: ": "Opslagmap: "
+ "Speicherordner: ": "Opslagmap: ",
+ "Der Scan wird noch gespeichert …": "De scan wordt nog opgeslagen …",
+ "SpeedScan Manager wird danach beendet.": "SpeedScan Manager wordt daarna afgesloten.",
+ "Wird gespeichert": "Opslaan"
 }

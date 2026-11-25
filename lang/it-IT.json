@@ -678,5 +678,8 @@
  "Optionen...": "Opzioni...",
  "Dateinamenformat...": "Formato nome file...",
  "Scan-Seite": "Lato di scansione",
- "Speicherordner: ": "Cartella di salvataggio: "
+ "Speicherordner: ": "Cartella di salvataggio: ",
+ "Der Scan wird noch gespeichert …": "La scansione è ancora in fase di salvataggio …",
+ "SpeedScan Manager wird danach beendet.": "SpeedScan Manager verrà chiuso subito dopo.",
+ "Wird gespeichert": "Salvataggio"
 }

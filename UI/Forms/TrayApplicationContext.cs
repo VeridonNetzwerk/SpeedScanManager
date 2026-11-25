@@ -1580,7 +1580,7 @@ internal partial class TrayApplicationContext : ApplicationContext
                 // The scan flow calls DoExit when it is done.
                 _exitRequested = true;
                 LogDiag("Exit: deferred until the scan is saved");
-                ShowBalloon(AppTitle, L.T("Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet."), ToolTipIcon.Info);
+                ShowExitWait();
                 UpdateBusyText();
                 return;
             }
@@ -1592,13 +1592,32 @@ internal partial class TrayApplicationContext : ApplicationContext
             {
                 // The flow started writing while the question was open.
                 _exitRequested = true;
-                ShowBalloon(AppTitle, L.T("Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet."), ToolTipIcon.Info);
+                ShowExitWait();
                 UpdateBusyText();
                 return;
             }
         }
 
         DoExit();
+    }
+
+    private ExitWaitDialog? _exitWait;
+
+    /// <summary>App window with a spinner while "Beenden" waits for the scan to be saved; closes on exit.</summary>
+    private void ShowExitWait()
+    {
+        if (_exitWait is { IsDisposed: false }) return;
+        try
+        {
+            _exitWait = new ExitWaitDialog();
+            _exitWait.Show();
+            WindowActivation.BringToFront(_exitWait);
+        }
+        catch (Exception ex)
+        {
+            LogDiag($"Exit wait window failed: {ex.Message}");
+            ShowBalloon(AppTitle, L.T("Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet."), ToolTipIcon.Info);
+        }
     }
 
     private bool _exiting;

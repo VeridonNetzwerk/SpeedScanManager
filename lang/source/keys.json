@@ -678,5 +678,8 @@
  "Ordner im Explorer öffnen": "UI/Theming/ModernInputs.cs",
  "Pfad kopieren": "UI/Theming/ModernInputs.cs",
  "Speicherordner: ": "UI/Theming/ModernInputs.cs",
- "System": "UI/Theming/ThemeManager.cs"
+ "System": "UI/Theming/ThemeManager.cs",
+ "Der Scan wird noch gespeichert …": "UI/Dialogs/ExitWaitDialog.cs",
+ "SpeedScan Manager wird danach beendet.": "UI/Dialogs/ExitWaitDialog.cs",
+ "Wird gespeichert": "UI/Dialogs/ExitWaitDialog.cs"
 }

@@ -678,5 +678,8 @@
  "Optionen...": "Options...",
  "Dateinamenformat...": "File name format...",
  "Scan-Seite": "Scanning side",
- "Speicherordner: ": "Save folder: "
+ "Speicherordner: ": "Save folder: ",
+ "Der Scan wird noch gespeichert …": "The scan is still being saved …",
+ "SpeedScan Manager wird danach beendet.": "SpeedScan Manager will close afterwards.",
+ "Wird gespeichert": "Saving"
 }

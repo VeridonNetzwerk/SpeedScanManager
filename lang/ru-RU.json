@@ -678,5 +678,8 @@
  "Optionen...": "Параметры...",
  "Dateinamenformat...": "Формат имени файла...",
  "Scan-Seite": "Сторона сканирования",
- "Speicherordner: ": "Папка сохранения: "
+ "Speicherordner: ": "Папка сохранения: ",
+ "Der Scan wird noch gespeichert …": "Скан ещё сохраняется …",
+ "SpeedScan Manager wird danach beendet.": "После этого SpeedScan Manager будет закрыт.",
+ "Wird gespeichert": "Сохранение"
 }

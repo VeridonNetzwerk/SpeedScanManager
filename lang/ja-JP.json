@@ -678,5 +678,8 @@
  "Optionen...": "オプション...",
  "Dateinamenformat...": "ファイル名の形式...",
  "Scan-Seite": "読み取り面",
- "Speicherordner: ": "保存先フォルダー: "
+ "Speicherordner: ": "保存先フォルダー: ",
+ "Der Scan wird noch gespeichert …": "スキャンを保存しています…",
+ "SpeedScan Manager wird danach beendet.": "保存後に SpeedScan Manager を終了します。",
+ "Wird gespeichert": "保存中"
 }

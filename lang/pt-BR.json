@@ -678,5 +678,8 @@
  "Optionen...": "Opções...",
  "Dateinamenformat...": "Formato do nome do arquivo...",
  "Scan-Seite": "Lado de digitalização",
- "Speicherordner: ": "Pasta de destino: "
+ "Speicherordner: ": "Pasta de destino: ",
+ "Der Scan wird noch gespeichert …": "A digitalização ainda está sendo salva …",
+ "SpeedScan Manager wird danach beendet.": "O SpeedScan Manager será fechado em seguida.",
+ "Wird gespeichert": "Salvando"
 }

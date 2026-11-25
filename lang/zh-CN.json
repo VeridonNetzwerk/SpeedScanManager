@@ -678,5 +678,8 @@
  "Optionen...": "选项...",
  "Dateinamenformat...": "文件名格式...",
  "Scan-Seite": "扫描面",
- "Speicherordner: ": "保存文件夹: "
+ "Speicherordner: ": "保存文件夹: ",
+ "Der Scan wird noch gespeichert …": "正在保存扫描…",
+ "SpeedScan Manager wird danach beendet.": "保存后 SpeedScan Manager 将退出。",
+ "Wird gespeichert": "正在保存"
 }

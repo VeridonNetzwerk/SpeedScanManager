@@ -678,5 +678,8 @@
  "Optionen...": "Options...",
  "Dateinamenformat...": "Format du nom de fichier...",
  "Scan-Seite": "Face à numériser",
- "Speicherordner: ": "Dossier d'enregistrement : "
+ "Speicherordner: ": "Dossier d'enregistrement : ",
+ "Der Scan wird noch gespeichert …": "La numérisation est encore en cours d'enregistrement …",
+ "SpeedScan Manager wird danach beendet.": "SpeedScan Manager se fermera ensuite.",
+ "Wird gespeichert": "Enregistrement"
 }

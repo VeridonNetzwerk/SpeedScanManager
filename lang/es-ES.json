@@ -678,5 +678,8 @@
  "Optionen...": "Opciones...",
  "Dateinamenformat...": "Formato del nombre de archivo...",
  "Scan-Seite": "Cara de escaneado",
- "Speicherordner: ": "Carpeta de destino: "
+ "Speicherordner: ": "Carpeta de destino: ",
+ "Der Scan wird noch gespeichert …": "El escaneo todavía se está guardando …",
+ "SpeedScan Manager wird danach beendet.": "SpeedScan Manager se cerrará después.",
+ "Wird gespeichert": "Guardando"
 }
