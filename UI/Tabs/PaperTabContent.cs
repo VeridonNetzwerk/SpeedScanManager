@@ -80,7 +80,7 @@ internal class PaperTabContent : ModernStack
         _btnCarrierSheet = ModernButtons.SubDialog(L.T("Trägerblatteinstellungen..."), Glyph.Carrier, IconColors.Blue);
         _btnCarrierSheet.Click += (s, e) => OpenCarrierSheetDialog();
 
-        _btnCustomSize = ModernButtons.SubDialog("Benutzerdefiniert...", Glyph.Ruler, IconColors.Orange);
+        _btnCustomSize = ModernButtons.SubDialog(L.T("Benutzerdefiniert..."), Glyph.Ruler, IconColors.Orange);
         _btnCustomSize.Click += (s, e) => OpenCustomSizeDialog();
 
         _cbMultiFeed = new ComboBox

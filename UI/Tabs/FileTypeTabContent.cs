@@ -67,7 +67,7 @@ internal class FileTypeTabContent : ModernStack
         };
 
         // === PDF options button ===
-        _btnOptions = ModernButtons.SubDialog("Optionen...", Glyph.FileType, IconColors.Red);
+        _btnOptions = ModernButtons.SubDialog(L.T("Optionen..."), Glyph.FileType, IconColors.Red);
         _btnOptions.Click += (s, e) => OpenPdfOptionsDialog();
 
         // === Keyword marking ===

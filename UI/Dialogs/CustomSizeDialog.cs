@@ -102,7 +102,7 @@ internal class CustomSizeDialog : ModernWindow
             Size = new Size(70, 24),
             Margin = Padding.Empty,
             TextAlign = HorizontalAlignment.Center,
-            ReadOnly = true, // display only; values are edited via "Ändern..."
+            ReadOnly = true, // display only; values are edited via L.T("Ändern...")
             AccessibleName = L.T("Breite")
         };
 
@@ -111,7 +111,7 @@ internal class CustomSizeDialog : ModernWindow
             Size = new Size(70, 24),
             Margin = Padding.Empty,
             TextAlign = HorizontalAlignment.Center,
-            ReadOnly = true, // display only; values are edited via "Ändern..."
+            ReadOnly = true, // display only; values are edited via L.T("Ändern...")
             AccessibleName = L.T("Länge")
         };
 

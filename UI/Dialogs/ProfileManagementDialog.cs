@@ -53,7 +53,7 @@ internal class ProfileManagementDialog : ModernWindow
         _btnAdd = CreateActionButton(L.T("Hinzufügen..."), Glyph.Plus, IconColors.Green);
         _btnAdd.Click += (s, e) => AddProfile();
 
-        _btnRename = CreateActionButton("Umbenennen...", Glyph.TextField, IconColors.Blue);
+        _btnRename = CreateActionButton(L.T("Umbenennen..."), Glyph.TextField, IconColors.Blue);
         _btnRename.Click += (s, e) => RenameProfile();
 
         _btnDelete = CreateActionButton(L.T("Löschen"), Glyph.Cross);

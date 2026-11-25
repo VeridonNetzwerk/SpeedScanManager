@@ -44,7 +44,7 @@ internal class CarrierSheetDialog : ModernWindow
         (L.T("Postkarte (100 x 148 mm)"), CarrierSheetOutputSize.Postcard),
         (L.T("Visitenkarte (55 x 91 mm)"), CarrierSheetOutputSize.BusinessCard),
         (L.T("Trägerblattgröße (220 x 297 mm)"), CarrierSheetOutputSize.CarrierSheet),
-        ("Benutzerdefiniert...", CarrierSheetOutputSize.Custom)
+        (L.T("Benutzerdefiniert..."), CarrierSheetOutputSize.Custom)
     };
 
     private static int IndexOfSize(CarrierSheetOutputSize value)

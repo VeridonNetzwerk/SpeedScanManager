@@ -6,7 +6,7 @@ namespace SpeedScanManager;
 
 /// <summary>
 /// Version information (tray menu "Versionsinformationen"): logo, version, license and credits,
-/// GitHub/Discord links and "Detail..." (scanner and driver information). Modern layout: cards
+/// GitHub/Discord links and L.T("Detail...") (scanner and driver information). Modern layout: cards
 /// in the body, help in the header, OK in the footer.
 /// </summary>
 internal class VersionInfoDialog : ModernWindow
@@ -143,7 +143,7 @@ internal class VersionInfoDialog : ModernWindow
         // === Detail button: scanner and driver information ===
         var btnDetail = new Button
         {
-            Text = "Detail...",
+            Text = L.T("Detail..."),
             Size = new Size(120, 32)
         };
         ThemeManager.SetGlyph(btnDetail, Glyph.Scanner);

@@ -104,7 +104,7 @@ internal class PostScanSaveDialog : ModernWindow
 
         _btnBrowse = new Button
         {
-            Text = "Durchsuchen...",
+            Text = L.T("Durchsuchen..."),
             Size = new Size(140, 32),
             Font = UiFont,
             Anchor = AnchorStyles.Right,

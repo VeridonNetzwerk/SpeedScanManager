@@ -1,0 +1,242 @@
+{
+ "root": {
+  "Title": "SpeedScan Manager 說明",
+  "Summary": "按下按鈕即可掃描文件，之後再決定要送往何處：資料夾、電子郵件、印表機或 Office 文件。",
+  "Html": ""
+ },
+ "getting-started": {
+  "Title": "開始使用",
+  "Summary": "了解本程式的功能、在哪裡找到它，以及如何連接掃描器。",
+  "Html": ""
+ },
+ "overview": {
+  "Title": "什麼是 SpeedScan Manager？",
+  "Summary": "SpeedScan Manager 可控制您的 TWAIN 掃描器，並在掃描後為您處理後續工作。",
+  "Html": "\r\n        \r\n        <p>本程式會安靜地在工作列的通知區域執行。您放入文件、按下掃描鍵，然後再選擇掃描後要執行的動作。</p>\r\n\r\n        <h2>您可以用它做什麼</h2>\r\n        <table class='items'><tr><td class='term'>儲存至資料夾</td><td>以 PDF、JPEG 或 PNG 格式儲存到您選擇的資料夾中。</td></tr><tr><td class='term'>以電子郵件傳送</td><td>您的電子郵件程式會開啟，並將掃描檔案作為附件。</td></tr><tr><td class='term'>列印</td><td>直接在印表機上輸出頁面（可取代影印機）。</td></tr><tr><td class='term'>Word、Excel、PowerPoint</td><td>將頁面以圖片形式插入新的 Office 文件中。</td></tr><tr><td class='term'>圖片資料夾</td><td>將頁面以 JPEG 圖片儲存至 <code>圖片\\SpeedScanManager</code>。</td></tr><tr><td class='term'>使用 PDF 程式開啟</td><td>在 Windows 中為該檔案設定的程式中開啟掃描檔。</td></tr><tr><td class='term'>自訂程式</td><td>最多可新增十個自訂程式，並以掃描檔案啟動它們。</td></tr></table>\r\n\r\n        <h2>程式自動完成的工作</h2>\r\n        <ul>\r\n            <li><b>文字辨識（OCR）</b>：讓 PDF 可以搜尋。</li>\r\n            <li><b>移除空白頁</b>、<b>校正歪斜的頁面</b>，以及<b>正確旋轉頁面</b>。</li>\r\n            <li><b>辨識色彩</b>：每個頁面都會儲存為彩色、灰階或黑白。</li>\r\n            <li><b>承載頁</b>：將摺疊的 A3 紙張兩半合併為一張影像。</li>\r\n        </ul>\r\n        <div class='box tip'><div class='box-title'>提示</div><p>最快的開始方式是使用<a href='#scan-quick'>快速選單</a>：它已經開啟，並會在每次掃描後詢問您要送往何處。</p></div>"
+ },
+ "starting": {
+  "Title": "系統匣圖示與選單",
+  "Summary": "SpeedScan Manager 沒有大型主視窗，您可以透過工作列中的圖示使用所有功能。",
+  "Html": "\r\n        \r\n        <p>啟動後，程式圖示會出現在工作列的通知區域（位於右下角，可能隱藏在箭頭 <b>˄</b> 後面）。按一下即可開啟選單。</p>\r\n        \r\n        <div class='shot'><img src='help-img:tray_menu' alt='系統匣選單。上方可看出掃描器是否已就緒。'><div class='caption'>系統匣選單。上方可看出掃描器是否已就緒。</div></div>\r\n\r\n        \r\n        <h2>圖示顯示的狀態</h2>\r\n        \r\n        <table class='items'><tr><td class='term'><img src='help-img:trayicon_connected' width='16' height='16' alt='就緒' style='vertical-align:-3px'>&nbsp; 一般</td><td>掃描器已連接且就緒。</td></tr><tr><td class='term'><img src='help-img:trayicon_scanning' width='16' height='16' alt='掃描中' style='vertical-align:-3px'>&nbsp; 帶橘色圓點</td><td>掃描正在進行或正在處理中。</td></tr><tr><td class='term'><img src='help-img:trayicon_disconnected' width='16' height='16' alt='已中斷' style='vertical-align:-3px'>&nbsp; 淡色加紅線</td><td>未連接掃描器，或掃描器已關閉。</td></tr></table>\r\n        <p>將滑鼠移到圖示上，即可看到掃描器名稱；掃描期間還會顯示目前已掃描的頁數。</p>\r\n\r\n        <h2>點擊操作</h2>\r\n        <table class='items'><tr><td class='term'>左鍵或右鍵點擊</td><td>開啟選單。</td></tr><tr><td class='term'>按兩下</td><td>開啟<a href='#settings'>設定</a>。</td></tr></table>\r\n\r\n        <h2>選單中的指令</h2>\r\n        <table class='items'><tr><td class='term'>掃描</td><td>使用目前的設定開始掃描。掃描器已中斷或掃描正在進行時無法使用。</td></tr><tr><td class='term'>取消掃描</td><td>僅在掃描進行時顯示。</td></tr><tr><td class='term'>選擇掃描器...</td><td>連接多台掃描器時，選擇要使用的掃描器（<a href='#scanner-selection'>更多</a>）。</td></tr><tr><td class='term'>掃描鍵設定...</td><td>開啟<a href='#settings'>設定視窗</a>。</td></tr><tr><td class='term'>設定掃描鍵...</td><td>（重新）設定掃描器上的按鍵（<a href='#scan-button'>更多</a>）。</td></tr><tr><td class='term'>設定檔管理...</td><td>重新命名、刪除及排序設定檔。</td></tr><tr><td class='term'>電子郵件設定...</td><td>掃描至電子郵件的收件者與主旨。</td></tr><tr><td class='term'>列印設定...</td><td>掃描至列印所使用的印表機。</td></tr><tr><td class='term'>顯示掃描結果</td><td>在檔案總管中顯示最近儲存的檔案（僅在掃描後可用）。</td></tr><tr><td class='term'>外觀</td><td><b>系統</b>、<b>亮</b>或<b>暗</b>：立即套用至所有視窗。</td></tr><tr><td class='term'>說明</td><td>本說明與版本資訊。</td></tr><tr><td class='term'>結束</td><td>結束程式。若掃描正在進行，會先詢問；若正在儲存，程式會在儲存完成後才結束。</td></tr></table>\r\n\r\n        <h2>隨 Windows 啟動</h2>\r\n        <p>在<b>一般</b>頁面中的<b>隨 Windows 啟動</b>開關，決定程式是否會自動啟動。全新安裝後預設為開啟；從 0.1.x 版本更新後會維持關閉，直到您將其開啟。</p>\r\n        <div class='box note'><div class='box-title'>注意</div><p>程式只會執行一個實例。若再次啟動，會改為開啟設定視窗。設定與設定檔儲存在 <code>%AppData%\\SpeedScanManager</code> 資料夾中。</p></div>"
+ },
+ "scanner-connection": {
+  "Title": "連接掃描器",
+  "Summary": "USB 與網路掃描器開機後會自動偵測。",
+  "Html": "<ol class='steps'><li>安裝掃描器的 TWAIN 驅動程式（由製造商提供）。</li><li>開啟掃描器電源，並透過 USB 或網路連接電腦。</li><li>稍待片刻：系統匣圖示會從 <img src='help-img:trayicon_disconnected' width='16' height='16' alt='已中斷' style='vertical-align:-3px'> 變為 <img src='help-img:trayicon_connected' width='16' height='16' alt='就緒' style='vertical-align:-3px'>，選單頂端也會出現掃描器名稱與綠色圓點。</li></ol>\r\n\r\n        \r\n        <h2>背景運作</h2>\r\n        \r\n        <p>裝置連接或中斷時，程式會立即檢查掃描器。程式啟動後，會在數秒內首次查詢掃描器。若掃描器已中斷，會一次性顯示提示氣泡「掃描器未連接或未開機。」</p>\r\n        <div class='box tip'><div class='box-title'>提示</div><p>建議只連接一台掃描器。若連接了多台，請在<a href='#scanner-selection'>選擇掃描器</a>中指定要使用的掃描器。</p></div><div class='box warn'><div class='box-title'>警告</div><p>若無法偵測到掃描器，請檢查纜線或網路連線，確認掃描器已開機，並確認已安裝 TWAIN 驅動程式。更多協助：<a href='#faq'>常見問題</a>。</p></div>"
+ },
+ "scanner-selection": {
+  "Title": "選擇掃描器",
+  "Summary": "連接多台掃描器時，指定要使用哪一台。",
+  "Html": "<ol class='steps'><li>點擊系統匣圖示，然後選擇<b>選擇掃描器...</b>（掃描進行中無法使用）。</li><li>在清單中選擇掃描器。<b>(USB)</b> 或 <b>(網路)</b> 表示連接方式；USB 掃描器會顯示在最上方。</li><li>點擊<b>確定</b>。此選擇在重新啟動後仍會保留。</li></ol>\r\n        <div class='shot'><img src='help-img:dlg_scanner' alt='「選擇掃描器」視窗'><div class='caption'>「選擇掃描器」視窗</div></div>\r\n        <p>第一個項目 <b>(自動)</b> 會讓程式自行選擇。按下<b>取消</b>或關閉圖示，會在不變更設定的情況下關閉視窗。</p>\r\n        <div class='box note'><div class='box-title'>注意</div><p>新增掃描器時，清單會自動更新。若找不到掃描器，清單會顯示「找不到掃描器」，但您仍可以選擇 <b>(自動)</b> 並確認。若所選的掃描器無法連線，系統匣圖示會顯示「已選擇：...（離線）」。</p></div>"
+ },
+ "sysreq": {
+  "Title": "系統需求",
+  "Summary": "您的電腦與掃描器需要具備的條件。",
+  "Html": "<table class='items'><tr><td class='term'>作業系統</td><td>Windows 10 或 Windows 11（64 位元）。</td></tr><tr><td class='term'>掃描器</td><td>支援 TWAIN 的掃描器（USB 或網路），並已安裝 TWAIN 驅動程式。由於 SpeedScan Manager 是 32 位元程式，驅動程式必須提供 32 位元的 TWAIN 來源。</td></tr><tr><td class='term'>.NET</td><td>安裝套件不需要另外安裝 .NET。</td></tr><tr><td class='term'>掃描至電子郵件</td><td>支援 MAPI 的電子郵件程式（例如 Outlook）。</td></tr><tr><td class='term'>掃描至列印</td><td>已安裝的印表機。</td></tr><tr><td class='term'>Word、Excel、PowerPoint</td><td>用於開啟建立的檔案；即使未安裝 Office 也能建立檔案。</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>安裝套件內含德文與英文的文字辨識語言資料，以及自動影像旋轉資料。其他語言：請參閱<a href='#filetype-tab'>「檔案類型」頁面</a>。</p></div>"
+ },
+ "scanning": {
+  "Title": "掃描",
+  "Summary": "掃描文件、使用掃描鍵、長頁面與承載頁。",
+  "Html": ""
+ },
+ "scan-quick": {
+  "Title": "如何掃描文件",
+  "Summary": "使用快速選單（預設設定）時，您會先掃描，然後再決定掃描檔要送往何處。",
+  "Html": "<ol class='steps'><li>將頁面放入掃描器。</li><li>按下<b>掃描器上的掃描鍵</b>，或點擊系統匣圖示並選擇<b>掃描</b>。</li><li>等待所有頁面送入完成。掃描會被處理，並儲存至儲存資料夾。</li><li>會出現<b>快速選單</b>。點擊想要的目的地，然後按下<b>儲存</b>，或直接按兩下目的地。</li></ol><div class='shot'><img src='help-img:quickmenu' alt='掃描後的快速選單'><div class='caption'>掃描後的快速選單</div></div><table class='legend'><tr><td><span class='num'>1</span></td><td>目的地：資料夾、電子郵件、印表機、Word、Excel、PowerPoint、圖片資料夾及 PDF 程式。方向鍵可移動選取項目。</td></tr><tr><td><span class='num'>2</span></td><td><b>取消</b>：關閉快速選單，已儲存的檔案會保留。</td></tr><tr><td><span class='num'>3</span></td><td><b>儲存</b>：執行所選的目的地。</td></tr></table><div class='box tip'><div class='box-title'>提示</div><p>選擇<b>儲存至資料夾</b>後，您可以在下一個視窗中變更<a href='#postscan-save'>檔案名稱與資料夾</a>。</p></div>\r\n\r\n        <h2>快速選擇品質</h2>\r\n        <p>在<b>一般</b>頁面的<a href='#settings'>設定</a>中，只需按一下即可設定掃描的精細程度：</p>\r\n        <table class='grid'><tr><th>圖塊</th><th>影像品質</th><th>壓縮</th><th>適用於</th></tr><tr><td>建議</td><td>自動</td><td>3</td><td>大多數文件</td></tr><tr><td>小檔案</td><td>一般</td><td>5</td><td>電子郵件傳送、封存</td></tr><tr><td>高影像品質</td><td>精細</td><td>1</td><td>照片、細緻的細節</td></tr><tr><td>自訂</td><td>自訂值</td><td>自訂值</td><td>開啟「掃描模式」頁面</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>快速選單開啟時，設定中的<b>應用程式</b>頁面會呈灰色不可用，因為您會在掃描後才選擇目的地。</p></div>"
+ },
+ "scan-button": {
+  "Title": "掃描器上的掃描鍵",
+  "Summary": "按下掃描器上的按鍵即可開始掃描，即使 SpeedScan Manager 尚未執行。",
+  "Html": "\r\n        \r\n        <h2>只需設定一次</h2>\r\n        \r\n        <p>要讓 Windows 將按鍵操作交給 SpeedScan Manager，需要設定一次。首次啟動時會自動完成：</p>\r\n        <ol class='steps'><li>Windows 會要求系統管理員權限（使用者帳戶控制）。請點擊<b>是</b>。</li><li>完成。之後按下按鍵即可開始掃描，不再需要系統管理員權限。</li></ol><div class='box tip'><div class='box-title'>提示</div><p>您拒絕了權限詢問，或連接了另一台掃描器嗎？請在系統匣選單中選擇<b>設定掃描鍵...</b>，設定會重新開始，之後會出現氣泡提示「掃描鍵已設定完成。」對於新連接的掃描器，下次啟動程式時也會自動出現此詢問。</p></div>\r\n\r\n        <h2>運作方式</h2>\r\n        <ul>\r\n            <li>SpeedScan Manager 會在 Windows 中將自己登記為掃描鍵的程式，並取代 Windows 的預設程式。解除安裝時會還原原始狀態。</li>\r\n            <li>若程式已在執行，會立即開始掃描。若尚未執行，Windows 會啟動它，準備就緒後即開始掃描。</li>\r\n        </ul>\r\n        <div class='box note'><div class='box-title'>注意</div><p>掃描進行中（包括之後仍開啟的快速選單等視窗）時，按鍵都會被忽略。約 1.5 秒內的兩次按下只會計為一次。若程式無法使用掃描器（例如 TWAIN 尚未就緒），按鍵將不會有反應。</p></div><p>若您拒絕此詢問，就不會再次顯示。之後您仍可透過系統匣選單進行掃描。</p>"
+ },
+ "scan-no-quick": {
+  "Title": "不使用快速選單掃描",
+  "Summary": "每次都送往同一個目的地？請關閉快速選單，並事先設定目的地，也可以使用設定檔。",
+  "Html": "<ol class='steps'><li>開啟<a href='#settings'>設定</a>（按兩下系統匣圖示）。</li><li>在<b>一般</b>頁面中，關閉<b>使用快速選單</b>開關。</li><li>在<b>使用中的設定檔</b>下選擇一個設定檔，或在<a href='#app-tab'>應用程式</a>頁面自行設定目的地。</li><li>點擊<b>確定</b>。</li><li>照常使用掃描鍵，或在系統匣選單中選擇<b>掃描</b>進行掃描。</li></ol>\r\n\r\n        <h2>掃描後會發生什麼</h2>\r\n        <table class='items'><tr><td class='term'>掃描至資料夾</td><td>會出現<a href='#postscan-save'>儲存至資料夾</a>視窗。</td></tr><tr><td class='term'>所有其他目的地</td><td>會立即執行。若<b>儲存</b>頁面中的<b>掃描後重新命名檔案</b>開關已開啟，則會先出現「儲存至資料夾」視窗。</td></tr></table>"
+ },
+ "scan-display": {
+  "Title": "掃描後會發生什麼",
+  "Summary": "每次掃描都會先儲存為檔案，之後才會執行所選的目的地。",
+  "Html": "\r\n        \r\n        <h2>1. 處理頁面</h2>\r\n        <p>依設定而定，順序如下：</p>\r\n        <ol class='steps'><li><b>承載頁</b>：正面與背面並排合併。</li><li><b>裁切至紙張</b>（僅限紙張大小為「自動偵測」且未使用承載頁時）。</li><li><b>移除空白頁</b>。若所有頁面都是空白，則不會儲存任何內容，並會顯示提示訊息。</li><li><b>校正歪斜</b>（若已開啟）。</li><li><b>自動影像旋轉</b>（若已開啟）。</li><li><b>色彩辨識</b>（色彩模式為「自動色彩辨識」時）：每頁依序辨識為彩色、灰階或黑白。</li><li><b>文字辨識</b>，並儲存為 PDF、JPEG 或 PNG。</li></ol>\r\n\r\n        <h2>2. 儲存檔案</h2>\r\n        <p>儲存於儲存資料夾（預設為 <code>文件\\SpeedScanManager</code>）。既有檔案絕不會被覆寫。若資料夾無法寫入，掃描會存放在 <code>文件\\SpeedScanManager</code>，並會通知您。</p>\r\n\r\n        <h2>3. 執行目的地</h2>\r\n        <table class='items'><tr><td class='term'>儲存至資料夾</td><td>開啟<a href='#postscan-save'>儲存至資料夾</a>視窗，以設定檔名與資料夾。</td></tr><tr><td class='term'>以電子郵件傳送</td><td>開啟您的電子郵件程式（MAPI），並將檔案作為附件。</td></tr><tr><td class='term'>列印</td><td>以原始大小列印頁面。</td></tr><tr><td class='term'>傳送至 Word / Excel / PowerPoint</td><td>建立包含頁面圖片的 Office 文件，儲存於掃描檔旁並開啟。</td></tr><tr><td class='term'>圖片資料夾</td><td>將頁面以 JPEG 儲存至 <code>圖片\\SpeedScanManager</code>，並在檔案總管中顯示第一張圖片。</td></tr><tr><td class='term'>使用 PDF Edit 編輯</td><td>以 Windows 為此檔案類型設定的程式開啟檔案。</td></tr><tr><td class='term'>自訂應用程式</td><td>以儲存的檔案啟動您的程式（僅限未使用快速選單時）。</td></tr></table><div class='box tip'><div class='box-title'>提示</div><p>找不到檔案？請在系統匣選單中選擇<b>顯示掃描結果</b>，檔案總管會顯示最近儲存的檔案。</p></div>"
+ },
+ "scan-continue": {
+  "Title": "取消或繼續掃描",
+  "Summary": "停止進行中的掃描，或將多批文件合併為一份文件。",
+  "Html": "\r\n        \r\n        <h2>取消掃描</h2>\r\n        <p>點擊系統匣圖示並選擇<b>取消掃描</b>。已掃描的頁面會被捨棄，並會以氣泡通知「掃描已取消」。即使正在顯示多張進紙的詢問或「要繼續掃描其他文件嗎？」，也可以取消。</p>\r\n        <div class='box note'><div class='box-title'>注意</div><p>掃描進行中若選擇<b>結束</b>，程式會先詢問。若正在儲存掃描，程式會在儲存完成後才結束。已經儲存的掃描在結束程式時（包括登出 Windows）都不會被刪除。</p></div>\r\n\r\n        <h2>將多批文件合併為一次掃描</h2>\r\n        <ol class='steps'><li>在<a href='#scanmode-tab'>掃描模式</a>頁面中，開啟<b>目前掃描完成後繼續掃描作業</b>開關。</li><li>掃描第一批文件。</li><li>會出現「要繼續掃描其他文件嗎？」的詢問，並顯示目前的頁數。放入下一批文件，然後點擊<b>繼續</b>。</li><li>所有頁面掃描完成後，點擊<b>結束掃描</b>。所有頁面會一起儲存。</li></ol><div class='shot'><img src='help-img:continue_dialog' alt='每次掃描後的詢問'><div class='caption'>每次掃描後的詢問</div></div><div class='box note'><div class='box-title'>注意</div><p>若某一批次的多張進紙以<b>重試</b>捨棄，之前批次的內容會保留。</p></div>"
+ },
+ "scan-long": {
+  "Title": "掃描長頁面",
+  "Summary": "使用自動紙張大小掃描收據及其他長文件。",
+  "Html": "<ol class='steps'><li>在<a href='#paper-tab'>紙張</a>頁面中，將<b>紙張大小</b>設為<b>自動偵測</b>。</li><li>請勿將<b>多張進紙偵測</b>設為含<b>長度</b>的選項（也就是<b>關</b>或<b>超音波</b>）。</li><li>照常掃描。</li></ol>\r\n        \r\n        <p>在此模式下，程式允許的頁面最長可達 8.5 × 125 英吋（約 21.6 × 317 cm）。對於 Fujitsu、PFU 及 Ricoh（PaperStream IP）的掃描器，程式還會設定各廠商專用的長頁面選項。是否將影像裁切為實際長度，由掃描器驅動程式決定。</p>\r\n        \r\n        <div class='box warn'><div class='box-title'>警告</div><p>超過 86 cm 的頁面僅支援最高 200 dpi（影像品質<b>自動</b>或<b>精細</b>）；解析度更高時，在 86 cm 處即達上限。舊版驅動程式「FUJITSU fi-…」只能處理 35.6 cm；若兩者都已安裝，程式會使用 PaperStream IP。最大長度取決於掃描器型號。長頁面會產生較大的檔案。</p></div>"
+ },
+ "scan-carrier": {
+  "Title": "使用承載頁掃描",
+  "Summary": "使用承載頁掃描大於 A4 的文件（例如 A3），摺疊後一次完成掃描。",
+  "Html": "<ol class='steps'><li>在<a href='#paper-tab'>紙張</a>頁面中，開啟<b>承載頁設定...</b>，啟用承載頁模式，並選擇輸出大小。</li><li>將文件從中間摺疊，然後放入承載頁中。</li><li>將承載頁送入掃描器，並以<b>雙面</b>方式掃描。</li><li>正面與背面會並排合併為一張影像。</li></ol><div class='box warn'><div class='box-title'>警告</div><p>只有專為承載頁設計的掃描器才會送入承載頁。只有雙面掃描時才會合併；單面掃描時，每一頁會各自調整為輸出大小。</p></div>"
+ },
+ "settings-group": {
+  "Title": "設定",
+  "Summary": "逐步說明設定視窗及其所有頁面。",
+  "Html": ""
+ },
+ "settings": {
+  "Title": "設定視窗",
+  "Summary": "在此設定掃描與儲存的方式。在系統匣圖示上按兩下即可開啟。",
+  "Html": "<div class='shot'><img src='help-img:settings_window' alt='「一般」頁面的設定視窗'><div class='caption'>「一般」頁面的設定視窗</div></div>\r\n        <table class='legend'><tr><td><span class='num'>1</span></td><td><b>側邊欄</b>：在此選擇頁面。快速選單開啟時，「應用程式」會呈灰色不可用。</td></tr><tr><td><span class='num'>2</span></td><td><b>所選的頁面</b>及其分組設定。較長的頁面可以捲動。</td></tr><tr><td><span class='num'>3</span></td><td><b>說明</b>：開啟此頁面對應的說明。</td></tr><tr><td><span class='num'>4</span></td><td><b>確定</b>會套用並關閉，<b>套用</b>會套用但不關閉，<b>取消</b>會捨棄變更。</td></tr></table>\r\n        <p>變更需按下<b>確定</b>或<b>套用</b>後才會生效。若有尚未套用的內容，左下角會顯示「未套用的變更」。<b>取消</b>、<span class='kbd'>Esc</span> 以及關閉圖示都會捨棄這些變更。</p>\r\n\r\n        <h2>各頁面</h2>\r\n        <table class='items'><tr><td class='term'>一般</td><td>快速選單、開機自動啟動、掃描品質、設定檔及外觀（見下方）。</td></tr><tr><td class='term'><a href='#app-tab'>應用程式</a></td><td>掃描後的處理（僅限未使用快速選單時）。</td></tr><tr><td class='term'><a href='#save-tab'>儲存</a></td><td>儲存資料夾與檔案名稱。</td></tr><tr><td class='term'><a href='#scanmode-tab'>掃描模式</a></td><td>解析度、色彩，以及單面或雙面。</td></tr><tr><td class='term'><a href='#filetype-tab'>檔案類型</a></td><td>PDF、JPEG 或 PNG，以及文字辨識。</td></tr><tr><td class='term'><a href='#paper-tab'>紙張</a></td><td>紙張大小、承載頁、多張進紙。</td></tr><tr><td class='term'><a href='#filesize-tab'>檔案大小</a></td><td>壓縮，以取得較小的檔案。</td></tr></table>\r\n\r\n        <h2>「一般」頁面</h2>\r\n        <div class='shot'><img src='help-img:page_general' alt='「一般」頁面'><div class='caption'>「一般」頁面</div></div><table class='items'><tr><td class='term'>使用快速選單</td><td>開啟時：每次掃描後由您選擇目的地（<a href='#scan-quick'>更多</a>）。此時「應用程式」頁面及「設定檔」分組會呈灰色不可用。</td></tr><tr><td class='term'>隨 Windows 啟動</td><td>隨 Windows 啟動程式（預設：開啟）。</td></tr><tr><td class='term'>掃描品質</td><td><b>建議</b>、<b>小檔案</b>與<b>高影像品質</b>會設定影像品質與壓縮。符合的圖塊會顯示勾選記號。若您的值不符合任何圖塊，則會標示<b>自訂</b>，點擊即可開啟「掃描模式」頁面。也可以使用 <span class='kbd'>Tab</span> 與 <span class='kbd'>空白鍵</span> 操作。</td></tr><tr><td class='term'>設定檔</td><td>僅在快速選單關閉時可用：選擇<b>使用中的設定檔</b>，使用<b>新增設定檔...</b>將目前的設定另存為<a href='#new-profile'>新設定檔</a>，或使用<b>設定檔管理...</b><a href='#profile-mgmt-dialog'>編輯</a>設定檔。</td></tr><tr><td class='term'>外觀</td><td><b>系統</b>會跟隨 Windows，<b>亮</b>與<b>暗</b>則固定外觀。立即生效，不需按下確定。</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>變更自訂設定檔的設定時，套用後會儲存在該設定檔中。預設設定檔保持不變——程式會詢問您要將變更另存為新設定檔，還是只套用為目前的設定。</p></div><div class='box tip'><div class='box-title'>提示</div><p>使用鍵盤切換頁面：<span class='kbd'>Ctrl</span>+<span class='kbd'>Tab</span> 或 <span class='kbd'>Ctrl</span>+<span class='kbd'>Shift</span>+<span class='kbd'>Tab</span>（或 <span class='kbd'>Ctrl</span>+<span class='kbd'>Page Down</span> / <span class='kbd'>Page Up</span>），在側邊欄中也可使用方向鍵。<span class='kbd'>Enter</span> 等同於<b>確定</b>。點擊最小化圖示即可將視窗收入工作列。</p></div>"
+ },
+ "app-tab": {
+  "Title": "「應用程式」頁面",
+  "Summary": "設定掃描後自動執行的動作，僅在快速選單關閉時生效。",
+  "Html": "<div class='shot'><img src='help-img:page_app' alt='「應用程式」頁面'><div class='caption'>「應用程式」頁面</div></div><table class='items'><tr><td class='term'>應用程式</td><td>掃描至資料夾、掃描至電子郵件、掃描至列印、掃描至 Word、掃描至 Excel、掃描至 PowerPoint、掃描至圖片資料夾、使用 PDF Edit 編輯，以及您自訂的程式。</td></tr><tr><td class='term'>電子郵件選項...</td><td>在「掃描至電子郵件」時出現，並開啟<a href='#email-options'>電子郵件選項</a>。</td></tr><tr><td class='term'>列印選項...</td><td>在「掃描至列印」時出現，並開啟<a href='#print-options'>列印選項</a>。</td></tr><tr><td class='term'>安裝/解除安裝...</td><td>新增或移除自訂程式（<a href='#app-manage'>更多</a>）。</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>快速選單開啟時，此頁面會呈灰色不可用，因為您會在掃描後才選擇目的地。</p></div><div class='box tip'><div class='box-title'>提示</div><p>電子郵件與列印設定也可直接在系統匣選單中開啟，配合快速選單使用很方便。在那裡變更的值會立即生效，並會儲存在目前使用中的自訂設定檔中（預設設定檔保持不變）。</p></div><p>自訂應用程式會在掃描後以其引數啟動；儲存的檔案會作為額外引數附加在後面。</p>"
+ },
+ "save-tab": {
+  "Title": "「儲存」頁面",
+  "Summary": "掃描檔案的儲存位置與檔案名稱。",
+  "Html": "<div class='shot'><img src='help-img:page_save' alt='「儲存」頁面'><div class='caption'>「儲存」頁面</div></div><table class='items'><tr><td class='term'>影像資料的儲存資料夾</td><td>目標資料夾。請使用<b>瀏覽...</b>變更（欄位本身無法編輯）。旁邊的圖示會在檔案總管中開啟資料夾，按右鍵可複製路徑。預設：<code>文件\\SpeedScanManager</code>。</td></tr><tr><td class='term'>檔案名稱格式...</td><td>開啟<a href='#filename-format'>檔案名稱格式</a>視窗。旁邊會顯示下一個檔名的範例。</td></tr><tr><td class='term'>掃描後重新命名檔案</td><td>開啟時：掃描後會出現<a href='#postscan-save'>儲存至資料夾</a>視窗，您仍可變更名稱與資料夾。</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>使用「掃描至資料夾」或快速選單中的「儲存至資料夾」時，無論開關為何，都會顯示此視窗。</p></div><div class='box tip'><div class='box-title'>提示</div><p>既有檔案絕不會被覆寫：若檔名相同，會附加 <code>_1</code>、<code>_2</code> 等。若產生多個檔案（例如每頁一張圖片），它們會依序編號。</p></div>"
+ },
+ "scanmode-tab": {
+  "Title": "「掃描模式」頁面",
+  "Summary": "解析度、色彩，以及單面或雙面掃描。",
+  "Html": "<div class='shot'><img src='help-img:page_scanmode' alt='「掃描模式」頁面'><div class='caption'>「掃描模式」頁面</div></div>\r\n        <h2>影像品質</h2>\r\n        <p>解析度越高，影像越清晰，但掃描時間會更長，檔案也會更大。</p>\r\n        <table class='grid'><tr><th>影像品質</th><th>彩色 / 灰階</th><th>黑白</th></tr><tr><td>自動</td><td>200 dpi</td><td>400 dpi</td></tr><tr><td>一般</td><td>150 dpi</td><td>300 dpi</td></tr><tr><td>精細</td><td>200 dpi</td><td>400 dpi</td></tr><tr><td>最佳</td><td>300 dpi</td><td>600 dpi</td></tr><tr><td>優良</td><td>600 dpi</td><td>1200 dpi</td></tr></table>\r\n        <p>若掃描器不支援某個解析度，程式會改用最接近的解析度，並以氣泡提示。</p>\r\n\r\n        <h2>色彩模式</h2>\r\n        <table class='items'><tr><td class='term'>自動色彩辨識</td><td>以彩色掃描，並依每頁內容儲存為彩色、灰階或黑白。</td></tr><tr><td class='term'>彩色</td><td>一律以彩色掃描（預設）。</td></tr><tr><td class='term'>灰階</td><td>一律以灰階掃描。</td></tr><tr><td class='term'>黑白</td><td>一律以黑白掃描，非常適合文字，且檔案極小。</td></tr></table><div class='box warn'><div class='box-title'>警告</div><p>使用自動色彩辨識時，色彩較少的頁面可能會被辨識為灰階或黑白。</p></div>\r\n\r\n        <h2>掃描面</h2>\r\n        <table class='items'><tr><td class='term'>自動</td><td>預設：若紙張在進紙器中，會進行雙面掃描並移除空白背面；否則若有平台，則使用平台。</td></tr><tr><td class='term'>雙面掃描（兩面）</td><td>正面與背面。</td></tr><tr><td class='term'>單面掃描（一面）</td><td>僅正面。</td></tr><tr><td class='term'>平台掃描</td><td>使用玻璃平台掃描。此時紙張大小會設為 A4（不自動偵測）。</td></tr></table>\r\n        <p>若掃描器不支援雙面或沒有平台，程式會改為單面掃描或使用進紙器，並以氣泡通知。</p>\r\n\r\n        <h2>其他設定</h2>\r\n        <table class='items'><tr><td class='term'>目前掃描完成後繼續掃描作業</td><td>每批次後詢問「要繼續掃描其他文件嗎？」（<a href='#scan-continue'>更多</a>）。</td></tr><tr><td class='term'>選項...</td><td>亮度、空白頁、歪斜、旋轉、排列順序，在<a href='#scanmode-options'>掃描模式選項</a>視窗中設定。</td></tr></table><div class='box tip'><div class='box-title'>提示</div><p>也可以點擊<b>一般</b>頁面中的<b>自訂</b>圖塊開啟此頁面。</p></div>"
+ },
+ "filetype-tab": {
+  "Title": "「檔案類型」頁面",
+  "Summary": "檔案格式（PDF、JPEG、PNG）以及可搜尋 PDF 的文字辨識。",
+  "Html": "<div class='shot'><img src='help-img:page_filetype' alt='「檔案類型」頁面'><div class='caption'>「檔案類型」頁面</div></div>\r\n        \r\n        <h2>檔案格式</h2>\r\n        \r\n        <table class='items'><tr><td class='term'>PDF (*.pdf)</td><td>所有頁面存為一個 PDF 檔，或依<a href='#pdf-options'>PDF 選項</a>分割（<b>選項...</b>按鈕）。</td></tr><tr><td class='term'>JPEG (*.jpg)</td><td>每頁一個圖片檔。色彩模式為「黑白」時無法使用。</td></tr><tr><td class='term'>PNG (*.png)</td><td>每頁一個無失真的圖片檔。</td></tr></table>\r\n\r\n        \r\n        <h2>如何建立可搜尋的 PDF</h2>\r\n        \r\n        <ol class='steps'><li>將檔案格式選為 <b>PDF</b>。</li><li>開啟<b>轉換為可搜尋的 PDF</b>。</li><li>在<b>語言</b>中選擇文件的語言（或<b>自動偵測</b>），並在<b>目標頁面</b>中選擇<b>第一頁</b>或<b>所有頁面</b>。</li><li>點擊<b>確定</b>。辨識出的文字會以不可見的方式疊加在影像上，您即可搜尋並複製其中的文字。</li></ol>\r\n\r\n        <h2>標示的文字作為關鍵字</h2>\r\n        <p>開啟<b>將標示的文字新增為 PDF 檔案的關鍵字</b>後，以螢光筆標示的內容會被加入 PDF 的關鍵字中。在<b>目標標示</b>中，您可以選擇第一個標示或所有標示。此功能只能與文字辨識一起使用，否則會被略過並顯示提示氣泡。</p>\r\n\r\n        <h2>語言</h2>\r\n        <p>內含<b>德文</b>與<b>英文</b>。其他語言（日文、法文、義大利文、西班牙文、中文簡體／繁體、韓文、俄文、葡萄牙文、阿拉伯文）會在您將對應的 <code>.traineddata</code> 檔（例如 <code>fra.traineddata</code>）放入與 <code>SpeedScanManager.exe</code> 同層的 <code>tessdata</code> 資料夾後，出現在清單中。</p>\r\n        <p>使用<b>自動偵測</b>時，程式會依每頁的文字，從已安裝的語言中選擇；否則使用德文與英文。</p>\r\n        <div class='box note'><div class='box-title'>注意</div><p>若已儲存的語言不再安裝，其後會顯示「（未安裝）」。掃描時會出現提示氣泡，並改用現有的語言（優先為德文／英文）。</p></div>"
+ },
+ "paper-tab": {
+  "Title": "「紙張」頁面",
+  "Summary": "紙張大小、承載頁，以及多張進紙的偵測。",
+  "Html": "<div class='shot'><img src='help-img:page_paper' alt='「紙張」頁面'><div class='caption'>「紙張」頁面</div></div>\r\n        \r\n        <h2>紙張大小</h2>\r\n        <p><b>自動偵測</b>（預設）會將每一頁裁切至紙張大小：掃描器的灰色背景與紙張末端之後的空白區域會被移除。<a href='#scan-long'>長頁面</a>也需要此設定。此外可選擇：</p>\r\n        <table class='grid'><tr><th>大小</th><th>尺寸</th></tr><tr><td>A3 / A4 / A5 / A6</td><td>297 × 420 / 210 × 297 / 148 × 210 / 105 × 148 mm</td></tr><tr><td>B4 / B5 / B6 (JIS)</td><td>257 × 364 / 182 × 257 / 128 × 182 mm</td></tr><tr><td>明信片</td><td>100 × 148 mm</td></tr><tr><td>名片</td><td>55 × 91 mm</td></tr><tr><td>Letter / Legal</td><td>8,5 × 11 in. / 8,5 × 14 in.</td></tr><tr><td>Double Letter</td><td>11 × 17 in.</td></tr><tr><td>自訂大小</td><td>最多 10 個，透過<b>自訂...</b>設定</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>哪些大小可以使用取決於掃描器，否則會顯示提示氣泡。平台掃描時無法使用自動偵測。</p></div><table class='items'><tr><td class='term'>承載頁設定...</td><td>開啟<a href='#carrier-sheet-dialog'>承載頁設定</a>。</td></tr><tr><td class='term'>自訂...</td><td>建立自訂紙張大小（<a href='#custom-size-dialog'>更多</a>）。</td></tr></table>\r\n\r\n        <h2>多張進紙偵測</h2>\r\n        <p>偵測掃描器是否同時進紙兩張紙。</p>\r\n        <table class='items'><tr><td class='term'>關</td><td>不進行檢查（預設）。</td></tr><tr><td class='term'>重疊檢查 [超音波]</td><td>測量紙張厚度。</td></tr><tr><td class='term'>長度檢查</td><td>比較紙張長度。</td></tr><tr><td class='term'>重疊與長度檢查</td><td>兩者皆進行。若掃描器無法同時使用，則只使用超音波。</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>若掃描器回報其功能，不支援的項目會標示「（掃描器不支援）」且無法選取。</p></div>"
+ },
+ "filesize-tab": {
+  "Title": "「檔案大小」頁面",
+  "Summary": "彩色與灰階影像的壓縮程度，可選擇較小的檔案或較好的畫質。",
+  "Html": "<div class='shot'><img src='help-img:page_filesize' alt='「檔案大小」頁面'><div class='caption'>「檔案大小」頁面</div></div>\r\n        <p>滑桿有五個等級（預設為 3）。它決定 JPEG 的品質，也適用於 PDF 檔、Office 文件及圖片資料夾。</p>\r\n        <table class='grid'><tr><th>等級</th><th>JPEG 品質</th><th>結果</th></tr><tr><td>1</td><td>100</td><td>最佳品質，檔案最大</td></tr><tr><td>2</td><td>85</td><td></td></tr><tr><td>3</td><td>70</td><td>平衡</td></tr><tr><td>4</td><td>50</td><td></td></tr><tr><td>5</td><td>30</td><td>檔案最小，可見的失真</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>色彩模式為「黑白」或格式為 PNG 時，滑桿呈灰色不可用：黑白影像與 PNG 皆以無失真方式儲存。</p></div><div class='box tip'><div class='box-title'>提示</div><p>若要寄送小檔案，通常只需選擇<b>一般</b>頁面中的<b>小檔案</b>圖塊即可。</p></div>"
+ },
+ "dialogs": {
+  "Title": "視窗與對話方塊",
+  "Summary": "快速選單、儲存視窗，以及其他附圖的對話方塊。",
+  "Html": ""
+ },
+ "postscan-media": {
+  "Title": "快速選單",
+  "Summary": "「要掃描到哪裡？」會在快速選單開啟時，於每次掃描後出現。",
+  "Html": "<div class='shot'><img src='help-img:quickmenu' alt='快速選單'><div class='caption'>快速選單</div></div><table class='legend'><tr><td><span class='num'>1</span></td><td>點擊目的地即可選取（或使用方向鍵）。<b>按兩下</b>會立即執行。</td></tr><tr><td><span class='num'>2</span></td><td><b>取消</b>或關閉圖示：關閉視窗。檔案已儲存（氣泡提示「掃描已儲存」）。</td></tr><tr><td><span class='num'>3</span></td><td><b>儲存</b>：執行所選的目的地。</td></tr></table>\r\n        <p>上方會顯示已掃描的頁數。此時檔案已位於儲存資料夾中。視窗會保持在最上層。</p>\r\n        <h2>八個目的地</h2>\r\n        <table class='items'><tr><td class='term'>儲存至資料夾</td><td>開啟<a href='#postscan-save'>儲存至資料夾</a>，以設定標題與目標資料夾。</td></tr><tr><td class='term'>以電子郵件傳送</td><td>以電子郵件程式開啟，並將檔案作為附件。</td></tr><tr><td class='term'>列印</td><td>列印頁面。</td></tr><tr><td class='term'>傳送至 Word</td><td>Word 文件（.docx），頁面為圖片。</td></tr><tr><td class='term'>傳送至 Excel</td><td>Excel 檔案（.xlsx），頁面為圖片。</td></tr><tr><td class='term'>傳送至 PowerPoint</td><td>簡報（.pptx），頁面為圖片。</td></tr><tr><td class='term'>儲存至圖片資料夾</td><td>JPEG 檔案存於 <code>圖片\\SpeedScanManager</code>。</td></tr><tr><td class='term'>使用 PDF Edit 編輯</td><td>在為此檔案設定的程式中開啟。</td></tr></table>"
+ },
+ "postscan-save": {
+  "Title": "儲存至資料夾",
+  "Summary": "檢查頁面，並設定檔名與目標資料夾。",
+  "Html": "<div class='shot'><img src='help-img:save_dialog' alt='「儲存至資料夾」視窗'><div class='caption'>「儲存至資料夾」視窗</div></div><table class='legend'><tr><td><span class='num'>1</span></td><td>掃描頁面的<b>預覽</b>。</td></tr><tr><td><span class='num'>2</span></td><td><b>瀏覽</b>頁面（「第 2 頁，共 3 頁」）。</td></tr><tr><td><span class='num'>3</span></td><td><b>設定標題</b>：建議的檔名，可依需要變更。無效字元會被取代。</td></tr><tr><td><span class='num'>4</span></td><td><b>設定目標資料夾</b>：使用<b>瀏覽...</b>選擇資料夾（欄位無法直接編輯）。</td></tr><tr><td><span class='num'>5</span></td><td><b>儲存</b>：套用名稱與資料夾。</td></tr></table>\r\n        <p>右下角的<b>掃描設定</b>群組會摘要顯示掃描方式（預設值、解析度、色彩模式、掃描面、檔案格式、壓縮）。</p>\r\n        <div class='box note'><div class='box-title'>注意</div><p>檔案其實已經儲存了，此視窗只是重新命名或移動它。若有多個檔案，會附加編號；既有檔案絕不會被覆寫（<code>_1</code> 等）。</p></div><div class='box warn'><div class='box-title'>警告</div><p><b>取消</b>、<span class='kbd'>Esc</span> 或關閉圖示會詢問「捨棄掃描？」。按下<b>是</b>會刪除已建立的檔案；按下<b>否</b>則返回視窗。</p></div>"
+ },
+ "scanmode-options": {
+  "Title": "掃描模式選項",
+  "Summary": "亮度與自動影像改善。在「掃描模式」頁面中按下<b>選項...</b>即可開啟。",
+  "Html": "<div class='shot'><img src='help-img:dlg_scanmode_options' alt='「掃描模式選項」視窗'><div class='caption'>「掃描模式選項」視窗</div></div>\r\n        \r\n        <h2>亮度</h2>\r\n        <p>從「較暗 -3」到「較亮 +3」共有七個等級（中間為一般）。滑桿只在色彩模式為<b>黑白</b>時生效，否則呈灰色不可用（「僅適用於黑白掃描」）。</p>\r\n        <h2>影像處理</h2>\r\n        <table class='items'><tr><td class='term'>僅適用於文字文件的設定</td><td>在黑白模式中加強對比，適合文字與手寫內容。</td></tr><tr><td class='term'>允許自動刪除空白頁</td><td>移除空白頁（預設：開）。若所有頁面都是空白，則不會儲存任何檔案。</td></tr><tr><td class='term'>自動校正歪斜</td><td>將斜放進紙的頁面拉正（預設：關）。</td></tr><tr><td class='term'>允許自動旋轉影像</td><td>將側放或倒置掃描的頁面正確轉正（預設：開）。為此會先試讀一段文字。若文字太少，則不旋轉。</td></tr><tr><td class='term'>文件正面朝上放入</td><td>若您以文字朝上放入整疊文件，請開啟此項：會將順序反轉，使頁面正確排列。</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>掃描面設為「自動」時，即使未開啟「空白頁」選項，空白背面仍會被移除。</p></div><p><b>確定</b>會套用，<b>取消</b>則捨棄變更。</p>"
+ },
+ "pdf-options": {
+  "Title": "PDF 選項",
+  "Summary": "分割 PDF 並以密碼保護。在「檔案類型」頁面中按下<b>選項...</b>即可開啟（僅限 PDF）。",
+  "Html": "<div class='shot'><img src='help-img:dlg_pdf_options' alt='「PDF 選項」視窗'><div class='caption'>「PDF 選項」視窗</div></div>\r\n        <h2>分割 PDF 頁面</h2>\r\n        <table class='items'><tr><td class='term'>多頁 PDF 檔</td><td>所有頁面存為一個 PDF 檔（預設）。</td></tr><tr><td class='term'>每幾頁建立一個新的 PDF 檔</td><td>每隔指定頁數（1–999）開始一個新檔案，例如 <code>Name_001.pdf</code>、<code>Name_002.pdf</code>。</td></tr></table>\r\n        <h2>密碼</h2>\r\n        <ol class='steps'><li>開啟<b>設定 PDF 檔案密碼</b>。</li><li>在<b>密碼</b>中輸入密碼，並在<b>確認</b>中再次輸入。</li><li>點擊<b>確定</b>。若密碼遺漏或兩次輸入不一致，會顯示訊息，視窗保持開啟。</li></ol><div class='box note'><div class='box-title'>注意</div><p>密碼會加密儲存，且只能由您的 Windows 使用者帳戶讀取。若無法讀取（例如來自另一台電腦的設定），保護功能會保持開啟，程式會在下次掃描前要求您重新輸入密碼。</p></div>"
+ },
+ "filename-format": {
+  "Title": "檔案名稱格式",
+  "Summary": "掃描檔案的自動命名方式。在「儲存」頁面中按下<b>檔案名稱格式...</b>即可開啟。",
+  "Html": "<div class='shot'><img src='help-img:dlg_filename' alt='使用自訂名稱的「檔案名稱格式」視窗'><div class='caption'>使用自訂名稱的「檔案名稱格式」視窗</div></div>\r\n        <p>視窗下方的<b>範例</b>會顯示下一個檔名的樣子。</p>\r\n        <table class='items'><tr><td class='term'>作業系統的設定</td><td>以 Windows 格式顯示日期與時間。不允許的字元，例如 <code>:</code> 與 <code>/</code>，會被換成 <code>-</code>，例如 <code>12.04.2026 15-30-45.pdf</code>。</td></tr><tr><td class='term'>JJJJMMTThhmmss</td><td>日期與時間連續排列，例如 <code>20260412153045.pdf</code>（預設）。</td></tr><tr><td class='term'>自訂檔案名稱</td><td>您自訂的名稱加上連續編號，例如 <code>Rechnung_001.pdf</code>。</td></tr></table>\r\n        <h2>設定自訂名稱</h2>\r\n        <ol class='steps'><li>選擇<b>自訂檔案名稱</b>。</li><li>在<b>檔案名稱</b>中輸入名稱開頭（最多 30 個字元）。</li><li>在<b>計數器</b>中選擇編號的位數（3、4 或 5 位數）。</li><li>點擊<b>確定</b>。</li></ol><div class='box note'><div class='box-title'>注意</div><p>不允許使用字元 \\ / : * ? \" &lt; &gt; |、結尾的句點，以及保留的 Windows 名稱（例如 CON、NUL、COM1）。計數器從 1 開始，並從資料夾中已存在的最大編號之後繼續。若名稱已存在，會附加 <code>_1</code>、<code>_2</code> 等。</p></div><p><b>套用</b>（左下角）會套用但不關閉；<b>取消</b>則捨棄變更。</p>"
+ },
+ "new-profile": {
+  "Title": "新增設定檔",
+  "Summary": "用於輸入新設定檔名稱的小視窗。",
+  "Html": "<div class='shot'><img src='help-img:dlg_new_profile' alt='輸入新設定檔的名稱'><div class='caption'>輸入新設定檔的名稱</div></div>\r\n        \r\n        <p>輸入名稱（最多 64 個字元），然後點擊<b>確定</b>。名稱必須是唯一的，且不區分大小寫。無效或重複的名稱會被拒絕，並顯示訊息。</p>\r\n        <table class='items'><tr><td class='term'>透過「新增設定檔...」</td><td>在<b>一般</b>頁面中：新設定檔會沿用目前設定的值。</td></tr><tr><td class='term'>透過設定檔管理中的「新增...」</td><td>新設定檔以<a href='#default-settings'>預設設定</a>開始。</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>重新命名（「重新命名設定檔」）時也會出現同一個視窗。總共最多可有 20 個設定檔（包括預設設定檔）。</p></div>"
+ },
+ "profile-mgmt-dialog": {
+  "Title": "設定檔管理",
+  "Summary": "新增、重新命名、刪除及排序設定檔。",
+  "Html": "<div class='shot'><img src='help-img:dlg_profiles' alt='「設定檔管理」視窗'><div class='caption'>「設定檔管理」視窗</div></div><table class='items'><tr><td class='term'>新增...</td><td>以預設設定建立新設定檔（最多 20 個設定檔）。</td></tr><tr><td class='term'>重新命名...</td><td>為所選的設定檔設定新名稱。</td></tr><tr><td class='term'>刪除</td><td>經確認後刪除所選的設定檔。</td></tr><tr><td class='term'>上移／下移</td><td>在清單中移動設定檔。</td></tr><tr><td class='term'>關閉</td><td>關閉視窗。</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>八個預設設定檔無法重新命名或刪除，但可以移動。自訂設定檔則可自由編輯。</p></div>"
+ },
+ "app-manage": {
+  "Title": "自訂應用程式",
+  "Summary": "最多新增十個自訂程式，掃描後會以檔案啟動這些程式。",
+  "Html": "<div class='shot'><img src='help-img:dlg_apps' alt='「安裝/解除安裝」視窗'><div class='caption'>「安裝/解除安裝」視窗</div></div>\r\n        <h2>新增程式</h2>\r\n        <ol class='steps'><li>點擊<b>新增...</b>。</li><li>使用<b>瀏覽...</b>選擇程式檔案 (*.exe)。若名稱欄為空，會沿用檔案名稱。</li><li>調整<b>名稱</b>（須唯一，最多 64 個字元），程式會以此名稱出現在「應用程式」清單中。</li><li>如有需要，輸入<b>引數</b>。掃描的檔案會接在後面，並以引號括住。</li><li>點擊<b>確定</b>。</li></ol><div class='shot'><img src='help-img:dlg_app_edit' alt='新增或變更程式'><div class='caption'>新增或變更程式</div></div><table class='items'><tr><td class='term'>變更...</td><td>變更所選程式的資料。按兩下該項目也能達到相同效果。</td></tr><tr><td class='term'>移除</td><td>將所選程式從清單中移除。</td></tr><tr><td class='term'>關閉</td><td>關閉視窗。</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>此清單的變更會立即儲存，與設定視窗中的「確定」或「取消」無關。若之後找不到程式或無法啟動，會顯示訊息，掃描檔案仍會保留。</p></div>"
+ },
+ "email-options": {
+  "Title": "電子郵件選項",
+  "Summary": "掃描至電子郵件的收件者與主旨。在「應用程式」頁面或系統匣選單中的<b>電子郵件設定...</b>開啟。",
+  "Html": "<div class='shot'><img src='help-img:dlg_email' alt='「掃描至電子郵件」視窗'><div class='caption'>「掃描至電子郵件」視窗</div></div><table class='items'><tr><td class='term'>預設收件者</td><td>會填入每封新的電子郵件中。</td></tr><tr><td class='term'>主旨範本</td><td>電子郵件的主旨。若此欄留空，主旨為「掃描的文件」。</td></tr></table><div class='box note'><div class='box-title'>注意</div><p>會使用在 Windows 中設定為 MAPI 預設的電子郵件程式。若無法開啟，會顯示訊息並開啟含有檔案的資料夾，讓您可以手動附加檔案。</p></div>"
+ },
+ "print-options": {
+  "Title": "列印選項",
+  "Summary": "掃描至列印所使用的印表機。在「應用程式」頁面或系統匣選單中的<b>列印設定...</b>開啟。",
+  "Html": "<div class='shot'><img src='help-img:dlg_print' alt='「掃描至列印」視窗'><div class='caption'>「掃描至列印」視窗</div></div>\r\n        <p>在<b>目標印表機</b>中選擇已安裝的印表機。<b>(預設印表機)</b>會一律使用目前的 Windows 預設印表機。</p>\r\n        <div class='box note'><div class='box-title'>注意</div><p>列印時以原始大小輸出；需要時會自動選擇橫向。若所設定的印表機已不存在，會詢問您是否要改用預設印表機列印。若完全沒有安裝印表機，則只會儲存掃描檔。</p></div>"
+ },
+ "carrier-sheet-dialog": {
+  "Title": "承載頁設定",
+  "Summary": "開啟承載頁模式，並選擇完成影像的大小。",
+  "Html": "<div class='shot'><img src='help-img:dlg_carrier' alt='含說明的「承載頁設定」視窗'><div class='caption'>含說明的「承載頁設定」視窗</div></div><table class='items'><tr><td class='term'>啟用承載頁模式</td><td>開啟並排合併功能。開關關閉時，其他欄位會被鎖定。</td></tr><tr><td class='term'>模式</td><td><b>將兩面建立在同一張影像中</b>：正面與背面（雙面）並排放置。</td></tr><tr><td class='term'>輸出影像大小</td><td>自動偵測、A3–A6、B4–B6 (JIS)、Letter、Double Letter、明信片、名片、承載頁大小（220 × 297 mm）或<b>自訂...</b></td></tr><tr><td class='term'>自訂大小</td><td>選擇「自訂...」時出現：寬度與高度，單位為 mm（50–2000）。</td></tr></table>\r\n        <p><b>操作說明</b>群組以三張圖示說明操作方式：摺疊文件、放入承載頁、送入掃描器。</p>\r\n        <div class='box warn'><div class='box-title'>警告</div><p>只有特定的掃描器型號支援承載頁。</p></div>"
+ },
+ "custom-size-dialog": {
+  "Title": "自訂紙張大小",
+  "Summary": "最多可建立 10 個自訂紙張大小，之後會出現在「紙張大小」清單中。",
+  "Html": "<div class='shot'><img src='help-img:dlg_custom_size' alt='「自訂大小」視窗'><div class='caption'>「自訂大小」視窗</div></div><ol class='steps'><li>點擊<b>新增...</b>。</li><li>輸入<b>名稱</b>（最多 62 個字元），以及以毫米為單位的<b>寬度</b>與<b>長度</b>（1–9999）。</li><li>點擊<b>確定</b>。</li></ol><table class='items'><tr><td class='term'>變更...</td><td>變更所選大小的名稱或尺寸。</td></tr><tr><td class='term'>移除</td><td>刪除所選的大小。</td></tr><tr><td class='term'>所選大小</td><td>顯示所選大小的寬度 × 長度。</td></tr><tr><td class='term'>關閉</td><td>關閉視窗。</td></tr></table>"
+ },
+ "version-info": {
+  "Title": "版本資訊",
+  "Summary": "版本、授權及專案連結。在系統匣選單中透過<b>說明 › 版本資訊</b>開啟。",
+  "Html": "<div class='shot'><img src='help-img:dlg_version' alt='「版本資訊」視窗'><div class='caption'>「版本資訊」視窗</div></div><table class='items'><tr><td class='term'>標誌與版本</td><td>已安裝的 SpeedScan Manager 版本。</td></tr><tr><td class='term'>授權與版權聲明</td><td>GPL-3.0 授權說明，以及所使用的函式庫 NTwain（TWAIN）、Tesseract.NET（文字辨識）與 PdfSharpCore（PDF）。</td></tr><tr><td class='term'>GitHub / Discord</td><td>在瀏覽器中開啟專案頁面，或 Discord 伺服器。</td></tr><tr><td class='term'>詳細資料...</td><td>顯示<a href='#driver-info'>掃描器與驅動程式資訊</a>。</td></tr><tr><td class='term'>確定</td><td>關閉視窗。</td></tr></table>"
+ },
+ "driver-info": {
+  "Title": "掃描器與驅動程式資訊",
+  "Summary": "掃描器與程式檔案的技術資訊，求助時相當實用。",
+  "Html": "<div class='shot'><img src='help-img:dlg_driver' alt='「掃描器與驅動程式資訊」視窗'><div class='caption'>「掃描器與驅動程式資訊」視窗</div></div><table class='items'><tr><td class='term'>掃描器</td><td>名稱、製造商、產品系列與驅動程式版本。這些值可以選取並複製。若未連接掃描器，會顯示「未連接掃描器」。</td></tr><tr><td class='term'>檔案版本</td><td>程式檔案以及 NTwain、Tesseract、PdfSharpCore 與 DocumentFormat.OpenXml 函式庫的名稱、版本與日期。</td></tr><tr><td class='term'>確定</td><td>關閉視窗。</td></tr></table>"
+ },
+ "profiles": {
+  "Title": "設定檔",
+  "Summary": "儲存並選擇固定的設定，供重複性的工作使用。",
+  "Html": ""
+ },
+ "profile-mgmt": {
+  "Title": "使用設定檔",
+  "Summary": "設定檔會儲存所有掃描設定，例如將「帳單」以 PDF 格式存入固定資料夾。",
+  "Html": "\r\n        \r\n        <p>設定檔僅在快速選單<b>關閉</b>時生效。設定檔包含「應用程式」、「儲存」、「掃描模式」、「檔案類型」、「紙張」及「檔案大小」等頁面。最多可有 20 個設定檔，包括八個預設設定檔。</p>\r\n\r\n        \r\n        <h2>建立新設定檔</h2>\r\n        <ol class='steps'><li>開啟<a href='#settings'>設定</a>，並調整所有項目，使設定檔以您想要的方式運作。</li><li>在<b>一般</b>頁面的<b>設定檔</b>群組中，點擊<b>新增設定檔...</b>。</li><li>輸入<a href='#new-profile'>名稱</a>，然後點擊<b>確定</b>。</li></ol>\r\n\r\n        <h2>使用設定檔</h2>\r\n        <p>在<b>使用中的設定檔</b>下選擇設定檔，然後點擊<b>確定</b>。此後每次按下按鍵，掃描都會使用此設定檔。</p>\r\n\r\n        <h2>變更設定檔</h2>\r\n        <p>選擇設定檔，變更設定，然後點擊<b>確定</b>或<b>套用</b>，變更會儲存到該設定檔中。預設設定檔會保持不變；程式會詢問您是否要建立新設定檔。</p>\r\n\r\n        <h2>重新命名、刪除、排序</h2>\r\n        <p>在<a href='#profile-mgmt-dialog'>設定檔管理</a>中進行，可透過<b>一般</b>頁面的<b>設定檔管理...</b>或系統匣選單開啟。</p>\r\n        <div class='box note'><div class='box-title'>注意</div><p>快速選單開啟時，「設定檔」群組會呈灰色不可用。</p></div>"
+ },
+ "default-settings": {
+  "Title": "預設設定",
+  "Summary": "這些值在首次啟動時生效，適用於所有預設設定檔，以及設定檔管理中新增的設定檔。",
+  "Html": "<table class='grid'><tr><th>設定</th><th>預設值</th></tr><tr><td>使用快速選單</td><td>開</td></tr><tr><td>登入時啟動</td><td>開</td></tr><tr><td>應用程式</td><td>掃描至資料夾</td></tr><tr><td>儲存資料夾</td><td>文件\\SpeedScanManager</td></tr><tr><td>檔案名稱格式</td><td>日期與時間 (JJJJMMTThhmmss)</td></tr><tr><td>自訂檔案名稱</td><td>未命名，3 位數</td></tr><tr><td>掃描後重新命名檔案</td><td>關</td></tr><tr><td>影像品質</td><td>自動（200 dpi，黑白 400 dpi）</td></tr><tr><td>色彩模式</td><td>彩色</td></tr><tr><td>掃描面</td><td>自動</td></tr><tr><td>繼續掃描作業</td><td>關</td></tr><tr><td>亮度</td><td>一般</td></tr><tr><td>移除空白頁</td><td>開</td></tr><tr><td>校正歪斜</td><td>關</td></tr><tr><td>自動影像旋轉</td><td>開</td></tr><tr><td>檔案格式</td><td>PDF，多頁，無密碼</td></tr><tr><td>文字辨識 (OCR)</td><td>關（語言：自動偵測，目標頁面：所有頁面）</td></tr><tr><td>紙張大小</td><td>自動偵測</td></tr><tr><td>多張進紙偵測</td><td>關</td></tr><tr><td>承載頁模式</td><td>關</td></tr><tr><td>壓縮比例</td><td>等級 3（共 5 級）</td></tr><tr><td>電子郵件主旨</td><td>掃描的文件</td></tr><tr><td>目標印表機</td><td>(預設印表機)</td></tr></table>\r\n\r\n        <h2>八個預設設定檔</h2>\r\n        <p>每個目的地各一個。它們都採用上述預設值，僅在應用程式上有所不同：</p>\r\n        <table class='grid'><tr><th>設定檔</th><th>應用程式</th></tr><tr><td>儲存至資料夾</td><td>掃描至資料夾</td></tr><tr><td>以電子郵件傳送</td><td>掃描至電子郵件</td></tr><tr><td>列印</td><td>掃描至列印</td></tr><tr><td>轉換為 Word 文件</td><td>掃描至 Word</td></tr><tr><td>轉換為 Excel 試算表</td><td>掃描至 Excel</td></tr><tr><td>轉換為 PowerPoint 簡報</td><td>掃描至 PowerPoint</td></tr><tr><td>儲存至圖片資料夾</td><td>Scan Picture Folder</td></tr><tr><td>使用 PDF 程式編輯</td><td>Edit with PDF</td></tr></table><div class='box note'><div class='box-title'>注意</div><p><b>建議</b>、<b>小檔案</b>與<b>高影像品質</b>圖塊並非設定檔，而是影像品質與壓縮的預設值。</p></div>"
+ },
+ "troubleshooting": {
+  "Title": "排除問題",
+  "Summary": "常見問題、多張進紙，以及程式的所有訊息。",
+  "Html": ""
+ },
+ "faq": {
+  "Title": "常見問題",
+  "Summary": "最常見的問題，以及最快的解決方式。",
+  "Html": "<div class='qa'><h3>無法偵測到掃描器</h3><ul><li>掃描器是否已開機，並已透過 USB 或網路連接？</li><li>是否已安裝製造商的 TWAIN 驅動程式（32 位元 TWAIN 來源）？</li><li>是否連接了多台掃描器？請在<a href='#scanner-selection'>選擇掃描器</a>中選擇正確的一台。</li><li>程式啟動後請稍候數秒，之後才會查詢掃描器。必要時可暫時拔下 USB 線再重新插入。</li></ul></div><div class='qa'><h3>掃描器上的按鍵無法開始掃描</h3><p>請在系統匣選單中選擇<b>設定掃描鍵...</b>，並以<b>是</b>確認 Windows 的詢問。若掃描正在進行，或之後仍開啟著某個視窗（例如快速選單），按鍵會被忽略。<a href='#scan-button'>更多關於掃描鍵的資訊</a></p></div><div class='qa'><h3>我的掃描檔案在哪裡？</h3><p>請在系統匣選單中選擇<b>顯示掃描結果</b>。預設情況下，掃描檔案儲存在 <code>文件\\SpeedScanManager</code>；您可以在<a href='#save-tab'>儲存</a>頁面變更資料夾。</p></div><div class='qa'><h3>沒有儲存任何檔案</h3><p>所有頁面都被辨識為空白並已移除，例如單面掃描時只掃到空白的背面。相關選項可在<a href='#scanmode-options'>掃描模式選項</a>中找到。</p></div><div class='qa'><h3>「應用程式」頁面呈灰色不可用</h3><p>快速選單已開啟，因此掃描後才會選擇目的地。若要固定目的地，請在<b>一般</b>頁面中關閉<b>使用快速選單</b>。</p></div><div class='qa'><h3>無法選擇 JPEG</h3><p>色彩模式為<b>黑白</b>時無法使用 JPEG。請選擇 PDF 或 PNG，或改用其他色彩模式。</p></div><div class='qa'><h3>檔案太大</h3><p>在<b>一般</b>頁面中選擇<b>小檔案</b>圖塊，或在<a href='#filesize-tab'>檔案大小</a>頁面中提高等級。若只是文字，<b>黑白</b>能節省最多空間。</p></div><div class='qa'><h3>頁面歪斜、顛倒或排序錯誤</h3><p>在<a href='#scanmode-options'>掃描模式選項</a>中：<b>自動校正歪斜</b>、<b>允許自動旋轉影像</b>，以及（若您以文字朝上放入文件）<b>文件正面朝上放入</b>。</p></div><div class='qa'><h3>文字辨識不支援我的語言</h3><p>請將對應的 <code>.traineddata</code> 檔案放入與 <code>SpeedScanManager.exe</code> 同層的 <code>tessdata</code> 資料夾（<a href='#filetype-tab'>更多</a>）。</p></div><div class='qa'><h3>掃描器回報「多張進紙」</h3><p>請閱讀<a href='#multifeed-measures'>遇到多張進紙時該怎麼辦？</a></p></div><div class='box tip'><div class='box-title'>提示</div><p>所有訊息及其說明列表，請見<a href='#message-list'>訊息列表</a>。</p></div>"
+ },
+ "multifeed-dialog": {
+  "Title": "偵測到多張進紙",
+  "Summary": "掃描器可能一次送入了兩張紙。它會等待您做出決定。",
+  "Html": "<div class='shot'><img src='help-img:multifeed_dialog' alt='「偵測到多張進紙！」視窗'><div class='caption'>「偵測到多張進紙！」視窗</div></div>\r\n        <p>您會看到前一頁，以及受影響的頁面（以紅色標示）。若沒有前一頁，則會顯示「無可用的預覽圖」。</p>\r\n        <table class='items'><tr><td class='term'>重試</td><td>捨棄此批次的頁面並取消掃描（「掃描已捨棄」）。請重新放入頁面後再掃描一次。預設按鍵（<span class='kbd'>Enter</span>）；關閉圖示的效果相同。</td></tr><tr><td class='term'>照此保留</td><td>保留該頁面，並繼續掃描。</td></tr><tr><td class='term'>關閉偵測</td><td>保留該頁面，並在此次掃描的剩餘部分忽略後續的提示。</td></tr></table><div class='box warn'><div class='box-title'>警告</div><p>信封，或貼有便條紙、照片或郵票的紙張，常會被誤判為多張進紙。<span class='kbd'>Esc</span> 無法關閉此視窗。</p></div>"
+ },
+ "multifeed-measures": {
+  "Title": "遇到多張進紙時該怎麼辦？",
+  "Summary": "當「偵測到多張進紙！」視窗出現時，如何正確做出決定。",
+  "Html": "\r\n        \r\n        <h2>頁面完整且順序正確</h2>\r\n        <p>點擊<b>照此保留</b>，掃描會繼續。若是信封、貼有便條紙、照片或郵票的紙張，也同樣點擊此項；若還有更多這類頁面，請選擇<b>關閉偵測</b>。</p>\r\n\r\n        <h2>缺頁或順序錯誤</h2>\r\n        <ol class='steps'><li>點擊<b>重試</b>。此批次的頁面會被捨棄。</li><li>將所有紙張從掃描器中取出（包括出紙匣），並將整疊紙對齊。</li><li>重新放入整疊紙，並開始新的掃描。</li></ol><div class='box tip'><div class='box-title'>提示</div><p>若經常發生，請在放入前先將整疊紙稍微扇形展開。使用哪種偵測方式，可在<a href='#paper-tab'>紙張</a>頁面中設定。</p></div>"
+ },
+ "message-list": {
+  "Title": "訊息列表",
+  "Summary": "SpeedScan Manager 可顯示的所有訊息。「...」代表名稱、路徑或錯誤文字。",
+  "Html": "<h2>訊息視窗</h2><table class='items'><tr><td><b>掃描作業已在進行中。</b><br><span style='font-size:9pt'>在掃描期間選擇了掃描或掃描器選擇。</span></td></tr><tr><td><b>TWAIN 未初始化。沒有可用的掃描器。</b><br><span style='font-size:9pt'>無法啟動 TWAIN 來源管理員，請檢查驅動程式的安裝。</span></td></tr><tr><td><b>無法開啟 TWAIN 來源管理員。</b></td></tr><tr><td><b>找不到掃描器。</b></td></tr><tr><td><b>無法開啟掃描器。請確認掃描器已開機並已連接。</b></td></tr><tr><td><b>無法開始掃描作業。</b></td></tr><tr><td><b>掃描器沒有回應，未掃描任何頁面。</b></td></tr><tr><td><b>未掃描任何頁面。請將文件放入掃描器後再試一次。</b></td></tr><tr><td><b>所有掃描的頁面都被辨識為空白並已移除。未儲存任何檔案。</b></td></tr><tr><td><b>未建立任何檔案。</b></td></tr><tr><td><b>無法儲存掃描：...</b></td></tr><tr><td><b>無法儲存至目標資料夾 ... 改為儲存於此：文件\\SpeedScanManager</b></td></tr><tr><td><b>無法建立目標資料夾 ... 掃描檔案仍儲存於此：...</b></td></tr><tr><td><b>下列檔案無法移至「...」，將保留在「...」中。</b></td></tr><tr><td><b>捨棄掃描？</b><br><span style='font-size:9pt'>是：刪除此掃描。否：返回視窗。</span></td></tr><tr><td><b>無法以附件方式開啟電子郵件程式。</b><br><span style='font-size:9pt'>將開啟含有檔案的資料夾，方便您手動附加。</span></td></tr><tr><td><b>沒有可列印的頁面。</b></td></tr><tr><td><b>未安裝印表機。掃描已儲存，但未列印。</b></td></tr><tr><td><b>找不到印表機「...」。要改用預設印表機列印嗎？</b></td></tr><tr><td><b>列印失敗：...</b></td></tr><tr><td><b>無法建立 Word／Excel／PowerPoint 檔案：...</b></td></tr><tr><td><b>已建立檔案，但無法開啟（是否已安裝 Word／Excel／PowerPoint？）</b></td></tr><tr><td><b>無法將圖片儲存至圖片資料夾：...</b></td></tr><tr><td><b>無法開啟檔案：...</b></td></tr><tr><td><b>無法啟動程式「...」，或無法啟動。</b><br><span style='font-size:9pt'>自訂應用程式。掃描檔案仍會保留。</span></td></tr><tr><td><b>資料夾「...」不存在。</b><br><span style='font-size:9pt'>出現於「顯示掃描結果」時。</span></td></tr><tr><td><b>目前正在進行掃描。取消掃描並結束 SpeedScan Manager？</b></td></tr><tr><td><b>上一次掃描尚未完成。仍要結束 SpeedScan Manager 嗎？</b></td></tr><tr><td><b>無法讀取 PDF 密碼，請重新輸入。</b><br><span style='font-size:9pt'>設定 › 檔案類型 › 選項 › 密碼。</span></td></tr><tr><td><b>已取消設定掃描鍵。／無法設定掃描鍵。</b></td></tr><tr><td><b>最多只能建立 20 個設定檔。</b></td></tr><tr><td><b>無法變更預設設定檔「...」。要將變更的設定另存為新設定檔嗎？</b></td></tr><tr><td><b>SpeedScan Manager 發生未預期的錯誤。程式將繼續執行。</b><br><span style='font-size:9pt'>詳細資訊請見 %LocalAppData%\\SpeedScanManager\\crash.log。</span></td></tr></table><h2>系統匣圖示的氣泡提示</h2><table class='items'><tr><td><b>掃描器未連接或未開機。</b></td></tr><tr><td><b>TWAIN 無法初始化，無法掃描。</b></td></tr><tr><td><b>掃描已取消</b><br><span style='font-size:9pt'>掃描作業已取消。</span></td></tr><tr><td><b>掃描已捨棄</b><br><span style='font-size:9pt'>多張進紙：頁面已捨棄，請重新放入文件。－或－掃描已刪除。</span></td></tr><tr><td><b>掃描已儲存</b><br><span style='font-size:9pt'>檔案名稱與資料夾，或檔案數量。</span></td></tr><tr><td><b>列印</b><br><span style='font-size:9pt'>文件已傳送至印表機。</span></td></tr><tr><td><b>掃描仍在儲存中。儲存完成後將結束 SpeedScan Manager。</b></td></tr><tr><td><b>掃描鍵已設定完成。按下按鍵即可開始掃描。</b></td></tr><tr><td><b>掃描注意事項：掃描器已無回應。</b><br><span style='font-size:9pt'>掃描作業已取消。</span></td></tr><tr><td><b>掃描注意事項：一或多個頁面無法傳輸。</b></td></tr><tr><td><b>掃描注意事項：色彩模式／平台／雙面不受支援</b><br><span style='font-size:9pt'>改用進紙器，或改為單面掃描。</span></td></tr><tr><td><b>掃描注意事項：解析度不受支援</b><br><span style='font-size:9pt'>已改用其他解析度。</span></td></tr><tr><td><b>掃描注意事項：多張進紙偵測</b><br><span style='font-size:9pt'>無法啟用，或僅以超音波啟用。</span></td></tr><tr><td><b>掃描注意事項：紙張大小</b><br><span style='font-size:9pt'>所選大小不受支援，或未選取有效的自訂大小。</span></td></tr><tr><td><b>注意：OCR 語言資料缺失</b><br><span style='font-size:9pt'>改用其他語言，或已略過文字辨識。</span></td></tr><tr><td><b>注意：文字辨識無法使用</b><br><span style='font-size:9pt'>缺少 tessdata，或辨識失敗。</span></td></tr><tr><td><b>注意：自動影像旋轉無法使用</b><br><span style='font-size:9pt'>缺少 osd.traineddata。</span></td></tr><tr><td><b>注意：標示的關鍵字需要文字辨識</b><br><span style='font-size:9pt'>已略過。</span></td></tr><tr><td><b>注意：記憶體不足，無法校正歪斜</b><br><span style='font-size:9pt'>已略過。</span></td></tr></table>"
+ },
+ "reference": {
+  "Title": "附錄",
+  "Summary": "縮寫與專業用語的簡短說明。",
+  "Html": ""
+ },
+ "abbreviations": {
+  "Title": "縮寫",
+  "Summary": "本說明中出現的專業用語。",
+  "Html": "<table class='grid'><tr><th>縮寫</th><th>意義</th></tr><tr><td>ADF</td><td>Automatic Document Feeder，自動進紙器</td></tr><tr><td>dpi</td><td>dots per inch，每英吋點數（解析度）</td></tr><tr><td>Duplex / Simplex</td><td>雙面／單面掃描</td></tr><tr><td>JPEG</td><td>常見的圖片格式（有失真）</td></tr><tr><td>MAPI</td><td>讓程式建立電子郵件的介面</td></tr><tr><td>OCR</td><td>Optical Character Recognition，文字辨識</td></tr><tr><td>OSD</td><td>Orientation and Script Detection，方向與文字偵測</td></tr><tr><td>PDF</td><td>Portable Document Format，可攜式文件格式</td></tr><tr><td>PNG</td><td>Portable Network Graphics，無失真圖片格式</td></tr><tr><td>S&amp;W</td><td>黑白</td></tr><tr><td>TWAIN</td><td>掃描器與軟體之間的連接標準</td></tr><tr><td>UAC</td><td>User Account Control，Windows 使用者帳戶控制</td></tr><tr><td>USB</td><td>Universal Serial Bus，通用序列匯流排</td></tr><tr><td>WIA / STI</td><td>Windows 影像裝置介面，掃描鍵也會使用</td></tr></table>"
+ }
+}

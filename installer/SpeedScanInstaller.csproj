@@ -28,6 +28,8 @@
     <Resource Include="..\assets\SpeedScanManager_Text_2Rows.png" Link="Assets\SpeedScanManager_Text_2Rows.png" />
     <Resource Include="..\assets\SpeedScanManager_Text.png" Link="Assets\SpeedScanManager_Text.png" />
     <Resource Include="..\assets\SpeedScanManager_Logo.png" Link="Assets\SpeedScanManager_Logo.png" />
+    <!-- Translations: lang/<code>.json (German text -> translation), see I18n.cs -->
+    <EmbeddedResource Include="lang\*.json" LogicalName="lang.%(Filename).json" />
   </ItemGroup>
 
   <!--

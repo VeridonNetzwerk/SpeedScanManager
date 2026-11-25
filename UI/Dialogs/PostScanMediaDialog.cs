@@ -42,9 +42,15 @@ internal class PostScanMediaDialog : ModernWindow
 
     private readonly Bitmap[] _icons;
 
+    /// <summary>Opens the options of E-Mail / Drucken (gear on those tiles), owned by this window.</summary>
+    private readonly Action<MediaAction, IWin32Window>? _openOptions;
+    private readonly ToolTip _toolTip = new() { InitialDelay = 400 };
+
     /// <param name="pageCount">Number of pages in the output (not the number of files).</param>
-    public PostScanMediaDialog(int pageCount)
+    /// <param name="openOptions">Shows the e-mail or print options; null hides the gears.</param>
+    public PostScanMediaDialog(int pageCount, Action<MediaAction, IWin32Window>? openOptions = null)
     {
+        _openOptions = openOptions;
         _icons = new Bitmap[]
         {
             PostScanIcons.CreateFolderIcon(),
@@ -136,6 +142,7 @@ internal class PostScanMediaDialog : ModernWindow
         if (disposing)
         {
             foreach (var icon in _icons) icon.Dispose();
+            _toolTip.Dispose();
         }
         base.Dispose(disposing);
     }
@@ -148,6 +155,33 @@ internal class PostScanMediaDialog : ModernWindow
             Margin = new Padding(5),
             Tag = index
         };
+        var action = (MediaAction)index;
+        if (_openOptions != null && action is MediaAction.ScanToEmail or MediaAction.ScanToPrint)
+        {
+            // Gear in the top-right corner: recipient / printer (the Anwendung page is locked
+            // while the Quick-Menü is on, so this is where they are changed)
+            var gear = new FlatIconButton(Glyph.Gear)
+            {
+                Size = new Size(26, 26),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                TabStop = false,
+                AccessibleName = action == MediaAction.ScanToEmail ? L.T("E-Mail-Optionen") : L.T("Druck-Optionen"),
+                BackSource = () => tile.CurrentFill,
+            };
+            tile.Controls.Add(gear);
+            tile.Layout += (_, _) =>
+            {
+                int m = (int)Math.Round(5 * tile.DeviceDpi / 96f);
+                gear.Location = new Point(tile.ClientSize.Width - gear.Width - m, m);
+            };
+            _toolTip.SetToolTip(gear, gear.AccessibleName);
+            gear.Click += (_, _) =>
+            {
+                _selectedIndex = index;
+                UpdateSelection();
+                _openOptions(action, this);
+            };
+        }
         tile.Click += (_, _) =>
         {
             _selectedIndex = index;

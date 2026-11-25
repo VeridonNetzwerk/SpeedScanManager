@@ -299,14 +299,11 @@ internal static class HelpContent
         " + Items(
             ("Scan", "Startet einen Scan mit den aktuellen Einstellungen. Nicht verfügbar, solange der Scanner getrennt ist oder ein Scan läuft."),
             ("Scan abbrechen", "Nur sichtbar, während ein Scan läuft."),
+            ("Öffnen", "Öffnet das <a href='#settings'>Einstellungsfenster</a>."),
             ("Scanner auswählen...", "Den Scanner wählen, wenn mehrere angeschlossen sind (<a href='#scanner-selection'>mehr</a>)."),
-            ("Einstellungen der SCAN Taste...", "Öffnet das <a href='#settings'>Einstellungsfenster</a>."),
             ("Scan-Taste einrichten...", "Richtet die Taste am Scanner (erneut) ein (<a href='#scan-button'>mehr</a>)."),
             ("Profilverwaltung...", "Profile umbenennen, löschen und sortieren."),
-            ("E-Mail-Einstellungen...", "Empfänger und Betreff für Scan to E-Mail."),
-            ("Druckeinstellungen...", "Drucker für Scan to Print."),
             ("Scan-Ergebnis anzeigen", "Zeigt die zuletzt gespeicherte Datei im Explorer (erst nach einem Scan)."),
-            ("Design", "<b>System</b>, <b>Hell</b> oder <b>Dunkel</b> – wirkt sofort auf alle Fenster."),
             ("Hilfe", "Diese Hilfe und die Versionsinformationen."),
             ("Beenden", "Beendet das Programm. Läuft gerade ein Scan, werden Sie vorher gefragt; wird er gerade gespeichert, beendet sich das Programm erst danach.")) + @"
 
@@ -696,8 +693,8 @@ internal static class HelpContent
         <h2>Die acht Ziele</h2>
         " + Items(
             ("In Ordner speichern", "Öffnet <a href='#postscan-save'>In Ordner speichern</a> für Titel und Zielordner."),
-            ("Per E-Mail versenden", "E-Mail-Programm mit der Datei als Anhang."),
-            ("Drucken", "Druckt die Seiten."),
+            ("Per E-Mail versenden", "E-Mail-Programm mit der Datei als Anhang. Das Zahnrad oben rechts öffnet die <a href='#email-options'>E-Mail-Optionen</a>."),
+            ("Drucken", "Druckt die Seiten. Das Zahnrad oben rechts öffnet die <a href='#print-options'>Druck-Optionen</a>."),
             ("Nach Word", "Word-Dokument (.docx) mit den Seiten als Bilder."),
             ("Nach Excel", "Excel-Datei (.xlsx) mit den Seiten als Bilder."),
             ("Nach PowerPoint", "Präsentation (.pptx) mit den Seiten als Bilder."),

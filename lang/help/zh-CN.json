@@ -1,0 +1,242 @@
+{
+ "root": {
+  "Title": "SpeedScan Manager 帮助",
+  "Summary": "按下按钮即可扫描文档，然后决定将其保存到哪里：文件夹、电子邮件、打印机或 Office 文档。",
+  "Html": ""
+ },
+ "getting-started": {
+  "Title": "入门指南",
+  "Summary": "了解本程序的功能、在哪里找到它，以及如何连接您的扫描仪。",
+  "Html": ""
+ },
+ "overview": {
+  "Title": "什么是 SpeedScan Manager？",
+  "Summary": "SpeedScan Manager 控制您的 TWAIN 扫描仪，并在扫描后为您处理后续工作。",
+  "Html": "\r\n        <p>本程序安静地运行在任务栏通知区域中。您放入一份文档，按下扫描键，然后选择扫描后要执行的操作。</p>\r\n\r\n        <h2>您可以用它完成的操作</h2>\r\n        <table class='items'><tr><td class='term'>保存到文件夹</td><td>以 PDF、JPEG 或 PNG 格式保存到您选择的文件夹中。</td></tr><tr><td class='term'>通过电子邮件发送</td><td>您的电子邮件程序会打开，扫描内容作为附件添加其中。</td></tr><tr><td class='term'>打印</td><td>直接在打印机上输出页面（可替代复印机）。</td></tr><tr><td class='term'>Word、Excel、PowerPoint</td><td>将页面以图片形式插入新的 Office 文档。</td></tr><tr><td class='term'>图片文件夹</td><td>将页面以 JPEG 图片的形式保存到 <code>Bilder\\SpeedScanManager</code> 中。</td></tr><tr><td class='term'>用 PDF 程序打开</td><td>在 Windows 中为该文件类型设置的程序里打开扫描内容。</td></tr><tr><td class='term'>自定义程序</td><td>最多可在扫描时启动十个自定义程序。</td></tr></table>\r\n\r\n        <h2>程序会自动完成以下工作</h2>\r\n        <ul>\r\n            <li><b>文字识别（OCR）</b>——使 PDF 可搜索。</li>\r\n            <li><b>删除空白页</b>、<b>校正倾斜的页面</b>以及<b>正确旋转页面</b>。</li>\r\n            <li><b>颜色检测</b>——每个页面都按彩色、灰度或黑白保存。</li>\r\n            <li><b>承载纸</b>——将一张折叠的 A3 纸的两半合并为一张图像。</li>\r\n        </ul>\r\n        <div class='box tip'><div class='box-title'>小贴士</div><p>最快的入门方式是使用<a href='#scan-quick'>快速菜单</a>：它已经开启，每次扫描后都会询问您要将文件发送到哪里。</p>\r\n        </div>"
+ },
+ "starting": {
+  "Title": "托盘图标和菜单",
+  "Summary": "SpeedScan Manager 没有大的主窗口——所有功能都可通过任务栏中的图标访问。",
+  "Html": "\r\n        <p>启动后，程序图标会出现在任务栏通知区域（右下角，可能位于箭头 <b>˄</b> 之后）。点击它即可打开菜单。</p>\r\n        <div class='shot'><img src='help-img:tray_menu' alt='托盘菜单。顶部显示扫描仪是否就绪。'><div class='caption'>托盘菜单。顶部显示扫描仪是否就绪。</div>\r\n        </div>\r\n\r\n        <h2>图标显示状态</h2>\r\n        <table class='items'><tr><td class='term'><img src='help-img:trayicon_connected' width='16' height='16' alt='就绪' style='vertical-align:-3px'>&nbsp; 正常</td><td>扫描仪已连接并就绪。</td></tr><tr><td class='term'><img src='help-img:trayicon_scanning' width='16' height='16' alt='扫描中' style='vertical-align:-3px'>&nbsp; 带橙色圆点</td><td>正在扫描或处理扫描内容。</td></tr><tr><td class='term'><img src='help-img:trayicon_disconnected' width='16' height='16' alt='已断开' style='vertical-align:-3px'>&nbsp; 颜色较淡并带红色斜线</td><td>未连接扫描仪，或扫描仪已关机。</td></tr></table>\r\n        <p>将鼠标悬停在图标上，可以看到扫描仪的名称；扫描期间还会显示目前已扫描的页数。</p>\r\n\r\n        <h2>点击操作</h2>\r\n        <table class='items'><tr><td class='term'>单击左键或右键</td><td>打开菜单。</td></tr><tr><td class='term'>双击</td><td>打开<a href='#settings'>设置</a>。</td></tr></table>\r\n\r\n        <h2>菜单中的命令</h2>\r\n        <table class='items'><tr><td class='term'>扫描</td><td>使用当前设置开始扫描。扫描仪断开连接或正在扫描时不可用。</td></tr><tr><td class='term'>取消扫描</td><td>仅在扫描进行时显示。</td></tr><tr><td class='term'>选择扫描仪...</td><td>连接了多台扫描仪时，选择要使用的扫描仪（<a href='#scanner-selection'>更多</a>）。</td></tr><tr><td class='term'>扫描键设置...</td><td>打开<a href='#settings'>设置窗口</a>。</td></tr><tr><td class='term'>设置扫描键...</td><td>（重新）设置扫描仪上的按键（<a href='#scan-button'>更多</a>）。</td></tr><tr><td class='term'>配置文件管理...</td><td>重命名、删除和排序配置文件。</td></tr><tr><td class='term'>电子邮件设置...</td><td>“扫描到电子邮件”的收件人和主题。</td></tr><tr><td class='term'>打印设置...</td><td>“扫描到打印”使用的打印机。</td></tr><tr><td class='term'>显示扫描结果</td><td>在资源管理器中显示最近保存的文件（仅在扫描之后可用）。</td></tr><tr><td class='term'>设计</td><td><b>系统</b>、<b>亮</b>或<b>暗</b>——立即对所有窗口生效。</td></tr><tr><td class='term'>帮助</td><td>本帮助和版本信息。</td></tr><tr><td class='term'>退出</td><td>退出程序。如果正在扫描，会先询问您；如果正在保存扫描，程序将在保存完成后退出。</td></tr></table>\r\n\r\n        <h2>随 Windows 启动</h2>\r\n        <p><b>常规</b>页面中的<b>随 Windows 启动</b>开关决定程序是否自动启动。全新安装后该开关默认开启；从 0.1.x 版本更新后，它保持关闭，直到您将其开启。</p>\r\n        <div class='box note'><div class='box-title'>提示</div>\r\n        <p>本程序只会运行一个实例。如果再次启动，将改为打开设置窗口。设置和配置文件保存在 <code>%AppData%\\SpeedScanManager</code> 文件夹中。</p>\r\n        </div>\r\n        "
+ },
+ "scanner-connection": {
+  "Title": "连接扫描仪",
+  "Summary": "USB 和网络扫描仪一经开机即可被自动识别。",
+  "Html": "<ol class='steps'><li>安装扫描仪的 TWAIN 驱动程序（由制造商提供）。</li><li>打开扫描仪电源，并通过 USB 或网络将其连接到电脑。</li><li>稍等片刻：托盘图标会从 <img src='help-img:trayicon_disconnected' width='16' height='16' alt='已断开' style='vertical-align:-3px'> 变为 <img src='help-img:trayicon_connected' width='16' height='16' alt='就绪' style='vertical-align:-3px'>，菜单顶部会出现带绿色圆点的扫描仪名称。</li></ol>\r\n\r\n        <h2>后台工作流程</h2>\r\n        <p>设备连接或断开时，程序会立即检查扫描仪。程序启动几秒钟后，会首次查询扫描仪。如果扫描仪未连接，会一次性显示气泡提示“扫描仪未连接或已关机。”</p>\r\n        <div class='box tip'><div class='box-title'>小贴士</div><p>请尽量只连接一台扫描仪。如果连接了多台，请在<a href='#scanner-selection'>选择扫描仪</a>中设置要使用的那一台。</p>\r\n        </div><div class='box warn'><div class='box-title'>注意</div><p>如果未识别到扫描仪，请检查线缆或网络连接，确认扫描仪已开机，并且已安装 TWAIN 驱动程序。更多帮助：<a href='#faq'>常见问题</a>。</p>\r\n        </div>"
+ },
+ "scanner-selection": {
+  "Title": "选择扫描仪",
+  "Summary": "连接了多台扫描仪时，设置要使用哪一台。",
+  "Html": "<ol class='steps'><li>点击托盘图标，选择<b>选择扫描仪...</b>（扫描期间不可用）。</li><li>在列表中选择扫描仪。<b>(USB)</b> 或 <b>(网络)</b> 表示连接方式；USB 扫描仪显示在最上方。</li><li>点击<b>确定</b>。该选择在重启后仍然有效。</li></ol><div class='shot'><img src='help-img:dlg_scanner' alt='“选择扫描仪”窗口'><div class='caption'>“选择扫描仪”窗口</div></div>\r\n        <p>第一项 <b>(自动)</b> 会将选择交给程序决定。点击<b>取消</b>或关闭按钮，可在不做任何更改的情况下关闭窗口。</p>\r\n        <div class='box note'><div class='box-title'>提示</div><p>有新扫描仪连接时，列表会自动更新。如果未找到扫描仪，列表中会显示“未找到扫描仪”——您仍可以确认 <b>(自动)</b>。如果所选扫描仪无法访问，托盘图标会显示“所选：... (离线)”。</p>\r\n        </div>"
+ },
+ "sysreq": {
+  "Title": "系统要求",
+  "Summary": "您的电脑和扫描仪需要满足的条件。",
+  "Html": "<table class='items'><tr><td class='term'>操作系统</td><td>Windows 10 或 Windows 11（64 位）。</td></tr><tr><td class='term'>扫描仪</td><td>支持 TWAIN 的扫描仪（USB 或网络），并已安装 TWAIN 驱动程序。由于 SpeedScan Manager 是 32 位程序，驱动程序必须提供 32 位 TWAIN 源。</td></tr><tr><td class='term'>.NET</td><td>安装包无需单独安装 .NET。</td></tr><tr><td class='term'>扫描到电子邮件</td><td>支持 MAPI 的电子邮件程序（例如 Outlook）。</td></tr><tr><td class='term'>扫描到打印</td><td>已安装的打印机。</td></tr><tr><td class='term'>Word、Excel、PowerPoint</td><td>用于打开生成的文件——即使未安装 Office，也可以生成这些文件。</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>安装包中附带了德语和英语的文字识别语言数据，以及自动图像旋转数据。其他语言：请参阅<a href='#filetype-tab'>“文件类型”页面</a>。</p></div>"
+ },
+ "scanning": {
+  "Title": "扫描",
+  "Summary": "扫描文档、使用扫描键、扫描长页面以及使用承载纸。",
+  "Html": ""
+ },
+ "scan-quick": {
+  "Title": "如何扫描文档",
+  "Summary": "使用快速菜单（默认设置），您先进行扫描，然后再决定扫描内容的去向。",
+  "Html": "<ol class='steps'><li>将纸张放入扫描仪。</li><li>按下扫描仪上的<b>扫描键</b>，或点击托盘图标并选择<b>扫描</b>。</li><li>等待所有页面送入扫描仪。扫描内容会被处理，并保存到保存文件夹中。</li><li>此时会出现<b>快速菜单</b>。点击所需的目标，然后点击<b>保存</b>——或直接双击该目标。</li></ol><div class='shot'><img src='help-img:quickmenu' alt='扫描后的快速菜单'><div class='caption'>扫描后的快速菜单</div></div><table class='legend'><tr><td><span class='num'>1</span></td><td>目标：文件夹、电子邮件、打印机、Word、Excel、PowerPoint、图片文件夹和 PDF 程序。方向键用于移动选择。</td></tr><tr><td><span class='num'>2</span></td><td><b>取消</b>：快速菜单关闭，已保存的文件仍会保留。</td></tr><tr><td><span class='num'>3</span></td><td><b>保存</b>：执行所选目标。</td></tr></table><div class='box tip'><div class='box-title'>小贴士</div><p>选择<b>保存到文件夹</b>后，您可以在下一个窗口中更改<a href='#postscan-save'>文件名和文件夹</a>。</p></div>\r\n\r\n        <h2>快速选择画质</h2>\r\n        <p>在<b>常规</b>页面（位于<a href='#settings'>设置</a>中）您只需点击一下即可设置扫描的精细程度：</p>\r\n        <table class='grid'><tr><th>预设</th><th>图像质量</th><th>压缩</th><th>适用于</th></tr><tr><td>推荐</td><td>自动</td><td>3</td><td>大多数文档</td></tr><tr><td>小文件</td><td>普通</td><td>5</td><td>电子邮件发送、存档</td></tr><tr><td>高图像质量</td><td>精细</td><td>1</td><td>照片、精细细节</td></tr><tr><td>自定义</td><td>自定义值</td><td>自定义值</td><td>打开“扫描模式”页面</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>快速菜单开启时，设置中的<b>应用程序</b>页面呈灰色不可用，因为目标是在扫描后再选择的。</p></div>"
+ },
+ "scan-button": {
+  "Title": "扫描仪上的扫描键",
+  "Summary": "按下扫描仪上的按键即可开始扫描——即使 SpeedScan Manager 尚未运行。",
+  "Html": "\r\n        <h2>一次性设置</h2>\r\n        <p>要让 Windows 将按键转交给 SpeedScan Manager，需要先进行一次设置。首次启动时会自动完成：</p>\r\n        <ol class='steps'><li>Windows 会请求管理员权限（用户账户控制）。请点击<b>是</b>。</li><li>完成——此后按下该键即可开始扫描。之后无需再使用管理员权限。</li></ol><div class='box tip'><div class='box-title'>小贴士</div><p>如果您拒绝了该提示，或连接了另一台扫描仪？请在托盘菜单中选择<b>设置扫描键...</b>——设置过程会重新开始，之后气泡提示“扫描键已设置。”。对于新连接的扫描仪，下次启动程序时该提示也会自动出现。</p>\r\n        </div>\r\n\r\n        <h2>工作原理</h2>\r\n        <ul>\r\n            <li>SpeedScan Manager 会在 Windows 中将自己注册为扫描键的程序，并替换 Windows 默认程序。卸载时会恢复原始状态。</li>\r\n            <li>如果程序已在运行，会立即开始扫描。如果尚未运行，Windows 会启动它，并在其就绪后开始扫描。</li>\r\n        </ul>\r\n        <div class='box note'><div class='box-title'>提示</div><p>扫描期间（包括之后快速菜单等窗口仍打开时），按键都会被忽略。大约 1.5 秒内的两次按下只计为一次。如果程序无法使用扫描仪（例如 TWAIN 未就绪），按键没有任何反应。</p>\r\n        </div><p>如果您拒绝该提示，它不会再次显示。您仍然可以通过托盘菜单进行扫描。</p>"
+ },
+ "scan-no-quick": {
+  "Title": "不使用快速菜单进行扫描",
+  "Summary": "每次都使用同一目标？请关闭快速菜单并预先设定目标——也可以保存为配置文件。",
+  "Html": "<ol class='steps'><li>打开<a href='#settings'>设置</a>（双击托盘图标）。</li><li>在<b>常规</b>页面中，关闭<b>使用快速菜单</b>开关。</li><li>在<b>活动配置文件</b>下选择一个配置文件——或在<a href='#app-tab'>应用程序</a>页面中自行设置目标。</li><li>点击<b>确定</b>。</li><li>像平常一样使用扫描键扫描，或通过托盘菜单中的<b>扫描</b>进行扫描。</li></ol>\r\n\r\n        <h2>扫描后会发生什么</h2>\r\n        <table class='items'><tr><td class='term'>扫描到文件夹</td><td>会打开<a href='#postscan-save'>保存到文件夹</a>窗口。</td></tr><tr><td class='term'>所有其他目标</td><td>会立即执行。如果在<b>保存</b>页面中开启了<b>扫描后重命名文件</b>开关，则会先打开“保存到文件夹”窗口。</td></tr></table>"
+ },
+ "scan-display": {
+  "Title": "扫描后发生的事情",
+  "Summary": "每次扫描都会先保存为文件——然后才执行所选目标。",
+  "Html": "\r\n        <h2>1. 页面处理</h2>\r\n        <p>根据设置，按以下顺序进行处理：</p>\r\n        <ol class='steps'><li><b>承载纸</b>：正面和背面并排合并。</li><li><b>裁切到纸张边缘</b>（仅在纸张尺寸为“自动检测”且未使用承载纸时）。</li><li><b>删除空白页</b>。如果所有页面都是空白的，则不保存任何内容并显示提示。</li><li><b>校正倾斜</b>（如已开启）。</li><li><b>自动图像旋转</b>（如已开启）。</li><li><b>颜色检测</b>（颜色模式为“自动颜色检测”时）：每页为彩色、灰度或黑白。</li><li><b>文字识别</b>，并保存为 PDF、JPEG 或 PNG。</li></ol>\r\n\r\n        <h2>2. 保存文件</h2>\r\n        <p>保存到保存文件夹中（默认为 <code>Dokumente\\SpeedScanManager</code>）。已有的文件绝不会被覆盖。如果该文件夹不可写，扫描内容会保存到 <code>Dokumente\\SpeedScanManager</code> 中，并向您显示提示。</p>\r\n\r\n        <h2>3. 执行目标</h2>\r\n        <table class='items'><tr><td class='term'>保存到文件夹</td><td>打开<a href='#postscan-save'>保存到文件夹</a>窗口，用于设置文件名和文件夹。</td></tr><tr><td class='term'>通过电子邮件发送</td><td>以该文件作为附件打开您的电子邮件程序（MAPI）。</td></tr><tr><td class='term'>打印</td><td>按原始尺寸打印页面。</td></tr><tr><td class='term'>转换为 Word / Excel / PowerPoint</td><td>创建一份以页面图片组成的 Office 文档，将其保存在扫描文件旁边并打开。</td></tr><tr><td class='term'>保存到图片文件夹</td><td>将页面以 JPEG 格式保存到 <code>Bilder\\SpeedScanManager</code>，并在资源管理器中显示第一张图片。</td></tr><tr><td class='term'>用 PDF Edit 编辑</td><td>使用 Windows 为该文件类型设置的程序打开文件。</td></tr><tr><td class='term'>自定义应用程序</td><td>使用保存的文件启动您的程序（仅在未使用快速菜单时）。</td></tr></table><div class='box tip'><div class='box-title'>小贴士</div><p>找不到文件？请在托盘菜单中选择<b>查看扫描结果</b>——资源管理器会显示最近保存的文件。</p>\r\n        </div>"
+ },
+ "scan-continue": {
+  "Title": "中止 / 继续扫描",
+  "Summary": "停止正在进行的扫描——或将多个批次合并为一份文档。",
+  "Html": "\r\n        <h2>中止扫描</h2>\r\n        <p>点击托盘图标，然后选择<b>取消扫描</b>。之前扫描的页面将被丢弃，气泡提示“扫描已取消”。在显示多张进纸问题或“继续扫描其他文档？”时也可以这样做。</p>\r\n        <div class='box note'><div class='box-title'>提示</div><p>扫描期间如选择<b>退出</b>，程序会先询问您。如果扫描内容正在保存，程序会在保存完成后再退出。已保存的扫描在退出时（包括注销 Windows 时）绝不会被删除。</p>\r\n        </div>\r\n\r\n        <h2>将多个批次合并为一次扫描</h2>\r\n        <ol class='steps'><li>在<a href='#scanmode-tab'>扫描模式</a>页面中，开启<b>在当前扫描后继续扫描</b>开关。</li><li>扫描第一批。</li><li>将出现问题“继续扫描其他文档？”，并显示当前页数。放入下一批，然后点击<b>继续</b>。</li><li>所有页面扫描完成后，点击<b>结束扫描</b>。所有页面将一起保存。</li></ol><div class='shot'><img src='help-img:continue_dialog' alt='每轮之后的询问'><div class='caption'>每轮之后的询问</div></div><div class='box note'><div class='box-title'>提示</div><p>如果某一轮中出现多张进纸并通过<b>重试</b>丢弃了页面，之前各轮的页面仍会保留。</p></div>"
+ },
+ "scan-long": {
+  "Title": "扫描长页面",
+  "Summary": "使用自动纸张尺寸扫描收据及其他长文档。",
+  "Html": "<ol class='steps'><li>在<a href='#paper-tab'>纸张</a>页面中，将<b>纸张尺寸</b>设置为<b>自动检测</b>。</li><li>请勿将<b>多张进纸检测</b>设置为带<b>长度</b>的选项（即应为<b>关</b>或<b>超声波</b>）。</li><li>像平常一样扫描。</li></ol>\r\n        <p>在此模式下，程序允许的页面最大尺寸为 8.5 × 125 英寸（约 21.6 × 317 厘米）。对于 Fujitsu、PFU 和 Ricoh（PaperStream IP）扫描仪，程序还会设置该厂商特有的长页面选项。图像是否裁切到实际长度，由扫描仪驱动程序决定。</p>\r\n        <div class='box warn'><div class='box-title'>注意</div>\r\n        <p>超过 86 厘米的页面只能以 200 dpi 扫描（图像质量<b>自动</b>或<b>精细</b>）；更高分辨率时最长为 86 厘米。旧版驱动程序“FUJITSU fi-…”只支持 35.6 厘米；如果两者都已安装，程序会使用 PaperStream IP。最大长度取决于扫描仪型号。长页面生成的文件会更大。</p>\r\n        </div>"
+ },
+ "scan-carrier": {
+  "Title": "使用承载纸扫描",
+  "Summary": "使用承载纸扫描大于 A4 的文档（例如 A3）——折叠后一次完成。",
+  "Html": "<ol class='steps'><li>在<a href='#paper-tab'>纸张</a>页面中，打开<b>承载纸设置...</b>，开启承载纸模式并选择输出尺寸。</li><li>将文档从中间对折，然后放入承载纸中。</li><li>将承载纸送入扫描仪，并进行<b>双面</b>扫描。</li><li>正面和背面会并排合并为一张图像。</li></ol><div class='box warn'><div class='box-title'>注意</div><p>只有专为承载纸设计的扫描仪才会将其送入。只有在双面扫描时才会进行合并——单面扫描时，每页都会单独调整为输出尺寸。</p></div>"
+ },
+ "settings-group": {
+  "Title": "设置",
+  "Summary": "分步说明设置窗口及其所有页面。",
+  "Html": ""
+ },
+ "settings": {
+  "Title": "设置窗口",
+  "Summary": "在此设置扫描和保存的方式。双击托盘图标即可打开。",
+  "Html": "<div class='shot'><img src='help-img:settings_window' alt='设置窗口，显示“常规”页面'><div class='caption'>设置窗口，显示“常规”页面</div></div><table class='legend'><tr><td><span class='num'>1</span></td><td><b>侧边栏</b>：在此选择页面。快速菜单开启时，“应用程序”呈灰色不可用。</td></tr><tr><td><span class='num'>2</span></td><td><b>所选页面</b>及其分组设置。较长的页面可以滚动。</td></tr><tr><td><span class='num'>3</span></td><td><b>帮助</b>：打开与该页面对应的帮助。</td></tr><tr><td><span class='num'>4</span></td><td><b>确定</b>应用并关闭，<b>应用</b>应用但不关闭，<b>取消</b>放弃更改。</td></tr></table>\r\n        <p>更改只有在点击<b>确定</b>或<b>应用</b>后才会生效。只要有未应用的内容，左下角就会显示“未应用的更改”。<b>取消</b>、<span class='kbd'>Esc</span> 以及关闭按钮都会放弃这些更改。</p>\r\n\r\n        <h2>各个页面</h2>\r\n        <table class='items'><tr><td class='term'>常规</td><td>快速菜单、开机自启、扫描质量、配置文件和设计（见下文）。</td></tr><tr><td class='term'><a href='#app-tab'>应用程序</a></td><td>扫描后的操作（仅在未使用快速菜单时）。</td></tr><tr><td class='term'><a href='#save-tab'>保存</a></td><td>保存文件夹和文件名。</td></tr><tr><td class='term'><a href='#scanmode-tab'>扫描模式</a></td><td>分辨率、颜色、单面或双面。</td></tr><tr><td class='term'><a href='#filetype-tab'>文件类型</a></td><td>PDF、JPEG 或 PNG，文字识别。</td></tr><tr><td class='term'><a href='#paper-tab'>纸张</a></td><td>纸张尺寸、承载纸、多张进纸。</td></tr><tr><td class='term'><a href='#filesize-tab'>文件大小</a></td><td>压缩，以减小文件大小。</td></tr></table>\r\n\r\n        <h2>“常规”页面</h2>\r\n        <div class='shot'><img src='help-img:page_general' alt='“常规”页面'><div class='caption'>“常规”页面</div></div><table class='items'><tr><td class='term'>使用快速菜单</td><td>开启：每次扫描后选择目标（<a href='#scan-quick'>更多</a>）。此时“应用程序”页面和“配置文件”分组呈灰色不可用。</td></tr><tr><td class='term'>随 Windows 启动</td><td>随 Windows 启动程序（默认：开启）。</td></tr><tr><td class='term'>扫描质量</td><td><b>推荐</b>、<b>小文件</b>和<b>高图像质量</b>会设置图像质量和压缩。与当前设置匹配的预设会显示勾选标记。如果您的数值不符合任何预设，则会标记<b>自定义</b>——点击即可打开“扫描模式”页面。也可以使用 <span class='kbd'>Tab</span> 和 <span class='kbd'>空格键</span> 操作。</td></tr><tr><td class='term'>配置文件</td><td>仅在未使用快速菜单时可用：选择<b>活动配置文件</b>，使用<b>添加配置文件...</b>将当前设置保存为<a href='#new-profile'>新配置文件</a>，使用<b>配置文件管理...</b><a href='#profile-mgmt-dialog'>编辑</a>配置文件。</td></tr><tr><td class='term'>设计</td><td><b>系统</b>跟随 Windows，<b>亮</b>和<b>暗</b>则固定外观。立即生效，无需点击“确定”。</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>修改自定义配置文件的设置后，点击“应用”即会保存到该配置文件中。默认配置文件保持不变——系统会询问您是要将更改另存为新配置文件，还是仅作为当前设置应用。</p>\r\n        </div><div class='box tip'><div class='box-title'>小贴士</div><p>使用键盘切换页面：<span class='kbd'>Ctrl</span>+<span class='kbd'>Tab</span> 或 <span class='kbd'>Ctrl</span>+<span class='kbd'>Shift</span>+<span class='kbd'>Tab</span>（或 <span class='kbd'>Ctrl</span>+<span class='kbd'>Page Down</span> / <span class='kbd'>Page Up</span>），在侧边栏中也可以使用方向键。<span class='kbd'>Enter</span> 相当于<b>确定</b>。点击最小化按钮可将窗口收起到任务栏。</p></div>"
+ },
+ "app-tab": {
+  "Title": "“应用程序”页面",
+  "Summary": "设定扫描后自动执行的操作——仅在快速菜单关闭时生效。",
+  "Html": "<div class='shot'><img src='help-img:page_app' alt='“应用程序”页面'><div class='caption'>“应用程序”页面</div></div><table class='items'><tr><td class='term'>应用程序</td><td>保存到文件夹、扫描到电子邮件、扫描到打印、扫描到 Word、扫描到 Excel、扫描到 PowerPoint、扫描到图片文件夹、用 PDF Edit 编辑——以及下方您自己的程序。</td></tr><tr><td class='term'>电子邮件选项...</td><td>在选择“扫描到电子邮件”时显示，并打开<a href='#email-options'>电子邮件选项</a>。</td></tr><tr><td class='term'>打印选项...</td><td>在选择“扫描到打印”时显示，并打开<a href='#print-options'>打印选项</a>。</td></tr><tr><td class='term'>安装/卸载...</td><td>添加或删除您自己的程序（<a href='#app-manage'>更多</a>）。</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>快速菜单开启时，此页面呈灰色不可用——届时您在扫描后选择目标。</p></div><div class='box tip'><div class='box-title'>小贴士</div><p>电子邮件和打印设置也可直接在托盘菜单中找到——使用快速菜单时尤其方便。在那里更改的值会立即生效，并会保存到当前活动的自定义配置文件中（默认配置文件保持不变）。</p></div><p>自定义应用程序会在扫描后以其参数启动；保存的文件会作为附加参数传入。</p>"
+ },
+ "save-tab": {
+  "Title": "“保存”页面",
+  "Summary": "扫描文件的保存位置以及文件名。",
+  "Html": "<div class='shot'><img src='help-img:page_save' alt='“保存”页面'><div class='caption'>“保存”页面</div></div><table class='items'><tr><td class='term'>图像数据保存文件夹</td><td>目标文件夹。使用<b>浏览...</b>更改（文本框本身不可编辑）。旁边的按钮可在资源管理器中打开该文件夹，右键单击可复制路径。默认值：<code>Dokumente\\SpeedScanManager</code>。</td></tr><tr><td class='term'>文件名格式...</td><td>打开<a href='#filename-format'>文件名格式</a>窗口。旁边会显示下一个文件名的示例。</td></tr><tr><td class='term'>扫描后重命名文件</td><td>开启：扫描后会出现<a href='#postscan-save'>保存到文件夹</a>窗口，您可以在其中更改名称和文件夹。</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>在“保存到文件夹”以及快速菜单中的“保存到文件夹”时，无论开关如何，此窗口都会出现。</p></div><div class='box tip'><div class='box-title'>小贴士</div><p>已有文件绝不会被覆盖：如果名称相同，将附加 <code>_1</code>、<code>_2</code> 等。如果生成多个文件（例如每页一张图片），它们会获得连续编号。</p></div>"
+ },
+ "scanmode-tab": {
+  "Title": "“扫描模式”页面",
+  "Summary": "分辨率、颜色，以及单面还是双面扫描。",
+  "Html": "<div class='shot'><img src='help-img:page_scanmode' alt='“扫描模式”页面'><div class='caption'>“扫描模式”页面</div></div>\r\n        <h2>图像质量</h2>\r\n        <p>分辨率越高，图像越清晰，但扫描耗时更长，文件也更大。</p>\r\n        <table class='grid'><tr><th>图像质量</th><th>彩色 / 灰度</th><th>黑白</th></tr><tr><td>自动</td><td>200 dpi</td><td>400 dpi</td></tr><tr><td>普通</td><td>150 dpi</td><td>300 dpi</td></tr><tr><td>精细</td><td>200 dpi</td><td>400 dpi</td></tr><tr><td>最佳</td><td>300 dpi</td><td>600 dpi</td></tr><tr><td>极佳</td><td>600 dpi</td><td>1200 dpi</td></tr></table>\r\n        <p>如果扫描仪不支持某个分辨率，程序会使用最接近的分辨率，并通过气泡提示告知您。</p>\r\n\r\n        <h2>颜色模式</h2>\r\n        <table class='items'><tr><td class='term'>自动颜色检测</td><td>以彩色扫描，并将每页相应保存为彩色、灰度或黑白。</td></tr><tr><td class='term'>彩色</td><td>始终保存为彩色（默认）。</td></tr><tr><td class='term'>灰度</td><td>始终保存为灰度。</td></tr><tr><td class='term'>黑白</td><td>始终为黑白——适合文字，文件非常小。</td></tr></table><div class='box warn'><div class='box-title'>注意</div><p>使用自动颜色检测时，色彩较少的页面可能会被识别为灰度或黑白。</p></div>\r\n\r\n        <h2>扫描面</h2>\r\n        <table class='items'><tr><td class='term'>自动</td><td>默认：如果纸张放在进纸器中，则进行双面扫描并删除空白的背面；否则，如果有平板，则使用平板。</td></tr><tr><td class='term'>双面扫描</td><td>正面和背面。</td></tr><tr><td class='term'>单面扫描</td><td>仅正面。</td></tr><tr><td class='term'>平板扫描</td><td>通过玻璃平板扫描。此时纸张尺寸将设为 A4（不进行自动检测）。</td></tr></table>\r\n        <p>如果扫描仪不支持双面或没有平板，程序将分别改为单面扫描或使用进纸器，并通过气泡提示告知您。</p>\r\n\r\n        <h2>更多设置</h2>\r\n        <table class='items'><tr><td class='term'>在当前扫描后继续扫描</td><td>每轮扫描后询问“继续扫描其他文档？”（<a href='#scan-continue'>更多</a>）。</td></tr><tr><td class='term'>选项...</td><td>亮度、空白页、倾斜、旋转、顺序——在<a href='#scanmode-options'>扫描模式选项</a>窗口中设置。</td></tr></table><div class='box tip'><div class='box-title'>小贴士</div><p>也可以通过<b>常规</b>页面中的<b>自定义</b>预设打开此页面。</p></div>"
+ },
+ "filetype-tab": {
+  "Title": "“文件类型”页面",
+  "Summary": "文件格式（PDF、JPEG、PNG）以及用于可搜索 PDF 的文字识别。",
+  "Html": "<div class='shot'><img src='help-img:page_filetype' alt='“文件类型”页面'><div class='caption'>“文件类型”页面</div>\r\n        </div>\r\n        <h2>文件格式</h2>\r\n        <table class='items'><tr><td class='term'>PDF (*.pdf)</td><td>所有页面保存在一个 PDF 文件中——或根据 <a href='#pdf-options'>PDF 选项</a>（<b>选项...</b>按钮）进行拆分。</td></tr><tr><td class='term'>JPEG (*.jpg)</td><td>每页一个图像文件。颜色模式为“黑白”时不可用。</td></tr><tr><td class='term'>PNG (*.png)</td><td>每页一个无损图像文件。</td></tr></table>\r\n\r\n        <h2>如何创建可搜索的 PDF</h2>\r\n        <ol class='steps'><li>将文件格式选为 <b>PDF</b>。</li><li>开启<b>转换为可搜索的 PDF</b>。</li><li>在<b>语言</b>中选择文档的语言（或<b>自动检测</b>），并在<b>目标页面</b>中选择<b>第一页</b>或<b>所有页面</b>。</li><li>点击<b>确定</b>。识别出的文字随后会以不可见的形式叠加在图像上——您可以在其中搜索并复制文字。</li></ol>\r\n\r\n        <h2>将标记的文字用作关键字</h2>\r\n        <p>开启<b>将标记的文字添加为 PDF 文件的关键字</b>后，用荧光笔标记的内容会作为关键字写入 PDF 属性中。在<b>目标标记</b>中，您可以选择第一处标记或所有标记。该功能只能与文字识别一起使用——否则会被跳过，并显示气泡提示。</p>\r\n\r\n        <h2>语言</h2>\r\n        <p>随附<b>德语</b>和<b>英语</b>。其他语言（日语、法语、意大利语、西班牙语、中文简体/繁体、韩语、俄语、葡萄牙语、阿拉伯语）在您将相应的 <code>.traineddata</code> 文件（例如 <code>fra.traineddata</code>）放入 <code>SpeedScanManager.exe</code> 旁边的 <code>tessdata</code> 文件夹后，便会出现在列表中。</p>\r\n        <p>选择<b>自动检测</b>时，程序会根据每页的字体，从已安装的语言中选择一种；否则使用德语和英语。</p>\r\n        <div class='box note'><div class='box-title'>提示</div>\r\n        <p>如果已保存的语言不再安装，其后会显示“(未安装)”。扫描时会出现气泡提示，并改用现有的语言（优先使用德语/英语）。</p>\r\n        </div>\r\n        "
+ },
+ "paper-tab": {
+  "Title": "“纸张”页面",
+  "Summary": "纸张尺寸、承载纸，以及多张进纸的检测。",
+  "Html": "<div class='shot'><img src='help-img:page_paper' alt='“纸张”页面'><div class='caption'>“纸张”页面</div></div>\r\n        <h2>纸张尺寸</h2>\r\n        <p><b>自动检测</b>（默认）会将每页裁切到纸张边缘：扫描仪的灰色背景以及纸张末端之后的空白区域都会被去除。<a href='#scan-long'>长页面</a>也需要此选项。其他可选项：</p>\r\n        <table class='grid'><tr><th>尺寸</th><th>规格</th></tr><tr><td>A3 / A4 / A5 / A6</td><td>297 × 420 / 210 × 297 / 148 × 210 / 105 × 148 mm</td></tr><tr><td>B4 / B5 / B6 (JIS)</td><td>257 × 364 / 182 × 257 / 128 × 182 mm</td></tr><tr><td>明信片</td><td>100 × 148 mm</td></tr><tr><td>名片</td><td>55 × 91 mm</td></tr><tr><td>Letter / Legal</td><td>8.5 × 11 in. / 8.5 × 14 in.</td></tr><tr><td>Double Letter</td><td>11 × 17 in.</td></tr><tr><td>自定义尺寸</td><td>最多 10 个，通过<b>自定义...</b>设置</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>哪些尺寸可用取决于扫描仪——否则会显示气泡提示。使用平板时没有自动检测。</p>\r\n        </div><table class='items'><tr><td class='term'>承载纸设置...</td><td>打开<a href='#carrier-sheet-dialog'>承载纸设置</a>。</td></tr><tr><td class='term'>自定义...</td><td>创建自定义纸张尺寸（<a href='#custom-size-dialog'>更多</a>）。</td></tr></table>\r\n\r\n        <h2>多张进纸检测</h2>\r\n        <p>检测扫描仪是否同时送入两张纸。</p>\r\n        <table class='items'><tr><td class='term'>关</td><td>不进行检查（默认）。</td></tr><tr><td class='term'>重叠检查 [超声波]</td><td>测量纸张厚度。</td></tr><tr><td class='term'>长度检查</td><td>比较纸张长度。</td></tr><tr><td class='term'>重叠与长度检查</td><td>两者同时进行。如果扫描仪无法同时进行，则仅使用超声波。</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>如果扫描仪报告其功能，不支持的选项会标注“(不支持)”，且无法选择。</p></div>"
+ },
+ "filesize-tab": {
+  "Title": "“文件大小”页面",
+  "Summary": "彩色和灰度图像的压缩程度——文件更小还是质量更好。",
+  "Html": "<div class='shot'><img src='help-img:page_filesize' alt='“文件大小”页面'><div class='caption'>“文件大小”页面</div></div>\r\n        <p>滑块有五个级别（默认为 3）。它决定 JPEG 质量——同样适用于 PDF 文件、Office 文档和图片文件夹。</p>\r\n        <table class='grid'><tr><th>级别</th><th>JPEG 质量</th><th>结果</th></tr><tr><td>1</td><td>100</td><td>最佳质量，文件最大</td></tr><tr><td>2</td><td>85</td><td></td></tr><tr><td>3</td><td>70</td><td>均衡</td></tr><tr><td>4</td><td>50</td><td></td></tr><tr><td>5</td><td>30</td><td>文件最小，可见的质量损失</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>颜色模式为“黑白”以及文件格式为 PNG 时，滑块呈灰色不可用：黑白图像和 PNG 均以无损方式保存。</p></div><div class='box tip'><div class='box-title'>小贴士</div><p>要获得便于发送的小文件，通常只需使用<b>常规</b>页面中的<b>小文件</b>预设即可。</p></div>"
+ },
+ "dialogs": {
+  "Title": "窗口和对话框",
+  "Summary": "快速菜单、保存窗口以及所有其他带图片的对话框。",
+  "Html": ""
+ },
+ "postscan-media": {
+  "Title": "快速菜单",
+  "Summary": "“您想将扫描内容保存到哪里？”——快速菜单开启时，每次扫描后都会出现。",
+  "Html": "<div class='shot'><img src='help-img:quickmenu' alt='快速菜单'><div class='caption'>快速菜单</div></div><table class='legend'><tr><td><span class='num'>1</span></td><td>点击某个目标以选中它（也可使用方向键）。<b>双击</b>则立即执行。</td></tr><tr><td><span class='num'>2</span></td><td><b>取消</b>或关闭按钮：关闭窗口。文件仍保留（气泡提示“扫描已保存”）。</td></tr><tr><td><span class='num'>3</span></td><td><b>保存</b>：执行所选目标。</td></tr></table>\r\n        <p>顶部显示已扫描的页数。此时文件已保存在保存文件夹中。窗口保持在最前面。</p>\r\n        <h2>八个目标</h2>\r\n        <table class='items'><tr><td class='term'>保存到文件夹</td><td>打开<a href='#postscan-save'>保存到文件夹</a>，用于设置标题和目标文件夹。</td></tr><tr><td class='term'>通过电子邮件发送</td><td>电子邮件程序，并以该文件作为附件。</td></tr><tr><td class='term'>打印</td><td>打印页面。</td></tr><tr><td class='term'>转换为 Word</td><td>以页面图片组成的 Word 文档（.docx）。</td></tr><tr><td class='term'>转换为 Excel</td><td>以页面图片组成的 Excel 文件（.xlsx）。</td></tr><tr><td class='term'>转换为 PowerPoint</td><td>以页面图片组成的演示文稿（.pptx）。</td></tr><tr><td class='term'>保存到图片文件夹</td><td>JPEG 文件保存在 <code>Bilder\\SpeedScanManager</code> 中。</td></tr><tr><td class='term'>用 PDF Edit 编辑</td><td>在为其设置的程序中打开文件。</td></tr></table>"
+ },
+ "postscan-save": {
+  "Title": "保存到文件夹",
+  "Summary": "检查页面，并设置文件名和目标文件夹。",
+  "Html": "<div class='shot'><img src='help-img:save_dialog' alt='“保存到文件夹”窗口'><div class='caption'>“保存到文件夹”窗口</div></div><table class='legend'><tr><td><span class='num'>1</span></td><td><b>预览</b>已扫描的页面。</td></tr><tr><td><span class='num'>2</span></td><td><b>翻页</b>浏览各页（“第 2 页，共 3 页”）。</td></tr><tr><td><span class='num'>3</span></td><td><b>设置标题</b>：建议的文件名——可按需更改。无效字符会被替换。</td></tr><tr><td><span class='num'>4</span></td><td><b>设置目标文件夹</b>：使用<b>浏览...</b>选择文件夹（该文本框不能直接编辑）。</td></tr><tr><td><span class='num'>5</span></td><td><b>保存</b>：应用名称和文件夹。</td></tr></table>\r\n        <p>右下角的<b>扫描设置</b>分组汇总了扫描方式（预设、分辨率、颜色模式、扫描面、文件格式、压缩）。</p>\r\n        <div class='box note'><div class='box-title'>提示</div><p>文件已经保存——此窗口只是重命名或移动它。如果有多个文件，会附加编号；已有文件绝不会被覆盖（<code>_1</code> 等）。</p></div><div class='box warn'><div class='box-title'>注意</div><p><b>取消</b>、<span class='kbd'>Esc</span> 或关闭按钮会询问“放弃此扫描？”。选择<b>是</b>将删除已创建的文件，选择<b>否</b>则返回窗口。</p></div>"
+ },
+ "scanmode-options": {
+  "Title": "扫描模式选项",
+  "Summary": "亮度和自动图像增强。通过“扫描模式”页面中的<b>选项...</b>打开。",
+  "Html": "<div class='shot'><img src='help-img:dlg_scanmode_options' alt='“扫描模式选项”窗口'><div class='caption'>“扫描模式选项”窗口</div></div>\r\n        <h2>亮度</h2>\r\n        <p>从“更暗 -3”到“更亮 +3”共七个级别（中间为普通）。滑块仅在颜色模式为<b>黑白</b>时生效——否则呈灰色不可用（“仅适用于黑白扫描”）。</p>\r\n        <h2>图像处理</h2>\r\n        <table class='items'><tr><td class='term'>仅适用于文本文档的设置</td><td>增强黑白图像的对比度——适合文字和手写内容。</td></tr><tr><td class='term'>允许自动删除空白页</td><td>删除空白页（默认：开启）。如果所有页面都是空白的，则不保存任何文件。</td></tr><tr><td class='term'>自动校正倾斜</td><td>将倾斜送入的页面摆正（默认：关闭）。</td></tr><tr><td class='term'>允许自动图像旋转</td><td>将侧放或颠倒扫描的页面正确转向（默认：开启）。为此，程序会试读一段文字。如果文字不足，则不会旋转。</td></tr><tr><td class='term'>正面朝上放入文档</td><td>如果您将文档正面朝上放入，请开启：顺序会被反转，以便页面正确排序。</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>扫描面为“自动”时，即使未开启“空白页”选项，空白的背面也会被删除。</p>\r\n        </div><p><b>确定</b>应用更改，<b>取消</b>放弃更改。</p>"
+ },
+ "pdf-options": {
+  "Title": "PDF 选项",
+  "Summary": "拆分 PDF 并设置密码保护。通过“文件类型”页面（仅 PDF）中的<b>选项...</b>打开。",
+  "Html": "<div class='shot'><img src='help-img:dlg_pdf_options' alt='“PDF 选项”窗口'><div class='caption'>“PDF 选项”窗口</div></div>\r\n        <h2>拆分 PDF 页面</h2>\r\n        <table class='items'><tr><td class='term'>多页 PDF 文件</td><td>所有页面保存在一个 PDF 文件中（默认）。</td></tr><tr><td class='term'>每个新 PDF 文件包含的页数</td><td>每隔这么多页（1–999）开始一个新文件，例如 <code>Name_001.pdf</code>、<code>Name_002.pdf</code>。</td></tr></table>\r\n        <h2>密码</h2>\r\n        <ol class='steps'><li>开启<b>设置 PDF 文件密码</b>。</li><li>在<b>密码</b>中输入密码，并在<b>确认</b>中再次输入。</li><li>点击<b>确定</b>。如果缺少密码或两次输入不一致，会显示提示，窗口保持打开。</li></ol><div class='box note'><div class='box-title'>提示</div><p>密码以加密形式保存，且仅可由您的 Windows 用户账户读取。如果无法读取（例如从其他电脑导入的设置），保护功能会保持开启，程序将在下一次扫描前再次询问——届时请在此重新输入密码。</p></div>"
+ },
+ "filename-format": {
+  "Title": "文件名格式",
+  "Summary": "扫描文件的自动命名方式。通过“保存”页面中的<b>文件名格式...</b>打开。",
+  "Html": "<div class='shot'><img src='help-img:dlg_filename' alt='“文件名格式”窗口，显示自定义名称'><div class='caption'>“文件名格式”窗口，显示自定义名称</div></div>\r\n        <p>窗口底部的<b>示例</b>会显示下一个文件名的样子。</p>\r\n        <table class='items'><tr><td class='term'>Windows 系统设置</td><td>采用 Windows 格式的日期和时间。不允许的字符（如 <code>:</code> 和 <code>/</code>）会替换为 <code>-</code>，例如 <code>12.04.2026 15-30-45.pdf</code>。</td></tr><tr><td class='term'>JJJJMMTThhmmss</td><td>日期和时间连续排列，例如 <code>20260412153045.pdf</code>（默认）。</td></tr><tr><td class='term'>自定义文件名</td><td>您自己的名称加上连续编号，例如 <code>Rechnung_001.pdf</code>。</td></tr></table>\r\n        <h2>设置自定义名称</h2>\r\n        <ol class='steps'><li>选择<b>自定义文件名</b>。</li><li>在<b>文件名</b>中输入名称的开头部分（最多 30 个字符）。</li><li>在<b>计数器</b>中选择编号的位数（3、4 或 5 位数字）。</li><li>点击<b>确定</b>。</li></ol><div class='box note'><div class='box-title'>提示</div><p>不允许使用以下字符：\\ / : * ? \" &lt; &gt; |，不允许以句点结尾，也不允许使用 Windows 保留名称（例如 CON、NUL、COM1）。计数器从 1 开始，并从文件夹中已有的最大编号之后继续。如果名称已存在，则会附加 <code>_1</code>、<code>_2</code> 等。</p></div><p><b>应用</b>（左下角）应用设置但不关闭窗口；<b>取消</b>放弃更改。</p>"
+ },
+ "new-profile": {
+  "Title": "添加新配置文件",
+  "Summary": "用于输入新配置文件名称的小窗口。",
+  "Html": "<div class='shot'><img src='help-img:dlg_new_profile' alt='输入新配置文件的名称'><div class='caption'>输入新配置文件的名称</div></div>\r\n        <p>输入一个名称（最多 64 个字符），然后点击<b>确定</b>。名称必须唯一——不区分大小写。无效或重复的名称会被拒绝并显示提示。</p>\r\n        <table class='items'><tr><td class='term'>通过“添加配置文件...”</td><td>设置中的<b>常规</b>页面：新配置文件沿用当前设置的值。</td></tr><tr><td class='term'>通过配置文件管理中的“添加...”</td><td>新配置文件从<a href='#default-settings'>默认设置</a>开始。</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>重命名时（“重命名配置文件”）也会显示同一窗口。配置文件总数最多为 20 个（包括默认配置文件）。</p>\r\n        </div>"
+ },
+ "profile-mgmt-dialog": {
+  "Title": "配置文件管理",
+  "Summary": "添加、重命名、删除和排序配置文件。",
+  "Html": "<div class='shot'><img src='help-img:dlg_profiles' alt='“配置文件管理”窗口'><div class='caption'>“配置文件管理”窗口</div></div><table class='items'><tr><td class='term'>添加...</td><td>以默认设置新建配置文件（最多 20 个）。</td></tr><tr><td class='term'>重命名...</td><td>为所选配置文件设置新名称。</td></tr><tr><td class='term'>删除</td><td>经确认后删除所选配置文件。</td></tr><tr><td class='term'>上移 / 下移</td><td>在列表中移动该配置文件。</td></tr><tr><td class='term'>关闭</td><td>关闭窗口。</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>八个默认配置文件不能重命名或删除，但可以移动。自定义配置文件可以自由编辑。</p></div>"
+ },
+ "app-manage": {
+  "Title": "自定义应用程序",
+  "Summary": "最多添加十个自定义程序，扫描后将与文件一起启动。",
+  "Html": "<div class='shot'><img src='help-img:dlg_apps' alt='“安装/卸载”窗口'><div class='caption'>“安装/卸载”窗口</div></div>\r\n        <h2>添加程序</h2>\r\n        <ol class='steps'><li>点击<b>添加...</b>。</li><li>使用<b>浏览...</b>选择程序文件（*.exe）。如果名称为空，将使用文件名。</li><li>根据需要修改<b>名称</b>（唯一，最多 64 个字符）——程序会以此名称出现在“应用程序”列表中。</li><li>如有需要，填写<b>参数</b>。扫描的文件随后会以引号括起来附加在其后。</li><li>点击<b>确定</b>。</li></ol><div class='shot'><img src='help-img:dlg_app_edit' alt='添加或更改程序'><div class='caption'>添加或更改程序</div></div><table class='items'><tr><td class='term'>更改...</td><td>修改所选程序的信息。双击该条目也可执行相同操作。</td></tr><tr><td class='term'>删除</td><td>将所选程序从列表中删除。</td></tr><tr><td class='term'>关闭</td><td>关闭窗口。</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>对此列表的更改会立即保存——与设置窗口中的“确定”或“取消”无关。如果之后找不到某个程序或无法启动，会显示提示；扫描内容仍会保存。</p></div>"
+ },
+ "email-options": {
+  "Title": "电子邮件选项",
+  "Summary": "“扫描到电子邮件”的收件人和主题。通过“应用程序”页面或托盘菜单中的<b>电子邮件设置...</b>打开。",
+  "Html": "<div class='shot'><img src='help-img:dlg_email' alt='“扫描到电子邮件”窗口'><div class='caption'>“扫描到电子邮件”窗口</div></div><table class='items'><tr><td class='term'>默认收件人</td><td>自动填入每封新邮件的收件人。</td></tr><tr><td class='term'>主题模板</td><td>邮件主题。如果此字段为空，则主题为“扫描的文档”。</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>使用的是 Windows 中设为 MAPI 默认的电子邮件程序。如果无法打开，会显示提示并打开包含文件的文件夹——以便您手动添加附件。</p></div>"
+ },
+ "print-options": {
+  "Title": "打印选项",
+  "Summary": "“扫描到打印”使用的打印机。通过“应用程序”页面或托盘菜单中的<b>打印设置...</b>打开。",
+  "Html": "<div class='shot'><img src='help-img:dlg_print' alt='“扫描到打印”窗口'><div class='caption'>“扫描到打印”窗口</div></div>\r\n        <p>在<b>目标打印机</b>下选择已安装的打印机之一。<b>(默认打印机)</b>始终使用当前的 Windows 默认打印机。</p>\r\n        <div class='box note'><div class='box-title'>提示</div><p>将按原始尺寸打印；需要时会自动选择横向。如果所设打印机已不存在，会询问您是否改用默认打印机。如果根本没有安装打印机，则只保存扫描内容。</p></div>"
+ },
+ "carrier-sheet-dialog": {
+  "Title": "承载纸设置",
+  "Summary": "开启承载纸模式并选择合成图像的尺寸。",
+  "Html": "<div class='shot'><img src='help-img:dlg_carrier' alt='“承载纸设置”窗口及说明'><div class='caption'>“承载纸设置”窗口及说明</div></div><table class='items'><tr><td class='term'>启用承载纸模式</td><td>开启合成功能。如果此开关关闭，其他字段将被锁定。</td></tr><tr><td class='term'>模式</td><td><b>将两面合成为一张图像</b>：正面和背面（双面）并排放置。</td></tr><tr><td class='term'>输出图像尺寸</td><td>自动检测、A3–A6、B4–B6 (JIS)、Letter、Double Letter、明信片、名片、承载纸尺寸 (220 × 297 mm)，或<b>自定义...</b></td></tr><tr><td class='term'>自定义尺寸</td><td>选择“自定义...”时显示：宽度和高度，单位毫米（50–2000）。</td></tr></table>\r\n        <p><b>说明</b>分组用三幅图展示操作方法：对折文档、放入承载纸、送入扫描仪。</p>\r\n        <div class='box warn'><div class='box-title'>注意</div><p>只有特定型号的扫描仪支持承载纸。</p></div>"
+ },
+ "custom-size-dialog": {
+  "Title": "自定义纸张尺寸",
+  "Summary": "最多创建十个自定义纸张尺寸——之后它们会出现在“纸张尺寸”列表中。",
+  "Html": "<div class='shot'><img src='help-img:dlg_custom_size' alt='“自定义尺寸”窗口'><div class='caption'>“自定义尺寸”窗口</div></div><ol class='steps'><li>点击<b>添加...</b>。</li><li>输入<b>名称</b>（最多 62 个字符）以及以毫米为单位的<b>宽度</b>和<b>长度</b>（1–9999）。</li><li>点击<b>确定</b>。</li></ol><table class='items'><tr><td class='term'>更改...</td><td>更改所选尺寸的名称或规格。</td></tr><tr><td class='term'>删除</td><td>删除所选尺寸。</td></tr><tr><td class='term'>所选尺寸</td><td>显示所选尺寸的宽度 × 长度。</td></tr><tr><td class='term'>关闭</td><td>关闭窗口。</td></tr></table>"
+ },
+ "version-info": {
+  "Title": "版本信息",
+  "Summary": "版本、许可证以及项目链接。通过托盘菜单中的<b>帮助 › 版本信息</b>打开。",
+  "Html": "<div class='shot'><img src='help-img:dlg_version' alt='“版本信息”窗口'><div class='caption'>“版本信息”窗口</div></div><table class='items'><tr><td class='term'>徽标和版本</td><td>已安装的 SpeedScan Manager 版本。</td></tr><tr><td class='term'>许可证与署名</td><td>GPL-3.0 许可证说明，以及所用库的信息：NTwain（TWAIN）、Tesseract.NET（文字识别）和 PdfSharpCore（PDF）。</td></tr><tr><td class='term'>GitHub / Discord</td><td>在浏览器中分别打开项目页面或 Discord 服务器。</td></tr><tr><td class='term'>详细信息...</td><td>显示<a href='#driver-info'>扫描仪和驱动程序信息</a>。</td></tr><tr><td class='term'>确定</td><td>关闭窗口。</td></tr></table>"
+ },
+ "driver-info": {
+  "Title": "扫描仪和驱动程序信息",
+  "Summary": "扫描仪及程序文件的技术信息——请求帮助时非常实用。",
+  "Html": "<div class='shot'><img src='help-img:dlg_driver' alt='“扫描仪和驱动程序信息”窗口'><div class='caption'>“扫描仪和驱动程序信息”窗口</div></div><table class='items'><tr><td class='term'>扫描仪</td><td>名称、制造商、产品系列和驱动程序版本。这些值可以选中并复制。没有扫描仪时显示“未连接扫描仪”。</td></tr><tr><td class='term'>文件版本</td><td>程序文件以及 NTwain、Tesseract、PdfSharpCore 和 DocumentFormat.OpenXml 库的名称、版本和日期。</td></tr><tr><td class='term'>确定</td><td>关闭窗口。</td></tr></table>"
+ },
+ "profiles": {
+  "Title": "配置文件",
+  "Summary": "保存并选择适用于常见任务的固定设置。",
+  "Html": ""
+ },
+ "profile-mgmt": {
+  "Title": "使用配置文件",
+  "Summary": "配置文件保存所有扫描设置——例如“发票”以 PDF 形式保存到固定文件夹。",
+  "Html": "\r\n        <p>仅当快速菜单<b>关闭</b>时，配置文件才会生效。一个配置文件包含“应用程序”“保存”“扫描模式”“文件类型”“纸张”和“文件大小”等页面。最多可以有 20 个配置文件，其中包括八个默认配置文件。</p>\r\n\r\n        <h2>创建新配置文件</h2>\r\n        <ol class='steps'><li>打开<a href='#settings'>设置</a>，将所有内容调整为该配置文件应有的状态。</li><li>在<b>常规</b>页面的<b>配置文件</b>分组中，点击<b>添加配置文件...</b>。</li><li>输入一个<a href='#new-profile'>名称</a>，然后点击<b>确定</b>。</li></ol>\r\n\r\n        <h2>使用配置文件</h2>\r\n        <p>在<b>活动配置文件</b>下选择该配置文件，然后点击<b>确定</b>。此后每次按键扫描都会使用此配置文件。</p>\r\n\r\n        <h2>更改配置文件</h2>\r\n        <p>选择该配置文件，更改设置，然后点击<b>确定</b>或<b>应用</b>——更改将保存到配置文件中。默认配置文件保持不变；系统会询问您是否要创建新配置文件。</p>\r\n\r\n        <h2>重命名、删除、排序</h2>\r\n        <p>在<a href='#profile-mgmt-dialog'>配置文件管理</a>中进行——可通过<b>常规</b>页面中的<b>配置文件管理...</b>或托盘菜单打开。</p>\r\n        <div class='box note'><div class='box-title'>提示</div>\r\n        <p>快速菜单开启时，“配置文件”分组呈灰色不可用。</p>\r\n        </div>"
+ },
+ "default-settings": {
+  "Title": "默认设置",
+  "Summary": "这些值适用于首次启动、所有默认配置文件，以及配置文件管理中新建的配置文件。",
+  "Html": "<table class='grid'><tr><th>设置</th><th>默认值</th></tr><tr><td>使用快速菜单</td><td>开</td></tr><tr><td>登录时启动</td><td>开</td></tr><tr><td>应用程序</td><td>扫描到文件夹</td></tr><tr><td>保存文件夹</td><td>Dokumente\\SpeedScanManager</td></tr><tr><td>文件名格式</td><td>日期和时间 (JJJJMMTThhmmss)</td></tr><tr><td>自定义文件名</td><td>未命名，3 位数字</td></tr><tr><td>扫描后重命名文件</td><td>关</td></tr><tr><td>图像质量</td><td>自动 (200 dpi，黑白 400 dpi)</td></tr><tr><td>颜色模式</td><td>彩色</td></tr><tr><td>扫描面</td><td>自动</td></tr><tr><td>继续扫描</td><td>关</td></tr><tr><td>亮度</td><td>普通</td></tr><tr><td>删除空白页</td><td>开</td></tr><tr><td>校正倾斜</td><td>关</td></tr><tr><td>自动图像旋转</td><td>开</td></tr><tr><td>文件格式</td><td>PDF，多页，无密码</td></tr><tr><td>文字识别 (OCR)</td><td>关（语言：自动检测，目标页面：所有页面）</td></tr><tr><td>纸张尺寸</td><td>自动检测</td></tr><tr><td>多张进纸检测</td><td>关</td></tr><tr><td>承载纸模式</td><td>关</td></tr><tr><td>压缩率</td><td>第 3 级（共 5 级）</td></tr><tr><td>电子邮件主题</td><td>扫描的文档</td></tr><tr><td>目标打印机</td><td>(默认打印机)</td></tr></table>\r\n\r\n        <h2>八个默认配置文件</h2>\r\n        <p>每个目标对应一个。它们使用默认设置，仅在应用程序上有所不同：</p>\r\n        <table class='grid'><tr><th>配置文件</th><th>应用程序</th></tr><tr><td>保存到文件夹</td><td>扫描到文件夹</td></tr><tr><td>通过电子邮件发送</td><td>扫描到电子邮件</td></tr><tr><td>打印</td><td>扫描到打印</td></tr><tr><td>转换为 Word 文档</td><td>扫描到 Word</td></tr><tr><td>转换为 Excel 表格</td><td>扫描到 Excel</td></tr><tr><td>转换为 PowerPoint 演示文稿</td><td>扫描到 PowerPoint</td></tr><tr><td>保存到图片文件夹</td><td>扫描到图片文件夹</td></tr><tr><td>用 PDF 程序编辑</td><td>用 PDF Edit 编辑</td></tr></table><div class='box note'><div class='box-title'>提示</div><p>预设<b>推荐</b>、<b>小文件</b>和<b>高图像质量</b>不是配置文件，而是图像质量和压缩的预设。</p></div>"
+ },
+ "troubleshooting": {
+  "Title": "解决问题",
+  "Summary": "常见问题、多张进纸，以及程序的所有消息。",
+  "Html": ""
+ },
+ "faq": {
+  "Title": "常见问题",
+  "Summary": "最常见的问题及最快的解决方法。",
+  "Html": "<div class='qa'><h3>无法识别扫描仪</h3><ul><li>扫描仪是否已开机，并通过 USB 或网络连接？</li><li>是否已安装制造商的 TWAIN 驱动程序（32 位 TWAIN 源）？</li><li>是否连接了多台扫描仪？请在<a href='#scanner-selection'>选择扫描仪</a>中选择正确的一台。</li><li>程序启动后请等待几秒钟——只有那时才会查询扫描仪。如有需要，可以短暂拔下 USB 线缆后重新插入。</li></ul></div><div class='qa'><h3>按下扫描仪上的按键没有开始扫描</h3><p>在托盘菜单中选择<b>设置扫描键...</b>，并在 Windows 提示时点击<b>是</b>。如果正在进行扫描，或之后仍有窗口打开（例如快速菜单），按键会被忽略。<a href='#scan-button'>关于扫描键的更多信息</a></p></div><div class='qa'><h3>我的扫描文件在哪里？</h3><p>在托盘菜单中选择<b>显示扫描结果</b>。默认情况下，扫描文件保存在 <code>Dokumente\\SpeedScanManager</code> 中；您可以在<a href='#save-tab'>保存</a>页面中更改该文件夹。</p></div><div class='qa'><h3>没有保存任何文件</h3><p>所有页面都被识别为空白并已删除——例如单面扫描时只扫到了空白的背面。相关选项位于<a href='#scanmode-options'>扫描模式选项</a>中。</p></div><div class='qa'><h3>“应用程序”页面呈灰色不可用</h3><p>快速菜单已开启——届时您在每次扫描后选择目标。如果想使用固定目标，请在<b>常规</b>页面中关闭<b>使用快速菜单</b>。</p></div><div class='qa'><h3>无法选择 JPEG</h3><p>颜色模式为<b>黑白</b>时，JPEG 不可用。请选择 PDF 或 PNG——或更改颜色模式。</p></div><div class='qa'><h3>文件太大</h3><p>在<b>常规</b>页面中选择<b>小文件</b>预设，或在<a href='#filesize-tab'>文件大小</a>页面中提高压缩级别。对于纯文本，<b>黑白</b>节省空间最多。</p></div><div class='qa'><h3>页面倾斜、颠倒或排序错误</h3><p>在<a href='#scanmode-options'>扫描模式选项</a>中：<b>自动校正倾斜</b>、<b>允许自动图像旋转</b>，以及——如果您是正面朝上放入文档——<b>正面朝上放入文档</b>。</p></div><div class='qa'><h3>文字识别不支持我的语言</h3><p>将相应的 <code>.traineddata</code> 文件放入 <code>SpeedScanManager.exe</code> 旁边的 <code>tessdata</code> 文件夹中（<a href='#filetype-tab'>更多</a>）。</p></div><div class='qa'><h3>扫描仪提示“多张进纸”</h3><p>请阅读<a href='#multifeed-measures'>多张进纸时该怎么办？</a></p></div><div class='box tip'><div class='box-title'>小贴士</div><p>所有消息及其说明的列表请参阅<a href='#message-list'>消息列表</a>。</p></div>"
+ },
+ "multifeed-dialog": {
+  "Title": "检测到多张进纸",
+  "Summary": "扫描仪可能一次送入了两张纸。它会等待您做出决定。",
+  "Html": "<div class='shot'><img src='help-img:multifeed_dialog' alt='“检测到多张进纸！”窗口'><div class='caption'>“检测到多张进纸！”窗口</div></div>\r\n        <p>您会看到上一页以及受影响的页面（以红色标记）。如果没有上一页，则显示“无可用缩略图”。</p>\r\n        <table class='items'><tr><td class='term'>重试</td><td>丢弃本轮的页面并中止扫描（“扫描已丢弃”）。请重新放入页面并再次扫描。这是默认按钮（<span class='kbd'>Enter</span>）；关闭按钮的效果相同。</td></tr><tr><td class='term'>按此保留</td><td>保留该页面并继续扫描。</td></tr><tr><td class='term'>关闭检测</td><td>保留该页面，并在本次剩余扫描中忽略其后的提示。</td></tr></table><div class='box warn'><div class='box-title'>注意</div><p>信封，或贴有便签、照片或邮票的纸张，常被误判为多张进纸。<span class='kbd'>Esc</span> 不会关闭此窗口。</p></div>"
+ },
+ "multifeed-measures": {
+  "Title": "多张进纸时该怎么办？",
+  "Summary": "当“检测到多张进纸！”窗口出现时，如何正确做出选择。",
+  "Html": "\r\n        <h2>页面完整且顺序正确</h2>\r\n        <p>点击<b>按此保留</b>——扫描将继续。对于信封，或贴有便签、照片或邮票的纸张，同样如此；如果还有更多此类页面，请选择<b>关闭检测</b>。</p>\r\n\r\n        <h2>缺少某一页或顺序不对</h2>\r\n        <ol class='steps'><li>点击<b>重试</b>。本轮的页面将被丢弃。</li><li>将所有纸张从扫描仪中取出——包括出纸托盘中的——并把文档对齐。</li><li>将整叠文档重新放入，然后开始新的扫描。</li></ol><div class='box tip'><div class='box-title'>小贴士</div><p>如果经常发生，请在放入前把纸张稍微扇开。要选择使用哪种检测方式，请在<a href='#paper-tab'>纸张</a>页面中设置。</p>\r\n        </div>"
+ },
+ "message-list": {
+  "Title": "消息列表",
+  "Summary": "SpeedScan Manager 可能显示的所有消息。“...”代表名称、路径或错误文本。",
+  "Html": "<h2>消息窗口</h2><table class='items'><tr><td><b>已有扫描正在进行。</b><br><span style='font-size:9pt'>在扫描期间选择了“扫描”或“选择扫描仪”。</span></td></tr><tr><td><b>TWAIN 未初始化。没有可用的扫描仪。</b><br><span style='font-size:9pt'>TWAIN 源管理器无法启动——请检查驱动程序是否已正确安装。</span></td></tr><tr><td><b>无法打开 TWAIN 源管理器。</b></td></tr><tr><td><b>未找到扫描仪。</b></td></tr><tr><td><b>无法打开扫描仪。请检查它是否已开机并已连接？</b></td></tr><tr><td><b>无法启动扫描。</b></td></tr><tr><td><b>扫描仪无响应。未扫描任何页面。</b></td></tr><tr><td><b>未扫描任何页面。请将文档放入扫描仪后重试。</b></td></tr><tr><td><b>所有扫描页面均被识别为空白并已删除。未保存任何文件。</b></td></tr><tr><td><b>未创建任何文件。</b></td></tr><tr><td><b>无法保存扫描：...</b></td></tr><tr><td><b>无法将扫描保存到目标文件夹……已改为保存到此处：Dokumente\\SpeedScanManager</b></td></tr><tr><td><b>无法创建目标文件夹……扫描文件仍保存在此处：...</b></td></tr><tr><td><b>以下文件无法移动到“...”，将保留在“...”中：</b></td></tr><tr><td><b>放弃此扫描？</b><br><span style='font-size:9pt'>是：删除此扫描。否：返回窗口。</span></td></tr><tr><td><b>电子邮件程序无法以该文件作为附件打开。</b><br><span style='font-size:9pt'>将打开包含该文件的文件夹，以便您手动添加附件。</span></td></tr><tr><td><b>没有可打印的页面。</b></td></tr><tr><td><b>未安装打印机。扫描已保存，但未打印。</b></td></tr><tr><td><b>未找到打印机“...”。是否在默认打印机上打印？</b></td></tr><tr><td><b>打印失败：...</b></td></tr><tr><td><b>无法创建 Word / Excel / PowerPoint 文件：...</b></td></tr><tr><td><b>文件已创建，但无法打开（是否已安装 Word / Excel / PowerPoint？）</b></td></tr><tr><td><b>无法将图像保存到图片文件夹：...</b></td></tr><tr><td><b>无法打开文件：...</b></td></tr><tr><td><b>无法找到或启动程序“...”。</b><br><span style='font-size:9pt'>自定义应用程序——扫描已保存。</span></td></tr><tr><td><b>文件夹“...”不存在。</b><br><span style='font-size:9pt'>用于“查看扫描结果”。</span></td></tr><tr><td><b>当前正在进行扫描。取消扫描并退出 SpeedScan Manager 吗？</b></td></tr><tr><td><b>上一次扫描尚未完成。仍要退出 SpeedScan Manager 吗？</b></td></tr><tr><td><b>无法读取 PDF 密码，请重新输入。</b><br><span style='font-size:9pt'>设置 › 文件类型 › 选项 › 密码。</span></td></tr><tr><td><b>扫描键的设置已取消。／无法设置扫描键。</b></td></tr><tr><td><b>最多可以创建 20 个配置文件。</b></td></tr><tr><td><b>默认配置文件“...”无法更改。是否将更改保存为新配置文件？</b></td></tr><tr><td><b>SpeedScan Manager 发生意外错误。程序将继续运行。</b><br><span style='font-size:9pt'>详细信息请参阅 %LocalAppData%\\SpeedScanManager\\crash.log。</span></td></tr></table><h2>托盘图标上的气泡提示</h2><table class='items'><tr><td><b>扫描仪未连接或已关机。</b></td></tr><tr><td><b>TWAIN 无法初始化。无法扫描。</b></td></tr><tr><td><b>扫描已取消</b><br><span style='font-size:9pt'>扫描已取消。</span></td></tr><tr><td><b>扫描已丢弃</b><br><span style='font-size:9pt'>多张进纸：页面已丢弃。请重新放入文档。 – 或 – 扫描已删除。</span></td></tr><tr><td><b>扫描已保存</b><br><span style='font-size:9pt'>文件名和文件夹，或文件数量。</span></td></tr><tr><td><b>打印</b><br><span style='font-size:9pt'>文档已发送到打印机。</span></td></tr><tr><td><b>扫描仍在保存中。SpeedScan Manager 将在保存后退出。</b></td></tr><tr><td><b>扫描键已设置。按下该键即可开始扫描。</b></td></tr><tr><td><b>扫描提示：扫描仪无响应。</b><br><span style='font-size:9pt'>扫描已取消。</span></td></tr><tr><td><b>扫描提示：一页或多页无法传输。</b></td></tr><tr><td><b>扫描提示：颜色模式／平板／双面不受支持</b><br><span style='font-size:9pt'>将使用进纸器，或改为单面扫描。</span></td></tr><tr><td><b>扫描提示：不支持该分辨率</b><br><span style='font-size:9pt'>已使用另一种分辨率。</span></td></tr><tr><td><b>扫描提示：多张进纸检测</b><br><span style='font-size:9pt'>无法启用，或仅启用超声波检测。</span></td></tr><tr><td><b>扫描提示：纸张尺寸</b><br><span style='font-size:9pt'>所选尺寸不受支持，或未选择有效的自定义尺寸。</span></td></tr><tr><td><b>提示：OCR 语言数据缺失</b><br><span style='font-size:9pt'>将使用其他语言，或跳过文字识别。</span></td></tr><tr><td><b>提示：文字识别不可用</b><br><span style='font-size:9pt'>缺少 tessdata，或识别失败。</span></td></tr><tr><td><b>提示：自动图像旋转不可用</b><br><span style='font-size:9pt'>缺少 osd.traineddata。</span></td></tr><tr><td><b>提示：标记的关键字需要文字识别</b><br><span style='font-size:9pt'>已跳过。</span></td></tr><tr><td><b>提示：内存不足，无法进行倾斜校正</b><br><span style='font-size:9pt'>已跳过。</span></td></tr></table>"
+ },
+ "reference": {
+  "Title": "附录",
+  "Summary": "简要说明缩写和专业术语。",
+  "Html": ""
+ },
+ "abbreviations": {
+  "Title": "缩写",
+  "Summary": "本帮助中出现的专业术语。",
+  "Html": "<table class='grid'><tr><th>缩写</th><th>含义</th></tr><tr><td>ADF</td><td>Automatic Document Feeder – 自动送纸器</td></tr><tr><td>dpi</td><td>dots per inch – 每英寸点数（分辨率）</td></tr><tr><td>Duplex / Simplex</td><td>双面 / 单面扫描</td></tr><tr><td>JPEG</td><td>常用图像格式（有损压缩）</td></tr><tr><td>MAPI</td><td>程序用来创建电子邮件的接口</td></tr><tr><td>OCR</td><td>Optical Character Recognition – 文字识别</td></tr><tr><td>OSD</td><td>Orientation and Script Detection – 方向与文字检测</td></tr><tr><td>PDF</td><td>Portable Document Format – 便携式文档格式</td></tr><tr><td>PNG</td><td>Portable Network Graphics – 无损图像格式</td></tr><tr><td>S&amp;W</td><td>黑白</td></tr><tr><td>TWAIN</td><td>扫描仪与软件之间连接的标准</td></tr><tr><td>UAC</td><td>User Account Control – Windows 用户账户控制</td></tr><tr><td>USB</td><td>Universal Serial Bus – 通用串行总线</td></tr><tr><td>WIA / STI</td><td>用于图像设备的 Windows 接口，包括扫描键等功能</td></tr></table>"
+ }
+}

@@ -231,7 +231,7 @@ internal class ApplicationEditDialog : ModernWindow
         _txtName = new TextBox { MaxLength = 64, AccessibleName = L.T("Name") };
 
         _txtPath = new TextBox { AccessibleName = L.T("Programm") };
-        var btnBrowse = new Button { Text = "Durchsuchen...", Size = new Size(132, 32) };
+        var btnBrowse = new Button { Text = L.T("Durchsuchen..."), Size = new Size(132, 32) };
         ThemeManager.SetGlyph(btnBrowse, Glyph.Folder, IconColors.Amber);
         btnBrowse.Click += (s, e) => BrowseExe();
         var pathPicker = new PathPicker(_txtPath, btnBrowse);

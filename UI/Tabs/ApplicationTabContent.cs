@@ -103,20 +103,20 @@ internal class ApplicationTabContent : ModernStack
             UpdatePrintOptionsVisibility();
         };
 
-        _btnEmailOptions = ModernButtons.SubDialog("E-Mail-Optionen...", Glyph.Mail, IconColors.Blue);
+        _btnEmailOptions = ModernButtons.SubDialog(L.T("E-Mail-Optionen..."), Glyph.Mail, IconColors.Blue);
         _btnEmailOptions.Click += (s, e) => OpenEmailOptionsDialog();
 
-        _btnPrintOptions = ModernButtons.SubDialog("Druck-Optionen...", Glyph.Printer, IconColors.Slate);
+        _btnPrintOptions = ModernButtons.SubDialog(L.T("Druck-Optionen..."), Glyph.Printer, IconColors.Slate);
         _btnPrintOptions.Click += (s, e) => OpenPrintOptionsDialog();
 
-        _btnManage = ModernButtons.SubDialog("Installieren/Deinstallieren...", Glyph.PlusMinus, IconColors.Purple);
+        _btnManage = ModernButtons.SubDialog(L.T("Installieren/Deinstallieren..."), Glyph.PlusMinus, IconColors.Purple);
         _btnManage.Click += (s, e) => OpenManageDialog();
 
         var cardApp = new SettingsCard(L.T("Anwendung nach dem Scan"),
             L.T("Die gescannten Dateien werden an diese Anwendung übergeben.")) { Dense = true, Icon = ColorIcon.Tile(Glyph.Apps, IconColors.Purple) };
         cardApp.AddRow(L.T("Anwendung"), L.T("Programm, das nach dem Scan gestartet wird."), _cbApplication, 240);
-        _rowEmailOptions = cardApp.AddRow("E-Mail-Optionen", L.T("Empfänger und Betreff der E-Mail."), _btnEmailOptions);
-        _rowPrintOptions = cardApp.AddRow("Druck-Optionen", L.T("Drucker, auf dem gedruckt wird."), _btnPrintOptions);
+        _rowEmailOptions = cardApp.AddRow(L.T("E-Mail-Optionen"), L.T("Empfänger und Betreff der E-Mail."), _btnEmailOptions);
+        _rowPrintOptions = cardApp.AddRow(L.T("Druck-Optionen"), L.T("Drucker, auf dem gedruckt wird."), _btnPrintOptions);
         _rowEmailOptions.Visible = false;
         _rowPrintOptions.Visible = false;
 

@@ -378,7 +378,7 @@ internal class FolderPathPicker : Panel, IThemeAware
         set
         {
             _path = value ?? "";
-            AccessibleName = "Speicherordner: " + _path;
+            AccessibleName = L.T("Speicherordner: ") + _path;
             _toolTip.SetToolTip(this, _path);
             UpdateOpenState();
             Invalidate();
@@ -521,6 +521,9 @@ internal sealed class FlatIconButton : Control, IThemeAware
         AccessibleRole = AccessibleRole.PushButton;
     }
 
+    /// <summary>Background to paint on (default: the parent's back color).</summary>
+    public Func<Color>? BackSource { get; set; }
+
     public void ApplyTheme(ThemePalette palette) => Invalidate();
 
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
@@ -547,7 +550,7 @@ internal sealed class FlatIconButton : Control, IThemeAware
     {
         var p = ThemeManager.Current;
         var g = e.Graphics;
-        var back = ModernLayout.ParentBack(this);
+        var back = BackSource?.Invoke() ?? ModernLayout.ParentBack(this);
         g.Clear(back);
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;

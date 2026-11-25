@@ -41,11 +41,11 @@ internal class SaveTabContent : ModernStack
             _settings.FolderPath = ScanSettings.DefaultFolderPath;
 
         // === Folder selection: picker field with integrated Durchsuchen button ===
-        _folderPicker = new FolderPathPicker("Durchsuchen...") { Path = _settings.FolderPath };
+        _folderPicker = new FolderPathPicker(L.T("Durchsuchen...")) { Path = _settings.FolderPath };
         _folderPicker.BrowseButton.Click += (s, e) => BrowseFolder();
 
         // === File name format ===
-        _btnFileNameFormat = ModernButtons.SubDialog("Dateinamenformat...", Glyph.TextField, IconColors.Amber);
+        _btnFileNameFormat = ModernButtons.SubDialog(L.T("Dateinamenformat..."), Glyph.TextField, IconColors.Amber);
         _btnFileNameFormat.Click += (s, e) => OpenFileNameFormatDialog();
 
         // === Rename after scan ===

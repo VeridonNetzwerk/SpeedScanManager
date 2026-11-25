@@ -37,7 +37,7 @@ internal class ScanToEmailOptionsDialog : ModernWindow
 
         var card = new SettingsCard { Dense = true };
         card.AddRow(L.T("Standard-Empfänger"), L.T("Empfänger der E-Mail."), _txtRecipient, 260).Icon = ColorIcon.Tile(Glyph.User, IconColors.Blue);
-        card.AddRow("Betreff-Vorlage", L.T("Betreff der E-Mail."), _txtSubject, 260).Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Purple);
+        card.AddRow(L.T("Betreff-Vorlage"), L.T("Betreff der E-Mail."), _txtSubject, 260).Icon = ColorIcon.Tile(Glyph.TextField, IconColors.Purple);
 
         var stack = new ModernStack { Dock = DockStyle.Top, Padding = new Padding(16, 16, 16, 16) };
         stack.Controls.Add(card);

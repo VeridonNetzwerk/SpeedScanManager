@@ -204,7 +204,7 @@ internal class HelpForm : ModernWindow
         _miForward.Enabled = false;
         _optionsMenu.Items.Add(L.T("Startseite"), null, (s, e) => NavigateTo("root"));
         _optionsMenu.Items.Add(new ToolStripSeparator());
-        _optionsMenu.Items.Add("Drucken...", null, (s, e) => _webBrowser?.Print());
+        _optionsMenu.Items.Add(L.T("Drucken..."), null, (s, e) => _webBrowser?.Print());
         _tsBtnOptions.Click += (s, e) =>
         {
             _tsBtnOptions.Pressed = true;
@@ -1039,7 +1039,7 @@ internal class HelpForm : ModernWindow
                      | ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
             TabStop = true;
             AccessibleRole = AccessibleRole.PageTabList;
-            AccessibleName = "Hilfe-Navigation";
+            AccessibleName = L.T("Hilfe-Navigation");
         }
 
         public event EventHandler? SelectedIndexChanged;

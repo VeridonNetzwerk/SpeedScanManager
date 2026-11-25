@@ -255,13 +255,13 @@ internal class ScanModeTabContent : ModernStack
                 _settings.ContinueScanning = _chkContinueScanning.Checked;
         };
 
-        _btnOptions = ModernButtons.SubDialog("Optionen...", Glyph.Sliders, IconColors.Blue);
+        _btnOptions = ModernButtons.SubDialog(L.T("Optionen..."), Glyph.Sliders, IconColors.Blue);
         _btnOptions.Click += (s, e) => OpenOptionsDialog();
 
         var cardMode = new SettingsCard { Dense = true };
         cardMode.AddRow(L.T("Bildqualität"), L.T("Höhere Auflösung: schärfere Bilder, größere Dateien."), _cbImageQuality, ComboWidth);
         cardMode.AddRow(L.T("Farbmodus"), L.T("Farbe, Graustufen oder Schwarzweiß."), _cbColorMode, ComboWidth);
-        cardMode.AddRow("Scan-Seite",
+        cardMode.AddRow(L.T("Scan-Seite"),
             L.T("Flachbettscannen ohne automatische Papiergrößenerkennung."),
             _cbScanSide, ComboWidth);
 

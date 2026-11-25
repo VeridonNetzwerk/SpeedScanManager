@@ -97,8 +97,6 @@ internal partial class TrayApplicationContext : ApplicationContext
     private ToolStripMenuItem _miScanKeySettings = null!;
     private ToolStripMenuItem _miSetupScanButton = null!;
     private ToolStripMenuItem _miProfileManagement = null!;
-    private ToolStripMenuItem _miEmailSettings = null!;
-    private ToolStripMenuItem _miPrintSettings = null!;
     private ToolStripMenuItem _miScanResult = null!;
     private ToolStripMenuItem _miHelp = null!;
     private ToolStripMenuItem _miExit = null!;
@@ -253,9 +251,7 @@ internal partial class TrayApplicationContext : ApplicationContext
         _miSelectScanner = new ToolStripMenuItem(L.T("Scanner auswählen..."));
         _miScanKeySettings = new ToolStripMenuItem(L.T("Öffnen"));
         _miSetupScanButton = new ToolStripMenuItem(L.T("Scan-Taste initialisieren"));
-        _miProfileManagement = new ToolStripMenuItem("Profilverwaltung...");
-        _miEmailSettings = new ToolStripMenuItem("E-Mail-Einstellungen...");
-        _miPrintSettings = new ToolStripMenuItem("Druckeinstellungen...");
+        _miProfileManagement = new ToolStripMenuItem(L.T("Profilverwaltung..."));
         _miScanResult = new ToolStripMenuItem(L.T("Scan-Ergebnis anzeigen"));
         _miHelp = new ToolStripMenuItem(L.T("Hilfe"));
         _miExit = new ToolStripMenuItem(L.T("Beenden"));
@@ -269,8 +265,6 @@ internal partial class TrayApplicationContext : ApplicationContext
         _miScanKeySettings.Click += (_, _) => ShowMainForm();
         _miSetupScanButton.Click += (_, _) => SetupScanButton();
         _miProfileManagement.Click += (_, _) => OpenProfileManagement();
-        _miEmailSettings.Click += (_, _) => ShowEmailSettings();
-        _miPrintSettings.Click += (_, _) => ShowPrintSettings();
         _miScanResult.Click += (_, _) => OpenScanResult();
         miHelpTopics.Click += (_, _) => ShowHelpDialog();
         miVersionInfo.Click += (_, _) => ShowVersionInfo();
@@ -284,8 +278,6 @@ internal partial class TrayApplicationContext : ApplicationContext
         ThemeManager.SetMenuItemGlyph(_miScanKeySettings, Glyph.OpenExternal);
         ThemeManager.SetMenuItemGlyph(_miSetupScanButton, Glyph.Sliders);
         ThemeManager.SetMenuItemGlyph(_miProfileManagement, Glyph.User);
-        ThemeManager.SetMenuItemGlyph(_miEmailSettings, Glyph.Mail);
-        ThemeManager.SetMenuItemGlyph(_miPrintSettings, Glyph.Printer);
         ThemeManager.SetMenuItemGlyph(_miScanResult, Glyph.Folder);
         ThemeManager.SetMenuItemGlyph(_miHelp, Glyph.Question);
         ThemeManager.SetMenuItemGlyph(_miExit, Glyph.Power);
@@ -300,8 +292,6 @@ internal partial class TrayApplicationContext : ApplicationContext
             _miScanKeySettings,
             _miSelectScanner,
             _miProfileManagement,
-            _miEmailSettings,
-            _miPrintSettings,
             new ToolStripSeparator(),
             _miScanResult,
             new ToolStripSeparator(),
@@ -835,7 +825,8 @@ internal partial class TrayApplicationContext : ApplicationContext
     private async Task QuickMenuAsync(ScanOutputResult output, List<string> files, ScanSettings settings)
     {
         PostScanMediaDialog.MediaAction action;
-        using (var dlg = new PostScanMediaDialog(output.PageCount))
+        using (var dlg = new PostScanMediaDialog(output.PageCount, (media, owner) =>
+            ShowQuickMenuOptions(media, owner, settings)))
         {
             if (dlg.ShowDialog(_hiddenWindow) != DialogResult.OK)
             {
@@ -1295,41 +1286,41 @@ internal partial class TrayApplicationContext : ApplicationContext
     }
 
     /// <summary>
-    /// E-mail options are also reachable here because the Anwendung tab is disabled while the
-    /// Quick-Menü is on. Changes go to the applied settings and to an open settings window's
-    /// working copy, so applying that window later doesn't revert them.
+    /// Gear on the E-Mail / Drucken tile of the Quick-Menü (the Anwendung page is locked while
+    /// it is on). Changes go to the applied settings and to an open settings window's working
+    /// copy (so applying that window later doesn't revert them), and to
+    /// <paramref name="current"/>, the settings of the scan that is waiting in the Quick-Menü.
     /// </summary>
-    private void ShowEmailSettings()
+    private void ShowQuickMenuOptions(PostScanMediaDialog.MediaAction media, IWin32Window owner, ScanSettings current)
     {
-        var dlg = new ScanToEmailOptionsDialog
+        if (media == PostScanMediaDialog.MediaAction.ScanToEmail)
         {
-            Recipient = _settings.EmailRecipient,
-            SubjectTemplate = _settings.EmailSubjectTemplate,
-            StartPosition = FormStartPosition.CenterParent,
-        };
-        OwnedWindows.Show(dlg, DialogOwner, onOk: () =>
-        {
-            string recipient = dlg.Recipient, subject = dlg.SubjectTemplate;
-            ApplyTraySettingChange(s =>
+            using var dlg = new ScanToEmailOptionsDialog
             {
-                s.EmailRecipient = recipient;
-                s.EmailSubjectTemplate = subject;
-            });
-        });
-    }
-
-    private void ShowPrintSettings()
-    {
-        var dlg = new ScanToPrintOptionsDialog
+                Recipient = _settings.EmailRecipient,
+                SubjectTemplate = _settings.EmailSubjectTemplate,
+                StartPosition = FormStartPosition.CenterParent,
+                TopMost = true,
+            };
+            if (dlg.ShowDialog(owner) != DialogResult.OK) return;
+            string recipient = dlg.Recipient, subject = dlg.SubjectTemplate;
+            void Change(ScanSettings s) { s.EmailRecipient = recipient; s.EmailSubjectTemplate = subject; }
+            ApplyTraySettingChange(Change);
+            Change(current);
+        }
+        else if (media == PostScanMediaDialog.MediaAction.ScanToPrint)
         {
-            SelectedPrinterName = _settings.PrinterName,
-            StartPosition = FormStartPosition.CenterParent,
-        };
-        OwnedWindows.Show(dlg, DialogOwner, onOk: () =>
-        {
+            using var dlg = new ScanToPrintOptionsDialog
+            {
+                SelectedPrinterName = _settings.PrinterName,
+                StartPosition = FormStartPosition.CenterParent,
+                TopMost = true,
+            };
+            if (dlg.ShowDialog(owner) != DialogResult.OK) return;
             string printer = dlg.SelectedPrinterName;
             ApplyTraySettingChange(s => s.PrinterName = printer);
-        });
+            current.PrinterName = printer;
+        }
     }
 
     /// <summary>

@@ -227,7 +227,7 @@ internal class MainForm : ModernWindow, IOwnedWindowHost
 
         var btnAddProfile = ModernButtons.SubDialog(L.T("Profil hinzufügen..."));
         btnAddProfile.Click += (s, e) => AddProfile();
-        var btnManageProfiles = ModernButtons.SubDialog("Profilverwaltung...");
+        var btnManageProfiles = ModernButtons.SubDialog(L.T("Profilverwaltung..."));
         btnManageProfiles.Click += (s, e) => OpenProfileManagement();
         var profileButtons = new ButtonRow { Height = 30 };
         profileButtons.Controls.Add(btnAddProfile);

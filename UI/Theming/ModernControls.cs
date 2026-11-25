@@ -741,6 +741,10 @@ internal class TileButton : Control, IThemeAware
     private TileLayout _layout = SpeedScanManager.TileLayout.Vertical;
     private int _iconSize;
     private bool _focusable;
+    private Color _fill;
+
+    /// <summary>Fill the tile was last painted with (background for child buttons).</summary>
+    public Color CurrentFill => _fill.IsEmpty ? ModernLayout.ParentBack(this) : _fill;
 
     public TileButton()
     {
@@ -873,6 +877,12 @@ internal class TileButton : Control, IThemeAware
         {
             fill = ThemePalette.Blend(fill, parentBg, 0.4f);
             border = ThemePalette.Blend(border, parentBg, 0.5f);
+        }
+        if (fill != _fill)
+        {
+            _fill = fill;
+            // Small buttons on the tile (Quick-Menü options) paint on the tile's fill
+            foreach (Control child in Controls) child.Invalidate();
         }
 
         var rect = new RectangleF(1f, 1f, Width - 2f, Height - 2f);

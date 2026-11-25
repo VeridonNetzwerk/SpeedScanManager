@@ -35,8 +35,8 @@ internal class ScanModeOptionsDialog : ModernWindow
         SuspendLayout();
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
-        Text = "Scanmodus-Optionen";
-        Title = "Scanmodus-Optionen";
+        Text = L.T("Scanmodus-Optionen");
+        Title = L.T("Scanmodus-Optionen");
         Subtitle = L.T("Helligkeit und Bildverarbeitung");
         HeaderButtons = ModernHeaderButtons.Help | ModernHeaderButtons.Close;
         HelpTopic = "scanmode-options";
