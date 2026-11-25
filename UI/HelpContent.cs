@@ -355,8 +355,8 @@ internal static class HelpContent
             ("Scan to E-Mail", "Ein E-Mail-Programm mit MAPI-Unterstützung (z. B. Outlook)."),
             ("Scan to Print", "Ein installierter Drucker."),
             ("Word, Excel, PowerPoint", "Zum Öffnen der erstellten Dateien – erstellt werden sie auch ohne Office.")) +
-        Note("Mitgeliefert sind die Sprachdaten für die Texterkennung in Deutsch und Englisch sowie die Daten für die automatische Bilddrehung. " +
-             "Weitere Sprachen: siehe <a href='#filetype-tab'>Seite „Dateiart“</a>."),
+        Note("Das Setup installiert die Texterkennung für die im Setup gewählte Sprache und für Englisch sowie die Daten für die automatische Bilddrehung. " +
+             "Weitere Sprachen lädt das Programm bei Bedarf herunter (Internetverbindung nötig): siehe <a href='#filetype-tab'>Seite „Dateiart“</a>."),
         "scanner-connection");
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -552,7 +552,7 @@ internal static class HelpContent
             ("Druck-Optionen...", "Erscheint bei Scan to Print und öffnet die <a href='#print-options'>Druck-Optionen</a>."),
             ("Installieren/Deinstallieren...", "Eigene Programme hinzufügen oder entfernen (<a href='#app-manage'>mehr</a>).")) +
         Note("Ist das Quick-Menü eingeschaltet, ist diese Seite ausgegraut – das Ziel wählen Sie dann nach dem Scan.") +
-        Tip("E-Mail- und Druckeinstellungen erreichen Sie auch direkt im Tray-Menü – praktisch mit Quick-Menü. Dort geänderte Werte gelten sofort " +
+        Tip("Mit Quick-Menü öffnen Sie die E-Mail- und Druckeinstellungen über das Zahnrad auf den Kacheln <b>Per E-Mail versenden</b> und <b>Drucken</b>. Dort geänderte Werte gelten sofort " +
             "und werden auch im aktiven eigenen Profil gespeichert (Standardprofile bleiben unverändert).") +
         "<p>Eine eigene Anwendung wird nach dem Scan mit ihren Argumenten gestartet; die gespeicherten Dateien werden als weitere Argumente angehängt.</p>",
         "app-manage", "scan-no-quick", "settings");
@@ -618,7 +618,7 @@ internal static class HelpContent
         " + Steps(
             "Wählen Sie als Dateiformat <b>PDF</b>.",
             "Schalten Sie <b>In durchsuchbare PDF konvertieren</b> ein.",
-            "Wählen Sie unter <b>Sprache</b> die Sprache des Dokuments (oder <b>Automatische Erkennung</b>) und unter <b>Zielseiten</b> <b>Erste Seite</b> oder <b>Alle Seiten</b>.",
+            "Wählen Sie unter <b>Sprache</b> die Sprache des Dokuments (oder <b>Automatische Erkennung</b>), unter <b>Qualität</b> <b>Genau</b> oder <b>Schnell</b> und unter <b>Zielseiten</b> <b>Erste Seite</b> oder <b>Alle Seiten</b>.",
             "Klicken Sie auf <b>OK</b>. Der erkannte Text liegt danach unsichtbar über dem Bild – Sie können darin suchen und Text kopieren.") + @"
 
         <h2>Markierten Text als Schlüsselwort</h2>
@@ -627,12 +627,23 @@ internal static class HelpContent
         Das funktioniert nur zusammen mit der Texterkennung – sonst wird es übersprungen und eine Sprechblase erscheint.</p>
 
         <h2>Sprachen</h2>
-        <p>Mitgeliefert sind <b>Deutsch</b> und <b>Englisch</b>. Weitere Sprachen (Japanisch, Französisch, Italienisch, Spanisch, Chinesisch
-        vereinfacht/traditionell, Koreanisch, Russisch, Portugiesisch, Arabisch) erscheinen in der Liste, sobald Sie die passende
-        <code>.traineddata</code>-Datei (z. B. <code>fra.traineddata</code>) in den Ordner <code>tessdata</code> neben <code>SpeedScanManager.exe</code> legen.</p>
+        <p>Die Liste enthält alle Sprachen der Texterkennung: Deutsch, Englisch, Japanisch, Französisch, Spanisch, Chinesisch
+        vereinfacht/traditionell, Portugiesisch, Russisch, Koreanisch, Italienisch, Polnisch, Niederländisch, Türkisch und Arabisch.
+        Installiert sind die im Setup gewählte Sprache und Englisch; die übrigen sind mit <b>nicht installiert</b> markiert.</p>
+        " + Steps(
+            "Wählen Sie eine Sprache, die mit <b>nicht installiert</b> markiert ist.",
+            "Bestätigen Sie die Frage <b>Jetzt herunterladen?</b> mit <b>Ja</b> (je nach Sprache etwa 5–20 MB).",
+            "Ein Fenster zeigt den Fortschritt; mit <b>Abbrechen</b> brechen Sie ab. Danach ist die Sprache gewählt.") + @"
+        <p>Wechseln Sie die Sprache des Programms (Seite <a href='#app-tab'>Allgemein</a>), bietet SpeedScan Manager ebenfalls an, die
+        Texterkennung für diese Sprache herunterzuladen. Heruntergeladene Sprachen liegen in <code>%LocalAppData%\SpeedScanManager\tessdata</code>.</p>
         <p>Bei <b>Automatische Erkennung</b> wählt das Programm pro Seite anhand der Schrift eine installierte Sprache, sonst Deutsch und Englisch.</p>
-        " + Note("Ist eine gespeicherte Sprache nicht mehr installiert, steht „(nicht installiert)“ dahinter. Beim Scannen erscheint dann eine Sprechblase " +
-                 "und die vorhandenen Sprachen (bevorzugt Deutsch/Englisch) werden verwendet."),
+
+        <h2>Qualität</h2>
+        " + Items(
+            ("Genau", "Standard. Erkennt am zuverlässigsten, auch bei kleiner oder blasser Schrift."),
+            ("Schnell", "Etwa doppelt so schnell, bei sauberem Druck fast genauso gut. Für Italienisch, Niederländisch, Türkisch und Arabisch wird immer <b>Genau</b> verwendet.")) +
+        Note("Ist eine gespeicherte Sprache nicht installiert, erscheint beim Scannen eine Sprechblase " +
+             "und die vorhandenen Sprachen (bevorzugt Deutsch/Englisch) werden verwendet."),
         "pdf-options", "scanmode-tab");
 
     private static HelpTopic TopicPaperTab() => Page("paper-tab", "Seite „Papier“",
@@ -813,7 +824,7 @@ internal static class HelpContent
         "app-tab");
 
     private static HelpTopic TopicEmailOptionsDialog() => Page("email-options", "E-Mail-Optionen",
-        "Empfänger und Betreff für Scan to E-Mail. Öffnen über die Seite „Anwendung“ oder <b>E-Mail-Einstellungen...</b> im Tray-Menü.",
+        "Empfänger und Betreff für Scan to E-Mail. Öffnen über die Seite „Anwendung“ oder das Zahnrad auf der Kachel <b>Per E-Mail versenden</b> im Quick-Menü.",
         Shot("dlg_email", "Das Fenster „Scan to E-Mail“") +
         Items(
             ("Standard-Empfänger", "Wird in jede neue E-Mail eingetragen."),
@@ -823,7 +834,7 @@ internal static class HelpContent
         "app-tab");
 
     private static HelpTopic TopicPrintOptionsDialog() => Page("print-options", "Druck-Optionen",
-        "Der Drucker für Scan to Print. Öffnen über die Seite „Anwendung“ oder <b>Druckeinstellungen...</b> im Tray-Menü.",
+        "Der Drucker für Scan to Print. Öffnen über die Seite „Anwendung“ oder das Zahnrad auf der Kachel <b>Drucken</b> im Quick-Menü.",
         Shot("dlg_print", "Das Fenster „Scan to Print“") + @"
         <p>Wählen Sie unter <b>Zieldrucker</b> einen der installierten Drucker. <b>(Standarddrucker)</b> verwendet immer den aktuellen Windows-Standarddrucker.</p>
         " + Note("Gedruckt wird in Originalgröße; Querformat wird bei Bedarf automatisch gewählt. Gibt es den eingestellten Drucker nicht mehr, werden Sie gefragt, " +
@@ -923,7 +934,7 @@ internal static class HelpContent
             new[] { "Schräglauf korrigieren", "Aus" },
             new[] { "Automatische Bilddrehung", "An" },
             new[] { "Dateiformat", "PDF, mehrseitig, ohne Kennwort" },
-            new[] { "Texterkennung (OCR)", "Aus (Sprache: Automatische Erkennung, Zielseiten: Alle Seiten)" },
+            new[] { "Texterkennung (OCR)", "Aus (Sprache: Automatische Erkennung, Qualität: Genau, Zielseiten: Alle Seiten)" },
             new[] { "Papiergröße", "Automatische Erkennung" },
             new[] { "Mehrfacheinzugserkennung", "Aus" },
             new[] { "Trägerblatt-Modus", "Aus" },
@@ -978,8 +989,8 @@ internal static class HelpContent
             "<p>In den <a href='#scanmode-options'>Scanmodus-Optionen</a>: <b>Schräglauf automatisch korrigieren</b>, " +
             "<b>Automatische Bilddrehung zulassen</b> und – wenn Sie mit der Schrift nach oben einlegen – <b>Dokumente mit der Vorderseite nach oben einlegen</b>.</p>") +
         QA("Die Texterkennung kennt meine Sprache nicht",
-            "<p>Legen Sie die passende <code>.traineddata</code>-Datei in den Ordner <code>tessdata</code> neben <code>SpeedScanManager.exe</code> " +
-            "(<a href='#filetype-tab'>mehr</a>).</p>") +
+            "<p>Wählen Sie die Sprache auf der Seite <b>Dateiart</b> unter <b>Sprache</b> aus und bestätigen Sie den Download " +
+            "(<a href='#filetype-tab'>mehr</a>). Dafür ist eine Internetverbindung nötig.</p>") +
         QA("Der Scanner meldet „Mehrfacheinzug“",
             "<p>Lesen Sie <a href='#multifeed-measures'>Was tun bei Mehrfacheinzug?</a></p>") +
         Tip("Eine Liste aller Meldungen mit Erklärung finden Sie unter <a href='#message-list'>Liste der Meldungen</a>."),
@@ -1050,6 +1061,9 @@ internal static class HelpContent
             ("Der Ordner \"...\" existiert nicht.", "Bei „Scan-Ergebnis anzeigen“."),
             ("Es läuft gerade ein Scanvorgang. Scan abbrechen und SpeedScan Manager beenden?", ""),
             ("Der letzte Scan ist noch nicht abgeschlossen. SpeedScan Manager trotzdem beenden?", ""),
+            ("Der Scan wird noch gespeichert … SpeedScan Manager wird danach beendet.", "Fenster mit Ladekreis nach „Beenden“; es schließt sich, sobald das Programm beendet ist."),
+            ("Die Texterkennung für ... ist nicht installiert. Jetzt herunterladen?", "Ja: Die Sprachdaten werden heruntergeladen (Fenster mit Fortschritt)."),
+            ("Die Sprachdaten konnten nicht heruntergeladen werden: ...", "Keine Internetverbindung oder der Server ist nicht erreichbar. Die bisherige Sprache bleibt gewählt."),
             ("Das PDF-Passwort konnte nicht gelesen werden, bitte neu eingeben.", "Einstellungen › Dateiart › Option › Kennwort."),
             ("Die Einrichtung der Scan-Taste wurde abgebrochen. / Die Scan-Taste konnte nicht eingerichtet werden.", ""),
             ("Es können höchstens 20 Profile angelegt werden.", ""),
@@ -1065,7 +1079,6 @@ internal static class HelpContent
             ("Scan verworfen", "Mehrfacheinzug: Die Seiten wurden verworfen. Bitte legen Sie das Dokument erneut ein. – bzw. – Der Scan wurde gelöscht."),
             ("Scan gespeichert", "Dateiname und Ordner bzw. Anzahl der Dateien."),
             ("Drucken", "Das Dokument wurde an den Drucker gesendet."),
-            ("Der Scan wird noch gespeichert. SpeedScan Manager wird danach beendet.", ""),
             ("Die Scan-Taste ist eingerichtet. Ein Druck auf die Taste startet einen Scan.", ""),
             ("Hinweis zum Scan: Der Scanner hat nicht mehr reagiert.", "Der Scanvorgang wurde abgebrochen."),
             ("Hinweis zum Scan: Eine oder mehrere Seiten konnten nicht übertragen werden.", ""),
