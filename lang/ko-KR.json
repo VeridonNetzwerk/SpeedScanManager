@@ -698,5 +698,6 @@
  "nicht installiert": "설치되지 않음",
  "{0} % von ca. {1} MB": "약 {1} MB 중 {0}%",
  "{0} wird heruntergeladen …": "{0} 다운로드 중…",
- "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "‘빠름’은 약 두 배 빠르게 인식하지만 정확도가 약간 낮습니다."
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "‘빠름’은 약 두 배 빠르게 인식하지만 정확도가 약간 낮습니다.",
+ "Auf den gescannten Seiten wurde {0} erkannt, die Texterkennung dafür ist aber nicht installiert. Ab dem nächsten Scan wird sie verwendet.": "스캔한 페이지에서 {0}이(가) 감지되었지만 해당 문자 인식이 설치되어 있지 않습니다. 다음 스캔부터 사용됩니다."
 }

@@ -698,5 +698,6 @@
  "nicht installiert": "не установлен",
  "{0} % von ca. {1} MB": "{0} % из примерно {1} МБ",
  "{0} wird heruntergeladen …": "Загрузка: {0} …",
- "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "«Быстрое» распознаёт примерно вдвое быстрее, но немного менее точно."
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "«Быстрое» распознаёт примерно вдвое быстрее, но немного менее точно.",
+ "Auf den gescannten Seiten wurde {0} erkannt, die Texterkennung dafür ist aber nicht installiert. Ab dem nächsten Scan wird sie verwendet.": "На отсканированных страницах обнаружен язык «{0}», но распознавание текста для него не установлено. Оно будет использоваться со следующего сканирования."
 }

@@ -698,5 +698,6 @@
  "nicht installiert": "not installed",
  "{0} % von ca. {1} MB": "{0} % of about {1} MB",
  "{0} wird heruntergeladen …": "Downloading {0} …",
- "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "“Fast” recognizes about twice as fast, but a little less accurately."
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "“Fast” recognizes about twice as fast, but a little less accurately.",
+ "Auf den gescannten Seiten wurde {0} erkannt, die Texterkennung dafür ist aber nicht installiert. Ab dem nächsten Scan wird sie verwendet.": "{0} was detected on the scanned pages, but text recognition for it isn't installed. It will be used from the next scan on."
 }

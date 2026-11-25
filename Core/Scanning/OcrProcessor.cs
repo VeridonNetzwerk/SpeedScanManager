@@ -204,22 +204,19 @@ internal class OcrProcessor : IDisposable
     public bool IsAvailable => _engine != null;
 
     /// <summary>
-    /// Maps a Tesseract OSD script name to the best installed language code(s).
+    /// Language for a Tesseract OSD script name ("Japanese" → "jpn"); null for Latin and
+    /// unknown scripts (their language is guessed from the text, see <see cref="Recognize"/>).
     /// </summary>
-    private string ScriptToLanguageCode(string script)
+    private static string? ScriptLanguage(string script)
     {
         var s = script.ToLowerInvariant();
-        string? code = null;
-        if (s.Contains("japanese") || s.Contains("hiragana") || s.Contains("katakana")) code = "jpn";
-        else if (s.Contains("hangul") || s.Contains("korean")) code = "kor";
-        else if (s == "han" || s.Contains("chinese"))
-            code = IsTessDataAvailable("chi_sim") || !IsTessDataAvailable("chi_tra") ? "chi_sim" : "chi_tra";
-        else if (s.Contains("arabic")) code = "ara";
-        else if (s.Contains("cyrillic")) code = "rus";
-
-        if (code != null && IsTessDataAvailable(code)) return code;
-        // Latin scripts (or missing data): deu+eng is a good general-purpose combination.
-        return ResolveInstalled("deu+eng", out _);
+        if (s.Contains("japanese") || s.Contains("hiragana") || s.Contains("katakana")) return "jpn";
+        if (s.Contains("hangul") || s.Contains("korean")) return "kor";
+        if (s == "han" || s.Contains("chinese"))
+            return IsTessDataAvailable("chi_sim") || !IsTessDataAvailable("chi_tra") ? "chi_sim" : "chi_tra";
+        if (s.Contains("arabic")) return "ara";
+        if (s.Contains("cyrillic")) return "rus";
+        return null;
     }
 
     /// <summary>
@@ -235,10 +232,18 @@ internal class OcrProcessor : IDisposable
     private OsdDetector? Osd => _sharedOsd ?? (_ownOsd ??= new OsdDetector(DefaultTessDataPath));
 
     /// <summary>
+    /// Languages the automatic mode found on the pages but could not use because their data
+    /// isn't installed (e.g. "jpn"). The app offers the download after the scan.
+    /// </summary>
+    public HashSet<string> MissingLanguages { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Runs OCR on a single bitmap and returns recognized words with positions.
     /// Coordinates are in image pixel space and need to be scaled to PDF points by the caller.
     /// In automatic mode, the script is taken from <paramref name="scriptHint"/> (OSD result of
-    /// auto-rotation) or detected, and the engine is switched if the language differs.
+    /// auto-rotation) or detected, and the engine is switched if the language differs. Pages in
+    /// Latin script are recognized first, then the language is guessed from the text
+    /// (<see cref="LatinLanguageGuess"/>) and the page is recognized again if it differs.
     /// </summary>
     public List<OcrWord> Recognize(Bitmap bitmap, string? scriptHint = null)
     {
@@ -252,60 +257,46 @@ internal class OcrProcessor : IDisposable
 
         try
         {
+            bool latin = false;
             // In automatic mode, detect the script and switch engine if needed
             if (_isAutoMode)
             {
                 var script = scriptHint;
                 if (string.IsNullOrEmpty(script))
                     script = Osd?.Detect(bitmap)?.Script;
-                if (!string.IsNullOrEmpty(script))
+                var wanted = string.IsNullOrEmpty(script) ? null : ScriptLanguage(script);
+                latin = wanted == null;
+                if (wanted != null && !IsTessDataAvailable(wanted) && MissingLanguages.Add(wanted))
+                    LogDiag($"Auto-OCR: script '{script}' -> {wanted} (not installed)");
+                var detectedLang = wanted != null && IsTessDataAvailable(wanted) ? wanted
+                    : latin && _currentLanguage.Length > 0 && IsLatinCode(_currentLanguage) ? _currentLanguage // keep a Latin language of the previous page
+                    : ResolveInstalled("deu+eng", out _);
+                if (detectedLang.Length > 0 && detectedLang != _currentLanguage)
                 {
-                    var detectedLang = ScriptToLanguageCode(script);
-                    if (detectedLang.Length > 0 && detectedLang != _currentLanguage)
-                    {
-                        LogDiag($"Auto-OCR: script '{script}' -> {detectedLang}");
-                        SwitchEngine(detectedLang);
-                        if (_engine == null) return result;
-                    }
+                    LogDiag($"Auto-OCR: script '{script}' -> {detectedLang}");
+                    SwitchEngine(detectedLang);
+                    if (_engine == null) return result;
                 }
             }
 
-            // Large images: OCR on a ~300 dpi copy (enough for recognition, keeps the x86
-            // process within memory limits), then scale the boxes back.
-            double scale = 1.0;
-            Bitmap ocrInput = bitmap;
-            Bitmap? ownedInput = null;
-            if (ImageProcessing.GetDpiX(bitmap) > 400)
-            {
-                ownedInput = ImageProcessing.CreateSample(bitmap, 300, 12_000_000, out scale);
-                ocrInput = ownedInput;
-            }
+            result = Run(bitmap, out var text);
 
-            try
+            if (latin)
             {
-                using var pix = ToPix(ocrInput);
-                using var page = _engine.Process(pix);
-                using var iter = page.GetIterator();
-                if (iter == null) return result;
-
-                iter.Begin();
-                double inv = 1.0 / scale;
-                do
+                // Which Latin language? German/English stay with deu+eng.
+                var other = LatinLanguageGuess.GuessOther(text);
+                if (other != null && !IsTessDataAvailable(other))
                 {
-                    string? word = iter.GetText(PageIteratorLevel.Word);
-                    if (!string.IsNullOrWhiteSpace(word)
-                        && iter.TryGetBoundingBox(PageIteratorLevel.Word, out Rect bounds))
-                    {
-                        result.Add(new OcrWord(word.Trim(), new Rectangle(
-                            (int)(bounds.X1 * inv), (int)(bounds.Y1 * inv),
-                            Math.Max(1, (int)(bounds.Width * inv)), Math.Max(1, (int)(bounds.Height * inv)))));
-                    }
+                    if (MissingLanguages.Add(other)) LogDiag($"Auto-OCR: text looks like '{other}' (not installed)");
+                    other = null;
                 }
-                while (iter.Next(PageIteratorLevel.Word));
-            }
-            finally
-            {
-                ownedInput?.Dispose();
+                var desired = other ?? ResolveInstalled("deu+eng", out _);
+                if (desired.Length > 0 && desired != _currentLanguage)
+                {
+                    LogDiag($"Auto-OCR: text looks like '{desired}', recognizing again");
+                    SwitchEngine(desired);
+                    if (_engine != null) result = Run(bitmap, out _);
+                }
             }
         }
         catch (Exception ex)
@@ -313,6 +304,55 @@ internal class OcrProcessor : IDisposable
             LogDiag($"OCR recognition failed: {ex.Message}");
         }
 
+        return result;
+    }
+
+    private static bool IsLatinCode(string code) =>
+        code.Split('+').All(c => c is "deu" or "eng" or "fra" or "spa" or "por" or "ita" or "nld" or "pol" or "tur");
+
+    /// <summary>One recognition pass with the current engine: words with positions and the plain text.</summary>
+    private List<OcrWord> Run(Bitmap bitmap, out string text)
+    {
+        var result = new List<OcrWord>();
+        text = "";
+        // Large images: OCR on a ~300 dpi copy (enough for recognition, keeps the x86
+        // process within memory limits), then scale the boxes back.
+        double scale = 1.0;
+        Bitmap ocrInput = bitmap;
+        Bitmap? ownedInput = null;
+        if (ImageProcessing.GetDpiX(bitmap) > 400)
+        {
+            ownedInput = ImageProcessing.CreateSample(bitmap, 300, 12_000_000, out scale);
+            ocrInput = ownedInput;
+        }
+
+        try
+        {
+            using var pix = ToPix(ocrInput);
+            using var page = _engine!.Process(pix);
+            text = page.GetText() ?? "";
+            using var iter = page.GetIterator();
+            if (iter == null) return result;
+
+            iter.Begin();
+            double inv = 1.0 / scale;
+            do
+            {
+                string? word = iter.GetText(PageIteratorLevel.Word);
+                if (!string.IsNullOrWhiteSpace(word)
+                    && iter.TryGetBoundingBox(PageIteratorLevel.Word, out Rect bounds))
+                {
+                    result.Add(new OcrWord(word.Trim(), new Rectangle(
+                        (int)(bounds.X1 * inv), (int)(bounds.Y1 * inv),
+                        Math.Max(1, (int)(bounds.Width * inv)), Math.Max(1, (int)(bounds.Height * inv)))));
+                }
+            }
+            while (iter.Next(PageIteratorLevel.Word));
+        }
+        finally
+        {
+            ownedInput?.Dispose();
+        }
         return result;
     }
 

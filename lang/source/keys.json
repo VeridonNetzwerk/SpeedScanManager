@@ -698,5 +698,6 @@
  "nicht installiert": "UI/Tabs/FileTypeTabContent.cs",
  "{0} % von ca. {1} MB": "UI/Dialogs/OcrDownloadDialog.cs",
  "{0} wird heruntergeladen …": "UI/Dialogs/OcrDownloadDialog.cs",
- "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "UI/Tabs/FileTypeTabContent.cs"
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "UI/Tabs/FileTypeTabContent.cs",
+ "Auf den gescannten Seiten wurde {0} erkannt, die Texterkennung dafür ist aber nicht installiert. Ab dem nächsten Scan wird sie verwendet.": "UI/Forms/TrayApplicationContext.cs"
 }

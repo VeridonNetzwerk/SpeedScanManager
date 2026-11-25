@@ -45,6 +45,9 @@ internal class AppSettings
     /// <summary>UI language ("de-DE", "en-US", …); empty = setup default / Windows language.</summary>
     public string Language { get; set; } = "";
 
+    /// <summary>OCR languages whose download offer after a scan was declined (not asked again).</summary>
+    public List<string> DeclinedOcrLanguages { get; set; } = new();
+
     /// <summary>Look for a newer version on GitHub in the background.</summary>
     public bool CheckForUpdates { get; set; } = true;
 

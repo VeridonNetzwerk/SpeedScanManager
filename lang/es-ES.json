@@ -698,5 +698,6 @@
  "nicht installiert": "no instalado",
  "{0} % von ca. {1} MB": "{0} % de aprox. {1} MB",
  "{0} wird heruntergeladen …": "Descargando {0} …",
- "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "«Rápido» reconoce aproximadamente el doble de rápido, pero con algo menos de precisión."
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "«Rápido» reconoce aproximadamente el doble de rápido, pero con algo menos de precisión.",
+ "Auf den gescannten Seiten wurde {0} erkannt, die Texterkennung dafür ist aber nicht installiert. Ab dem nächsten Scan wird sie verwendet.": "Se detectó {0} en las páginas escaneadas, pero su reconocimiento de texto no está instalado. Se usará a partir del próximo escaneo."
 }

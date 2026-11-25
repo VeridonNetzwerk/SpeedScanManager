@@ -20,14 +20,18 @@ internal sealed class OcrDownloadDialog : ModernWindow
     /// <summary>
     /// Asks whether the language <paramref name="code"/> should be installed and downloads it.
     /// True if it is installed afterwards. <paramref name="question"/> replaces the standard text.
+    /// <paramref name="declined"/>: the user answered "Nein" (not: the download failed).
     /// </summary>
-    public static bool Offer(IWin32Window? owner, string code, string? question = null)
+    public static bool Offer(IWin32Window? owner, string code, string? question = null) => Offer(owner, code, question, out _);
+
+    public static bool Offer(IWin32Window? owner, string code, string? question, out bool declined)
     {
+        declined = false;
         if (OcrData.IsInstalled(code)) return true;
         string name = LanguageName(code);
         string text = (question ?? L.F("Die Texterkennung für {0} ist nicht installiert.", name)) + "\n\n" +
                       L.F("Jetzt herunterladen (ca. {0} MB)?", OcrData.DownloadSizeMb(code));
-        if (!TrayMessageBox.AskYesNo(owner, text)) return false;
+        if (!TrayMessageBox.AskYesNo(owner, text)) { declined = true; return false; }
         using var dialog = new OcrDownloadDialog(code, name);
         var result = owner != null ? dialog.ShowDialog(owner) : dialog.ShowDialog();
         return result == DialogResult.OK && OcrData.IsInstalled(code);

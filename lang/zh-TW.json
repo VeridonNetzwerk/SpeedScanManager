@@ -698,5 +698,6 @@
  "nicht installiert": "未安裝",
  "{0} % von ca. {1} MB": "{0}%，共約 {1} MB",
  "{0} wird heruntergeladen …": "正在下載{0}…",
- "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "「快速」辨識速度約快一倍，但準確度略低。"
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "「快速」辨識速度約快一倍，但準確度略低。",
+ "Auf den gescannten Seiten wurde {0} erkannt, die Texterkennung dafür ist aber nicht installiert. Ab dem nächsten Scan wird sie verwendet.": "在掃描的頁面上偵測到{0}，但尚未安裝其文字辨識。將從下次掃描開始使用。"
 }

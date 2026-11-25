@@ -698,5 +698,6 @@
  "nicht installiert": "yüklü değil",
  "{0} % von ca. {1} MB": "Yaklaşık {1} MB'ın %{0}'i",
  "{0} wird heruntergeladen …": "{0} indiriliyor …",
- "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "“Hızlı” yaklaşık iki kat daha hızlı tanır, ancak biraz daha az doğrudur."
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "“Hızlı” yaklaşık iki kat daha hızlı tanır, ancak biraz daha az doğrudur.",
+ "Auf den gescannten Seiten wurde {0} erkannt, die Texterkennung dafür ist aber nicht installiert. Ab dem nächsten Scan wird sie verwendet.": "Taranan sayfalarda {0} algılandı, ancak bunun için metin tanıma yüklü değil. Bir sonraki taramadan itibaren kullanılacak."
 }

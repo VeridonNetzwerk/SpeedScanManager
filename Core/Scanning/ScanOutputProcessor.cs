@@ -74,6 +74,9 @@ internal sealed class ScanOutputResult : IDisposable
     /// <summary>Non-fatal notes for the user (German), e.g. OCR language fallback.</summary>
     public List<string> Warnings { get; } = new();
 
+    /// <summary>OCR languages the automatic mode found but that aren't installed (e.g. "jpn").</summary>
+    public List<string> MissingOcrLanguages { get; } = new();
+
     /// <summary>Keywords written to the PDF (highlighted text), if any.</summary>
     public List<string> Keywords { get; } = new();
 
@@ -431,6 +434,7 @@ internal class ScanOutputProcessor
                         bool target = s.OcrTargetPages == OcrTargetPages.AllPages || i == 0;
                         ocrData.Add(target ? ocr.Recognize(pages[i].Bmp, pages[i].Script) : new List<OcrWord>());
                     }
+                    result.MissingOcrLanguages.AddRange(ocr.MissingLanguages);
                 }
                 else
                 {

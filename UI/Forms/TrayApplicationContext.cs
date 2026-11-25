@@ -718,6 +718,13 @@ internal partial class TrayApplicationContext : ApplicationContext
         if (outcome.FallbackMessage != null)
             TrayMessageBox.Warning(_hiddenWindow, outcome.FallbackMessage);
 
+        // Automatic OCR found a language that isn't installed: offer it once the scan flow is done
+        if (output.MissingOcrLanguages.Count > 0)
+        {
+            var missing = output.MissingOcrLanguages.ToList();
+            SynchronizationContext.Current?.Post(_ => OfferMissingOcrLanguages(missing), null);
+        }
+
         foreach (var w in output.Warnings) LogDiag($"Output warning: {w}");
         if (output.Warnings.Count > 0)
             ShowBalloon(L.T("Hinweis"), string.Join("\n", output.Warnings.Distinct()), ToolTipIcon.Warning);
@@ -1416,6 +1423,27 @@ internal partial class TrayApplicationContext : ApplicationContext
             UpdateMainFormCapabilities();
         }
         WindowActivation.BringToFront(_mainForm);
+    }
+
+    /// <summary>
+    /// After a scan: the automatic text recognition found a language whose data is missing.
+    /// Asks once per language (a "Nein" is remembered).
+    /// </summary>
+    private void OfferMissingOcrLanguages(List<string> codes)
+    {
+        foreach (var code in codes)
+        {
+            if (_exiting || OcrData.IsInstalled(code) || _appSettings.DeclinedOcrLanguages.Contains(code)) continue;
+            string name = OcrDownloadDialog.LanguageName(code);
+            OcrDownloadDialog.Offer(DialogOwner, code,
+                L.F("Auf den gescannten Seiten wurde {0} erkannt, die Texterkennung dafür ist aber nicht installiert. " +
+                    "Ab dem nächsten Scan wird sie verwendet.", name), out bool declined);
+            if (declined)
+            {
+                _appSettings.DeclinedOcrLanguages.Add(code);
+                _appSettings.Save();
+            }
+        }
     }
 
     /// <summary>Another language was saved: restart so every text uses it.</summary>

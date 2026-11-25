@@ -698,5 +698,6 @@
  "nicht installiert": "niet geïnstalleerd",
  "{0} % von ca. {1} MB": "{0} % van ca. {1} MB",
  "{0} wird heruntergeladen …": "{0} wordt gedownload …",
- "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "„Snel” herkent ongeveer twee keer zo snel, maar iets minder nauwkeurig."
+ "„Schnell“ erkennt etwa doppelt so schnell, aber etwas ungenauer.": "„Snel” herkent ongeveer twee keer zo snel, maar iets minder nauwkeurig.",
+ "Auf den gescannten Seiten wurde {0} erkannt, die Texterkennung dafür ist aber nicht installiert. Ab dem nächsten Scan wird sie verwendet.": "Op de gescande pagina's is {0} herkend, maar de tekstherkenning daarvoor is niet geïnstalleerd. Vanaf de volgende scan wordt deze gebruikt."
 }
