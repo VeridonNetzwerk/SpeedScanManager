@@ -7,6 +7,8 @@ using Orientation = System.Windows.Controls.Orientation;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
 using FontFamily = System.Windows.Media.FontFamily;
 using Control = System.Windows.Controls.Control;
+using Image = System.Windows.Controls.Image;
+using System.Windows.Media.Imaging;
 
 namespace SpeedScanInstaller;
 
@@ -18,17 +20,16 @@ internal sealed class LanguagePicker
 {
     public Button Button { get; }
     private readonly TextBlock _name;
+    private readonly Image _flag;
     private readonly Popup _popup;
 
     public LanguagePicker()
     {
         _name = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
         var content = new StackPanel { Orientation = Orientation.Horizontal };
-        content.Children.Add(new TextBlock
-        {
-            Text = "", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 13,
-            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 1, 7, 0),
-        });
+        _flag = Flag(I18n.Current.Code);
+        _flag.Margin = new Thickness(0, 0, 8, 0);
+        content.Children.Add(_flag);
         content.Children.Add(_name);
         content.Children.Add(new TextBlock
         {
@@ -42,7 +43,12 @@ internal sealed class LanguagePicker
         var grid = new UniformGrid { Columns = 2 };
         foreach (var language in I18n.Languages)
         {
-            var entry = new Button { Content = language.NativeName, Tag = language.Code, MinWidth = 132 };
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            var flag = Flag(language.Code);
+            flag.Margin = new Thickness(0, 0, 9, 0);
+            row.Children.Add(flag);
+            row.Children.Add(new TextBlock { Text = language.NativeName, VerticalAlignment = VerticalAlignment.Center });
+            var entry = new Button { Content = row, Tag = language.Code, MinWidth = 150 };
             entry.SetResourceReference(FrameworkElement.StyleProperty, "MenuEntry");
             entry.Click += (_, _) =>
             {
@@ -72,6 +78,7 @@ internal sealed class LanguagePicker
     public void Refresh()
     {
         _name.Text = I18n.Current.NativeName;
+        _flag.Source = FlagSource(I18n.Current.Code);
         foreach (Button entry in ((UniformGrid)((Border)_popup.Child).Child).Children)
         {
             bool current = (string)entry.Tag == I18n.Current.Code;
@@ -79,5 +86,18 @@ internal sealed class LanguagePicker
             if (current) entry.SetResourceReference(Control.BackgroundProperty, "SelectedBrush");
             else entry.ClearValue(Control.BackgroundProperty);
         }
+    }
+
+    /// <summary>Flag image (installer/lang/flags/&lt;code&gt;.png, drawn like the app's ColorIcons.DrawFlag).</summary>
+    private static Image Flag(string code) => new()
+    {
+        Source = FlagSource(code), Width = 20, Height = 15, VerticalAlignment = VerticalAlignment.Center,
+        SnapsToDevicePixels = true,
+    };
+
+    private static ImageSource? FlagSource(string code)
+    {
+        try { return new BitmapImage(new Uri($"pack://application:,,,/SpeedScanInstaller;component/lang/flags/{code}.png")); }
+        catch { return null; }
     }
 }

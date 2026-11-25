@@ -30,6 +30,8 @@
     <Resource Include="..\assets\SpeedScanManager_Logo.png" Link="Assets\SpeedScanManager_Logo.png" />
     <!-- Translations: lang/<code>.json (German text -> translation), see I18n.cs -->
     <EmbeddedResource Include="lang\*.json" LogicalName="lang.%(Filename).json" />
+    <!-- Flags of the language picker (rendered from the app's ColorIcons.DrawFlag) -->
+    <Resource Include="lang\flags\*.png" />
   </ItemGroup>
 
   <!--

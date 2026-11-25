@@ -385,15 +385,6 @@ internal static class ColorIcons
         float w = f.Width, h = f.Height;
         switch (code)
         {
-            case "en-US":
-            {
-                var red = Color.FromArgb(0xB2, 0x22, 0x34);
-                var stripes = new Color[7];
-                for (int i = 0; i < 7; i++) stripes[i] = i % 2 == 0 ? red : Color.White;
-                Stripes(g, f, false, stripes);
-                using (var b = new SolidBrush(Color.FromArgb(0x3C, 0x3B, 0x6E))) g.FillRectangle(b, f.X, f.Y, w * 0.44f, h * 4f / 7f);
-                break;
-            }
             case "pt-BR":
             {
                 using (var b = new SolidBrush(Color.FromArgb(0x00, 0x9C, 0x3B))) g.FillRectangle(b, f);
@@ -457,28 +448,13 @@ internal static class ColorIcons
                 }
                 break;
             case OcrLanguage.English:
+                // Stars and stripes (the app's English is en-US; same flag for OCR and the language list)
             {
-                using (var b = new SolidBrush(Color.FromArgb(0x01, 0x21, 0x69))) g.FillRectangle(b, f);
-                using (var white = new Pen(Color.White, h * 0.22f))
-                {
-                    g.DrawLine(white, f.X, f.Y, f.Right, f.Bottom);
-                    g.DrawLine(white, f.Right, f.Y, f.X, f.Bottom);
-                }
-                using (var red = new Pen(Color.FromArgb(0xC8, 0x10, 0x2E), h * 0.08f))
-                {
-                    g.DrawLine(red, f.X, f.Y, f.Right, f.Bottom);
-                    g.DrawLine(red, f.Right, f.Y, f.X, f.Bottom);
-                }
-                using (var b = new SolidBrush(Color.White))
-                {
-                    g.FillRectangle(b, f.X + w / 2f - h * 0.18f, f.Y, h * 0.36f, h);
-                    g.FillRectangle(b, f.X, f.Y + h / 2f - h * 0.18f, w, h * 0.36f);
-                }
-                using (var b = new SolidBrush(Color.FromArgb(0xC8, 0x10, 0x2E)))
-                {
-                    g.FillRectangle(b, f.X + w / 2f - h * 0.1f, f.Y, h * 0.2f, h);
-                    g.FillRectangle(b, f.X, f.Y + h / 2f - h * 0.1f, w, h * 0.2f);
-                }
+                var red = Color.FromArgb(0xB2, 0x22, 0x34);
+                var stripes = new Color[7];
+                for (int i = 0; i < 7; i++) stripes[i] = i % 2 == 0 ? red : Color.White;
+                Stripes(g, f, false, stripes);
+                using (var b = new SolidBrush(Color.FromArgb(0x3C, 0x3B, 0x6E))) g.FillRectangle(b, f.X, f.Y, w * 0.44f, h * 4f / 7f);
                 break;
             }
             case OcrLanguage.Franzoesisch:
